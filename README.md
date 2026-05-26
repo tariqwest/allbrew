@@ -27,6 +27,9 @@ node bin/allbrew.js https://github.com/BurntSushi/ripgrep
 # With options
 node bin/allbrew.js https://github.com/sharkdp/bat --name bat --desc "A cat clone with wings"
 
+# Manual mode — choose the formula type yourself
+node bin/allbrew.js https://github.com/some/repo --manual
+
 # Use a GitHub token to avoid rate limits
 export GITHUB_TOKEN=ghp_...
 node bin/allbrew.js https://github.com/some/private-repo
@@ -66,6 +69,7 @@ If the repo's README already mentions `brew install`, allbrew alerts you and off
 | `-n, --name <name>` | Override the auto-detected formula/cask name |
 | `-d, --desc <text>` | Override the description |
 | `-t, --token <token>` | GitHub personal access token (also reads `GITHUB_TOKEN` env var) |
+| `-m, --manual` | Skip auto-detection; interactively choose URL type and install strategy |
 | `-v, --verbose` | Show full error stack traces |
 
 ## Output

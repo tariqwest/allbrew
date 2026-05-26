@@ -12,6 +12,7 @@ program
   .option('-d, --desc <description>', 'Override the description')
   .option('-t, --token <token>', 'GitHub personal access token (or set GITHUB_TOKEN)')
   .option('-v, --verbose', 'Show verbose error output')
+  .option('-m, --manual', 'Manually choose the formula type instead of auto-detecting')
   .action(async (url, opts) => {
     if (!url) {
       const { input } = await import('@inquirer/prompts');
