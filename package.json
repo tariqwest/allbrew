@@ -6,11 +6,25 @@
   "bin": {
     "allbrew": "./bin/allbrew.js"
   },
+  "files": [
+    "bin/",
+    "lib/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "start": "node bin/allbrew.js"
   },
-  "keywords": ["homebrew", "formula", "cask", "brew", "tap"],
+  "keywords": ["homebrew", "formula", "cask", "brew", "tap", "generator"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tariqwest/homebrew-allbrew.git"
+  },
+  "homepage": "https://github.com/tariqwest/homebrew-allbrew",
+  "bugs": {
+    "url": "https://github.com/tariqwest/homebrew-allbrew/issues"
+  },
   "engines": {
     "node": ">=18.0.0"
   },

@@ -1,7 +1,66 @@
 #!/usr/bin/env node
 
 import { program } from 'commander';
+import { resolve, join } from 'node:path';
+import { homedir } from 'node:os';
 import { run } from '../lib/cli.js';
+import { getTapPath, setTapPath, loadConfig, getConfigPath } from '../lib/config.js';
+
+const DEFAULT_TAP_PATH = join(homedir(), 'homebrew-mytapp');
+
+async function resolveTapPath(cliTapOpt) {
+  if (cliTapOpt) return resolve(cliTapOpt);
+
+  const saved = await getTapPath();
+  if (saved) return saved;
+
+  const resolved = await setTapPath(DEFAULT_TAP_PATH);
+  const chalk = (await import('chalk')).default;
+  console.log(chalk.dim(`Using default tap path: ${resolved}`));
+  console.log(chalk.dim(`Change with: allbrew config set-tap <path>`));
+  return resolved;
+}
+
+const configCmd = program
+  .command('config')
+  .description('Manage allbrew configuration');
+
+configCmd
+  .command('set-tap <path>')
+  .description('Set the default tap repository path')
+  .action(async (tapPath) => {
+    const chalk = (await import('chalk')).default;
+    const resolved = await setTapPath(tapPath);
+    console.log(chalk.green(`Tap path set to: ${resolved}`));
+  });
+
+configCmd
+  .command('get-tap')
+  .description('Print the current tap repository path')
+  .action(async () => {
+    const chalk = (await import('chalk')).default;
+    const tapPath = await getTapPath();
+    if (tapPath) {
+      console.log(tapPath);
+    } else {
+      console.log(chalk.yellow('No tap path configured. Run: allbrew config set-tap <path>'));
+    }
+  });
+
+configCmd
+  .command('show')
+  .description('Print the full configuration')
+  .action(async () => {
+    const chalk = (await import('chalk')).default;
+    const config = await loadConfig();
+    console.log(chalk.bold('Config file:'), getConfigPath());
+    console.log();
+    if (Object.keys(config).length === 0) {
+      console.log(chalk.dim('(empty)'));
+    } else {
+      console.log(JSON.stringify(config, null, 2));
+    }
+  });
 
 program
   .name('allbrew')
@@ -13,6 +72,7 @@ program
   .option('-t, --token <token>', 'GitHub personal access token (or set GITHUB_TOKEN)')
   .option('-v, --verbose', 'Show verbose error output')
   .option('-m, --manual', 'Manually choose the formula type instead of auto-detecting')
+  .option('--tap <path>', 'Override the tap repository path for this run')
   .action(async (url, opts) => {
     if (!url) {
       const { input } = await import('@inquirer/prompts');
@@ -32,7 +92,8 @@ program
       process.exit(1);
     }
 
-    await run(url, opts);
+    const tapPath = await resolveTapPath(opts.tap);
+    await run(url, { ...opts, tapPath });
   });
 
 program.parse();
