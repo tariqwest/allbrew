@@ -1,11 +1,13 @@
-# allbrew (alpha)
+# Allbrew (alpha)
 
 Generate Homebrew formulas and casks from arbitrary URLs. Point it at a GitHub repo, a bash install script, a binary archive, a macOS app DMG, or a Mac App Store link and it produces the right `.rb` file for your tap.
 
-## TODOs
+## Todo
 * Update usage to represent all cases, and give real and validated examples
-* Verify and test instructions
-* Account for formulas with background services using 'brew services'
+* Verify and test instructions for all app types and install methods
+* Account for formulas with background services using 'brew services' formula blocks
+* Allow MAS app install by name, without full url
+* Verify that uninstall works for all app types and install methods
 
 ## Install
 
@@ -70,23 +72,19 @@ allbrew https://github.com/some/private-repo
 
 | URL Type                             | What it generates                                                            |
 | ------------------------------------ | ---------------------------------------------------------------------------- |
-| **GitHub repo with binary releases** | Formula using `on_macos`/`on_linux` + `on_arm`/`on_intel` blocks             |
+| **GitHub repo (existing homebrew)**  | Existing homebrew instructions found, don't duplicate, run existing formula  | 
+| **GitHub repo with binary releases** | Formula using `on_macos` + `on_arm`/`on_intel` blocks                        |
 | **GitHub repo with .app releases**   | Cask with `livecheck`, `app`, and `zap` stanzas                              |
 | **GitHub repo (npm package)**        | Formula with `depends_on "node"` and `std_npm_args`                          |
 | **GitHub repo (pip package)**        | Formula with `Language::Python::Virtualenv` and transitive `resource` blocks |
 | **GitHub repo (cargo package)**      | Formula with `depends_on "rust"` and `std_cargo_args`                        |
-| **GitHub repo (go package)**         | Formula with `depends_on "go"` and `std_go_args`                        |
+| **GitHub repo (go package)**         | Formula with `depends_on "go"` and `std_go_args`                             |
 | **GitHub repo (build from source)**  | Formula with cmake/autotools/make/meson install block                        |
 | **Bash install script**              | Formula that runs the script with `PREFIX` set to the Cellar                 |
 | **Source code archive**              | Formula that extracts and builds using detected build system                 |
-| **Archive with pre-built binary**    | Formula that extracts and does `bin.install`                                 |
+| **Pre-built binar archivey**         | Formula that extracts and does `bin.install`                                 |
 | **DMG or ZIP with .app**             | Cask with `app` stanza                                                       |
 | **Mac App Store URL**                | Cask using `mas` to install                                                  |
-
-
-### GitHub Repos — Homebrew Detection
-
-If the repo's README already mentions `brew install`, allbrew alerts you and offers to run that command directly instead of generating a duplicate formula.
 
 ## Options
 
