@@ -1,6 +1,11 @@
-# allbrew
+# allbrew (alpha)
 
 Generate Homebrew formulas and casks from arbitrary URLs. Point it at a GitHub repo, a bash install script, a binary archive, a macOS app DMG, or a Mac App Store link and it produces the right `.rb` file for your tap.
+
+## TODOs
+* Update usage to represent all cases, and give real and validated examples
+* Verify and test instructions
+* Account for formulas with background services using 'brew services'
 
 ## Install
 
@@ -70,6 +75,7 @@ allbrew https://github.com/some/private-repo
 | **GitHub repo (npm package)**        | Formula with `depends_on "node"` and `std_npm_args`                          |
 | **GitHub repo (pip package)**        | Formula with `Language::Python::Virtualenv` and transitive `resource` blocks |
 | **GitHub repo (cargo package)**      | Formula with `depends_on "rust"` and `std_cargo_args`                        |
+| **GitHub repo (go package)**         | Formula with `depends_on "go"` and `std_go_args`                        |
 | **GitHub repo (build from source)**  | Formula with cmake/autotools/make/meson install block                        |
 | **Bash install script**              | Formula that runs the script with `PREFIX` set to the Cellar                 |
 | **Source code archive**              | Formula that extracts and builds using detected build system                 |
