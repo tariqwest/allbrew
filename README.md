@@ -11,12 +11,6 @@ brew tap tariqwest/allbrew
 brew install allbrew
 ```
 
-### npm (global)
-
-```bash
-npm install -g allbrew
-```
-
 ### From source
 
 ```bash
