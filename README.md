@@ -28,8 +28,8 @@ bun install -g allbrew
 ### From source
 
 ```bash
-git clone https://github.com/tariqwest/homebrew-allbrew.git
-cd homebrew-allbrew
+git clone https://github.com/tariqwest/allbrew.git
+cd allbrew
 bun install
 bun link
 ```

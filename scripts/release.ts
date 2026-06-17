@@ -17,8 +17,7 @@ import { join } from "node:path";
 const ROOT_DIR = join(import.meta.dir, "..");
 const PACKAGE_JSON_PATH = join(ROOT_DIR, "package.json");
 
-const SOURCE_REPO =
-  process.env.GITHUB_REPOSITORY || "tariqwest/homebrew-allbrew";
+const SOURCE_REPO = process.env.GITHUB_REPOSITORY || "tariqwest/allbrew";
 const TAP_REPO = process.env.HOMEBREW_TAP_REPO || SOURCE_REPO;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
 const DRY_RUN = process.env.DRY_RUN === "1" || process.env.DRY_RUN === "true";
