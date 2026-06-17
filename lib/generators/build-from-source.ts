@@ -5,15 +5,15 @@ import {
   rubyString,
   guessLicenseIdentifier,
   writeFormula,
-} from "../utils.js";
-import { hashUrl } from "../sha256.js";
-import { buildServiceBlock, serviceFromOptions } from "./service.js";
+} from "../utils.ts";
+import { hashUrl } from "../sha256.ts";
+import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 
 export async function generateBuildFromSource(
-  repoInfo,
-  release,
-  buildSystem,
-  options = {},
+  repoInfo: any,
+  release: any,
+  buildSystem: any,
+  options: any = {},
 ) {
   const name = options.name || toFormulaName(repoInfo.name);
   const className = toClassName(name);

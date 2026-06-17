@@ -4,13 +4,14 @@ import {
   rubyString,
   guessLicenseIdentifier,
   writeFormula,
-} from "../utils.js";
-import { buildServiceBlock, serviceFromOptions } from "./service.js";
+} from "../utils.ts";
+import { pypiLivecheckBlock } from "./livecheck.ts";
+import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 
 export async function generatePipPackage(
-  packageName,
-  repoInfo = null,
-  options = {},
+  packageName: string,
+  repoInfo: any = null,
+  options: any = {},
 ) {
   const pypiData = await fetchPypiData(packageName);
   const latestVersion = pypiData.info.version;
@@ -46,6 +47,7 @@ export async function generatePipPackage(
   ruby += `  sha256 ${rubyString(sdist.digests.sha256)}\n`;
   if (license) ruby += `  license ${rubyString(license)}\n`;
   ruby += `\n`;
+  ruby += pypiLivecheckBlock(packageName);
   ruby += `  depends_on "python@3.13"\n\n`;
 
   for (const dep of deps) {

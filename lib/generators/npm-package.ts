@@ -4,14 +4,15 @@ import {
   rubyString,
   guessLicenseIdentifier,
   writeFormula,
-} from "../utils.js";
-import { hashUrl } from "../sha256.js";
-import { buildServiceBlock, serviceFromOptions } from "./service.js";
+} from "../utils.ts";
+import { hashUrl } from "../sha256.ts";
+import { npmLivecheckBlock } from "./livecheck.ts";
+import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 
 export async function generateNpmPackage(
-  packageName,
-  repoInfo = null,
-  options = {},
+  packageName: string,
+  repoInfo: any = null,
+  options: any = {},
 ) {
   const registryUrl = `https://registry.npmjs.org/${encodeURIComponent(packageName)}`;
   const response = await fetch(registryUrl, {
@@ -55,6 +56,7 @@ export async function generateNpmPackage(
   ruby += `  sha256 ${rubyString(tarballSha)}\n`;
   if (license) ruby += `  license ${rubyString(license)}\n`;
   ruby += `\n`;
+  ruby += npmLivecheckBlock(packageName);
   ruby += `  depends_on "node"\n\n`;
 
   ruby += `  def install\n`;

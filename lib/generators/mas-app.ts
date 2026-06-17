@@ -1,6 +1,6 @@
-import { toCaskToken, rubyString, writeCask } from '../utils.js';
+import { toCaskToken, rubyString, writeCask } from '../utils.ts';
 
-export async function generateMasApp(appStoreUrl, options = {}) {
+export async function generateMasApp(appStoreUrl, options: any = {}) {
   const appId = extractAppId(appStoreUrl);
   if (!appId) {
     throw new Error(`Could not extract App Store ID from URL: ${appStoreUrl}`);

@@ -1,22 +1,25 @@
-import { rubyString } from '../utils.js';
+import { rubyString } from "../utils.ts";
 
-export function serviceFromOptions(options = {}, fallbackName = '') {
+export function serviceFromOptions(options: any = {}, fallbackName = "") {
   if (options.service === false) return null;
 
   if (options.service || options.serviceCommand) {
-    return normalizeServiceConfig({
-      command: options.serviceCommand,
-      keepAlive: options.serviceKeepAlive,
-    }, fallbackName);
+    return normalizeServiceConfig(
+      {
+        command: options.serviceCommand,
+        keepAlive: options.serviceKeepAlive,
+      },
+      fallbackName,
+    );
   }
 
   return normalizeServiceConfig(options.serviceConfig, fallbackName);
 }
 
-export function normalizeServiceConfig(config, fallbackName = '') {
+export function normalizeServiceConfig(config: any, fallbackName = "") {
   if (!config) return null;
 
-  const command = String(config.command || fallbackName || '').trim();
+  const command = String(config.command || fallbackName || "").trim();
   if (!command) return null;
 
   return {
@@ -28,44 +31,50 @@ export function normalizeServiceConfig(config, fallbackName = '') {
   };
 }
 
-export function buildServiceBlock(serviceConfig, fallbackName = '') {
+export function buildServiceBlock(serviceConfig: any, fallbackName = "") {
   const service = normalizeServiceConfig(serviceConfig, fallbackName);
-  if (!service) return '';
+  if (!service) return "";
 
   let ruby = `  service do\n`;
   ruby += `    run ${rubyRunCommand(service.command, fallbackName)}\n`;
   if (service.keepAlive) ruby += `    keep_alive true\n`;
-  if (service.workingDir) ruby += `    working_dir ${rubyString(service.workingDir)}\n`;
+  if (service.workingDir)
+    ruby += `    working_dir ${rubyString(service.workingDir)}\n`;
   if (service.logPath) ruby += `    log_path ${rubyString(service.logPath)}\n`;
-  if (service.errorLogPath) ruby += `    error_log_path ${rubyString(service.errorLogPath)}\n`;
+  if (service.errorLogPath)
+    ruby += `    error_log_path ${rubyString(service.errorLogPath)}\n`;
   ruby += `  end\n\n`;
   return ruby;
 }
 
-function rubyRunCommand(command, fallbackName) {
+function rubyRunCommand(command: string, fallbackName: string) {
   const parts = splitCommand(command);
   const executable = parts[0] || fallbackName;
   const args = parts.slice(1);
 
   if (isFormulaExecutable(executable, fallbackName)) {
-    const executableName = executable.split('/').pop();
+    const executableName = executable.split("/").pop();
     if (args.length === 0) return `opt_bin/${rubyString(executableName)}`;
 
-    return `[opt_bin/${rubyString(executableName)}, ${args.map(rubyString).join(', ')}]`;
+    return `[opt_bin/${rubyString(executableName)}, ${args.map(rubyString).join(", ")}]`;
   }
 
   if (args.length === 0) return rubyString(command);
-  return `[${parts.map(rubyString).join(', ')}]`;
+  return `[${parts.map(rubyString).join(", ")}]`;
 }
 
-function isFormulaExecutable(executable, fallbackName) {
-  const base = executable.split('/').pop();
-  return base === fallbackName || executable === `bin/${fallbackName}` || executable === `./${fallbackName}`;
+function isFormulaExecutable(executable: string, fallbackName: string) {
+  const base = executable.split("/").pop();
+  return (
+    base === fallbackName ||
+    executable === `bin/${fallbackName}` ||
+    executable === `./${fallbackName}`
+  );
 }
 
-function splitCommand(command) {
+function splitCommand(command: string) {
   const parts = [];
-  let current = '';
+  let current = "";
   let quote = null;
   let escaping = false;
 
@@ -76,7 +85,7 @@ function splitCommand(command) {
       continue;
     }
 
-    if (char === '\\') {
+    if (char === "\\") {
       escaping = true;
       continue;
     }
@@ -95,7 +104,7 @@ function splitCommand(command) {
     if (/\s/.test(char)) {
       if (current) {
         parts.push(current);
-        current = '';
+        current = "";
       }
       continue;
     }

@@ -5,14 +5,15 @@ import {
   rubyString,
   guessLicenseIdentifier,
   writeFormula,
-} from "../utils.js";
-import { hashUrl } from "../sha256.js";
-import { buildServiceBlock, serviceFromOptions } from "./service.js";
+} from "../utils.ts";
+import { hashUrl } from "../sha256.ts";
+import { cratesLivecheckBlock } from "./livecheck.ts";
+import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 
-export async function generateGoPackage(
-  repoInfo,
-  release = null,
-  options = {},
+export async function generateCargoPackage(
+  repoInfo: any,
+  release: any = null,
+  options: any = {},
 ) {
   const name = options.name || toFormulaName(repoInfo.name);
   const className = toClassName(name);
@@ -20,7 +21,7 @@ export async function generateGoPackage(
     options.desc || repoInfo.description || `Install ${repoInfo.name}`;
   const license = guessLicenseIdentifier(repoInfo.license);
   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
-  const goModule = options.goModule || `github.com/${repoInfo.fullName}`;
+  const crateName = options.crateName || repoInfo.name;
 
   let sourceUrl, version;
   if (release) {
@@ -48,10 +49,11 @@ export async function generateGoPackage(
 
   ruby += `  head "https://github.com/${repoInfo.fullName}.git", branch: "${repoInfo.defaultBranch}"\n\n`;
 
-  ruby += `  depends_on "go" => :build\n\n`;
+  ruby += cratesLivecheckBlock(crateName);
+  ruby += `  depends_on "rust" => :build\n\n`;
 
   ruby += `  def install\n`;
-  ruby += `    system "go", "install", *std_go_args(ldflags: "-s -w")\n`;
+  ruby += `    system "cargo", "install", *std_cargo_args\n`;
   ruby += `  end\n\n`;
 
   ruby += buildServiceBlock(serviceFromOptions(options, name), name);
