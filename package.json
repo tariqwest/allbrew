@@ -15,7 +15,9 @@
   ],
   "scripts": {
     "start": "bun run bin/allbrew.ts",
-    "check": "tsc --noEmit"
+    "build": "tsc --noEmit",
+    "check": "tsc --noEmit",
+    "release": "bun run scripts/release.ts"
   },
   "keywords": [
     "homebrew",
