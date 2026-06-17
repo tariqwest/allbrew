@@ -1,8 +1,8 @@
-import { toCaskToken, rubyString, writeCask } from '../utils.js';
-import { downloadAndHash } from '../sha256.js';
-import { inspectArchive, listZipEntries } from '../archive-inspector.js';
+import { toCaskToken, rubyString, writeCask } from '../utils.ts';
+import { downloadAndHash } from '../sha256.ts';
+import { inspectArchive, listZipEntries } from '../archive-inspector.ts';
 
-export async function generateCaskApp(url, options = {}) {
+export async function generateCaskApp(url, options: any = {}) {
   const { sha256 } = await downloadAndHash(url);
 
   let appName = options.appName;
@@ -52,7 +52,7 @@ async function detectAppName(url) {
 
   if (lower.endsWith('.zip')) {
     try {
-      const { downloadToTemp } = await import('../sha256.js');
+      const { downloadToTemp } = await import('../sha256.ts');
       const { path } = await downloadToTemp(url);
       const entries = await listZipEntries(path);
       const appEntry = entries.find(e => /\.app\/?$/i.test(e));

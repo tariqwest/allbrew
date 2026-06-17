@@ -3,13 +3,13 @@ import {
   toClassName,
   rubyString,
   writeFormula,
-} from "../utils.js";
-import { buildServiceBlock, serviceFromOptions } from "./service.js";
+} from "../utils.ts";
+import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 
 export async function generateRawBinary(
-  archiveInfo,
-  selectedBinaries = null,
-  options = {},
+  archiveInfo: any,
+  selectedBinaries: any = null,
+  options: any = {},
 ) {
   const { downloadUrl, sha256, binaries, extras = {} } = archiveInfo;
 

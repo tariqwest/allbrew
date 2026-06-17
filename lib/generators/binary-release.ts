@@ -6,11 +6,15 @@ import {
   rubyString,
   guessLicenseIdentifier,
   writeFormula,
-} from "../utils.js";
-import { downloadAndHash } from "../sha256.js";
-import { buildServiceBlock, serviceFromOptions } from "./service.js";
+} from "../utils.ts";
+import { downloadAndHash } from "../sha256.ts";
+import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 
-export async function generateBinaryRelease(repoInfo, release, options = {}) {
+export async function generateBinaryRelease(
+  repoInfo: any,
+  release: any,
+  options: any = {},
+) {
   const name = options.name || toFormulaName(repoInfo.name);
   const className = toClassName(name);
   const version = extractVersionFromTag(release.tagName);
@@ -19,7 +23,7 @@ export async function generateBinaryRelease(repoInfo, release, options = {}) {
   const license = guessLicenseIdentifier(repoInfo.license);
   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
 
-  const archAssets = {};
+  const archAssets: Record<string, any> = {};
   for (const asset of release.assets) {
     const arch = matchAssetToArch(asset.name);
     if (arch) archAssets[arch] = asset;
@@ -29,13 +33,13 @@ export async function generateBinaryRelease(repoInfo, release, options = {}) {
     throw new Error("No platform-specific binary assets found in release");
   }
 
-  const hashes = {};
+  const hashes: Record<string, any> = {};
   for (const [arch, asset] of Object.entries(archAssets)) {
     const { sha256 } = await downloadAndHash(asset.url);
     hashes[arch] = { url: asset.url, sha256, name: asset.name };
   }
 
-  const urlTemplate = (url, tag) => {
+  const urlTemplate = (url: string) => {
     return url
       .replace(version, "#{version}")
       .replace(release.tagName, "v#{version}");

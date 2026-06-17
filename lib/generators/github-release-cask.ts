@@ -1,8 +1,8 @@
-import { toCaskToken, extractVersionFromTag, rubyString, isAppAsset, writeCask } from '../utils.js';
-import { downloadAndHash } from '../sha256.js';
-import { listZipEntries } from '../archive-inspector.js';
+import { toCaskToken, extractVersionFromTag, rubyString, isAppAsset, writeCask } from '../utils.ts';
+import { downloadAndHash } from '../sha256.ts';
+import { listZipEntries } from '../archive-inspector.ts';
 
-export async function generateGithubReleaseCask(repoInfo, release, options = {}) {
+export async function generateGithubReleaseCask(repoInfo, release, options: any = {}) {
   const version = extractVersionFromTag(release.tagName);
 
   const appAssets = release.assets.filter(a => isAppAsset(a.name));
@@ -68,7 +68,7 @@ async function detectAppNameFromAsset(asset) {
 
   if (lower.endsWith('.zip')) {
     try {
-      const { downloadToTemp } = await import('../sha256.js');
+      const { downloadToTemp } = await import('../sha256.ts');
       const { path } = await downloadToTemp(asset.url, asset.name);
       const entries = await listZipEntries(path);
       const appEntry = entries.find(e => /\.app\/?$/i.test(e.trim()));

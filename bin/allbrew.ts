@@ -1,15 +1,23 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { program } from "commander";
-import { resolve, join } from "node:path";
+import { readFileSync } from "node:fs";
+import { resolve, join, dirname } from "node:path";
 import { homedir } from "node:os";
-import { run } from "../lib/cli.js";
+import { fileURLToPath } from "node:url";
+import { run } from "../lib/cli.ts";
 import {
   getTapPath,
   setTapPath,
   loadConfig,
   getConfigPath,
-} from "../lib/config.js";
+} from "../lib/config.ts";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, "..", "package.json"), "utf-8"),
+);
+const VERSION = packageJson.version || "0.0.0";
 
 const DEFAULT_TAP_PATH = join(homedir(), "homebrew-mytapp");
 
@@ -74,7 +82,7 @@ configCmd
 program
   .name("allbrew")
   .description("Generate Homebrew formulas and casks from arbitrary URLs")
-  .version("1.0.0")
+  .version(VERSION)
   .argument(
     "[url]",
     "URL to a GitHub repo, script, binary, archive, or Mac App Store app",

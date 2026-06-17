@@ -3,11 +3,11 @@ import {
   toClassName,
   rubyString,
   writeFormula,
-} from "../utils.js";
-import { downloadAndHash } from "../sha256.js";
-import { buildServiceBlock, serviceFromOptions } from "./service.js";
+} from "../utils.ts";
+import { downloadAndHash } from "../sha256.ts";
+import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 
-export async function generateScriptInstall(url, options = {}) {
+export async function generateScriptInstall(url, options: any = {}) {
   const { sha256 } = await downloadAndHash(url);
 
   const filename = url.split("/").pop().split("?")[0] || "install.sh";

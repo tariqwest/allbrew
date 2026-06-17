@@ -3,11 +3,11 @@ import {
   toClassName,
   rubyString,
   writeFormula,
-} from "../utils.js";
-import { detectBuildSystemFromArchive } from "../analyzer.js";
-import { buildServiceBlock, serviceFromOptions } from "./service.js";
+} from "../utils.ts";
+import { detectBuildSystemFromArchive } from "../analyzer.ts";
+import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 
-export async function generateSourceArchive(archiveInfo, options = {}) {
+export async function generateSourceArchive(archiveInfo, options: any = {}) {
   const { downloadUrl, sha256, files } = archiveInfo;
 
   const filename = downloadUrl.split("/").pop().split("?")[0] || "source";

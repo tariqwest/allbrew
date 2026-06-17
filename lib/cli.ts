@@ -1,7 +1,7 @@
 import { select, input, confirm, checkbox } from "@inquirer/prompts";
 import chalk from "chalk";
 import ora from "ora";
-import { classify, classifyWithHead } from "./classifier.js";
+import { classify, classifyWithHead } from "./classifier.ts";
 import {
   initOctokit,
   getRepoInfo,
@@ -9,22 +9,22 @@ import {
   getReadme,
   getRepoContents,
   getFileContent,
-} from "./github.js";
+} from "./github.ts";
 import {
   detectBrewInstall,
   detectInstallMethod,
   detectBuildSystemFromFiles,
   detectServiceConfig,
   detectServiceConfigFromFiles,
-} from "./analyzer.js";
-import { inspectArchive } from "./archive-inspector.js";
-import { matchAssetToArch, isAppAsset, isBinaryAsset } from "./utils.js";
+} from "./analyzer.ts";
+import { inspectArchive } from "./archive-inspector.ts";
+import { matchAssetToArch, isAppAsset, isBinaryAsset } from "./utils.ts";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-export async function run(url, opts = {}) {
+export async function run(url, opts: any = {}) {
   if (opts.token) initOctokit(opts.token);
 
   if (opts.manual) {
@@ -234,12 +234,17 @@ async function handleGithubRepoManual(url, opts) {
       );
     }
 
-    case "cargo-package":
+    case "cargo-package": {
+      const crateName = await input({
+        message: "crates.io crate name:",
+        default: repoInfo?.name || "",
+      });
       return await generateWithConfirmation(
         "cargo-package",
-        { repoInfo, release },
+        { repoInfo, release, crateName },
         opts,
       );
+    }
 
     case "go-package": {
       const goModule = await input({
@@ -277,7 +282,7 @@ async function handleGithubRepoManual(url, opts) {
   }
 }
 
-async function handleArchiveManual(url, opts) {
+async function handleArchiveManual(url: string, opts: any) {
   const archiveType = await select({
     message: "What does this archive contain?",
     choices: [
@@ -292,7 +297,7 @@ async function handleArchiveManual(url, opts) {
   }
 
   const spinner = ora("Downloading and inspecting archive...").start();
-  const archiveInfo = await inspectArchive(url);
+  const archiveInfo: any = await inspectArchive(url);
   spinner.succeed("Archive downloaded");
   const archiveServiceConfig = detectServiceConfigFromFiles(
     archiveInfo.files,
@@ -584,6 +589,7 @@ async function handleGithubRepo(classification, opts) {
             {
               repoInfo,
               release,
+              crateName: method.package,
               serviceConfig: serviceConfigFromReadme,
             },
             opts,
@@ -674,12 +680,15 @@ async function handleGithubRepo(classification, opts) {
           },
           opts,
         );
-      case "cargo":
+      case "cargo": {
+        const cargoToml = await getFileContent(owner, repo, "Cargo.toml");
+        const crateName = parseCargoPackageName(cargoToml) || repoInfo.name;
         return await generateWithConfirmation(
           "cargo-package",
-          { repoInfo, release, serviceConfig },
+          { repoInfo, release, crateName, serviceConfig },
           opts,
         );
+      }
       case "go":
         return await generateWithConfirmation(
           "go-package",
@@ -726,9 +735,9 @@ async function handleCaskDmg(url, opts) {
   return await generateWithConfirmation("cask-app", { url }, opts);
 }
 
-async function handleArchive(url, opts) {
+async function handleArchive(url: string, opts: any) {
   const spinner = ora("Downloading and inspecting archive...").start();
-  const archiveInfo = await inspectArchive(url);
+  const archiveInfo: any = await inspectArchive(url);
   spinner.succeed(`Archive type: ${chalk.bold(archiveInfo.type)}`);
   const archiveServiceConfig = detectServiceConfigFromFiles(
     archiveInfo.files,
@@ -821,10 +830,10 @@ async function handleMacAppStore(url, opts) {
   return await generateWithConfirmation("mas-app", { url }, opts);
 }
 
-async function generateWithConfirmation(generatorName, params, opts) {
+async function generateWithConfirmation(generatorName, params: any, opts: any) {
   console.log();
 
-  const userOpts = {};
+  const userOpts: any = {};
   if (!opts.name) {
     const defaultName = guessName(generatorName, params);
     const name = await input({
@@ -863,7 +872,7 @@ async function generateWithConfirmation(generatorName, params, opts) {
   switch (generatorName) {
     case "binary-release": {
       const { generateBinaryRelease } =
-        await import("./generators/binary-release.js");
+        await import("./generators/binary-release.ts");
       result = await generateBinaryRelease(
         params.repoInfo,
         params.release,
@@ -873,7 +882,7 @@ async function generateWithConfirmation(generatorName, params, opts) {
     }
     case "build-from-source": {
       const { generateBuildFromSource } =
-        await import("./generators/build-from-source.js");
+        await import("./generators/build-from-source.ts");
       result = await generateBuildFromSource(
         params.repoInfo,
         params.release,
@@ -884,7 +893,7 @@ async function generateWithConfirmation(generatorName, params, opts) {
     }
     case "npm-package": {
       const { generateNpmPackage } =
-        await import("./generators/npm-package.js");
+        await import("./generators/npm-package.ts");
       result = await generateNpmPackage(
         params.packageName,
         params.repoInfo,
@@ -894,7 +903,7 @@ async function generateWithConfirmation(generatorName, params, opts) {
     }
     case "pip-package": {
       const { generatePipPackage } =
-        await import("./generators/pip-package.js");
+        await import("./generators/pip-package.ts");
       result = await generatePipPackage(
         params.packageName,
         params.repoInfo,
@@ -904,16 +913,15 @@ async function generateWithConfirmation(generatorName, params, opts) {
     }
     case "cargo-package": {
       const { generateCargoPackage } =
-        await import("./generators/cargo-package.js");
-      result = await generateCargoPackage(
-        params.repoInfo,
-        params.release,
-        mergedOpts,
-      );
+        await import("./generators/cargo-package.ts");
+      result = await generateCargoPackage(params.repoInfo, params.release, {
+        ...mergedOpts,
+        crateName: params.crateName,
+      });
       break;
     }
     case "go-package": {
-      const { generateGoPackage } = await import("./generators/go-package.js");
+      const { generateGoPackage } = await import("./generators/go-package.ts");
       result = await generateGoPackage(params.repoInfo, params.release, {
         ...mergedOpts,
         goModule: params.goModule,
@@ -922,18 +930,18 @@ async function generateWithConfirmation(generatorName, params, opts) {
     }
     case "script-install": {
       const { generateScriptInstall } =
-        await import("./generators/script-install.js");
+        await import("./generators/script-install.ts");
       result = await generateScriptInstall(params.url, mergedOpts);
       break;
     }
     case "source-archive": {
       const { generateSourceArchive } =
-        await import("./generators/source-archive.js");
+        await import("./generators/source-archive.ts");
       result = await generateSourceArchive(params.archiveInfo, mergedOpts);
       break;
     }
     case "raw-binary": {
-      const { generateRawBinary } = await import("./generators/raw-binary.js");
+      const { generateRawBinary } = await import("./generators/raw-binary.ts");
       result = await generateRawBinary(
         params.archiveInfo,
         params.selectedBinaries,
@@ -942,7 +950,7 @@ async function generateWithConfirmation(generatorName, params, opts) {
       break;
     }
     case "cask-app": {
-      const { generateCaskApp } = await import("./generators/cask-app.js");
+      const { generateCaskApp } = await import("./generators/cask-app.ts");
       result = await generateCaskApp(params.url, {
         ...mergedOpts,
         appName: params.appName,
@@ -951,7 +959,7 @@ async function generateWithConfirmation(generatorName, params, opts) {
     }
     case "github-release-cask": {
       const { generateGithubReleaseCask } =
-        await import("./generators/github-release-cask.js");
+        await import("./generators/github-release-cask.ts");
       result = await generateGithubReleaseCask(
         params.repoInfo,
         params.release,
@@ -960,7 +968,7 @@ async function generateWithConfirmation(generatorName, params, opts) {
       break;
     }
     case "mas-app": {
-      const { generateMasApp } = await import("./generators/mas-app.js");
+      const { generateMasApp } = await import("./generators/mas-app.ts");
       result = await generateMasApp(params.url, mergedOpts);
       break;
     }
@@ -990,7 +998,7 @@ async function generateWithConfirmation(generatorName, params, opts) {
   return result;
 }
 
-function isFormulaGenerator(generatorName) {
+function isFormulaGenerator(generatorName: string) {
   return [
     "binary-release",
     "build-from-source",
@@ -1004,7 +1012,7 @@ function isFormulaGenerator(generatorName) {
   ].includes(generatorName);
 }
 
-async function collectServiceOptions(params, opts, formulaName) {
+async function collectServiceOptions(params: any, opts: any, formulaName: any) {
   if (opts.service === false) return { service: false };
 
   if (opts.service || opts.serviceCommand) {
@@ -1048,7 +1056,27 @@ async function collectServiceOptions(params, opts, formulaName) {
   };
 }
 
-function guessName(generatorName, params) {
+function parseCargoPackageName(cargoToml: string | null) {
+  if (!cargoToml) return null;
+
+  let inPackageSection = false;
+  for (const line of cargoToml.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    const section = trimmed.match(/^\[([^\]]+)\]/);
+    if (section) {
+      inPackageSection = section[1] === "package";
+      continue;
+    }
+
+    if (!inPackageSection) continue;
+    const name = trimmed.match(/^name\s*=\s*["']([^"']+)["']/);
+    if (name) return name[1];
+  }
+
+  return null;
+}
+
+function guessName(generatorName: any, params: any) {
   if (params.repoInfo) return params.repoInfo.name.toLowerCase();
   if (params.packageName)
     return params.packageName
@@ -1064,7 +1092,7 @@ function guessName(generatorName, params) {
   return "my-package";
 }
 
-function guessDesc(generatorName, params) {
+function guessDesc(generatorName: any, params: any) {
   if (params.repoInfo?.description) return params.repoInfo.description;
   if (params.archiveInfo?.downloadUrl)
     return `Install from ${params.archiveInfo.downloadUrl}`;
