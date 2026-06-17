@@ -40,8 +40,32 @@ export async function writeFormula(name, content, tapPath) {
   const dir = join(tapPath, 'Formula');
   await mkdir(dir, { recursive: true });
   const filePath = join(dir, `${name}.rb`);
-  await writeFile(filePath, content, 'utf-8');
+  await writeFile(filePath, withAllbrewDependency(content), 'utf-8');
   return filePath;
+}
+
+export function withAllbrewDependency(content) {
+  if (/^\s*depends_on\s+["\x27]allbrew["\x27]/m.test(content)) {
+    return content;
+  }
+
+  const dependency = "  depends_on \"allbrew\"\n";
+  const firstDependency = content.match(/^\s*depends_on\b/m);
+  if (firstDependency?.index !== undefined) {
+    return `${content.slice(0, firstDependency.index)}${dependency}${content.slice(firstDependency.index)}`;
+  }
+
+  const installBlock = content.match(/^\s*def install\b/m);
+  if (installBlock?.index !== undefined) {
+    return `${content.slice(0, installBlock.index)}${dependency}\n${content.slice(installBlock.index)}`;
+  }
+
+  const classEnd = content.lastIndexOf("\nend");
+  if (classEnd !== -1) {
+    return `${content.slice(0, classEnd)}\n${dependency}${content.slice(classEnd)}`;
+  }
+
+  return `${content}\n${dependency}`;
 }
 
 export async function writeCask(name, content, tapPath) {
