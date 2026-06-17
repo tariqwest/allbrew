@@ -16,12 +16,11 @@ import { join } from "node:path";
 
 const ROOT_DIR = join(import.meta.dir, "..");
 const PACKAGE_JSON_PATH = join(ROOT_DIR, "package.json");
-const FORMULA_PATH = join(ROOT_DIR, "Formula", "allbrew.rb");
 
 const SOURCE_REPO =
   process.env.GITHUB_REPOSITORY || "tariqwest/homebrew-allbrew";
 const TAP_REPO = process.env.HOMEBREW_TAP_REPO || SOURCE_REPO;
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || "";
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
 const DRY_RUN = process.env.DRY_RUN === "1" || process.env.DRY_RUN === "true";
 
 const colors = {
@@ -150,6 +149,10 @@ function tapName(repo: string) {
   return `${owner}/${name.replace(/^homebrew-/, "")}`;
 }
 
+function repoCloneUrl(repo: string) {
+  return `https://github.com/${repo}.git`;
+}
+
 function artifactName(version: string) {
   return `allbrew-v${version}.tar.gz`;
 }
@@ -232,9 +235,7 @@ function buildReleaseArtifact(version: string): ReleaseArtifact {
 
 async function githubRequest(path: string, options: any = {}) {
   if (!GITHUB_TOKEN) {
-    throw new Error(
-      "GITHUB_TOKEN or GH_TOKEN is required to publish GitHub releases.",
-    );
+    throw new Error("GITHUB_TOKEN is required to publish GitHub releases.");
   }
 
   const response = await fetch(`https://api.github.com${path}`, {
@@ -360,6 +361,45 @@ async function uploadAsset(release: any, artifact: ReleaseArtifact) {
   logSuccess(`Uploaded release asset ${artifact.fileName}`);
 }
 
+function publishFormulaToTap(version: string, sha256: string) {
+  const tempDir = mkdtempSync(join(tmpdir(), "allbrew-tap-"));
+  const tapDir = join(tempDir, "tap");
+
+  try {
+    logStep(`Publishing Homebrew formula to ${tapName(TAP_REPO)}`);
+    run("git", ["clone", repoCloneUrl(TAP_REPO), tapDir], { cwd: tempDir });
+
+    const formulaDir = join(tapDir, "Formula");
+    const formulaPath = join(formulaDir, "allbrew.rb");
+    mkdirSync(formulaDir, { recursive: true });
+    writeFileSync(formulaPath, generateFormula(version, sha256));
+
+    run("ruby", ["-c", formulaPath], { cwd: tapDir });
+
+    const status = output("git", ["status", "--porcelain"], { cwd: tapDir });
+    if (!status) {
+      logWarn("Homebrew tap formula is already up to date.");
+      return;
+    }
+
+    run("git", ["add", "Formula/allbrew.rb"], { cwd: tapDir });
+    run(
+      "git",
+      ["commit", "-m", `chore: update allbrew formula for v${version}`],
+      {
+        cwd: tapDir,
+      },
+    );
+
+    const branch = output("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+      cwd: tapDir,
+    });
+    run("git", ["push", "origin", branch], { cwd: tapDir });
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
 function printUsage() {
   console.log(`Usage: bun run release <patch|minor|major|version>
 
@@ -370,7 +410,6 @@ Examples:
 
 Environment:
   GITHUB_TOKEN             Token used to create/update the GitHub release
-  GH_TOKEN                 Alternative token variable
   GITHUB_REPOSITORY        Source repository, default: ${SOURCE_REPO}
   HOMEBREW_TAP_REPO        Tap repository for install docs, default: ${TAP_REPO}
   DRY_RUN=1                Validate and preview without mutating project files
@@ -412,9 +451,7 @@ async function main() {
     );
   } else {
     if (!GITHUB_TOKEN) {
-      throw new Error(
-        "GITHUB_TOKEN or GH_TOKEN is required for a real release.",
-      );
+      throw new Error("GITHUB_TOKEN is required for a real release.");
     }
     ensureCleanWorkingTree();
     ensureTagDoesNotExist(tagName);
@@ -475,16 +512,7 @@ async function main() {
     const release = await createOrUpdateRelease(nextVersion, artifact.sha256);
     await uploadAsset(release, artifact);
 
-    logStep("Updating Homebrew formula");
-    writeFileSync(FORMULA_PATH, generateFormula(nextVersion, artifact.sha256));
-    run("ruby", ["-c", FORMULA_PATH]);
-    run("git", ["add", "Formula/allbrew.rb"]);
-    run("git", [
-      "commit",
-      "-m",
-      `chore: update Homebrew formula for ${tagName}`,
-    ]);
-    run("git", ["push", "origin", branch]);
+    publishFormulaToTap(nextVersion, artifact.sha256);
 
     logSuccess(`Released ${tagName}`);
     console.log(
