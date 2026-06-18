@@ -3,24 +3,22 @@ import type { GithubReleaseCaskPayload } from "../../template-payload.ts";
 export default function renderGithubReleaseCask(
   p: GithubReleaseCaskPayload,
 ): string {
-  let ruby = `cask "${p.name}" do\n`;
-  ruby += `  version "${p.version}"\n`;
-  ruby += `  sha256 "${p.sha256}"\n\n`;
+  return `cask "${p.name}" do
+  version "${p.version}"
+  sha256 "${p.sha256}"
 
-  ruby += `  url "${p.url}"\n`;
-  ruby += `  name "${p.displayName}"\n`;
-  ruby += `  desc "${p.desc}"\n`;
-  ruby += `  homepage "${p.homepage}"\n\n`;
+  url "${p.url}"
+  name "${p.displayName}"
+  desc "${p.desc}"
+  homepage "${p.homepage}"
 
-  ruby += `  livecheck do\n`;
-  ruby += `    url :url\n`;
-  ruby += `    strategy :github_latest\n`;
-  ruby += `  end\n\n`;
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
 
-  ruby += `  app "${p.appName}"\n\n`;
+  app "${p.appName}"
 
-  ruby += p.zapBlock;
-  ruby += `end\n`;
-
-  return ruby;
+${p.zapBlock}end
+`;
 }

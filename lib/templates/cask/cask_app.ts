@@ -1,18 +1,13 @@
 import type { CaskAppPayload } from "../../template-payload.ts";
 
 export default function renderCaskApp(p: CaskAppPayload): string {
-  let ruby = `cask "${p.name}" do\n`;
-  ruby += p.versionLine;
-  ruby += `  sha256 "${p.sha256}"\n\n`;
+  return `cask "${p.name}" do
+${p.versionLine}  sha256 "${p.sha256}"
 
-  ruby += `  url "${p.url}"\n`;
-  ruby += `  name "${p.displayName}"\n`;
-  ruby += `  desc "${p.desc}"\n`;
-  ruby += p.homepageLine;
-  ruby += `\n`;
-
-  ruby += p.appOrPkgBlock;
-  ruby += `end\n`;
-
-  return ruby;
+  url "${p.url}"
+  name "${p.displayName}"
+  desc "${p.desc}"
+${p.homepageLine}
+${p.appOrPkgBlock}end
+`;
 }
