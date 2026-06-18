@@ -6,6 +6,7 @@ import {
 } from "../utils.ts";
 import { detectBuildSystemFromArchive } from "../analyzer.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import { urlVersionLivecheckBlock } from "./livecheck.ts";
 import type { SourceArchivePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
@@ -38,6 +39,7 @@ export async function collectSourceArchivePayload(
     sha256: rubyEscape(sha256),
     dependenciesLines: buildDependenciesLines(buildInfo),
     installBody: buildInstallBody(buildInfo, name),
+    livecheckBlock: urlVersionLivecheckBlock(downloadUrl),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),

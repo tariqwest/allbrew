@@ -8,7 +8,7 @@ export default function renderRawBinary(p: RawBinaryPayload): string {
   sha256 "${p.sha256}"
   license "MIT"
 
-  depends_on "${p.allbrewDependency}"
+${p.livecheckBlock}  depends_on "${p.allbrewDependency}"
 
   def install
 ${p.installBody}  end

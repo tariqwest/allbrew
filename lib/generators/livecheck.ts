@@ -44,3 +44,28 @@ function jsonRegexLivecheckBlock(url, regex) {
     `  end\n\n`
   );
 }
+
+export function githubLatestLivecheckBlock() {
+  return (
+    `  livecheck do\n` +
+    `    url :head\n` +
+    `    strategy :github_latest\n` +
+    `  end\n\n`
+  );
+}
+
+export function urlVersionLivecheckBlock(url: string) {
+  if (!url) return "";
+  return jsonRegexLivecheckBlock(
+    url,
+    /[\/-]v?(\d+(?:\.\d+)+)/i,
+  );
+}
+
+export function masAppLivecheckBlock(appId: string) {
+  if (!appId) return "";
+  return jsonRegexLivecheckBlock(
+    `https://itunes.apple.com/lookup?id=${encodeURIComponent(appId)}`,
+    /"version"\s*:\s*"([^"]+)"/i,
+  );
+}

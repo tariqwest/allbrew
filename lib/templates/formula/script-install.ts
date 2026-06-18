@@ -8,7 +8,7 @@ export default function renderScriptInstall(p: ScriptInstallPayload): string {
   sha256 "${p.sha256}"
   license "MIT"
 
-  depends_on "${p.allbrewDependency}"
+${p.livecheckBlock}  depends_on "${p.allbrewDependency}"
 
   def install
     ENV["PREFIX"] = prefix.to_s

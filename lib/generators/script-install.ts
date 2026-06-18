@@ -6,6 +6,7 @@ import {
 } from "../utils.ts";
 import { downloadAndHash } from "../sha256.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import { urlVersionLivecheckBlock } from "./livecheck.ts";
 import type { ScriptInstallPayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
@@ -30,6 +31,7 @@ export async function collectScriptInstallPayload(
     url: rubyEscape(url),
     sha256: rubyEscape(sha256),
     scriptFilename: rubyEscape(filename),
+    livecheckBlock: urlVersionLivecheckBlock(url),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
