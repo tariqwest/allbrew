@@ -19,6 +19,9 @@ import {
 } from "./analyzer.ts";
 import { inspectArchive } from "./archive-inspector.ts";
 import { matchAssetToArch, isAppAsset, isBinaryAsset } from "./utils.ts";
+import { buildManifest } from "./build-manifest.ts";
+import { saveManifest } from "./manifest.ts";
+import type { GeneratorName } from "./manifest.ts";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -978,6 +981,16 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
   }
 
   spinner.succeed(`Generated: ${chalk.green(result.filePath)}`);
+
+  await saveManifest(
+    buildManifest({
+      generatorName: generatorName as GeneratorName,
+      params,
+      opts: mergedOpts,
+      result,
+    }),
+  );
+
   console.log();
 
   if (result.type === "formula") {
