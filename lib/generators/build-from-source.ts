@@ -9,6 +9,7 @@ import {
 } from "../utils.ts";
 import { hashUrl } from "../sha256.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import { githubLatestLivecheckBlock } from "./livecheck.ts";
 import type { BuildFromSourcePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
@@ -56,6 +57,7 @@ export async function collectBuildFromSourcePayload(
     urlLines,
     dependenciesLines: buildDependenciesLines(system),
     installBody: buildInstallBody(system),
+    livecheckBlock: githubLatestLivecheckBlock(),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),

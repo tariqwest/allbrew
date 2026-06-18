@@ -10,7 +10,7 @@ export default function renderMasApp(p: MasAppPayload): string {
   desc "${p.desc}"
   homepage "${p.homepage}"
 
-  depends_on formula: "mas"
+${p.livecheckBlock}  depends_on formula: "mas"
 
   installer script: {
     executable: "mas",

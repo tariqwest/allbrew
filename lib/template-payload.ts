@@ -64,6 +64,7 @@ export type BuildFromSourcePayload = FormulaCommonFields & {
   urlLines: string;
   dependenciesLines: string;
   installBody: string;
+  livecheckBlock: string;
 };
 
 export type BinaryReleasePayload = FormulaCommonFields & {
@@ -79,6 +80,7 @@ export type ScriptInstallPayload = FormulaCommonFields & {
   url: string;
   sha256: string;
   scriptFilename: string;
+  livecheckBlock: string;
 };
 
 export type SourceArchivePayload = FormulaCommonFields & {
@@ -87,6 +89,7 @@ export type SourceArchivePayload = FormulaCommonFields & {
   sha256: string;
   dependenciesLines: string;
   installBody: string;
+  livecheckBlock: string;
 };
 
 export type RawBinaryPayload = FormulaCommonFields & {
@@ -94,6 +97,7 @@ export type RawBinaryPayload = FormulaCommonFields & {
   url: string;
   sha256: string;
   installBody: string;
+  livecheckBlock: string;
 };
 
 export type GithubReleaseCaskPayload = {
@@ -119,6 +123,7 @@ export type CaskAppPayload = {
   versionLine: string;
   homepageLine: string;
   appOrPkgBlock: string;
+  livecheckBlock: string;
 };
 
 export type MasAppPayload = {
@@ -130,6 +135,7 @@ export type MasAppPayload = {
   desc: string;
   homepage: string;
   zapBlock: string;
+  livecheckBlock: string;
 };
 
 export type FormulaPayload =

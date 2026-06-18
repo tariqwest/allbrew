@@ -3,6 +3,7 @@ import { downloadAndHash } from "../sha256.ts";
 import { listZipEntries } from "../archive-inspector.ts";
 import type { CaskAppPayload } from "../template-payload.ts";
 import { writeRenderedCask } from "../template-renderer.ts";
+import { urlVersionLivecheckBlock } from "./livecheck.ts";
 
 export async function collectCaskAppPayload(
   url: string,
@@ -37,6 +38,7 @@ export async function collectCaskAppPayload(
       ? `  homepage "${rubyEscape(options.homepage)}"\n`
       : "",
     appOrPkgBlock: buildAppOrPkgBlock(url, filename, appName, baseName, name),
+    livecheckBlock: urlVersionLivecheckBlock(url),
   };
 }
 

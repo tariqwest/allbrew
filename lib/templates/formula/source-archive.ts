@@ -8,7 +8,7 @@ export default function renderSourceArchive(p: SourceArchivePayload): string {
   sha256 "${p.sha256}"
   license "MIT"
 
-  depends_on "${p.allbrewDependency}"
+${p.livecheckBlock}  depends_on "${p.allbrewDependency}"
 ${p.dependenciesLines}
   def install
 ${p.installBody}  end

@@ -8,6 +8,6 @@ ${p.versionLine}  sha256 "${p.sha256}"
   name "${p.displayName}"
   desc "${p.desc}"
 ${p.homepageLine}
-${p.appOrPkgBlock}end
+${p.livecheckBlock}${p.appOrPkgBlock}end
 `;
 }

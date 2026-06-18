@@ -199,6 +199,7 @@ function buildBuildFromSourceCase(): Case {
       `    system "cmake", "-S", ".", "-B", "build", *std_cmake_args\n` +
       `    system "cmake", "--build", "build"\n` +
       `    system "cmake", "--install", "build"\n`,
+    livecheckBlock: "",
     allbrewDependency: "tariqwest/tap/allbrew",
     testBinName: "foo",
     serviceBlock: "",
@@ -368,6 +369,7 @@ function buildRawBinaryCase(): Case {
     url: "https://example.com/foo.tgz",
     sha256: "ff",
     installBody,
+    livecheckBlock: "",
     allbrewDependency: "tariqwest/tap/allbrew",
     testBinName: "foo",
     serviceBlock: "",
@@ -400,6 +402,7 @@ function buildScriptInstallCase(): Case {
     url: "https://example.com/install.sh",
     sha256: "11",
     scriptFilename: "install.sh",
+    livecheckBlock: "",
     allbrewDependency: "tariqwest/tap/allbrew",
     testBinName: "foo",
     serviceBlock: "",
@@ -442,6 +445,7 @@ function buildSourceArchiveCase(): Case {
     sha256: "22",
     dependenciesLines: `  depends_on "meson" => :build\n  depends_on "ninja" => :build\n`,
     installBody,
+    livecheckBlock: "",
     allbrewDependency: "tariqwest/tap/allbrew",
     testBinName: "foo",
     serviceBlock: "",
@@ -477,6 +481,7 @@ function buildCaskAppCase(): Case {
     versionLine: '  version "1.2.3"\n',
     homepageLine: '  homepage "https://example.com"\n',
     appOrPkgBlock: `  app "Foo.app"\n`,
+    livecheckBlock: "",
   };
   const expected =
     `cask "foo-app" do\n` +
@@ -509,6 +514,7 @@ function buildMasAppCase(): Case {
     desc: "Foo from MAS",
     homepage: "https://example.com",
     zapBlock: zap,
+    livecheckBlock: "",
   };
   const expected =
     `cask "foo" do\n` +

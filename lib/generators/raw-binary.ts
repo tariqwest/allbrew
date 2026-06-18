@@ -5,6 +5,7 @@ import {
   getAllbrewFormulaDependency,
 } from "../utils.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import { urlVersionLivecheckBlock } from "./livecheck.ts";
 import type { RawBinaryPayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
@@ -40,6 +41,7 @@ export async function collectRawBinaryPayload(
     url: rubyEscape(downloadUrl),
     sha256: rubyEscape(sha256),
     installBody: buildInstallBody(bins, extras),
+    livecheckBlock: urlVersionLivecheckBlock(downloadUrl),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(primaryBin),
     serviceBlock: buildServiceBlock(

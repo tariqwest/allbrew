@@ -1,6 +1,7 @@
 import { toCaskToken, rubyEscape } from "../utils.ts";
 import type { MasAppPayload } from "../template-payload.ts";
 import { writeRenderedCask } from "../template-renderer.ts";
+import { masAppLivecheckBlock } from "./livecheck.ts";
 
 export async function collectMasAppPayload(
   appStoreUrl: string,
@@ -32,6 +33,7 @@ export async function collectMasAppPayload(
     desc: rubyEscape(desc),
     homepage: rubyEscape(homepage),
     zapBlock: buildZapBlock(appName, bundleId),
+    livecheckBlock: masAppLivecheckBlock(appId),
   };
 }
 
