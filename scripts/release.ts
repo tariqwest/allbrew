@@ -182,6 +182,28 @@ function generateFormula(version: string, sha256: string) {
   def install
     libexec.install Dir["*"]
 
+    (libexec/"allbrew").install libexec/"scripts"/"update-managed.sh"
+    (libexec/"allbrew").chmod 0755, "update-managed.sh"
+
+    (etc/"allbrew-brew-wrap").write <<~EOS
+      # allbrew brew update hook
+      # Source from your shell profile:
+      #   source "$(brew --prefix)/etc/allbrew-brew-wrap"
+
+      allbrew_brew() {
+        command brew "$@"
+        local ret=$?
+        if [ $ret -eq 0 ] && [ "$1" = "update" ]; then
+          brew livecheck --installed --newer-only --json --quiet 2>/dev/null | #{bin}/allbrew update-formulas
+          command brew update
+        fi
+        return $ret
+      }
+
+      # Opt in by aliasing brew:
+      # alias brew=allbrew_brew
+    EOS
+
     (bin/"allbrew").write <<~EOS
       #!/bin/bash
       exec "#{Formula["bun"].opt_bin}/bun" "#{libexec}/bin/allbrew.ts" "$@"
@@ -213,6 +235,12 @@ function buildReleaseArtifact(version: string): ReleaseArtifact {
   ]) {
     cpSync(join(ROOT_DIR, item), join(stagingDir, item), { recursive: true });
   }
+
+  mkdirSync(join(stagingDir, "scripts"), { recursive: true });
+  cpSync(
+    join(ROOT_DIR, "scripts", "update-managed.sh"),
+    join(stagingDir, "scripts", "update-managed.sh"),
+  );
 
   const stagedPackageJsonPath = join(stagingDir, "package.json");
   const stagedPackageJson = readJson(stagedPackageJsonPath);
