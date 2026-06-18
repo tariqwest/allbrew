@@ -2,22 +2,24 @@ import {
   toFormulaName,
   toClassName,
   rubyString,
+  rubyEscape,
   guessLicenseIdentifier,
-  writeFormula,
-  insertAllbrewFormulaDependency,
+  getAllbrewFormulaDependency,
 } from "../utils.ts";
 import { pypiLivecheckBlock } from "./livecheck.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import type { PipPackagePayload } from "../template-payload.ts";
+import { writeRenderedFormula } from "../template-renderer.ts";
 
-export async function generatePipPackage(
+export async function collectPipPackagePayload(
   packageName: string,
   repoInfo: any = null,
   options: any = {},
-) {
+): Promise<PipPackagePayload> {
   const pypiData = await fetchPypiData(packageName);
-  const latestVersion = pypiData.info.version;
   const sdist =
-    pypiData.urls.find((u) => u.packagetype === "sdist") || pypiData.urls[0];
+    pypiData.urls.find((u: any) => u.packagetype === "sdist") ||
+    pypiData.urls[0];
 
   if (!sdist)
     throw new Error(`No source distribution found for ${packageName} on PyPI`);
@@ -40,41 +42,52 @@ export async function generatePipPackage(
     pypiData.info.license || repoInfo?.license,
   );
 
-  let ruby = `class ${className} < Formula\n`;
-  ruby += `  include Language::Python::Virtualenv\n\n`;
-  ruby += `  desc ${rubyString(desc)}\n`;
-  ruby += `  homepage ${rubyString(homepage)}\n`;
-  ruby += `  url ${rubyString(sdist.url)}\n`;
-  ruby += `  sha256 ${rubyString(sdist.digests.sha256)}\n`;
-  if (license) ruby += `  license ${rubyString(license)}\n`;
-  ruby += `\n`;
-  ruby += pypiLivecheckBlock(packageName);
-  ruby += insertAllbrewFormulaDependency();
-  ruby += `  depends_on "python@3.13"\n\n`;
-
-  for (const dep of deps) {
-    ruby += `  resource ${rubyString(dep.name)} do\n`;
-    ruby += `    url ${rubyString(dep.url)}\n`;
-    ruby += `    sha256 ${rubyString(dep.sha256)}\n`;
-    ruby += `  end\n\n`;
-  }
-
-  ruby += `  def install\n`;
-  ruby += `    virtualenv_install_with_resources\n`;
-  ruby += `  end\n\n`;
-
-  ruby += buildServiceBlock(serviceFromOptions(options, name), name);
-
-  ruby += `  test do\n`;
-  ruby += `    assert_match version.to_s, shell_output("#{bin}/${name} --version")\n`;
-  ruby += `  end\n`;
-  ruby += `end\n`;
-
-  const filePath = await writeFormula(name, ruby, options.tapPath);
-  return { filePath, name, className, type: "formula" };
+  return {
+    template: "pip_package",
+    name,
+    className,
+    desc: rubyEscape(desc),
+    homepage: rubyEscape(homepage),
+    url: rubyEscape(sdist.url),
+    sha256: rubyEscape(sdist.digests.sha256),
+    licenseLine: license ? `  license ${rubyString(license)}\n` : "",
+    livecheckBlock: pypiLivecheckBlock(packageName),
+    resourcesBlock: buildResourcesBlock(deps),
+    allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+    testBinName: rubyEscape(name),
+    serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+  };
 }
 
-async function fetchPypiData(packageName) {
+function buildResourcesBlock(
+  deps: Array<{ name: string; url: string; sha256: string }>,
+) {
+  if (deps.length === 0) return "";
+
+  let block = "";
+  for (const dep of deps) {
+    block += `  resource ${rubyString(dep.name)} do\n`;
+    block += `    url ${rubyString(dep.url)}\n`;
+    block += `    sha256 ${rubyString(dep.sha256)}\n`;
+    block += `  end\n\n`;
+  }
+  return block;
+}
+
+export async function generatePipPackage(
+  packageName: string,
+  repoInfo: any = null,
+  options: any = {},
+) {
+  const payload = await collectPipPackagePayload(
+    packageName,
+    repoInfo,
+    options,
+  );
+  return writeRenderedFormula(payload, options.tapPath);
+}
+
+async function fetchPypiData(packageName: string) {
   const response = await fetch(
     `https://pypi.org/pypi/${encodeURIComponent(packageName)}/json`,
     {
@@ -89,15 +102,15 @@ async function fetchPypiData(packageName) {
 }
 
 async function resolveTransitiveDeps(
-  packageName,
-  visited,
+  packageName: string,
+  visited: Set<string>,
   maxDepth = 3,
   depth = 0,
-) {
+): Promise<Array<{ name: string; url: string; sha256: string }>> {
   if (depth >= maxDepth || visited.has(packageName.toLowerCase())) return [];
   visited.add(packageName.toLowerCase());
 
-  const resources = [];
+  const resources: Array<{ name: string; url: string; sha256: string }> = [];
 
   try {
     const pypiData = await fetchPypiData(packageName);
@@ -115,7 +128,7 @@ async function resolveTransitiveDeps(
       try {
         const depData = await fetchPypiData(depName);
         const sdist =
-          depData.urls.find((u) => u.packagetype === "sdist") ||
+          depData.urls.find((u: any) => u.packagetype === "sdist") ||
           depData.urls[0];
         if (sdist) {
           resources.push({

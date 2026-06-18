@@ -1,14 +1,18 @@
 import {
   toFormulaName,
   toClassName,
-  rubyString,
-  writeFormula,
-  insertAllbrewFormulaDependency,
+  rubyEscape,
+  getAllbrewFormulaDependency,
 } from "../utils.ts";
 import { detectBuildSystemFromArchive } from "../analyzer.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import type { SourceArchivePayload } from "../template-payload.ts";
+import { writeRenderedFormula } from "../template-renderer.ts";
 
-export async function generateSourceArchive(archiveInfo, options: any = {}) {
+export async function collectSourceArchivePayload(
+  archiveInfo: any,
+  options: any = {},
+): Promise<SourceArchivePayload> {
   const { downloadUrl, sha256, files } = archiveInfo;
 
   const filename = downloadUrl.split("/").pop().split("?")[0] || "source";
@@ -24,38 +28,33 @@ export async function generateSourceArchive(archiveInfo, options: any = {}) {
   const buildInfo =
     archiveInfo.forcedBuildSystem || detectBuildSystemFromArchive(files);
 
-  let ruby = `class ${className} < Formula\n`;
-  ruby += `  desc ${rubyString(desc)}\n`;
-  ruby += `  homepage ${rubyString(downloadUrl)}\n`;
-  ruby += `  url ${rubyString(downloadUrl)}\n`;
-  ruby += `  sha256 ${rubyString(sha256)}\n`;
-  ruby += `  license "MIT"\n\n`;
-
-  ruby += insertAllbrewFormulaDependency();
-  if (buildInfo) {
-    const deps = getBuildDeps(buildInfo);
-    for (const dep of deps) {
-      ruby += `  depends_on ${dep}\n`;
-    }
-  }
-  ruby += `\n`;
-
-  ruby += `  def install\n`;
-  ruby += getInstallCommands(buildInfo, name);
-  ruby += `  end\n\n`;
-
-  ruby += buildServiceBlock(serviceFromOptions(options, name), name);
-
-  ruby += `  test do\n`;
-  ruby += `    assert_match version.to_s, shell_output("#{bin}/${name} --version")\n`;
-  ruby += `  end\n`;
-  ruby += `end\n`;
-
-  const filePath = await writeFormula(name, ruby, options.tapPath);
-  return { filePath, name, className, type: "formula" };
+  return {
+    template: "source_archive",
+    name,
+    className,
+    desc: rubyEscape(desc),
+    homepage: rubyEscape(downloadUrl),
+    url: rubyEscape(downloadUrl),
+    sha256: rubyEscape(sha256),
+    dependenciesLines: buildDependenciesLines(buildInfo),
+    installBody: buildInstallBody(buildInfo, name),
+    allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+    testBinName: rubyEscape(name),
+    serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+  };
 }
 
-function getBuildDeps(buildInfo) {
+function buildDependenciesLines(buildInfo: any) {
+  if (!buildInfo) return "";
+  const deps = getBuildDeps(buildInfo);
+  return deps.map((dep) => `  depends_on ${dep}\n`).join("");
+}
+
+function buildInstallBody(buildInfo: any, _name: string) {
+  return getInstallCommands(buildInfo);
+}
+
+function getBuildDeps(buildInfo: any): string[] {
   if (!buildInfo) return [];
 
   switch (buildInfo.method) {
@@ -83,7 +82,7 @@ function getBuildDeps(buildInfo) {
   }
 }
 
-function getInstallCommands(buildInfo, name) {
+function getInstallCommands(buildInfo: any) {
   if (!buildInfo) {
     return `    system "make", "PREFIX=#{prefix}", "install"\n`;
   }
@@ -93,7 +92,7 @@ function getInstallCommands(buildInfo, name) {
       return (
         `    ENV["PREFIX"] = prefix.to_s\n` +
         `    ENV["DESTDIR"] = prefix.to_s\n` +
-        `    system "bash", "${buildInfo.script.split("/").pop()}"\n`
+        `    system "bash", "${rubyEscape(buildInfo.script.split("/").pop())}"\n`
       );
 
     case "build":
@@ -137,4 +136,12 @@ function getInstallCommands(buildInfo, name) {
     default:
       return `    system "make", "PREFIX=#{prefix}", "install"\n`;
   }
+}
+
+export async function generateSourceArchive(
+  archiveInfo: any,
+  options: any = {},
+) {
+  const payload = await collectSourceArchivePayload(archiveInfo, options);
+  return writeRenderedFormula(payload, options.tapPath);
 }

@@ -1,6 +1,6 @@
 {
   "name": "allbrew",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Generate Homebrew formulas and casks from arbitrary URLs",
   "type": "module",
   "bin": {
@@ -17,7 +17,8 @@
     "start": "bun run bin/allbrew.ts",
     "build": "tsc --noEmit",
     "check": "tsc --noEmit",
-    "release": "bun run scripts/release.ts"
+    "release": "bun run scripts/release.ts",
+    "test:templates": "bun run scripts/test-templates.ts"
   },
   "keywords": [
     "homebrew",

@@ -2,19 +2,21 @@ import {
   toFormulaName,
   toClassName,
   rubyString,
+  rubyEscape,
   guessLicenseIdentifier,
-  writeFormula,
-  insertAllbrewFormulaDependency,
+  getAllbrewFormulaDependency,
 } from "../utils.ts";
 import { hashUrl } from "../sha256.ts";
 import { npmLivecheckBlock } from "./livecheck.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import type { NpmPackagePayload } from "../template-payload.ts";
+import { writeRenderedFormula } from "../template-renderer.ts";
 
-export async function generateNpmPackage(
+export async function collectNpmPackagePayload(
   packageName: string,
   repoInfo: any = null,
   options: any = {},
-) {
+): Promise<NpmPackagePayload> {
   const registryUrl = `https://registry.npmjs.org/${encodeURIComponent(packageName)}`;
   const response = await fetch(registryUrl, {
     headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" },
@@ -50,29 +52,33 @@ export async function generateNpmPackage(
     versionData.license || pkgData.license || repoInfo?.license,
   );
 
-  let ruby = `class ${className} < Formula\n`;
-  ruby += `  desc ${rubyString(desc)}\n`;
-  ruby += `  homepage ${rubyString(homepage)}\n`;
-  ruby += `  url ${rubyString(tarballUrl)}\n`;
-  ruby += `  sha256 ${rubyString(tarballSha)}\n`;
-  if (license) ruby += `  license ${rubyString(license)}\n`;
-  ruby += `\n`;
-  ruby += npmLivecheckBlock(packageName);
-  ruby += insertAllbrewFormulaDependency();
-  ruby += `  depends_on "node"\n\n`;
+  const service = serviceFromOptions(options, name);
 
-  ruby += `  def install\n`;
-  ruby += `    system "npm", "install", *std_npm_args\n`;
-  ruby += `    bin.install_symlink libexec.glob("bin/*")\n`;
-  ruby += `  end\n\n`;
+  return {
+    template: "npm_package",
+    name,
+    className,
+    desc: rubyEscape(desc),
+    homepage: rubyEscape(homepage),
+    url: rubyEscape(tarballUrl),
+    sha256: rubyEscape(tarballSha),
+    allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+    testBinName: rubyEscape(name),
+    licenseLine: license ? `  license ${rubyString(license)}\n` : "",
+    livecheckBlock: npmLivecheckBlock(packageName),
+    serviceBlock: buildServiceBlock(service, name),
+  };
+}
 
-  ruby += buildServiceBlock(serviceFromOptions(options, name), name);
-
-  ruby += `  test do\n`;
-  ruby += `    assert_match version.to_s, shell_output("#{bin}/${name} --version")\n`;
-  ruby += `  end\n`;
-  ruby += `end\n`;
-
-  const filePath = await writeFormula(name, ruby, options.tapPath);
-  return { filePath, name, className, type: "formula" };
+export async function generateNpmPackage(
+  packageName: string,
+  repoInfo: any = null,
+  options: any = {},
+) {
+  const payload = await collectNpmPackagePayload(
+    packageName,
+    repoInfo,
+    options,
+  );
+  return writeRenderedFormula(payload, options.tapPath);
 }

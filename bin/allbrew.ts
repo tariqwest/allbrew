@@ -134,7 +134,10 @@ program
     }
 
     const tapPath = await resolveTapPath(opts.tap);
-    await run(url, { ...opts, tapPath });
+    await run(url, {
+      ...opts,
+      tapPath,
+    });
   });
 
 program.parse();

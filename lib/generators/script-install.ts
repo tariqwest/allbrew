@@ -1,14 +1,18 @@
 import {
   toFormulaName,
   toClassName,
-  rubyString,
-  writeFormula,
-  insertAllbrewFormulaDependency,
+  rubyEscape,
+  getAllbrewFormulaDependency,
 } from "../utils.ts";
 import { downloadAndHash } from "../sha256.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import type { ScriptInstallPayload } from "../template-payload.ts";
+import { writeRenderedFormula } from "../template-renderer.ts";
 
-export async function generateScriptInstall(url, options: any = {}) {
+export async function collectScriptInstallPayload(
+  url: string,
+  options: any = {},
+): Promise<ScriptInstallPayload> {
   const { sha256 } = await downloadAndHash(url);
 
   const filename = url.split("/").pop().split("?")[0] || "install.sh";
@@ -17,32 +21,22 @@ export async function generateScriptInstall(url, options: any = {}) {
   const className = toClassName(name);
   const desc = options.desc || `Install ${baseName} via setup script`;
 
-  let ruby = `class ${className} < Formula\n`;
-  ruby += `  desc ${rubyString(desc)}\n`;
-  ruby += `  homepage ${rubyString(url)}\n`;
-  ruby += `  url ${rubyString(url)}\n`;
-  ruby += `  sha256 ${rubyString(sha256)}\n`;
-  ruby += `  license "MIT"\n\n`;
+  return {
+    template: "script_install",
+    name,
+    className,
+    desc: rubyEscape(desc),
+    homepage: rubyEscape(url),
+    url: rubyEscape(url),
+    sha256: rubyEscape(sha256),
+    scriptFilename: rubyEscape(filename),
+    allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+    testBinName: rubyEscape(name),
+    serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+  };
+}
 
-  ruby += insertAllbrewFormulaDependency();
-  ruby += `\n`;
-
-  ruby += `  def install\n`;
-  ruby += `    ENV["PREFIX"] = prefix.to_s\n`;
-  ruby += `    ENV["DESTDIR"] = prefix.to_s\n`;
-  ruby += `    ENV["HOME"] = buildpath.to_s\n`;
-  ruby += `    system "bash", "${filename}"\n`;
-  ruby += `    bin.install Dir[buildpath/"bin/*"] if (buildpath/"bin").exist?\n`;
-  ruby += `    bin.install Dir[prefix/"bin/*"] if (prefix/"bin").exist?\n`;
-  ruby += `  end\n\n`;
-
-  ruby += buildServiceBlock(serviceFromOptions(options, name), name);
-
-  ruby += `  test do\n`;
-  ruby += `    assert_match version.to_s, shell_output("#{bin}/${name} --version")\n`;
-  ruby += `  end\n`;
-  ruby += `end\n`;
-
-  const filePath = await writeFormula(name, ruby, options.tapPath);
-  return { filePath, name, className, type: "formula" };
+export async function generateScriptInstall(url: string, options: any = {}) {
+  const payload = await collectScriptInstallPayload(url, options);
+  return writeRenderedFormula(payload, options.tapPath);
 }

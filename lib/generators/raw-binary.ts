@@ -1,17 +1,18 @@
 import {
   toFormulaName,
   toClassName,
-  rubyString,
-  writeFormula,
-  insertAllbrewFormulaDependency,
+  rubyEscape,
+  getAllbrewFormulaDependency,
 } from "../utils.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import type { RawBinaryPayload } from "../template-payload.ts";
+import { writeRenderedFormula } from "../template-renderer.ts";
 
-export async function generateRawBinary(
+export async function collectRawBinaryPayload(
   archiveInfo: any,
   selectedBinaries: any = null,
   options: any = {},
-) {
+): Promise<RawBinaryPayload> {
   const { downloadUrl, sha256, binaries, extras = {} } = archiveInfo;
 
   const bins = selectedBinaries || binaries;
@@ -28,70 +29,81 @@ export async function generateRawBinary(
   const name = options.name || toFormulaName(baseName);
   const className = toClassName(name);
   const desc = options.desc || `Install ${baseName}`;
+  const primaryBin = bins[0].split("/").pop();
 
-  let ruby = `class ${className} < Formula\n`;
-  ruby += `  desc ${rubyString(desc)}\n`;
-  ruby += `  homepage ${rubyString(downloadUrl)}\n`;
-  ruby += `  url ${rubyString(downloadUrl)}\n`;
-  ruby += `  sha256 ${rubyString(sha256)}\n`;
-  ruby += `  license "MIT"\n\n`;
+  return {
+    template: "raw_binary",
+    name,
+    className,
+    desc: rubyEscape(desc),
+    homepage: rubyEscape(downloadUrl),
+    url: rubyEscape(downloadUrl),
+    sha256: rubyEscape(sha256),
+    installBody: buildInstallBody(bins, extras),
+    allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+    testBinName: rubyEscape(primaryBin),
+    serviceBlock: buildServiceBlock(
+      serviceFromOptions(options, primaryBin),
+      primaryBin,
+    ),
+  };
+}
 
-  ruby += insertAllbrewFormulaDependency();
-  ruby += `\n`;
-
-  ruby += `  def install\n`;
-
+function buildInstallBody(
+  bins: string[],
+  extras: { manPages?: string[]; completions?: string[]; licenses?: string[] },
+) {
+  let body = "";
   for (const bin of bins) {
     const binName = bin.split("/").pop();
     if (bin.includes("/")) {
-      ruby += `    bin.install "${bin}" => "${binName}"\n`;
+      body += `    bin.install "${rubyEscape(bin)}" => "${rubyEscape(binName!)}"\n`;
     } else {
-      ruby += `    bin.install "${binName}"\n`;
+      body += `    bin.install "${rubyEscape(binName!)}"\n`;
     }
   }
 
-  if (extras.manPages?.length > 0) {
-    ruby += `\n`;
+  if (extras.manPages && extras.manPages.length > 0) {
+    body += `\n`;
     for (const manPage of extras.manPages) {
       const section = manPage.match(/\.(\d)$/)?.[1] || "1";
-      ruby += `    man${section}.install "${manPage}"\n`;
+      body += `    man${section}.install "${rubyEscape(manPage)}"\n`;
     }
   }
 
-  if (extras.completions?.length > 0) {
-    ruby += `\n`;
+  if (extras.completions && extras.completions.length > 0) {
+    body += `\n`;
     for (const comp of extras.completions) {
       const lower = comp.toLowerCase();
       if (lower.endsWith(".bash") || lower.includes("bash")) {
-        ruby += `    bash_completion.install "${comp}"\n`;
+        body += `    bash_completion.install "${rubyEscape(comp)}"\n`;
       } else if (lower.endsWith(".zsh") || lower.includes("zsh")) {
-        ruby += `    zsh_completion.install "${comp}"\n`;
+        body += `    zsh_completion.install "${rubyEscape(comp)}"\n`;
       } else if (lower.endsWith(".fish") || lower.includes("fish")) {
-        ruby += `    fish_completion.install "${comp}"\n`;
+        body += `    fish_completion.install "${rubyEscape(comp)}"\n`;
       }
     }
   }
 
-  if (extras.licenses?.length > 0) {
-    ruby += `\n`;
+  if (extras.licenses && extras.licenses.length > 0) {
+    body += `\n`;
     for (const lic of extras.licenses) {
-      ruby += `    share.install "${lic}"\n`;
+      body += `    share.install "${rubyEscape(lic)}"\n`;
     }
   }
 
-  ruby += `  end\n\n`;
+  return body;
+}
 
-  const primaryBin = bins[0].split("/").pop();
-  ruby += buildServiceBlock(
-    serviceFromOptions(options, primaryBin),
-    primaryBin,
+export async function generateRawBinary(
+  archiveInfo: any,
+  selectedBinaries: any = null,
+  options: any = {},
+) {
+  const payload = await collectRawBinaryPayload(
+    archiveInfo,
+    selectedBinaries,
+    options,
   );
-
-  ruby += `  test do\n`;
-  ruby += `    assert_match version.to_s, shell_output("#{bin}/${primaryBin} --version")\n`;
-  ruby += `  end\n`;
-  ruby += `end\n`;
-
-  const filePath = await writeFormula(name, ruby, options.tapPath);
-  return { filePath, name, className, type: "formula" };
+  return writeRenderedFormula(payload, options.tapPath);
 }

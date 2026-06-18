@@ -38,10 +38,8 @@ export function indent(text, spaces = 2) {
 
 const ALLBREW_FORMULA_DEPENDENCY = "tariqwest/tap/allbrew";
 
-export function insertAllbrewFormulaDependency() {
-  const dependency =
-    process.env.ALLBREW_FORMULA_DEPENDENCY || ALLBREW_FORMULA_DEPENDENCY;
-  return `  depends_on ${rubyString(dependency)}\n`;
+export function getAllbrewFormulaDependency() {
+  return process.env.ALLBREW_FORMULA_DEPENDENCY || ALLBREW_FORMULA_DEPENDENCY;
 }
 
 export async function writeFormula(name, content, tapPath) {
@@ -62,7 +60,13 @@ export async function writeCask(name, content, tapPath) {
 
 export function rubyString(value) {
   if (!value) return '""';
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  return `"${rubyEscape(value)}"`;
+}
+
+export function rubyEscape(value) {
+  return String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"');
 }
 
 export function guessLicenseIdentifier(license) {
