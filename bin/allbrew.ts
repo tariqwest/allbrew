@@ -11,7 +11,20 @@ import {
   setTapPath,
   loadConfig,
   getConfigPath,
+  setUpdateAutoPush,
+  setUpdateScheduleHours,
 } from "../lib/config.ts";
+import { updateFormulas } from "../lib/update-formulas.ts";
+import {
+  installBrewHooks,
+  uninstallBrewHooks,
+  shellSnippet,
+} from "../lib/brew-hooks.ts";
+import {
+  installLaunchdService,
+  uninstallLaunchdService,
+  logPath,
+} from "../lib/launchd-service.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageJson = JSON.parse(
@@ -77,6 +90,126 @@ configCmd
     } else {
       console.log(JSON.stringify(config, null, 2));
     }
+  });
+
+configCmd
+  .command("set-update-auto-push <enabled>")
+  .description("Enable or disable auto-push after formula updates (true/false)")
+  .action(async (enabled) => {
+    const chalk = (await import("chalk")).default;
+    const value = enabled === "true";
+    await setUpdateAutoPush(value);
+    console.log(chalk.green(`Update auto-push set to: ${value}`));
+  });
+
+configCmd
+  .command("set-update-schedule <hours>")
+  .description("Set launchd update interval in hours (default: 6)")
+  .action(async (hours) => {
+    const chalk = (await import("chalk")).default;
+    const parsed = Number(hours);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      console.error(chalk.red("Hours must be a positive number"));
+      process.exit(1);
+    }
+    await setUpdateScheduleHours(parsed);
+    console.log(chalk.green(`Update schedule set to: ${parsed} hours`));
+  });
+
+const updateFormulasCmd = program
+  .command("update-formulas")
+  .description(
+    "Regenerate outdated managed formulae/casks from livecheck JSON (stdin or brew livecheck)",
+  )
+  .option("--dry-run", "Show what would be updated without writing files")
+  .option("--no-push", "Commit tap changes but do not push to origin")
+  .option("--tap <path>", "Only update packages in this tap")
+  .argument("[names...]", "Optional package names to limit updates")
+  .action(async (names, opts) => {
+    const chalk = (await import("chalk")).default;
+    const tapPath = opts.tap ? resolve(opts.tap) : undefined;
+    const result = await updateFormulas({
+      dryRun: opts.dryRun,
+      push: opts.push,
+      names: names.length > 0 ? names : undefined,
+      tapPath,
+    });
+
+    if (result.updated.length > 0) {
+      console.log(chalk.green(`Updated: ${result.updated.join(", ")}`));
+    }
+    if (result.skipped.length > 0) {
+      console.log(chalk.dim(`Skipped: ${result.skipped.join(", ")}`));
+    }
+    for (const err of result.errors) {
+      console.log(chalk.red(`Error (${err.name}): ${err.error}`));
+    }
+    if (
+      result.updated.length === 0 &&
+      result.errors.length === 0 &&
+      result.skipped.length === 0
+    ) {
+      console.log(chalk.dim("No outdated managed packages found."));
+    }
+
+    if (result.errors.length > 0) {
+      process.exit(1);
+    }
+  });
+
+const hooksCmd = program
+  .command("hooks")
+  .description("Install brew wrapper hooks for automatic formula updates");
+
+hooksCmd
+  .command("install")
+  .description("Write brew update hook script to $(brew --prefix)/etc/")
+  .action(async () => {
+    const chalk = (await import("chalk")).default;
+    const wrapPath = await installBrewHooks();
+    console.log(chalk.green(`Installed brew hook: ${wrapPath}`));
+    console.log();
+    console.log(chalk.bold("Add to your shell profile:"));
+    console.log(chalk.dim(shellSnippet(wrapPath)));
+  });
+
+hooksCmd
+  .command("uninstall")
+  .description("Remove the brew update hook script")
+  .action(async () => {
+    const chalk = (await import("chalk")).default;
+    const wrapPath = await uninstallBrewHooks();
+    console.log(chalk.green(`Removed brew hook: ${wrapPath}`));
+    console.log(
+      chalk.yellow("Remove the source/alias lines from your shell profile."),
+    );
+  });
+
+const serviceCmd = program
+  .command("service")
+  .description("Install a launchd agent for periodic formula updates");
+
+serviceCmd
+  .command("install")
+  .description("Install LaunchAgent and update script")
+  .action(async () => {
+    const chalk = (await import("chalk")).default;
+    const { agentPath, scriptPath, intervalSeconds } =
+      await installLaunchdService();
+    const hours = intervalSeconds / 3600;
+    console.log(chalk.green(`Installed LaunchAgent: ${agentPath}`));
+    console.log(chalk.green(`Update script: ${scriptPath}`));
+    console.log(chalk.dim(`Schedule: every ${hours} hours`));
+    console.log(chalk.dim(`Log: ${logPath()}`));
+  });
+
+serviceCmd
+  .command("uninstall")
+  .description("Unload and remove the LaunchAgent")
+  .action(async () => {
+    const chalk = (await import("chalk")).default;
+    const agentPath = await uninstallLaunchdService();
+    console.log(chalk.green(`Removed LaunchAgent: ${agentPath}`));
   });
 
 program
