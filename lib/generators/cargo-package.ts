@@ -1,21 +1,22 @@
 import {
   toFormulaName,
   toClassName,
-  extractVersionFromTag,
   rubyString,
+  rubyEscape,
   guessLicenseIdentifier,
-  writeFormula,
-  insertAllbrewFormulaDependency,
+  getAllbrewFormulaDependency,
 } from "../utils.ts";
 import { hashUrl } from "../sha256.ts";
 import { cratesLivecheckBlock } from "./livecheck.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import type { CargoPackagePayload } from "../template-payload.ts";
+import { writeRenderedFormula } from "../template-renderer.ts";
 
-export async function generateCargoPackage(
+export async function collectCargoPackagePayload(
   repoInfo: any,
   release: any = null,
   options: any = {},
-) {
+): Promise<CargoPackagePayload> {
   const name = options.name || toFormulaName(repoInfo.name);
   const className = toClassName(name);
   const desc =
@@ -24,47 +25,35 @@ export async function generateCargoPackage(
   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
   const crateName = options.crateName || repoInfo.name;
 
-  let sourceUrl, version;
+  let urlLines = "";
   if (release) {
-    version = extractVersionFromTag(release.tagName);
-    sourceUrl = `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
-  } else {
-    version = null;
-    sourceUrl = null;
+    const sourceUrl = `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
+    const sha256 = await hashUrl(sourceUrl);
+    urlLines = `  url ${rubyString(sourceUrl)}\n  sha256 ${rubyString(sha256)}\n`;
   }
 
-  let sha256 = null;
-  if (sourceUrl) {
-    sha256 = await hashUrl(sourceUrl);
-  }
+  return {
+    template: "cargo_package",
+    name,
+    className,
+    desc: rubyEscape(desc),
+    homepage: rubyEscape(homepage),
+    fullName: rubyEscape(repoInfo.fullName),
+    defaultBranch: rubyEscape(repoInfo.defaultBranch),
+    licenseLine: license ? `  license ${rubyString(license)}\n` : "",
+    urlLines,
+    livecheckBlock: cratesLivecheckBlock(crateName),
+    allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+    testBinName: rubyEscape(name),
+    serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+  };
+}
 
-  let ruby = `class ${className} < Formula\n`;
-  ruby += `  desc ${rubyString(desc)}\n`;
-  ruby += `  homepage ${rubyString(homepage)}\n`;
-  if (license) ruby += `  license ${rubyString(license)}\n`;
-
-  if (sourceUrl) {
-    ruby += `  url ${rubyString(sourceUrl)}\n`;
-    ruby += `  sha256 ${rubyString(sha256)}\n`;
-  }
-
-  ruby += `  head "https://github.com/${repoInfo.fullName}.git", branch: "${repoInfo.defaultBranch}"\n\n`;
-
-  ruby += cratesLivecheckBlock(crateName);
-  ruby += insertAllbrewFormulaDependency();
-  ruby += `  depends_on "rust" => :build\n\n`;
-
-  ruby += `  def install\n`;
-  ruby += `    system "cargo", "install", *std_cargo_args\n`;
-  ruby += `  end\n\n`;
-
-  ruby += buildServiceBlock(serviceFromOptions(options, name), name);
-
-  ruby += `  test do\n`;
-  ruby += `    assert_match version.to_s, shell_output("#{bin}/${name} --version")\n`;
-  ruby += `  end\n`;
-  ruby += `end\n`;
-
-  const filePath = await writeFormula(name, ruby, options.tapPath);
-  return { filePath, name, className, type: "formula" };
+export async function generateCargoPackage(
+  repoInfo: any,
+  release: any = null,
+  options: any = {},
+) {
+  const payload = await collectCargoPackagePayload(repoInfo, release, options);
+  return writeRenderedFormula(payload, options.tapPath);
 }

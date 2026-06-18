@@ -1,8 +1,13 @@
-import { toCaskToken, rubyString, writeCask } from '../utils.ts';
-import { downloadAndHash } from '../sha256.ts';
-import { inspectArchive, listZipEntries } from '../archive-inspector.ts';
+import { toCaskToken, rubyEscape } from "../utils.ts";
+import { downloadAndHash } from "../sha256.ts";
+import { listZipEntries } from "../archive-inspector.ts";
+import type { CaskAppPayload } from "../template-payload.ts";
+import { writeRenderedCask } from "../template-renderer.ts";
 
-export async function generateCaskApp(url, options: any = {}) {
+export async function collectCaskAppPayload(
+  url: string,
+  options: any = {},
+): Promise<CaskAppPayload> {
   const { sha256 } = await downloadAndHash(url);
 
   let appName = options.appName;
@@ -10,65 +15,75 @@ export async function generateCaskApp(url, options: any = {}) {
     appName = await detectAppName(url);
   }
 
-  const filename = url.split('/').pop().split('?')[0];
+  const filename = url.split("/").pop().split("?")[0];
   const baseName = filename
-    .replace(/\.(dmg|zip|pkg)$/i, '')
-    .replace(/-[\d.]+$/, '');
+    .replace(/\.(dmg|zip|pkg)$/i, "")
+    .replace(/-[\d.]+$/, "");
 
   const name = options.name || toCaskToken(baseName);
   const desc = options.desc || `Install ${appName || baseName}`;
   const version = options.version || extractVersionFromUrl(url);
+  const displayName = appName || baseName;
 
-  let ruby = `cask ${rubyString(name)} do\n`;
-  if (version) {
-    ruby += `  version ${rubyString(version)}\n`;
-  }
-  ruby += `  sha256 ${rubyString(sha256)}\n\n`;
-
-  ruby += `  url ${rubyString(url)}\n`;
-  ruby += `  name ${rubyString(appName || baseName)}\n`;
-  ruby += `  desc ${rubyString(desc)}\n`;
-  if (options.homepage) {
-    ruby += `  homepage ${rubyString(options.homepage)}\n`;
-  }
-  ruby += `\n`;
-
-  if (url.toLowerCase().endsWith('.pkg')) {
-    const pkgName = filename;
-    ruby += `  pkg ${rubyString(pkgName)}\n\n`;
-    ruby += `  uninstall pkgutil: "com.example.${name}"\n`;
-  } else {
-    ruby += `  app ${rubyString(appName || baseName + '.app')}\n`;
-  }
-
-  ruby += `end\n`;
-
-  const filePath = await writeCask(name, ruby, options.tapPath);
-  return { filePath, name, type: 'cask' };
+  return {
+    template: "cask_app",
+    name,
+    sha256: rubyEscape(sha256),
+    url: rubyEscape(url),
+    displayName: rubyEscape(displayName),
+    desc: rubyEscape(desc),
+    versionLine: version ? `  version "${rubyEscape(version)}"\n` : "",
+    homepageLine: options.homepage
+      ? `  homepage "${rubyEscape(options.homepage)}"\n`
+      : "",
+    appOrPkgBlock: buildAppOrPkgBlock(url, filename, appName, baseName, name),
+  };
 }
 
-async function detectAppName(url) {
+function buildAppOrPkgBlock(
+  url: string,
+  filename: string,
+  appName: string | null,
+  baseName: string,
+  caskToken: string,
+) {
+  if (url.toLowerCase().endsWith(".pkg")) {
+    let block = `  pkg "${rubyEscape(filename)}"\n\n`;
+    block += `  uninstall pkgutil: "com.example.${rubyEscape(caskToken)}"\n`;
+    return block;
+  }
+
+  const app = appName || baseName + ".app";
+  return `  app "${rubyEscape(app)}"\n`;
+}
+
+export async function generateCaskApp(url: string, options: any = {}) {
+  const payload = await collectCaskAppPayload(url, options);
+  return writeRenderedCask(payload, options.tapPath);
+}
+
+async function detectAppName(url: string) {
   const lower = url.toLowerCase();
 
-  if (lower.endsWith('.zip')) {
+  if (lower.endsWith(".zip")) {
     try {
-      const { downloadToTemp } = await import('../sha256.ts');
+      const { downloadToTemp } = await import("../sha256.ts");
       const { path } = await downloadToTemp(url);
       const entries = await listZipEntries(path);
-      const appEntry = entries.find(e => /\.app\/?$/i.test(e));
+      const appEntry = entries.find((e) => /\.app\/?$/i.test(e));
       if (appEntry) {
-        return appEntry.replace(/\/$/, '').split('/').pop();
+        return appEntry.replace(/\/$/, "").split("/").pop();
       }
     } catch {
       // fall through
     }
   }
 
-  const filename = url.split('/').pop().split('?')[0];
-  return filename.replace(/\.(dmg|zip|pkg)$/i, '') + '.app';
+  const filename = url.split("/").pop().split("?")[0];
+  return filename.replace(/\.(dmg|zip|pkg)$/i, "") + ".app";
 }
 
-function extractVersionFromUrl(url) {
+function extractVersionFromUrl(url: string) {
   const match = url.match(/[/-]v?(\d+\.\d+(?:\.\d+)?)/);
   return match ? match[1] : null;
 }

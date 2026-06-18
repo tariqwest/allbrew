@@ -3,19 +3,21 @@ import {
   toClassName,
   extractVersionFromTag,
   rubyString,
+  rubyEscape,
   guessLicenseIdentifier,
-  writeFormula,
-  insertAllbrewFormulaDependency,
+  getAllbrewFormulaDependency,
 } from "../utils.ts";
 import { hashUrl } from "../sha256.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import type { BuildFromSourcePayload } from "../template-payload.ts";
+import { writeRenderedFormula } from "../template-renderer.ts";
 
-export async function generateBuildFromSource(
+export async function collectBuildFromSourcePayload(
   repoInfo: any,
   release: any,
   buildSystem: any,
   options: any = {},
-) {
+): Promise<BuildFromSourcePayload> {
   const name = options.name || toFormulaName(repoInfo.name);
   const className = toClassName(name);
   const desc =
@@ -23,7 +25,8 @@ export async function generateBuildFromSource(
   const license = guessLicenseIdentifier(repoInfo.license);
   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
 
-  let sourceUrl, version;
+  let sourceUrl: string | null = null;
+  let version: string;
   if (release) {
     version = extractVersionFromTag(release.tagName);
     sourceUrl =
@@ -31,51 +34,44 @@ export async function generateBuildFromSource(
       `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
   } else {
     version = "HEAD";
-    sourceUrl = null;
   }
 
-  let sha256 = null;
-  if (sourceUrl) {
-    sha256 = await hashUrl(sourceUrl);
-  }
-
-  let ruby = `class ${className} < Formula\n`;
-  ruby += `  desc ${rubyString(desc)}\n`;
-  ruby += `  homepage ${rubyString(homepage)}\n`;
-  if (license) ruby += `  license ${rubyString(license)}\n`;
-
+  let urlLines = "";
   if (sourceUrl && version !== "HEAD") {
-    ruby += `  url ${rubyString(sourceUrl)}\n`;
-    ruby += `  sha256 ${rubyString(sha256)}\n`;
+    const sha256 = await hashUrl(sourceUrl);
+    urlLines = `  url ${rubyString(sourceUrl)}\n  sha256 ${rubyString(sha256)}\n`;
   }
-
-  ruby += `  head "https://github.com/${repoInfo.fullName}.git", branch: "${repoInfo.defaultBranch}"\n\n`;
 
   const system = buildSystem?.system || "make";
 
-  ruby += insertAllbrewFormulaDependency();
-  const deps = getDependencies(system);
-  for (const dep of deps) {
-    ruby += `  depends_on ${dep}\n`;
-  }
-  ruby += `\n`;
-
-  ruby += `  def install\n`;
-  ruby += getInstallBlock(system, name);
-  ruby += `  end\n\n`;
-
-  ruby += buildServiceBlock(serviceFromOptions(options, name), name);
-
-  ruby += `  test do\n`;
-  ruby += `    assert_match version.to_s, shell_output("#{bin}/${name} --version")\n`;
-  ruby += `  end\n`;
-  ruby += `end\n`;
-
-  const filePath = await writeFormula(name, ruby, options.tapPath);
-  return { filePath, name, className, type: "formula" };
+  return {
+    template: "build_from_source",
+    name,
+    className,
+    desc: rubyEscape(desc),
+    homepage: rubyEscape(homepage),
+    fullName: rubyEscape(repoInfo.fullName),
+    defaultBranch: rubyEscape(repoInfo.defaultBranch),
+    licenseLine: license ? `  license ${rubyString(license)}\n` : "",
+    urlLines,
+    dependenciesLines: buildDependenciesLines(system),
+    installBody: buildInstallBody(system),
+    allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+    testBinName: rubyEscape(name),
+    serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+  };
 }
 
-function getDependencies(system) {
+function buildDependenciesLines(system: string) {
+  const deps = getDependencies(system);
+  return deps.map((dep) => `  depends_on ${dep}\n`).join("");
+}
+
+function buildInstallBody(system: string) {
+  return getInstallBlock(system);
+}
+
+function getDependencies(system: string): string[] {
   switch (system) {
     case "cmake":
       return ['"cmake" => :build', '"pkg-config" => :build'];
@@ -98,7 +94,7 @@ function getDependencies(system) {
   }
 }
 
-function getInstallBlock(system, name) {
+function getInstallBlock(system: string) {
   switch (system) {
     case "cmake":
       return (
@@ -122,4 +118,19 @@ function getInstallBlock(system, name) {
     default:
       return `    system "make", "PREFIX=#{prefix}", "install"\n`;
   }
+}
+
+export async function generateBuildFromSource(
+  repoInfo: any,
+  release: any,
+  buildSystem: any,
+  options: any = {},
+) {
+  const payload = await collectBuildFromSourcePayload(
+    repoInfo,
+    release,
+    buildSystem,
+    options,
+  );
+  return writeRenderedFormula(payload, options.tapPath);
 }
