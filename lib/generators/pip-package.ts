@@ -4,6 +4,7 @@ import {
   rubyString,
   guessLicenseIdentifier,
   writeFormula,
+  insertAllbrewFormulaDependency,
 } from "../utils.ts";
 import { pypiLivecheckBlock } from "./livecheck.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
@@ -48,6 +49,7 @@ export async function generatePipPackage(
   if (license) ruby += `  license ${rubyString(license)}\n`;
   ruby += `\n`;
   ruby += pypiLivecheckBlock(packageName);
+  ruby += insertAllbrewFormulaDependency();
   ruby += `  depends_on "python@3.13"\n\n`;
 
   for (const dep of deps) {

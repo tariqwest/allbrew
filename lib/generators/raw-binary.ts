@@ -3,6 +3,7 @@ import {
   toClassName,
   rubyString,
   writeFormula,
+  insertAllbrewFormulaDependency,
 } from "../utils.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 
@@ -34,6 +35,9 @@ export async function generateRawBinary(
   ruby += `  url ${rubyString(downloadUrl)}\n`;
   ruby += `  sha256 ${rubyString(sha256)}\n`;
   ruby += `  license "MIT"\n\n`;
+
+  ruby += insertAllbrewFormulaDependency();
+  ruby += `\n`;
 
   ruby += `  def install\n`;
 

@@ -4,6 +4,7 @@ import {
   rubyString,
   guessLicenseIdentifier,
   writeFormula,
+  insertAllbrewFormulaDependency,
 } from "../utils.ts";
 import { hashUrl } from "../sha256.ts";
 import { npmLivecheckBlock } from "./livecheck.ts";
@@ -57,6 +58,7 @@ export async function generateNpmPackage(
   if (license) ruby += `  license ${rubyString(license)}\n`;
   ruby += `\n`;
   ruby += npmLivecheckBlock(packageName);
+  ruby += insertAllbrewFormulaDependency();
   ruby += `  depends_on "node"\n\n`;
 
   ruby += `  def install\n`;

@@ -3,6 +3,7 @@ import {
   toClassName,
   rubyString,
   writeFormula,
+  insertAllbrewFormulaDependency,
 } from "../utils.ts";
 import { downloadAndHash } from "../sha256.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
@@ -22,6 +23,9 @@ export async function generateScriptInstall(url, options: any = {}) {
   ruby += `  url ${rubyString(url)}\n`;
   ruby += `  sha256 ${rubyString(sha256)}\n`;
   ruby += `  license "MIT"\n\n`;
+
+  ruby += insertAllbrewFormulaDependency();
+  ruby += `\n`;
 
   ruby += `  def install\n`;
   ruby += `    ENV["PREFIX"] = prefix.to_s\n`;
