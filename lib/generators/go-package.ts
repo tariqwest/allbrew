@@ -5,6 +5,7 @@ import {
   rubyString,
   guessLicenseIdentifier,
   writeFormula,
+  insertAllbrewFormulaDependency,
 } from "../utils.ts";
 import { hashUrl } from "../sha256.ts";
 import { goModuleLivecheckBlock } from "./livecheck.ts";
@@ -50,6 +51,7 @@ export async function generateGoPackage(
   ruby += `  head "https://github.com/${repoInfo.fullName}.git", branch: "${repoInfo.defaultBranch}"\n\n`;
 
   ruby += goModuleLivecheckBlock(goModule);
+  ruby += insertAllbrewFormulaDependency();
   ruby += `  depends_on "go" => :build\n\n`;
 
   ruby += `  def install\n`;

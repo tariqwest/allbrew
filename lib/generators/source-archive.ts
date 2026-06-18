@@ -3,6 +3,7 @@ import {
   toClassName,
   rubyString,
   writeFormula,
+  insertAllbrewFormulaDependency,
 } from "../utils.ts";
 import { detectBuildSystemFromArchive } from "../analyzer.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
@@ -30,13 +31,14 @@ export async function generateSourceArchive(archiveInfo, options: any = {}) {
   ruby += `  sha256 ${rubyString(sha256)}\n`;
   ruby += `  license "MIT"\n\n`;
 
+  ruby += insertAllbrewFormulaDependency();
   if (buildInfo) {
     const deps = getBuildDeps(buildInfo);
     for (const dep of deps) {
       ruby += `  depends_on ${dep}\n`;
     }
-    if (deps.length > 0) ruby += `\n`;
   }
+  ruby += `\n`;
 
   ruby += `  def install\n`;
   ruby += getInstallCommands(buildInfo, name);

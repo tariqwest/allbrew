@@ -6,6 +6,7 @@ import {
   rubyString,
   guessLicenseIdentifier,
   writeFormula,
+  insertAllbrewFormulaDependency,
 } from "../utils.ts";
 import { downloadAndHash } from "../sha256.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
@@ -93,6 +94,9 @@ export async function generateBinaryRelease(
   ruby += `    url :stable\n`;
   ruby += `    strategy :github_latest\n`;
   ruby += `  end\n\n`;
+
+  ruby += insertAllbrewFormulaDependency();
+  ruby += `\n`;
 
   ruby += `  def install\n`;
   ruby += `    bin.install "${name}"\n`;

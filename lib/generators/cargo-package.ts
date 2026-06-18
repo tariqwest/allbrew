@@ -5,6 +5,7 @@ import {
   rubyString,
   guessLicenseIdentifier,
   writeFormula,
+  insertAllbrewFormulaDependency,
 } from "../utils.ts";
 import { hashUrl } from "../sha256.ts";
 import { cratesLivecheckBlock } from "./livecheck.ts";
@@ -50,6 +51,7 @@ export async function generateCargoPackage(
   ruby += `  head "https://github.com/${repoInfo.fullName}.git", branch: "${repoInfo.defaultBranch}"\n\n`;
 
   ruby += cratesLivecheckBlock(crateName);
+  ruby += insertAllbrewFormulaDependency();
   ruby += `  depends_on "rust" => :build\n\n`;
 
   ruby += `  def install\n`;

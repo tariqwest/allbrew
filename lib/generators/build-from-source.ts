@@ -5,6 +5,7 @@ import {
   rubyString,
   guessLicenseIdentifier,
   writeFormula,
+  insertAllbrewFormulaDependency,
 } from "../utils.ts";
 import { hashUrl } from "../sha256.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
@@ -52,11 +53,12 @@ export async function generateBuildFromSource(
 
   const system = buildSystem?.system || "make";
 
+  ruby += insertAllbrewFormulaDependency();
   const deps = getDependencies(system);
   for (const dep of deps) {
     ruby += `  depends_on ${dep}\n`;
   }
-  if (deps.length > 0) ruby += `\n`;
+  ruby += `\n`;
 
   ruby += `  def install\n`;
   ruby += getInstallBlock(system, name);
