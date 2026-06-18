@@ -4,19 +4,19 @@ import type {
 } from "./template-payload.ts";
 import { writeCask, writeFormula } from "./utils.ts";
 
-import renderBinaryRelease from "./templates/formula/binary_release.ts";
-import renderBuildFromSource from "./templates/formula/build_from_source.ts";
-import renderCargoPackage from "./templates/formula/cargo_package.ts";
-import renderGoPackage from "./templates/formula/go_package.ts";
-import renderNpmPackage from "./templates/formula/npm_package.ts";
-import renderPipPackage from "./templates/formula/pip_package.ts";
-import renderRawBinary from "./templates/formula/raw_binary.ts";
-import renderScriptInstall from "./templates/formula/script_install.ts";
-import renderSourceArchive from "./templates/formula/source_archive.ts";
+import renderBinaryRelease from "./templates/formula/binary-release.ts";
+import renderBuildFromSource from "./templates/formula/build-from-source.ts";
+import renderCargoPackage from "./templates/formula/cargo-package.ts";
+import renderGoPackage from "./templates/formula/go-package.ts";
+import renderNpmPackage from "./templates/formula/npm-package.ts";
+import renderPipPackage from "./templates/formula/pip-package.ts";
+import renderRawBinary from "./templates/formula/raw-binary.ts";
+import renderScriptInstall from "./templates/formula/script-install.ts";
+import renderSourceArchive from "./templates/formula/source-archive.ts";
 
-import renderCaskApp from "./templates/cask/cask_app.ts";
-import renderGithubReleaseCask from "./templates/cask/github_release.ts";
-import renderMasApp from "./templates/cask/mas_app.ts";
+import renderCaskApp from "./templates/cask/cask-app.ts";
+import renderGithubReleaseCask from "./templates/cask/github-release.ts";
+import renderMasApp from "./templates/cask/mas-app.ts";
 
 const FORMULA_TEMPLATES: Record<
   FormulaPayload["template"],
