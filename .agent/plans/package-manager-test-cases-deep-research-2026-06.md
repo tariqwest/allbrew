@@ -784,8 +784,8 @@ Every app broken out across the section tables above, unified into one row per a
 presence/identifier columns. Blank cell = not applicable or not found. `in_*` columns include
 the identifier or URL where known.
 
-| app | lang | framework | in_3p_site | in_github | in_homebrew | in_mas | in_npm | in_pip | in_cargo | in_go_mod | in_ruby_gem | in_swiftpm | in_mint | in_dotnet | is_tui_app | is_gui_app | is_webui_app | is_cask_dist | has_source_dist | has_prebuilt_bin_dist | has_script_install | notes |
-|-----|------|-----------|-----------|-----------|-------------|--------|--------|--------|----------|-----------|------------|------------|---------|-----------|-----------|-----------|-------------|--------------|-----------------|----------------------|--------------------|-------|
+| app | lang | framework | in_dev_website | in_github | in_homebrew | in_mas | in_npm | in_pip | in_cargo | in_go_mod | in_ruby_gem | in_swiftpm | in_mint | in_dotnet | is_tui_app | is_gui_app | is_webui_app | is_cask_dist | has_source_dist | has_prebuilt_bin_dist | has_script_install | notes |
+|-----|------|-----------|---------------|-----------|-------------|--------|--------|--------|----------|-----------|------------|------------|---------|-----------|-----------|-----------|-------------|--------------|-----------------|----------------------|--------------------|-------|
 | browsr | Python | Textual | | github.com/flopp/browsr | | | | pypi.org/project/browsr | | | | | | | yes | | | | yes | | | |
 | elia | Python | Textual | | github.com/sdmonti/elia-chat | | | | pypi.org/project/elia-chat | | | | | | | yes | | | | yes | | | cmd `elia` |
 | toolong | Python | Textual | | github.com/Textualize/toolong | | | | pypi.org/project/toolong | | | | | | | yes | | | | yes | | | cmd `tl` |
@@ -798,32 +798,32 @@ the identifier or URL where known.
 | frogmouth | Python | Textual | | github.com/Textualize/frogmouth | | | | pypi.org/project/frogmouth | | | | | | | yes | | | | yes | | | Markdown browser |
 | euporie | Python | Textual | | github.com/euporie/euporie | | | | pypi.org/project/euporie | | | | | | | yes | | | | yes | | | cmd `euporie-notebook` |
 | pokete | Python | urwid | | github.com/lxgr-linux/pokete | | | | pypi.org/project/pokete | | | | | | | yes | | | | yes | | | terminal RPG |
-| marimo | Python | | marimo.io | github.com/marimo-team/marimo | | | | pypi.org/project/marimo | | | | | | | | | yes | | yes | | | `marimo edit` |
-| mlflow | Python | | mlflow.org | github.com/mlflow/mlflow | | | | pypi.org/project/mlflow | | | | | | | | | yes | | yes | | | `mlflow ui` |
-| aim | Python | | aimstack.io | github.com/aimhubio/aim | | | | pypi.org/project/aim | | | | | | | | | yes | | yes | | | `aim up` |
-| label-studio | Python | Django | labelstud.io | github.com/HumanSignal/label-studio | | | | pypi.org/project/label-studio | | | | | | | | | yes | | yes | | | heavy deps |
-| chainlit | Python | | chainlit.io | github.com/Chainlit/chainlit | | | | pypi.org/project/chainlit | | | | | | | | | yes | | yes | | | `chainlit hello` |
-| visdom | Python | | github.com/facebookresearch/visdom | github.com/facebookresearch/visdom | | | | pypi.org/project/visdom | | | | | | | | | yes | | yes | | | |
-| streamlit | Python | | streamlit.io | github.com/streamlit/streamlit | | | | pypi.org/project/streamlit | | | | | | | | | yes | | yes | | | `streamlit hello` |
-| flower | Python | | flower.celeryproject.org | github.com/celery/flwr | | | | pypi.org/project/flower | | | | | | | | | yes | | yes | | | `celery flower` |
-| gradio | Python | | gradio.app | github.com/gradio-app/gradio | | | | pypi.org/project/gradio | | | | | | | | | yes | | yes | | | needs script |
-| napari | Python | Qt | napari.org | github.com/napari/napari | | | | pypi.org/project/napari | | | | | | | | yes | | | yes | | | n-D image viewer |
-| orange3 | Python | Qt | orangedatamining.com | github.com/biolab/orange3 | | | | pypi.org/project/Orange3 | | | | | | | | yes | | | yes | | | cmd `orange-canvas` |
-| bleachbit | Python | GTK | bleachbit.org | github.com/bleachbit/bleachbit | | | | pypi.org/project/BleachBit | | | | | | | | yes | | | yes | | | disk cleaner |
+| marimo | Python | | | github.com/marimo-team/marimo | | | | pypi.org/project/marimo | | | | | | | | | yes | | yes | | | `marimo edit` |
+| mlflow | Python | | | github.com/mlflow/mlflow | | | | pypi.org/project/mlflow | | | | | | | | | yes | | yes | | | `mlflow ui` |
+| aim | Python | | | github.com/aimhubio/aim | | | | pypi.org/project/aim | | | | | | | | | yes | | yes | | | `aim up` |
+| label-studio | Python | Django | | github.com/HumanSignal/label-studio | | | | pypi.org/project/label-studio | | | | | | | | | yes | | yes | | | heavy deps |
+| chainlit | Python | | | github.com/Chainlit/chainlit | | | | pypi.org/project/chainlit | | | | | | | | | yes | | yes | | | `chainlit hello` |
+| visdom | Python | | | github.com/facebookresearch/visdom | | | | pypi.org/project/visdom | | | | | | | | | yes | | yes | | | |
+| streamlit | Python | | | github.com/streamlit/streamlit | | | | pypi.org/project/streamlit | | | | | | | | | yes | | yes | | | `streamlit hello` |
+| flower | Python | | | github.com/celery/flwr | | | | pypi.org/project/flower | | | | | | | | | yes | | yes | | | `celery flower` |
+| gradio | Python | | | github.com/gradio-app/gradio | | | | pypi.org/project/gradio | | | | | | | | | yes | | yes | | | needs script |
+| napari | Python | Qt | | github.com/napari/napari | | | | pypi.org/project/napari | | | | | | | | yes | | | yes | | | n-D image viewer |
+| orange3 | Python | Qt | | github.com/biolab/orange3 | | | | pypi.org/project/Orange3 | | | | | | | | yes | | | yes | | | cmd `orange-canvas` |
+| bleachbit | Python | GTK | | github.com/bleachbit/bleachbit | | | | pypi.org/project/BleachBit | | | | | | | | yes | | | yes | | | disk cleaner |
 | gridplayer | Python | Qt | | github.com/vincentvibe/gridplayer | | | | pypi.org/project/GridPlayer | | | | | | | | yes | | | yes | | | needs `mpv` |
 | cq-editor | Python | Qt | | github.com/CadQuery/cadquery-editor | | | | pypi.org/project/CQ-editor | | | | | | | | yes | | | yes | | | CadQuery 3D |
-| friture | Python | Qt | friture.org | github.com/tlecomte/friture | | | | pypi.org/project/friture | | | | | | | | yes | | | yes | | | audio analyzer |
-| eric-ide | Python | Qt | eric-ide.python-projects.org | github.com/python-eric/eric-ide | | | | pypi.org/project/eric-ide | | | | | | | | yes | | | yes | | | cmd `eric7` |
+| friture | Python | Qt | | github.com/tlecomte/friture | | | | pypi.org/project/friture | | | | | | | | yes | | | yes | | | audio analyzer |
+| eric-ide | Python | Qt | | github.com/python-eric/eric-ide | | | | pypi.org/project/eric-ide | | | | | | | | yes | | | yes | | | cmd `eric7` |
 | beeref | Python | Qt | | github.com/rbreu/beeref | | | | pypi.org/project/beeref | | | | | | | | yes | | | yes | | | GitHub-sourced |
 | pypdfeditor-gui | Python | Qt | | github.com/harupy/PyPDFEditor-GUI | | | | pypi.org/project/PyPDFEditor-GUI | | | | | | | | yes | | | yes | | | cmd `pdfeditor` |
 | FMPy | Python | PySide | | github.com/CATIA-Systems/FMPy | | | | pypi.org/project/FMPy | | | | | | | | yes | | | yes | | | cmd `fmpy gui` |
 | tabulous | Python | Qt | | github.com/hanjinliu/tabulous | | | | pypi.org/project/tabulous | | | | | | | | yes | | | yes | | | spreadsheet viewer |
-| pyNastran | Python | Qt | pynastran-git.readthedocs.io | github.com/SteveDoyle2/pyNastran | | | | pypi.org/project/pyNastran | | | | | | | | yes | | | yes | | | cmd `pyNastranGUI` |
+| pyNastran | Python | Qt | | github.com/SteveDoyle2/pyNastran | | | | pypi.org/project/pyNastran | | | | | | | | yes | | | yes | | | cmd `pyNastranGUI` |
 | pyqt-openai | Python | PyQt6 | | github.com/yjg30737/pyqt-openai | | | | pypi.org/project/pyqt-openai | | | | | | | | yes | | | yes | | | VividNode |
 | caliscope | Python | PySide6 | | github.com/mprib/caliscope | | | | pypi.org/project/caliscope | | | | | | | | yes | | | yes | | | motion-capture |
-| pry | Ruby | | pry.org | github.com/pry/pry | | | | | | rubygems.org/gems/pry | | | | yes | | | | yes | | | REPL |
-| taskjuggler | Ruby | | taskjuggler.org | github.com/taskjuggler/taskjuggler | | | | | | rubygems.org/gems/taskjuggler | | | | yes | | | | yes | | | cmd `tj3` |
-| license_finder | Ruby | | github.com/pivotal-legacy/LicenseFinder | github.com/pivotal-legacy/LicenseFinder | | | | | | rubygems.org/gems/license_finder | | | | yes | | | | yes | | | license audit |
+| pry | Ruby | | | github.com/pry/pry | | | | | | rubygems.org/gems/pry | | | | yes | | | | yes | | | REPL |
+| taskjuggler | Ruby | | | github.com/taskjuggler/taskjuggler | | | | | | rubygems.org/gems/taskjuggler | | | | yes | | | | yes | | | cmd `tj3` |
+| license_finder | Ruby | | | github.com/pivotal-legacy/LicenseFinder | | | | | | rubygems.org/gems/license_finder | | | | yes | | | | yes | | | license audit |
 | smashing | Ruby | Sinatra | | github.com/Smashing/smashing | | | | | | rubygems.org/gems/smashing | | | | | | yes | | yes | | | `smashing start` |
 | geminabox | Ruby | Sinatra | | github.com/geminabox/geminabox | | | | | | rubygems.org/gems/geminabox | | | | | | yes | | yes | | | gem server |
 | rubio-radio | Ruby | LibUI | | github.com/kojix2/rubio-radio | | | | | | rubygems.org/gems/rubio-radio | | | | | yes | | | yes | | | radio player |
@@ -835,16 +835,16 @@ the identifier or URL where known.
 | npkill | Node | | | github.com/voidcosmos/npkill | | | npmjs.com/package/npkill | | | | | | | | yes | | | | yes | | | node_modules cleaner |
 | deputui | Node | | | github.com/ryukina/deputui | | | npmjs.com/package/deputui | | | | | | | | yes | | | | yes | | | dep updater |
 | forage-cli | Node | | | github.com/forage-cli/forage | | | npmjs.com/package/forage-cli | | | | | | | | yes | | | | yes | | | cmd `forage` |
-| maildev | Node | | maildev.com | github.com/maildev/maildev | | | npmjs.com/package/maildev | | | | | | | | | | yes | yes | | | SMTP catcher |
-| verdaccio | Node | | verdaccio.org | github.com/verdaccio/verdaccio | | | npmjs.com/package/verdaccio | | | | | | | | | | yes | yes | | | private npm registry |
-| json-server | Node | | github.com/typicode/json-server | github.com/typicode/json-server | | | npmjs.com/package/json-server | | | | | | | | | | yes | yes | | | `json-server db.json` |
-| wetty | Node | | github.com/butlerx/wetty | github.com/butlerx/wetty | | | npmjs.com/package/wetty | | | | | | | | | | yes | yes | | | browser terminal |
-| browser-sync | Node | | browsersync.io | github.com/BrowserSync/browser-sync | | | npmjs.com/package/browser-sync | | | | | | | | | | yes | yes | | | `browser-sync start` |
-| pm2 | Node | | pm2.keymetrics.io | github.com/Unitech/pm2 | | | npmjs.com/package/pm2 | | | | | | | | | | yes | yes | | | `pm2 monit` |
+| maildev | Node | | | github.com/maildev/maildev | | | npmjs.com/package/maildev | | | | | | | | | | yes | yes | | | SMTP catcher |
+| verdaccio | Node | | | github.com/verdaccio/verdaccio | | | npmjs.com/package/verdaccio | | | | | | | | | | yes | yes | | | private npm registry |
+| json-server | Node | | | github.com/typicode/json-server | | | npmjs.com/package/json-server | | | | | | | | | | yes | yes | | | `json-server db.json` |
+| wetty | Node | | | github.com/butlerx/wetty | | | npmjs.com/package/wetty | | | | | | | | | | yes | yes | | | browser terminal |
+| browser-sync | Node | | | github.com/BrowserSync/browser-sync | | | npmjs.com/package/browser-sync | | | | | | | | | | yes | yes | | | `browser-sync start` |
+| pm2 | Node | | | github.com/Unitech/pm2 | | | npmjs.com/package/pm2 | | | | | | | | | | yes | yes | | | `pm2 monit` |
 | markserv | Node | | | github.com/sdeering/markserv | | | npmjs.com/package/markserv | | | | | | | | | | yes | yes | | | markdown server |
-| docsify-cli | Node | | docsify.js.org | github.com/docsifyjs/docsify-cli | | | npmjs.com/package/docsify-cli | | | | | | | | | | yes | yes | | | cmd `docsify` |
-| tiddlywiki | Node | | tiddlywiki.com | github.com/Jermolene/TiddlyWiki | | | npmjs.com/package/tiddlywiki | | | | | | | | | | yes | yes | | | `tiddlywiki wiki --listen` |
-| clinic | Node | | clinicjs.org | github.com/clinicjs/node-clinic | | | npmjs.com/package/clinic | | | | | | | | | | yes | yes | | | `clinic doctor` |
+| docsify-cli | Node | | | github.com/docsifyjs/docsify-cli | | | npmjs.com/package/docsify-cli | | | | | | | | | | yes | yes | | | cmd `docsify` |
+| tiddlywiki | Node | | | github.com/Jermolene/TiddlyWiki | | | npmjs.com/package/tiddlywiki | | | | | | | | | | yes | yes | | | `tiddlywiki wiki --listen` |
+| clinic | Node | | | github.com/clinicjs/node-clinic | | | npmjs.com/package/clinic | | | | | | | | | | yes | yes | | | `clinic doctor` |
 | nativefier | Node | Electron | | github.com/nativefier/nativefier | | | npmjs.com/package/nativefier | | | | | | | | | yes | | yes | | | URL→app wrapper |
 | appbun | Node | Electrobun | | github.com/appbun/appbun | | | npmjs.com/package/appbun | | | | | | | | | yes | | yes | | | webpage→app |
 | @hehehai/buke | Node | Electrobun | | github.com/hehehai/buke | | | npmjs.com/package/@hehehai/buke | | | | | | | | | yes | | yes | | | cmd `buke` |
@@ -861,9 +861,9 @@ the identifier or URL where known.
 | oculante | Rust | egui | | github.com/woelper/oculante | | | | | crates.io/crates/oculante | | | | | | | yes | | | yes | yes | | | image viewer |
 | emulsion | Rust | egui | | github.com/ArtBlnd/emulsion | | | | | crates.io/crates/emulsion | | | | | | | yes | | | yes | yes | | | image viewer |
 | krokiet | Rust | slint | | github.com/qarmin/krokiet | | | | | crates.io/crates/krokiet | | | | | | | yes | | | yes | yes | | | dupe-finder GUI |
-| rerun | Rust | wgpu | rerun.io | github.com/rerun-io/rerun | | | | | crates.io/crates/rerun-cli | | | | | | | yes | | | yes | yes | | | cmd `rerun` |
+| rerun | Rust | wgpu | | github.com/rerun-io/rerun | | | | | crates.io/crates/rerun-cli | | | | | | | yes | | | yes | yes | | | cmd `rerun` |
 | kiorg | Rust | egui | | github.com/sicheng-pang/kiorg | | | | | github.com/sicheng-pang/kiorg | | | | | | | yes | | | yes | yes | | | file manager |
-| process-compose | Go | | github.com/f1bonacc1/process-compose | github.com/F1bonacc1/process-compose | | | | | | github.com/F1bonacc1/process-compose | | | | | yes | | | | yes | | | process orchestrator |
+| process-compose | Go | | | github.com/F1bonacc1/process-compose | | | | | | github.com/F1bonacc1/process-compose | | | | | yes | | | | yes | | | process orchestrator |
 | wander | Go | | | github.com/robinovitch61/wander | | | | | | github.com/robinovitch61/wander | | | | | yes | | | | yes | | | Nomad TUI |
 | updo | Go | | | github.com/Owloops/updo | | | | | | github.com/Owloops/updo | | | | | yes | | | | yes | | | uptime monitor |
 | planor | Go | | | github.com/mrusme/planor | | | | | | github.com/mrusme/planor | | | | | yes | | | | yes | | | multi-cloud TUI |
@@ -871,11 +871,11 @@ the identifier or URL where known.
 | damon | Go | | | github.com/hashicorp/damon | | | | | | github.com/hashicorp/damon | | | | | yes | | | | yes | | | Nomad dashboard |
 | dashbrew | Go | | | github.com/rasjonell/dashbrew | | | | | | github.com/rasjonell/dashbrew | | | | | yes | | | | yes | | | terminal dashboards |
 | claws | Go | | | (confirm repo) | | | | | | (confirm module) | | | | | yes | | | | yes | | | AWS TUI |
-| wakapi | Go | | wakapi.dev | github.com/muety/wakapi | | | | | | github.com/muety/wakapi | | | | | | | yes | | yes | | | WakaTime backend |
+| wakapi | Go | | | github.com/muety/wakapi | | | | | | github.com/muety/wakapi | | | | | | | yes | | yes | | | WakaTime backend |
 | gotty | Go | | | github.com/sorenisanerd/gotty | | | | | | github.com/sorenisanerd/gotty | | | | | | | yes | | yes | | | `gotty bash` |
-| goatcounter | Go | | goatcounter.com | github.com/arp242/goatcounter | | | | | | zgo.at/goatcounter/v2 | | | | | | | yes | | yes | | | CGO/SQLite |
+| goatcounter | Go | | | github.com/arp242/goatcounter | | | | | | zgo.at/goatcounter/v2 | | | | | | | yes | | yes | | | CGO/SQLite |
 | gokapi | Go | | | github.com/Forceu/Gokapi | | | | | | github.com/Forceu/Gokapi | | | | | | | yes | | yes | | | go:embed |
-| picoshare | Go | | picoshare.com | github.com/mtlynch/picoshare | | | | | | github.com/mtlynch/picoshare | | | | | | | yes | | yes | | | go:embed + SQLite |
+| picoshare | Go | | | github.com/mtlynch/picoshare | | | | | | github.com/mtlynch/picoshare | | | | | | | yes | | yes | | | go:embed + SQLite |
 | supersonic | Go | Fyne | | github.com/dweymouth/supersonic | | | | | | github.com/dweymouth/supersonic | | | | | | yes | | | yes | | | music client |
 | rymdport | Go | Fyne | | github.com/Jacalz/rymdport | | | | | | github.com/Jacalz/rymdport | | | | | | yes | | | yes | | | wormhole GUI |
 | paw | Go | Fyne | | github.com/lucor/paw | | | | | | github.com/lucor/paw | | | | | | yes | | | yes | | | password manager |
@@ -901,18 +901,18 @@ the identifier or URL where known.
 | LottieViewConvert | .NET | Avalonia | | github.com/LottieViewConvert/LottieViewConvert | | | | | | | | | | | | yes | | | yes | yes | | | Lottie converter |
 | Popcorn Time | Node | Tauri | | github.com/popcorn-official/popcorn-desktop | | | | | | | | | | | | yes | | | yes | yes | | | media streamer |
 | dev-manager-desktop | Node | Tauri | | github.com/webosbrew/dev-manager-desktop | | | | | | | | | | | | yes | | | yes | yes | | | webOS homebrew manager |
-| gogs | Go | | gogs.io | github.com/gogs/gogs | gogs (cask) | | | | | | github.com/gogs/gogs | | | | | | | | yes | yes (14) | | |
-| rio | Rust | | raphamorim.io/rio | github.com/raphamorim/rio | rio (cask) | | | | | | | | | | yes | | | rio.dmg | yes | yes (13) | | |
-| pyzo | Python | Qt | pyzo.org | github.com/pyzo/pyzo | pyzo (cask) | | | | | | | | | | | yes | | pyzo.dmg | yes | yes (8) | | |
-| extraterm | TypeScript | | extraterm.org | github.com/sedwards2009/extraterm | extraterm (cask) | | npmjs.com/package/extraterm | | | | | | | | yes | | | extraterm.dmg | yes | yes (6) | | |
+| gogs | Go | | | github.com/gogs/gogs | gogs (cask) | | | | | | github.com/gogs/gogs | | | | | | | | yes | yes (14) | | |
+| rio | Rust | | | github.com/raphamorim/rio | rio (cask) | | | | | | | | | | yes | | | rio.dmg | yes | yes (13) | | |
+| pyzo | Python | Qt | | github.com/pyzo/pyzo | pyzo (cask) | | | | | | | | | | | yes | | pyzo.dmg | yes | yes (8) | | |
+| extraterm | TypeScript | | | github.com/sedwards2009/extraterm | extraterm (cask) | | npmjs.com/package/extraterm | | | | | | | | yes | | | extraterm.dmg | yes | yes (6) | | |
 | shiori | Go | | | github.com/go-shiori/shiori | shiori (cask) | | | | | | github.com/go-shiori/shiori | | | | | | | | yes | yes (6) | | |
-| veusz | Python | Qt | veusz.github.io | github.com/veusz/veusz | veusz (cask) | | | | | | | | | | | yes | | veusz.dmg | yes | yes (6) | | |
-| frescobaldi | Python | Qt | frescobaldi.org | github.com/frescobaldi/frescobaldi | frescobaldi (cask) | | | | | | | | | | | yes | | frescobaldi.dmg | yes | yes (4) | | |
+| veusz | Python | Qt | | github.com/veusz/veusz | veusz (cask) | | | | | | | | | | | yes | | veusz.dmg | yes | yes (6) | | |
+| frescobaldi | Python | Qt | | github.com/frescobaldi/frescobaldi | frescobaldi (cask) | | | | | | | | | | | yes | | frescobaldi.dmg | yes | yes (4) | | |
 | persepolis-download-manager | Python | GTK | | github.com/persepolisdm/persepolis | persepolis-download-manager (cask) | | | | | | | | | | | yes | | .dmg | yes | yes (4) | | |
 | manuskript | Python | Qt | | github.com/olivierkes/manuskript | manuskript (cask) | | | | | | | | | | | yes | | manuskript.dmg | yes | yes (3) | | |
 | wombat | Go | Wails | | github.com/rogchap/wombat | wombat (cask) | | | | | | | | | | | yes | | wombat.dmg | yes | yes (3) | | |
-| vorta | Python | Qt | vorta.borgbase.com | github.com/borgbase/vorta | vorta (cask) | | | | | | | | | | | yes | | vorta.dmg | yes | yes (2) | | |
-| electrum | Python | Qt | electrum.org | github.com/spesmilo/electrum | electrum (cask) | | | | | | | | | | | yes | | | yes | none | | | 0 GH releases |
+| vorta | Python | Qt | | github.com/borgbase/vorta | vorta (cask) | | | | | | | | | | | yes | | vorta.dmg | yes | yes (2) | | |
+| electrum | Python | Qt | electrum.org | github.com/spesmilo/electrum | electrum (cask) | | | | | | | | | | | yes | | | yes | none | | | 0 GH releases; off-GitHub signed builds |
 | pake | Rust | Tauri | | github.com/tw93/Pake | pake (formula) | | | | | | | | | | | yes | | pake.dmg | yes | yes (30) | | |
 | pop | Go | | | github.com/charmbracelet/pop | pop (formula) | | | | | | github.com/charmbracelet/pop | | | | yes | | | | yes | yes (26) | | |
 | wishlist | Go | | | github.com/charmbracelet/wishlist | wishlist (formula) | | | | | | github.com/charmbracelet/wishlist | | | | | | yes | | yes | yes (25) | | |
@@ -926,7 +926,7 @@ the identifier or URL where known.
 | doxx | Rust | ratatui | | github.com/bgreenwell/doxx | doxx (formula) | | | | | | | | | | yes | | | | yes | yes (8) | | |
 | go2tv | Go | | | github.com/alexballas/go2tv | go2tv (formula) | | | | | | github.com/alexballas/go2tv | | | | yes | | | | yes | yes (8) | | |
 | termscp | Rust | ratatui | | github.com/veeso/termscp | termscp (formula) | | | | | | | | | | yes | | | | yes | yes (8) | | |
-| dnote | Go | | dnote.io | github.com/dnote/dnote | dnote (formula) | | | | | | github.com/dnote/dnote | | | | | | yes | | yes | yes (7) | | |
+| dnote | Go | | | github.com/dnote/dnote | dnote (formula) | | | | | | github.com/dnote/dnote | | | | | | yes | | yes | yes (7) | | |
 | md-tui | Rust | ratatui | | github.com/henriklovhaug/md-tui | md-tui (formula) | | | | | | | | | | yes | | | | yes | yes (7) | | |
 | tabiew | Rust | ratatui | | github.com/shshemi/tabiew | tabiew (formula) | | | | | | | | | | yes | | | | yes | yes (7) | | |
 | pug | Go | | | github.com/leg100/pug | pug (formula) | | | | | | github.com/leg100/pug | | | | yes | | | | yes | yes (6) | | |
@@ -934,7 +934,7 @@ the identifier or URL where known.
 | stu | Rust | ratatui | | github.com/lusingander/stu | stu (formula) | | | | | | | | | | yes | | | | yes | yes (6) | | |
 | yozefu | Rust | ratatui | | github.com/MAIF/yozefu | yozefu (formula) | | | | | | | | | | yes | | | | yes | yes (6) | | |
 | gitu | Rust | ratatui | | github.com/altsem/gitu | gitu (formula) | | | | | | | | | | yes | | | | yes | yes (5) | | |
-| nicotine-plus | Python | GTK | nicotine-plus.org | github.com/nicotine-plus/nicotine-plus | nicotine-plus (formula) | | | | | | | | | | | yes | | | yes | yes (5) | | |
+| nicotine-plus | Python | GTK | | github.com/nicotine-plus/nicotine-plus | nicotine-plus (formula) | | | | | | | | | | | yes | | | yes | yes (5) | | |
 | scooter | Rust | ratatui | | github.com/thomasschafer/scooter | scooter (formula) | | | | | | | | | | yes | | | | yes | yes (5) | | |
 | slides | Go | | | github.com/maaslalani/slides | slides (formula) | | | | | | github.com/maaslalani/slides | | | | yes | | | | yes | yes (5) | | |
 | xplr | Rust | ratatui | | github.com/sayanarijit/xplr | xplr (formula) | | | | | | | | | | yes | | | | yes | yes (5) | | |
@@ -944,8 +944,8 @@ the identifier or URL where known.
 | spotify_player | Rust | ratatui | | github.com/aome510/spotify-player | spotify_player (formula) | | | | | | | | | | yes | | | | yes | yes (4) | | | underscore token |
 | sshs | Rust | ratatui | | github.com/quantumsheep/sshs | sshs (formula) | | | | | | | | | | yes | | | | yes | yes (4) | | |
 | licenseplist | Swift | | | github.com/mono0926/LicensePlist | licenseplist (formula) | | | | | | | yes | mint install mono0926/LicensePlist | | | | | | yes | yes (3) | | |
-| comictagger | Python | Qt | comictagger.org | github.com/comictagger/comictagger | comictagger (formula) | | | | | | | | | | | yes | | | yes | yes (2) | | |
-| gotify | Go | | gotify.net | github.com/gotify/cli | gotify (formula) | | | | | | github.com/gotify/cli | | | | | | | | yes | yes (2) | | |
+| comictagger | Python | Qt | | github.com/comictagger/comictagger | comictagger (formula) | | | | | | | | | | | yes | | | yes | yes (2) | | |
+| gotify | Go | | | github.com/gotify/cli | gotify (formula) | | | | | | github.com/gotify/cli | | | | | | | | yes | yes (2) | | |
 | swift-outdated | Swift | | | github.com/kiliankoe/swift-outdated | swift-outdated (formula) | | | | | | | yes | mint install kiliankoe/swift-outdated | | | | | | yes | yes (2) | | |
 | tenere | Rust | ratatui | | github.com/pythops/tenere | tenere (formula) | | | | | | | | | | yes | | | | yes | yes (2) | | |
 | diskonaut | Rust | ratatui | | github.com/imsnif/diskonaut | diskonaut (formula) | | | | | | | | | | yes | | | | yes | yes (1) | | |
@@ -960,57 +960,60 @@ the identifier or URL where known.
 | jiratui | Python | | | github.com/whyisdifficult/jiratui | jiratui (formula) | | | | | | | | | | yes | | | | yes | tags only | | |
 | joshuto | Rust | ratatui | | github.com/kamiyaa/joshuto | joshuto (formula) | | | | | | | | | | yes | | | | yes | tags only | | |
 | lazyjj | Rust | ratatui | | github.com/Cretezy/lazyjj | lazyjj (formula) | | | | | | | | | | yes | | | | yes | tags only | | |
-| mailcatcher | Ruby | Sinatra | mailcatcher.me | github.com/sj26/mailcatcher | mailcatcher (formula) | | | | | rubygems.org/gems/mailcatcher | | | | | | yes | | yes | tags only | | |
+| mailcatcher | Ruby | Sinatra | | github.com/sj26/mailcatcher | mailcatcher (formula) | | | | | rubygems.org/gems/mailcatcher | | | | | | yes | | yes | tags only | | |
 | mapscii | JavaScript | | | github.com/rastapasta/mapscii | mapscii (formula) | | npmjs.com/package/mapscii | | | | | | | | yes | | | | yes | tags only | | |
 | memray | Python | | | github.com/bloomberg/memray | memray (formula) | | | | | | | | | | | | | | yes | tags only | | |
 | recoverpy | Python | | | github.com/PabloLec/recoverpy | recoverpy (formula) | | | | | | | | | | yes | | | | yes | tags only | | |
 | reveal-md | JavaScript | | | github.com/webpro/reveal-md | reveal-md (formula) | | npmjs.com/package/reveal-md | | | | | | | | | | yes | yes | tags only | | |
 | swiftplantuml | Swift | | | github.com/MarcoEidinger/SwiftPlantUML | swiftplantuml (formula) | | | | | | | yes | mint install MarcoEidinger/SwiftPlantUML | | | | | | yes | tags only | | |
 | tuisky | Rust | ratatui | | github.com/sugyan/tuisky | tuisky (formula) | | | | | | | | | | yes | | | | yes | tags only | | |
-| Seaquel | Rust | | seaquel.app | github.com/webstonehq/seaquel | | | | | | | | | | | | yes | | Seaquel.dmg | yes | yes | | | not in HB |
-| ApiArk | Rust | | | github.com/berbicanes/apiark | | | | | | | | | | | | yes | | ApiArk.dmg | yes | yes | | | not in HB |
-| Right Crane | | | rightright.me | | | | | | | | | | | | | yes | | .dmg | | | | | developer site |
-| Unfatten | | | avelio.tech | | | | | | | | | | | | | yes | | .dmg | | | | | developer site |
-| Ollama | Go | | ollama.com | github.com/ollama/ollama | ollama (cask) | | | | | | | | | | | yes | | Ollama-darwin.zip | | yes | https://ollama.com/install.sh | site→GitHub redirect |
+| Seaquel | Rust | | | github.com/webstonehq/seaquel | | | | | | | | | | | | yes | | Seaquel.dmg | yes | yes | | | not in HB; download via GitHub releases |
+| ApiArk | Rust | | | github.com/berbicanes/apiark | | | | | | | | | | | | yes | | ApiArk.dmg | yes | yes | | | not in HB; download via GitHub releases |
+| Right Crane | | | rightright.me/products | | | | | | | | | | | | | yes | | .dmg | | | | | developer site download |
+| Unfatten | | | avelio.tech/unfatten | | | | | | | | | | | | | yes | | .dmg | | | | | developer site download |
+| Ollama | Go | | ollama.com/download | github.com/ollama/ollama | ollama (cask) | | | | | | | | | | | yes | | Ollama-darwin.zip | | yes | https://ollama.com/install.sh | site→GitHub redirect |
 | Proxyman | | | proxyman.io | | proxyman (cask) | | | | | | | | | | | yes | | Proxyman_latest.dmg | | yes | | | CDN "latest" |
 | Docker Desktop | Go | | docker.com | github.com/docker/desktop | docker-desktop (cask) | | | | | | | | | | | yes | | Docker.dmg | | yes | https://get.docker.com | arch in path |
 | zoom | | | zoom.us | | zoom (cask) | | | | | | | | | | | yes | | Zoom.pkg | | yes | | | PKG format |
 | Trae | | | trae.ai | | trae (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
-| Paste | | | paste.app | | paste (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
-| EasyFind | | | devmate.com | | easyfind (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
-| Hermes | | | hermesapp.io | | hermes (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
+| Paste | | | paste.app | | paste (cask) | yes | | | | | | | | | | yes | | .dmg | | | | | also on MAS |
+| EasyFind | | | devmate.com | | easyfind (cask) | yes | | | | | | | | | | yes | | .dmg | | | | | also on MAS |
+| Hermes | | | hermesapp.io | | hermes (cask) | yes | | | | | | | | | | yes | | .dmg | | | | | also on MAS |
 | Terax | | | terax.app | | terax (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
 | Prefs Editor | | | tenten.co | | prefs-editor (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
-| Setapp | | | setapp.com | | setapp (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
+| Setapp | | | setapp.com/download | | setapp (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
 | Raycast Beta | | | raycast.com | | raycast (cask) | | | | | | | | | | | yes | | .dmg | | | | | beta channel |
-| TokenBar | | | tokenbar.site | | | | | | | | | | | | | yes | | .dmg | | | | | indie, $5/mo |
+| Magnet | | | | | | yes | | | | | | | | | | yes | | | | | | | MAS only; no direct download |
+| ColorSlurp | | | | | | yes | | | | | | | | | | yes | | | | | | | MAS only; no direct download |
+| Bear | | | bear.app | | | yes | | | | | | | | | | yes | | .dmg | | | | | MAS + direct download; no HB cask |
+| TokenBar | | | tokenbar.site/get-started | | | | | | | | | | | | | yes | | .dmg | | | | | indie, $5/mo |
 | Monk Mode | | | mac.monk-mode.lifestyle | | | | | | | | | | | | | yes | | .dmg | | | | | indie, $15 |
 | MetricSync | | | metricsync.download | | | | | | | | | | | | | yes | | .dmg | | | | | indie, $5/mo |
-| UTM | | | getutm.app | github.com/utmapp/UTM | utm (cask) | | | | | | | | | | | yes | | UTM.dmg | | yes | | /latest/ redirect |
-| balenaEtcher | | | etcher.balena.io | github.com/balena-io/etcher | balenaetcher (cask) | | | | | | | | | | | yes | | balenaEtcher-darwin-arm64.dmg | | yes | | /latest/, arch in filename |
-| LocalSend | Flutter | | localsend.org | github.com/localsend/localsend | localsend (cask) | | | | | | | | | | | yes | | LocalSend-1.17.0.dmg | | yes | | version in filename |
-| IINA | | | iina.io | github.com/iina/iina | iina (cask) | | | | | | | | | | | yes | | IINA.dmg | | yes | | release page |
-| Transmission | | | transmissionbt.com | github.com/transmission/transmission | transmission (cask) | | | | | | | | | | | yes | | Transmission.dmg | | yes | | version+revision |
-| Tailscale | Go | | tailscale.com | github.com/tailscale/tailscale | tailscale (cask) | | | | | | | | | | | yes | | Tailscale-latest-macos.zip | | yes | https://tailscale.com/install.sh | .zip, "latest"→302 |
-| Homebrew | Ruby | | brew.sh | github.com/Homebrew/brew | | | | | | | | | | | | | | | | | | https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | canonical curl\|bash |
-| Rustup | Rust | | rustup.rs | github.com/rust-lang/rustup | rustup (formula) | | | | | | | | | | | | | | | | https://sh.rustup.rs | no .sh extension |
-| Bun | Zig/JS | | bun.sh | github.com/oven-sh/bun | bun (formula) | | | | | | | | | | | | | | | | https://bun.sh/install | no .sh extension |
-| Deno | Rust | | deno.land | github.com/denoland/deno | deno (formula) | | | | | | | | | | | | | | | | https://deno.land/install.sh | standard .sh |
-| uv | Rust | | astral.sh | github.com/astral-sh/uv | | | | | | | | | | | | | | | | https://astral.sh/uv/install.sh | not in HB |
-| Volta | Rust | | volta.sh | github.com/volta-cli/volta | | | | | | | | | | | | | | | | https://get.volta.sh | not in HB; no .sh |
-| Starship | Rust | | starship.rs | github.com/starship/starship | starship (formula) | | | | | | | | | | | | | | | | https://starship.rs/install.sh | detects platform+arch |
-| Devbox | Go | | jetify.com/devbox | github.com/jetify-com/devbox | | | | | | | | | | | | | | | | https://get.jetify.com/devbox | not in HB; launcher script |
-| Mise | Rust | | mise.jdx.dev | github.com/jdx/mise | mise (formula) | | | | | | | | | | | | | | | | https://mise.run | bare domain |
-| Poetry | Python | | python-poetry.org | github.com/python-poetry/poetry | poetry (formula) | | | | | | | | | | | | | | | | https://install.python-poetry.org | Python script |
-| Oh My Zsh | Shell | | ohmyz.sh | github.com/ohmyzsh/ohmyzsh | | | | | | | | | | | | | | | | https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | modifies shell config |
-| nvm | Shell | | github.com/nvm-sh/nvm | github.com/nvm-sh/nvm | nvm (cask) | | | | | | | | | | | | | | | | https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | version in URL path |
-| Atuin | Rust | | atuin.sh | github.com/atuinsh/atuin | atuin (formula) | | | | | | | | | | | | | | | | https://setup.atuin.sh | setup. subdomain |
-| Pixi | Rust | | pixi.sh | github.com/prefix-dev/pixi | pixi (formula) | | | | | | | | | | | | | | | | https://pixi.sh/install.sh | standard .sh |
-| pnpm | Node | | pnpm.io | github.com/pnpm/pnpm | pnpm (formula) | | npmjs.com/package/pnpm | | | | | | | | | | | | | | https://get.pnpm.io/install.sh | get. subdomain |
-| Fly.io CLI | Go | | fly.io | github.com/superfly/flyctl | flyctl (formula) | | | | | | | | | | | | | | | | https://fly.io/install.sh | installs to ~/.fly/bin |
-| Railway CLI | Node | | railway.app | github.com/railwayapp/cli | | | npmjs.com/package/@railway/cli | | | | | | | | | | | | | | https://raw.githubusercontent.com/railwayapp/cli/master/install.sh | not in HB |
-| CuaDriver | | | trycua.com | github.com/trycua/cua | | | | | | | | | | | | yes | | | | | https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh | drops .app + symlink |
-| Nix | C++ | | nixos.org | github.com/NixOS/nix | nix (formula) | | | | | | | | | | | | | | | | https://nixos.org/nix/install | no extension |
-| SDKMAN! | Java | | sdkman.io | github.com/sdkman/sdkman-cli | | | | | | | | | | | | | | | | https://get.sdkman.io | get. subdomain |
-| croc | Go | | schollz.com/croc | github.com/schollz/croc | croc (formula) | | | | | | github.com/schollz/croc | | | | | | | | yes | yes | https://getcroc.schollz.com | bare domain redirect |
-| Zellij | Rust | | zellij.dev | github.com/zellij-org/zellij | zellij (formula) | | | | | | | | | | | | | | | | https://zellij.dev/launch | unusual path /launch |
+| UTM | | | | github.com/utmapp/UTM | utm (cask) | | | | | | | | | | | yes | | UTM.dmg | | yes | | /latest/ redirect; download via GitHub |
+| balenaEtcher | | | | github.com/balena-io/etcher | balenaetcher (cask) | | | | | | | | | | | yes | | balenaEtcher-darwin-arm64.dmg | | yes | | /latest/, arch in filename; download via GitHub |
+| LocalSend | Flutter | | | github.com/localsend/localsend | localsend (cask) | | | | | | | | | | | yes | | LocalSend-1.17.0.dmg | | yes | | version in filename; download via GitHub |
+| IINA | | | | github.com/iina/iina | iina (cask) | | | | | | | | | | | yes | | IINA.dmg | | yes | | release page; download via GitHub |
+| Transmission | | | | github.com/transmission/transmission | transmission (cask) | | | | | | | | | | | yes | | Transmission.dmg | | yes | | version+revision; download via GitHub |
+| Tailscale | Go | | tailscale.com | github.com/tailscale/tailscale | tailscale (cask) | yes | | | | | | | | | | yes | | Tailscale-latest-macos.zip | | yes | https://tailscale.com/install.sh | .zip, "latest"→302; also on MAS |
+| Homebrew | Ruby | | | github.com/Homebrew/brew | | | | | | | | | | | | | | | | | | https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | canonical curl\|bash |
+| Rustup | Rust | | | github.com/rust-lang/rustup | rustup (formula) | | | | | | | | | | | | | | | | https://sh.rustup.rs | no .sh extension |
+| Bun | Zig/JS | | | github.com/oven-sh/bun | bun (formula) | | | | | | | | | | | | | | | | https://bun.sh/install | no .sh extension |
+| Deno | Rust | | | github.com/denoland/deno | deno (formula) | | | | | | | | | | | | | | | | https://deno.land/install.sh | standard .sh |
+| uv | Rust | | | github.com/astral-sh/uv | | | | | | | | | | | | | | | | https://astral.sh/uv/install.sh | not in HB |
+| Volta | Rust | | | github.com/volta-cli/volta | | | | | | | | | | | | | | | | https://get.volta.sh | not in HB; no .sh |
+| Starship | Rust | | | github.com/starship/starship | starship (formula) | | | | | | | | | | | | | | | | https://starship.rs/install.sh | detects platform+arch |
+| Devbox | Go | | | github.com/jetify-com/devbox | | | | | | | | | | | | | | | | https://get.jetify.com/devbox | not in HB; launcher script |
+| Mise | Rust | | | github.com/jdx/mise | mise (formula) | | | | | | | | | | | | | | | | https://mise.run | bare domain |
+| Poetry | Python | | | github.com/python-poetry/poetry | poetry (formula) | | | | | | | | | | | | | | | | https://install.python-poetry.org | Python script |
+| Oh My Zsh | Shell | | | github.com/ohmyzsh/ohmyzsh | | | | | | | | | | | | | | | | https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | modifies shell config |
+| nvm | Shell | | | github.com/nvm-sh/nvm | nvm (cask) | | | | | | | | | | | | | | | | https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | version in URL path |
+| Atuin | Rust | | | github.com/atuinsh/atuin | atuin (formula) | | | | | | | | | | | | | | | | https://setup.atuin.sh | setup. subdomain |
+| Pixi | Rust | | | github.com/prefix-dev/pixi | pixi (formula) | | | | | | | | | | | | | | | | https://pixi.sh/install.sh | standard .sh |
+| pnpm | Node | | | github.com/pnpm/pnpm | pnpm (formula) | | npmjs.com/package/pnpm | | | | | | | | | | | | | | https://get.pnpm.io/install.sh | get. subdomain |
+| Fly.io CLI | Go | | | github.com/superfly/flyctl | flyctl (formula) | | | | | | | | | | | | | | | | https://fly.io/install.sh | installs to ~/.fly/bin |
+| Railway CLI | Node | | | github.com/railwayapp/cli | | | npmjs.com/package/@railway/cli | | | | | | | | | | | | | | https://raw.githubusercontent.com/railwayapp/cli/master/install.sh | not in HB |
+| CuaDriver | | | | github.com/trycua/cua | | | | | | | | | | | | yes | | | | | https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh | drops .app + symlink |
+| Nix | C++ | | | github.com/NixOS/nix | nix (formula) | | | | | | | | | | | | | | | | https://nixos.org/nix/install | no extension |
+| SDKMAN! | Java | | | github.com/sdkman/sdkman-cli | | | | | | | | | | | | | | | | https://get.sdkman.io | get. subdomain |
+| croc | Go | | | github.com/schollz/croc | croc (formula) | | | | | | github.com/schollz/croc | | | | | | | | yes | yes | https://getcroc.schollz.com | bare domain redirect |
+| Zellij | Rust | | | github.com/zellij-org/zellij | zellij (formula) | | | | | | | | | | | | | | | | https://zellij.dev/launch | unusual path /launch |
