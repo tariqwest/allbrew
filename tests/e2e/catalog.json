@@ -268,5 +268,15 @@
     "verifyCommand": ["license_finder", "--version"],
     "skip": false,
     "notes": "Ruby gem — license compliance tool"
+  },
+  {
+    "name": "iblinter",
+    "url": "https://github.com/IBDecodable/IBLinter",
+    "generator": "mint",
+    "allbrewArgs": ["--name", "iblinter"],
+    "expectedBin": "iblinter",
+    "verifyCommand": ["iblinter", "--version"],
+    "skip": false,
+    "notes": "Mint-installed Swift CLI — XIB/Storyboard linter"
   }
 ]

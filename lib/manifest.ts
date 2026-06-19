@@ -19,7 +19,8 @@ export type GeneratorName =
   | "mas-app"
   | "swift-spm"
   | "dotnet-tool"
-  | "ruby-gem";
+  | "ruby-gem"
+  | "mint";
 
 export type PackageManifest = {
   name: string;
