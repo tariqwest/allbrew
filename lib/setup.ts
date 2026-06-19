@@ -2,7 +2,7 @@ import { select, input, confirm, password } from "@inquirer/prompts";
 import chalk from "chalk";
 import ora from "ora";
 import { join } from "node:path";
-import { homedir } from "node:os";
+import { homedir, userInfo } from "node:os";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
@@ -168,11 +168,17 @@ export async function runSetup(): Promise<SetupResult> {
   };
   await saveConfig(updatedConfig);
 
-  // ── Step 5: Summary ───────────────────────────────────────────────────────
+  // ── Step 5: Register tap with Homebrew ─────────────────────────────────────
+  const tapUser = githubUser || userInfo().username;
+  const tapSlug = `${tapUser}/${tapName.trim().replace(/^homebrew-/, "")}`;
+  await brewTap(tapSlug, tapPath);
+
+  // ── Step 6: Summary ───────────────────────────────────────────────────────
   console.log();
   console.log(chalk.bold("✓ allbrew is ready!"));
   console.log();
   console.log(`  Tap path:   ${chalk.cyan(tapPath)}`);
+  console.log(`  Brew tap:   ${chalk.cyan(tapSlug)}`);
   if (githubUser && remoteUrl) {
     console.log(`  GitHub:     ${chalk.cyan(`github.com/${githubUser}/${tapName}`)}`);
     console.log();
@@ -273,14 +279,14 @@ export async function runConfigSetRemote(): Promise<void> {
   const updatedConfig = { ...(await loadConfig()), tapName: repoName };
   await saveConfig(updatedConfig);
 
+  // Re-register tap with updated slug (now includes real GitHub username)
+  const tapSlug = `${user.login}/${repoName.replace(/^homebrew-/, "")}`;
+  await brewTap(tapSlug, config.tapPath);
+
   console.log();
   console.log(chalk.green("Remote configured!"));
   console.log(`  Remote:   ${chalk.cyan(remoteUrl)}`);
-  console.log(
-    chalk.dim(
-      `  Brew tap: brew tap ${user.login}/${repoName.replace(/^homebrew-/, "")}`,
-    ),
-  );
+  console.log(`  Brew tap: ${chalk.cyan(tapSlug)}`);
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
@@ -437,6 +443,34 @@ async function addGitRemote(tapPath: string, remoteUrl: string): Promise<void> {
   }
   await execFileAsync("git", ["-C", tapPath, "remote", "add", "origin", remoteUrl]);
   console.log(chalk.dim(`  git remote set to: ${remoteUrl}`));
+}
+
+/**
+ * Register (or re-register) a tap with Homebrew.
+ * Uses: brew tap <slug> <path>  — works for both local and GitHub taps
+ * since Homebrew accepts a local path as the clone source.
+ * Idempotent: re-tapping an already-tapped directory is a no-op.
+ */
+async function brewTap(tapSlug: string, tapPath: string): Promise<void> {
+  const spinner = ora(`Registering tap: brew tap ${tapSlug}...`).start();
+  try {
+    await execFileAsync("brew", ["tap", tapSlug, tapPath]);
+    spinner.succeed(`Tap registered: ${chalk.cyan(tapSlug)}`);
+  } catch (err: any) {
+    // "already tapped" is not an error
+    const msg: string = err.stderr || err.message || "";
+    if (
+      msg.includes("already tapped") ||
+      msg.includes("Tap already exists")
+    ) {
+      spinner.succeed(`Already tapped: ${chalk.cyan(tapSlug)}`);
+    } else {
+      spinner.warn(
+        `brew tap did not complete: ${msg.trim() || err.message}\n` +
+          chalk.dim(`  You can tap manually: brew tap ${tapSlug} ${tapPath}`),
+      );
+    }
+  }
 }
 
 function sleep(ms: number) {
