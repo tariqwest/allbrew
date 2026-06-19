@@ -148,5 +148,65 @@
     "verifyCommand": ["open", "-a", "MetricSync"],
     "skip": true,
     "notes": "Indie product page — needs direct DMG download link"
+  },
+  {
+    "name": "taskbook",
+    "url": "https://www.npmjs.com/package/taskbook",
+    "generator": "npm-package",
+    "allbrewArgs": ["--package", "taskbook"],
+    "expectedBin": "tb",
+    "verifyCommand": ["tb", "--version"],
+    "skip": false,
+    "notes": "Tasks/notes TUI (bin tb ≠ package name)"
+  },
+  {
+    "name": "vtop",
+    "url": "https://www.npmjs.com/package/vtop",
+    "generator": "npm-package",
+    "allbrewArgs": ["--package", "vtop"],
+    "expectedBin": "vtop",
+    "verifyCommand": ["vtop", "--version"],
+    "skip": false,
+    "notes": "System monitor with braille graphs"
+  },
+  {
+    "name": "toolong",
+    "url": "https://pypi.org/project/toolong/",
+    "generator": "pip-package",
+    "allbrewArgs": ["--package", "toolong"],
+    "expectedBin": "tl",
+    "verifyCommand": ["tl", "--version"],
+    "skip": false,
+    "notes": "Log viewer TUI (bin tl)"
+  },
+  {
+    "name": "uv",
+    "url": "https://astral.sh/uv/install.sh",
+    "generator": "script-install",
+    "allbrewArgs": ["--name", "uv"],
+    "expectedBin": "uv",
+    "verifyCommand": ["uv", "--version"],
+    "skip": false,
+    "notes": "Astral Python package manager installer (in Homebrew — tests ignore-brew path)"
+  },
+  {
+    "name": "localsend",
+    "url": "https://github.com/localsend/localsend/releases/download/v1.17.0/LocalSend-1.17.0.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "localsend", "--app-name", "LocalSend.app", "--homepage", "https://localsend.org"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "LocalSend"],
+    "skip": false,
+    "notes": "Cross-platform local file sharing DMG"
+  },
+  {
+    "name": "utm",
+    "url": "https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "utm", "--app-name", "UTM.app", "--homepage", "https://getutm.app"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "UTM"],
+    "skip": false,
+    "notes": "QEMU virtualization GUI; /latest/ redirect (no version in URL)"
   }
 ]

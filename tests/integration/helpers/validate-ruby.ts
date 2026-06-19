@@ -13,8 +13,12 @@ export function validateFormula(ruby: string): ValidationResult {
 
   if (!/\n  desc "/.test(ruby)) errors.push("Missing desc stanza");
   if (!/\n  homepage "/.test(ruby)) errors.push("Missing homepage stanza");
-  if (!/\n  url "/.test(ruby) && !/\n  head "/.test(ruby))
-    errors.push("Missing url or head stanza");
+  if (
+    !/\n  url "/.test(ruby) &&
+    !/\n  head "/.test(ruby) &&
+    !/\n    on_arm do\n/.test(ruby)
+  )
+    errors.push("Missing url/head stanza or platform-specific url block");
 
   if (!/\n  def install\n/.test(ruby)) errors.push("Missing def install block");
   if (!/\n  test do\n/.test(ruby)) errors.push("Missing test do block");

@@ -110,6 +110,8 @@ export function archPatterns() {
       /macos.*x86_64/i,
       /darwin.*x64/i,
       /macos.*x64/i,
+      /x86_64.*darwin/i,
+      /x86_64.*macos/i,
     ],
     linuxArm: [
       /linux.*arm64/i,

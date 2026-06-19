@@ -72,6 +72,42 @@ describe.concurrent("go-package integration", () => {
     expect(payload.licenseLine).toContain("Apache-2.0");
   });
 
+  const planorRepoInfo = {
+    name: "planor",
+    fullName: "mrusme/planor",
+    description: "A plane for cloud resources: TUI for AWS, Fly, Vultr",
+    homepage: "https://github.com/mrusme/planor",
+    htmlUrl: "https://github.com/mrusme/planor",
+    license: "GPL-3.0",
+    defaultBranch: "main",
+  };
+
+  const damonRepoInfo = {
+    name: "damon",
+    fullName: "hashicorp/damon",
+    description: "A terminal UI for HashiCorp Nomad",
+    homepage: "https://github.com/hashicorp/damon",
+    htmlUrl: "https://github.com/hashicorp/damon",
+    license: "MPL-2.0",
+    defaultBranch: "main",
+  };
+
+  it("planor: generates valid formula with hyphenated name", async () => {
+    const payload = await collectGoPackagePayload(planorRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("planor");
+    expect(payload.className).toBe("Planor");
+    expect(ruby).toContain("class Planor < Formula");
+  });
+
+  it("damon: generates valid formula (head-only)", async () => {
+    const payload = await collectGoPackagePayload(damonRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Damon < Formula");
+  });
+
   it("custom goModule in options overrides livecheck URL", async () => {
     const payload = await collectGoPackagePayload(wakapiRepoInfo, null, {
       goModule: "github.com/muety/wakapi/v2",
