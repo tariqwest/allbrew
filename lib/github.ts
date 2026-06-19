@@ -2,13 +2,70 @@ import { Octokit } from 'octokit';
 
 let octokit = null;
 
-export function initOctokit(token) {
+export function initOctokit(token?: string | null) {
   octokit = new Octokit(token ? { auth: token } : {});
 }
 
 function getOctokit() {
   if (!octokit) initOctokit(process.env.GITHUB_TOKEN);
   return octokit;
+}
+
+export async function getAuthenticatedUser(): Promise<{ login: string; name: string | null } | null> {
+  try {
+    const { data } = await getOctokit().rest.users.getAuthenticated();
+    return { login: data.login, name: data.name ?? null };
+  } catch {
+    return null;
+  }
+}
+
+export async function createTapRepo(
+  owner: string,
+  repoName: string,
+  description: string = "My personal Homebrew tap",
+): Promise<{ htmlUrl: string; cloneUrl: string; sshUrl: string }> {
+  const { data } = await getOctokit().rest.repos.createForAuthenticatedUser({
+    name: repoName,
+    description,
+    private: false,
+    auto_init: true,
+    gitignore_template: null,
+    license_template: null,
+  });
+  return {
+    htmlUrl: data.html_url,
+    cloneUrl: data.clone_url,
+    sshUrl: data.ssh_url,
+  };
+}
+
+export async function repoExists(owner: string, repo: string): Promise<boolean> {
+  try {
+    await getOctokit().rest.repos.get({ owner, repo });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * GitHub Device Flow OAuth — opens browser URL, polls until user authorizes.
+ * CLIENT_ID is the allbrew GitHub OAuth App client ID.
+ * Returns a user access token, or null if the user declined / timed out.
+ */
+export async function deviceFlowOAuth(clientId: string): Promise<string | null> {
+  const codeRes = await fetch("https://github.com/login/device/code", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ client_id: clientId, scope: "public_repo" }),
+  });
+  if (!codeRes.ok) throw new Error(`Device code request failed: ${codeRes.status}`);
+
+  const { device_code, user_code, verification_uri, expires_in, interval } =
+    await codeRes.json();
+
+  return { device_code, user_code, verification_uri, expires_in, interval } as any;
 }
 
 export async function getRepoInfo(owner, repo) {
