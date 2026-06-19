@@ -18,6 +18,11 @@
     "build": "tsc --noEmit",
     "check": "tsc --noEmit",
     "release": "bun run scripts/release.ts",
+    "test": "vitest run --project=unit",
+    "test:watch": "vitest --project=unit",
+    "test:int": "vitest run --project=integration",
+    "test:e2e": "E2E=1 vitest run --project=e2e",
+    "test:all": "vitest run",
     "test:templates": "bun run scripts/test-templates.ts",
     "test:update-formulas": "bun run scripts/test-update-formulas.ts"
   },
@@ -51,6 +56,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.9"
   }
 }
