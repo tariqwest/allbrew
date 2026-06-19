@@ -1,0 +1,117 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { collectCaskAppPayload } from "../../../lib/generators/cask-app.ts";
+
+vi.mock("../../../lib/sha256.ts", () => ({
+  hashUrl: vi.fn().mockResolvedValue("cask_sha256_mock"),
+  downloadAndHash: vi
+    .fn()
+    .mockResolvedValue({ sha256: "cask_sha256_64chars_padding_abcdef0123456789abcdef0123456789ab" }),
+  downloadToTemp: vi.fn().mockResolvedValue({ path: "/tmp/mock.zip" }),
+}));
+
+vi.mock("../../../lib/archive-inspector.ts", () => ({
+  listZipEntries: vi.fn().mockResolvedValue(["Seaquel.app/"]),
+}));
+
+describe("collectCaskAppPayload", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg",
+    );
+    expect(payload.template).toBe("cask_app");
+  });
+
+  it("extracts version from URL", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg",
+    );
+    expect(payload.versionLine).toContain("2026.4.8");
+  });
+
+  it("derives cask token from filename", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg",
+    );
+    // Filename: Seaquel_2026.4.8_aarch64.dmg → strip .dmg → "Seaquel_2026.4.8_aarch64"
+    // baseName regex only strips trailing -digits → no match → full string → toCaskToken
+    expect(payload.name).toBe("seaquel-2026-4-8-aarch64");
+  });
+
+  it("derives clean cask token when version uses hyphens", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://example.com/MyApp-1.2.3.dmg",
+    );
+    // Filename: MyApp-1.2.3.dmg → strip .dmg → "MyApp-1.2.3" → strip /-[\d.]+$/ → "MyApp"
+    expect(payload.name).toBe("myapp");
+  });
+
+  it("includes SHA256", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://example.com/Foo-1.0.dmg",
+    );
+    expect(payload.sha256).toBeTruthy();
+    expect(payload.sha256.length).toBeGreaterThan(0);
+  });
+
+  it("builds app block for DMG files", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://example.com/Foo-1.0.dmg",
+    );
+    expect(payload.appOrPkgBlock).toContain("app");
+    expect(payload.appOrPkgBlock).toContain(".app");
+  });
+
+  it("builds pkg block for PKG files", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://zoom.us/client/latest/Zoom.pkg",
+    );
+    expect(payload.appOrPkgBlock).toContain("pkg");
+    expect(payload.appOrPkgBlock).toContain("uninstall pkgutil");
+  });
+
+  it("returns empty versionLine when no version in URL", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://example.com/MyApp.dmg",
+    );
+    expect(payload.versionLine).toBe("");
+  });
+
+  it("respects name override", async () => {
+    const payload = await collectCaskAppPayload("https://example.com/Foo.dmg", {
+      name: "custom-foo",
+    });
+    expect(payload.name).toBe("custom-foo");
+  });
+
+  it("respects appName override", async () => {
+    const payload = await collectCaskAppPayload("https://example.com/Foo.dmg", {
+      appName: "CustomApp.app",
+    });
+    expect(payload.appOrPkgBlock).toContain("CustomApp.app");
+  });
+
+  it("respects homepage override", async () => {
+    const payload = await collectCaskAppPayload("https://example.com/Foo.dmg", {
+      homepage: "https://foo.app",
+    });
+    expect(payload.homepageLine).toContain("https://foo.app");
+  });
+
+  it("generates livecheck block", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://example.com/Foo-1.0.dmg",
+    );
+    expect(payload.livecheckBlock).toContain("livecheck do");
+  });
+
+  it("handles GitHub /latest/ URL (no version)", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg",
+    );
+    expect(payload.versionLine).toBe("");
+  });
+});

@@ -1,0 +1,23 @@
+{
+  "name": "maildev",
+  "description": "SMTP Server and Web Interface for viewing and testing emails during development",
+  "dist-tags": {
+    "latest": "2.1.0"
+  },
+  "homepage": "https://github.com/maildev/maildev",
+  "license": "MIT",
+  "versions": {
+    "2.1.0": {
+      "name": "maildev",
+      "version": "2.1.0",
+      "license": "MIT",
+      "dist": {
+        "tarball": "https://registry.npmjs.org/maildev/-/maildev-2.1.0.tgz",
+        "shasum": "abc123"
+      },
+      "bin": {
+        "maildev": "./bin/maildev"
+      }
+    }
+  }
+}

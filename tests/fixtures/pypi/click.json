@@ -1,0 +1,22 @@
+{
+  "info": {
+    "name": "click",
+    "version": "8.1.7",
+    "summary": "Composable command line interface toolkit",
+    "home_page": "https://palletsprojects.com/p/click/",
+    "license": "BSD-3-Clause",
+    "requires_dist": [
+      "colorama; platform_system == \"Windows\""
+    ]
+  },
+  "urls": [
+    {
+      "filename": "click-8.1.7.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/96/d3/click-8.1.7.tar.gz",
+      "packagetype": "sdist",
+      "digests": {
+        "sha256": "ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de"
+      }
+    }
+  ]
+}

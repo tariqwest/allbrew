@@ -1,0 +1,40 @@
+{
+  "info": {
+    "name": "marimo",
+    "version": "0.13.0",
+    "summary": "A reactive notebook for Python",
+    "home_page": "https://github.com/marimo-team/marimo",
+    "project_url": "https://pypi.org/project/marimo/",
+    "license": "Apache-2.0",
+    "requires_dist": [
+      "click>=8.0",
+      "jinja2>=3.0",
+      "markdown>=3.4",
+      "pygments>=2.6",
+      "tomlkit>=0.12",
+      "uvicorn>=0.22.0",
+      "starlette>=0.27.0",
+      "websockets>=11.0",
+      "typing-extensions>=4.4; python_version < \"3.11\"",
+      "ruff>=0.1.0; extra == \"dev\""
+    ]
+  },
+  "urls": [
+    {
+      "filename": "marimo-0.13.0.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/ab/cd/marimo-0.13.0.tar.gz",
+      "packagetype": "sdist",
+      "digests": {
+        "sha256": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+      }
+    },
+    {
+      "filename": "marimo-0.13.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ef/gh/marimo-0.13.0-py3-none-any.whl",
+      "packagetype": "bdist_wheel",
+      "digests": {
+        "sha256": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3"
+      }
+    }
+  ]
+}
