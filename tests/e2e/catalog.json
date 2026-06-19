@@ -1,0 +1,92 @@
+[
+  {
+    "name": "marimo",
+    "url": "https://pypi.org/project/marimo/",
+    "generator": "pip-package",
+    "allbrewArgs": ["--package", "marimo"],
+    "expectedBin": "marimo",
+    "verifyCommand": ["marimo", "--version"],
+    "skip": false,
+    "notes": "Reactive Python notebook"
+  },
+  {
+    "name": "s-tui",
+    "url": "https://pypi.org/project/s-tui/",
+    "generator": "pip-package",
+    "allbrewArgs": ["--package", "s-tui"],
+    "expectedBin": "s-tui",
+    "verifyCommand": ["s-tui", "--version"],
+    "skip": false,
+    "notes": "Stress Terminal UI"
+  },
+  {
+    "name": "maildev",
+    "url": "https://www.npmjs.com/package/maildev",
+    "generator": "npm-package",
+    "allbrewArgs": ["--package", "maildev"],
+    "expectedBin": "maildev",
+    "verifyCommand": ["maildev", "--version"],
+    "skip": false,
+    "notes": "SMTP dev server with web UI"
+  },
+  {
+    "name": "npkill",
+    "url": "https://www.npmjs.com/package/npkill",
+    "generator": "npm-package",
+    "allbrewArgs": ["--package", "npkill"],
+    "expectedBin": "npkill",
+    "verifyCommand": ["npkill", "--version"],
+    "skip": false,
+    "notes": "TUI for removing node_modules"
+  },
+  {
+    "name": "wander",
+    "url": "https://github.com/robinovitch61/wander",
+    "generator": "cargo-package",
+    "allbrewArgs": [],
+    "expectedBin": "wander",
+    "verifyCommand": ["wander", "--version"],
+    "skip": false,
+    "notes": "Nomad TUI — Rust, real tarball v1.1.0"
+  },
+  {
+    "name": "wakapi",
+    "url": "https://github.com/muety/wakapi",
+    "generator": "go-package",
+    "allbrewArgs": [],
+    "expectedBin": "wakapi",
+    "verifyCommand": ["wakapi", "--version"],
+    "skip": false,
+    "notes": "WakaTime-compatible coding stats server"
+  },
+  {
+    "name": "process-compose",
+    "url": "https://github.com/F1bonacc1/process-compose",
+    "generator": "go-package",
+    "allbrewArgs": [],
+    "expectedBin": "process-compose",
+    "verifyCommand": ["process-compose", "version"],
+    "skip": false,
+    "notes": "Process orchestrator TUI"
+  },
+  {
+    "name": "starship",
+    "url": "https://starship.rs/install.sh",
+    "generator": "script-install",
+    "allbrewArgs": ["--name", "starship"],
+    "expectedBin": "starship",
+    "verifyCommand": ["starship", "--version"],
+    "skip": false,
+    "notes": "Cross-shell prompt install script"
+  },
+  {
+    "name": "seaquel",
+    "url": "https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "seaquel", "--app-name", "Seaquel.app", "--homepage", "https://seaquel.app"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "Seaquel"],
+    "skip": false,
+    "notes": "SQL client DMG cask"
+  }
+]
