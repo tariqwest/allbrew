@@ -69,6 +69,58 @@ describe.concurrent("cargo-package integration", () => {
     expect(payload.livecheckBlock).toContain("crates.io/api/v1/crates/oatmeal");
   });
 
+  const mangaTuiRepoInfo = {
+    name: "manga-tui",
+    fullName: "josueBarretogit/manga-tui",
+    description: "TUI manga reader and downloader",
+    homepage: "https://github.com/josueBarretogit/manga-tui",
+    htmlUrl: "https://github.com/josueBarretogit/manga-tui",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const tickrsRepoInfo = {
+    name: "tickrs",
+    fullName: "tarkah/tickrs",
+    description: "Realtime ticker data in the terminal",
+    homepage: "https://github.com/tarkah/tickrs",
+    htmlUrl: "https://github.com/tarkah/tickrs",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const nostuiRepoInfo = {
+    name: "nostui",
+    fullName: "akiellor/nostui",
+    description: "TUI Nostr client",
+    homepage: "https://github.com/akiellor/nostui",
+    htmlUrl: "https://github.com/akiellor/nostui",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  it("manga-tui: generates valid formula (head-only)", async () => {
+    const payload = await collectCargoPackagePayload(mangaTuiRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class MangaTui < Formula");
+    expect(payload.livecheckBlock).toContain("manga-tui");
+  });
+
+  it("tickrs: generates valid formula (head-only)", async () => {
+    const payload = await collectCargoPackagePayload(tickrsRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Tickrs < Formula");
+  });
+
+  it("nostui: generates valid formula (head-only)", async () => {
+    const payload = await collectCargoPackagePayload(nostuiRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Nostui < Formula");
+  });
+
   it("custom crateName in options overrides livecheck", async () => {
     const payload = await collectCargoPackagePayload(wanderRepoInfo, null, {
       crateName: "wander-tui",

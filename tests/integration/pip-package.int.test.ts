@@ -52,6 +52,28 @@ describe.concurrent("pip-package integration", () => {
     expect(ruby).toContain("class Browsr < Formula");
   });
 
+  it("toolong: generates valid formula (log viewer)", async () => {
+    const payload = await collectPipPackagePayload("toolong");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("toolong");
+    expect(ruby).toContain("class Toolong < Formula");
+  });
+
+  it("castero: generates valid formula (podcast client)", async () => {
+    const payload = await collectPipPackagePayload("castero");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("castero");
+  });
+
+  it("frogmouth: generates valid formula (markdown browser)", async () => {
+    const payload = await collectPipPackagePayload("frogmouth");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("frogmouth");
+  });
+
   it("nonexistent-package-xyz: throws on 404", async () => {
     await expect(
       collectPipPackagePayload("nonexistent-allbrew-test-xyz-999"),

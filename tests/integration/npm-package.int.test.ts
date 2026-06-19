@@ -41,6 +41,28 @@ describe.concurrent("npm-package integration", () => {
     expect(payload.name).toBe("npkill");
   });
 
+  it("vtop: generates valid formula (system monitor TUI)", async () => {
+    const payload = await collectNpmPackagePayload("vtop");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("vtop");
+    expect(ruby).toContain("class Vtop < Formula");
+  });
+
+  it("json-server: generates valid formula (mock REST API)", async () => {
+    const payload = await collectNpmPackagePayload("json-server");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("json-server");
+  });
+
+  it("verdaccio: generates valid formula (private npm registry)", async () => {
+    const payload = await collectNpmPackagePayload("verdaccio");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("verdaccio");
+  });
+
   it("nonexistent-pkg-xyz: throws on missing package", async () => {
     await expect(
       collectNpmPackagePayload("nonexistent-allbrew-test-xyz-999"),

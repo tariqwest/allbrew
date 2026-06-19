@@ -37,6 +37,59 @@ describe.concurrent("cask-app integration", () => {
     expect(ruby).toContain('cask "seaquel" do');
     expect(ruby).toContain('app "Seaquel.app"');
   });
+
+  it("ApiArk DMG: payload is well-formed", async () => {
+    const url =
+      "https://github.com/berbicanes/apiark/releases/download/v0.4.6/ApiArk_0.4.6_aarch64.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "apiark",
+      appName: "ApiArk.app",
+      homepage: "https://github.com/berbicanes/apiark",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toContain("0.4.6");
+  });
+
+  it("ApiArk DMG: generates structurally valid Ruby cask", async () => {
+    const url =
+      "https://github.com/berbicanes/apiark/releases/download/v0.4.6/ApiArk_0.4.6_aarch64.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "apiark",
+      appName: "ApiArk.app",
+      homepage: "https://github.com/berbicanes/apiark",
+    });
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "apiark" do');
+    expect(ruby).toContain('app "ApiArk.app"');
+  });
+
+  it("UTM /latest/ redirect: version is null, payload is well-formed", async () => {
+    const url = "https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "utm",
+      appName: "UTM.app",
+      homepage: "https://getutm.app",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toBe("");
+  });
+
+  it("LocalSend DMG: version extracted from filename", async () => {
+    const url =
+      "https://github.com/localsend/localsend/releases/download/v1.17.0/LocalSend-1.17.0.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "localsend",
+      appName: "LocalSend.app",
+      homepage: "https://localsend.org",
+    });
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toContain("1.17.0");
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+  });
 });
 
 describe.concurrent("github-release-cask integration", () => {
