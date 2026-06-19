@@ -991,24 +991,49 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
     }),
   );
 
+  await brewAutoInstall(result, mergedOpts);
+
+  return result;
+}
+
+async function brewAutoInstall(result: any, opts: any) {
+  const isCask = result.type === "cask";
+  const installFlag = isCask ? "--cask" : "--formula";
+  const installLabel = isCask
+    ? `brew install --cask ${result.name}`
+    : `brew install ${result.name}`;
+
   console.log();
 
-  if (result.type === "formula") {
-    console.log(chalk.dim(`  Install with: brew install ${result.name}`));
-    if (mergedOpts.serviceConfig && mergedOpts.service !== false) {
+  // Step 1: brew update so the tap index reflects the new file
+  const updateSpinner = ora("Running brew update...").start();
+  try {
+    await execFileAsync("brew", ["update"]);
+    updateSpinner.succeed("brew update complete");
+  } catch (err: any) {
+    updateSpinner.warn(`brew update failed: ${err.message}`);
+  }
+
+  // Step 2: brew install
+  const installSpinner = ora(`Running ${installLabel}...`).start();
+  try {
+    await execFileAsync("brew", ["install", installFlag, result.filePath]);
+    installSpinner.succeed(`Installed: ${chalk.green(result.name)}`);
+
+    if (!isCask && opts.serviceConfig && opts.service !== false) {
       console.log(
         chalk.dim(`  Start service with: brew services start ${result.name}`),
       );
     }
-  } else {
+  } catch (err: any) {
+    installSpinner.fail(`brew install failed: ${err.message}`);
     console.log(
-      chalk.dim(`  Install with: brew install --cask ${result.name}`),
+      chalk.dim(`  Retry manually: ${installLabel}`),
     );
   }
-  console.log(chalk.dim(`  (written to tap at: ${mergedOpts.tapPath})`));
-  console.log();
 
-  return result;
+  console.log(chalk.dim(`  (written to tap at: ${opts.tapPath})`));
+  console.log();
 }
 
 function isFormulaGenerator(generatorName: string) {
