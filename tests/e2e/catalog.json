@@ -118,5 +118,35 @@
     "verifyCommand": ["open", "-a", "Unfatten"],
     "skip": true,
     "notes": "Developer website URL — needs direct DMG download link"
+  },
+  {
+    "name": "tokenbar",
+    "url": "https://www.tokenbar.site/get-started",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "tokenbar", "--app-name", "TokenBar.app", "--homepage", "https://www.tokenbar.site"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "TokenBar"],
+    "skip": true,
+    "notes": "Indie product page — needs direct DMG download link"
+  },
+  {
+    "name": "monk-mode",
+    "url": "https://mac.monk-mode.lifestyle",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "monk-mode", "--app-name", "Monk Mode.app", "--homepage", "https://mac.monk-mode.lifestyle"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "Monk Mode"],
+    "skip": true,
+    "notes": "Indie product page — needs direct DMG download link"
+  },
+  {
+    "name": "metricsync",
+    "url": "https://metricsync.download",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "metricsync", "--app-name", "MetricSync.app", "--homepage", "https://metricsync.download"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "MetricSync"],
+    "skip": true,
+    "notes": "Indie product page — needs direct DMG download link"
   }
 ]
