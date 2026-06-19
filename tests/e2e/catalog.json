@@ -88,5 +88,35 @@
     "verifyCommand": ["open", "-a", "Seaquel"],
     "skip": false,
     "notes": "SQL client DMG cask"
+  },
+  {
+    "name": "apiark",
+    "url": "https://github.com/berbicanes/apiark/releases/download/v0.4.6/ApiArk_0.4.6_aarch64.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "apiark", "--app-name", "ApiArk.app", "--homepage", "https://github.com/berbicanes/apiark"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "ApiArk"],
+    "skip": false,
+    "notes": "API client DMG cask — GitHub release"
+  },
+  {
+    "name": "right-crane",
+    "url": "https://www.rightright.me/products/",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "right-crane", "--app-name", "Right Crane.app", "--homepage", "https://www.rightright.me/products/"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "Right Crane"],
+    "skip": true,
+    "notes": "Developer website URL — needs direct DMG download link"
+  },
+  {
+    "name": "unfatten",
+    "url": "https://www.avelio.tech/unfatten",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "unfatten", "--app-name", "Unfatten.app", "--homepage", "https://www.avelio.tech/unfatten"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "Unfatten"],
+    "skip": true,
+    "notes": "Developer website URL — needs direct DMG download link"
   }
 ]
