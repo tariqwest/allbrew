@@ -64,6 +64,26 @@ const bartyCrouchRepoInfo = {
   defaultBranch: "main",
 };
 
+const swiftPlantUmlRepoInfo = {
+  name: "swiftplantuml",
+  fullName: "MarcoEidinger/SwiftPlantUML",
+  description: "Generate PlantUML class diagrams from Swift code",
+  homepage: "https://github.com/MarcoEidinger/SwiftPlantUML",
+  htmlUrl: "https://github.com/MarcoEidinger/SwiftPlantUML",
+  license: "MIT",
+  defaultBranch: "main",
+};
+
+const ascCliRepoInfo = {
+  name: "asccli",
+  fullName: "tddworks/asc-cli",
+  description: "App Store Connect CLI tool",
+  homepage: "https://github.com/tddworks/asc-cli",
+  htmlUrl: "https://github.com/tddworks/asc-cli",
+  license: "MIT",
+  defaultBranch: "main",
+};
+
 describe.concurrent("mint integration", () => {
   it("iblinter: payload fields are well-formed (with release)", async () => {
     const payload = await collectMintPayload(iblinterRepoInfo, iblinterRelease);
@@ -120,5 +140,21 @@ describe.concurrent("mint integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Bartycrouch < Formula");
+  });
+
+  it("swiftplantuml: generates valid formula (head-only)", async () => {
+    const payload = await collectMintPayload(swiftPlantUmlRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Swiftplantuml < Formula");
+    expect(ruby).toContain("MarcoEidinger/SwiftPlantUML@");
+  });
+
+  it("asccli: generates valid formula (head-only)", async () => {
+    const payload = await collectMintPayload(ascCliRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Asccli < Formula");
+    expect(ruby).toContain("tddworks/asc-cli@");
   });
 });
