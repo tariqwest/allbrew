@@ -192,6 +192,18 @@ async function handleGithubRepoManual(url, opts) {
       },
       { name: "Go package — build via Go / go install", value: "go-package" },
       {
+        name: "Swift SPM — build via Swift Package Manager",
+        value: "swift-spm",
+      },
+      {
+        name: ".NET global tool — install via dotnet tool install",
+        value: "dotnet-tool",
+      },
+      {
+        name: "Ruby gem — install via gem install",
+        value: "ruby-gem",
+      },
+      {
         name: "Build from source — cmake / make / autotools / meson",
         value: "build-from-source",
       },
@@ -257,6 +269,38 @@ async function handleGithubRepoManual(url, opts) {
       return await generateWithConfirmation(
         "go-package",
         { repoInfo, release, goModule },
+        opts,
+      );
+    }
+
+    case "swift-spm": {
+      return await generateWithConfirmation(
+        "swift-spm",
+        { repoInfo, release },
+        opts,
+      );
+    }
+
+    case "dotnet-tool": {
+      const packageName = await input({
+        message: "NuGet package name:",
+        default: repoInfo?.name || "",
+      });
+      return await generateWithConfirmation(
+        "dotnet-tool",
+        { packageName, repoInfo },
+        opts,
+      );
+    }
+
+    case "ruby-gem": {
+      const gemName = await input({
+        message: "Ruby gem name:",
+        default: repoInfo?.name || "",
+      });
+      return await generateWithConfirmation(
+        "ruby-gem",
+        { gemName, repoInfo },
         opts,
       );
     }
@@ -975,6 +1019,36 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       result = await generateMasApp(params.url, mergedOpts);
       break;
     }
+    case "swift-spm": {
+      const { generateSwiftSpm } =
+        await import("./generators/swift-spm.ts");
+      result = await generateSwiftSpm(
+        params.repoInfo,
+        params.release,
+        mergedOpts,
+      );
+      break;
+    }
+    case "dotnet-tool": {
+      const { generateDotnetTool } =
+        await import("./generators/dotnet-tool.ts");
+      result = await generateDotnetTool(
+        params.packageName,
+        params.repoInfo,
+        mergedOpts,
+      );
+      break;
+    }
+    case "ruby-gem": {
+      const { generateRubyGem } =
+        await import("./generators/ruby-gem.ts");
+      result = await generateRubyGem(
+        params.gemName,
+        params.repoInfo,
+        mergedOpts,
+      );
+      break;
+    }
     default:
       spinner.fail(`Unknown generator: ${generatorName}`);
       process.exit(1);
@@ -1047,6 +1121,9 @@ function isFormulaGenerator(generatorName: string) {
     "script-install",
     "source-archive",
     "raw-binary",
+    "swift-spm",
+    "dotnet-tool",
+    "ruby-gem",
   ].includes(generatorName);
 }
 

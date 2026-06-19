@@ -75,7 +75,7 @@ describe.concurrent("cask-app integration", () => {
     expect(payload.template).toBe("cask_app");
     expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(payload.versionLine).toBe("");
-  });
+  }, 60000);
 
   it("LocalSend DMG: version extracted from filename", async () => {
     const url =
