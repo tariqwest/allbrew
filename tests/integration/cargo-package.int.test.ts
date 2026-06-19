@@ -121,6 +121,95 @@ describe.concurrent("cargo-package integration", () => {
     expect(ruby).toContain("class Nostui < Formula");
   });
 
+  const oculanteRepoInfo = {
+    name: "oculante",
+    fullName: "woelper/oculante",
+    description: "A minimalistic crossplatform image viewer written in Rust",
+    homepage: "https://github.com/woelper/oculante",
+    htmlUrl: "https://github.com/woelper/oculante",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const emulsionRepoInfo = {
+    name: "emulsion",
+    fullName: "ArturKovacs/emulsion",
+    description: "A fast and minimalistic image viewer written in Rust",
+    homepage: "https://arturkovacs.github.io/emulsion/",
+    htmlUrl: "https://github.com/ArturKovacs/emulsion",
+    license: "MIT",
+    defaultBranch: "master",
+  };
+
+  const krokietRepoInfo = {
+    name: "krokiet",
+    fullName: "qarmin/czkawka",
+    description: "Multi functional app to find duplicates, empty folders, similar images etc.",
+    homepage: "https://github.com/qarmin/czkawka",
+    htmlUrl: "https://github.com/qarmin/czkawka",
+    license: "MIT",
+    defaultBranch: "master",
+  };
+
+  const rerunRepoInfo = {
+    name: "rerun-cli",
+    fullName: "rerun-io/rerun",
+    description: "Visualize streams of multimodal data",
+    homepage: "https://rerun.io",
+    htmlUrl: "https://github.com/rerun-io/rerun",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const gobangRepoInfo = {
+    name: "gobang",
+    fullName: "TaKO8Ki/gobang",
+    description: "A cross-platform TUI database management tool written in Rust",
+    homepage: "https://github.com/TaKO8Ki/gobang",
+    htmlUrl: "https://github.com/TaKO8Ki/gobang",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  it("oculante: generates valid formula (Rust GUI)", async () => {
+    const payload = await collectCargoPackagePayload(oculanteRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Oculante < Formula");
+  });
+
+  it("emulsion: generates valid formula (Rust GUI)", async () => {
+    const payload = await collectCargoPackagePayload(emulsionRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Emulsion < Formula");
+  });
+
+  it("krokiet: generates valid formula (Rust TUI)", async () => {
+    const payload = await collectCargoPackagePayload(krokietRepoInfo, null, {
+      crateName: "krokiet",
+    });
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.livecheckBlock).toContain("krokiet");
+  });
+
+  it("rerun-cli: generates valid formula (Rust CLI)", async () => {
+    const payload = await collectCargoPackagePayload(rerunRepoInfo, null, {
+      crateName: "rerun-cli",
+    });
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.livecheckBlock).toContain("rerun-cli");
+  });
+
+  it("gobang: generates valid formula (Rust TUI DB tool)", async () => {
+    const payload = await collectCargoPackagePayload(gobangRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Gobang < Formula");
+  });
+
   it("custom crateName in options overrides livecheck", async () => {
     const payload = await collectCargoPackagePayload(wanderRepoInfo, null, {
       crateName: "wander-tui",

@@ -74,6 +74,77 @@ describe.concurrent("pip-package integration", () => {
     expect(payload.name).toBe("frogmouth");
   });
 
+  it("napari: generates valid formula (heavy Qt/sci image viewer)", async () => {
+    const payload = await collectPipPackagePayload("napari");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("napari");
+  });
+
+  it("orange3: generates valid formula (data mining GUI)", async () => {
+    const payload = await collectPipPackagePayload("orange3");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("orange3");
+  });
+
+  it("bleachbit: generates valid formula (system cleaner GUI)", async () => {
+    const payload = await collectPipPackagePayload("bleachbit");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("bleachbit");
+  });
+
+  it("gridplayer: generates valid formula (multi-video player)", async () => {
+    const payload = await collectPipPackagePayload("gridplayer");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("gridplayer");
+  });
+
+  it("friture: generates valid formula (real-time audio analyzer)", async () => {
+    const payload = await collectPipPackagePayload("friture");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("friture");
+  });
+
+  it("mlflow: generates valid formula (ML experiment tracking)", async () => {
+    const payload = await collectPipPackagePayload("mlflow");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("mlflow");
+  });
+
+  it("label-studio: generates valid formula (data labeling)", async () => {
+    const payload = await collectPipPackagePayload("label-studio");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("label-studio");
+    expect(payload.className).toBe("LabelStudio");
+  });
+
+  it("streamlit: generates valid formula (interactive web apps)", async () => {
+    const payload = await collectPipPackagePayload("streamlit");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("streamlit");
+  });
+
+  it("gradio: generates valid formula (ML demo UI)", async () => {
+    const payload = await collectPipPackagePayload("gradio");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("gradio");
+  });
+
+  it("flower: generates valid formula (Celery monitor)", async () => {
+    const payload = await collectPipPackagePayload("flower");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("flower");
+  });
+
   it("nonexistent-package-xyz: throws on 404", async () => {
     await expect(
       collectPipPackagePayload("nonexistent-allbrew-test-xyz-999"),

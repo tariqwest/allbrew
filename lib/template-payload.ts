@@ -138,6 +138,34 @@ export type MasAppPayload = {
   livecheckBlock: string;
 };
 
+export type SwiftSpmPayload = FormulaCommonFields & {
+  template: "swift_spm";
+  fullName: string;
+  defaultBranch: string;
+  licenseLine: string;
+  urlLines: string;
+  binInstallPaths: string;
+  livecheckBlock: string;
+};
+
+export type DotnetToolPayload = FormulaCommonFields & {
+  template: "dotnet_tool";
+  packageName: string;
+  version: string;
+  licenseLine: string;
+  urlLines: string;
+  livecheckBlock: string;
+};
+
+export type RubyGemPayload = FormulaCommonFields & {
+  template: "ruby_gem";
+  gemName: string;
+  version: string;
+  licenseLine: string;
+  urlLines: string;
+  livecheckBlock: string;
+};
+
 export type FormulaPayload =
   | NpmPackagePayload
   | PipPackagePayload
@@ -147,7 +175,10 @@ export type FormulaPayload =
   | BinaryReleasePayload
   | ScriptInstallPayload
   | SourceArchivePayload
-  | RawBinaryPayload;
+  | RawBinaryPayload
+  | SwiftSpmPayload
+  | DotnetToolPayload
+  | RubyGemPayload;
 
 export type CaskPayload =
   | GithubReleaseCaskPayload

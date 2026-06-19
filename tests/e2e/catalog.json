@@ -208,5 +208,65 @@
     "verifyCommand": ["open", "-a", "UTM"],
     "skip": false,
     "notes": "QEMU virtualization GUI; /latest/ redirect (no version in URL)"
+  },
+  {
+    "name": "rugby",
+    "url": "https://github.com/swiftyfinch/Rugby",
+    "generator": "swift-spm",
+    "allbrewArgs": ["--name", "rugby"],
+    "expectedBin": "rugby",
+    "verifyCommand": ["rugby", "--version"],
+    "skip": false,
+    "notes": "Swift SPM CLI tool — CocoaPods cache"
+  },
+  {
+    "name": "doedit",
+    "url": "https://github.com/wendyliga/doedit",
+    "generator": "swift-spm",
+    "allbrewArgs": ["--name", "doedit"],
+    "expectedBin": "doedit",
+    "verifyCommand": ["doedit", "--help"],
+    "skip": false,
+    "notes": "Swift SPM CLI — batch text file editor"
+  },
+  {
+    "name": "dotnet-serve",
+    "url": "https://www.nuget.org/packages/dotnet-serve",
+    "generator": "dotnet-tool",
+    "allbrewArgs": ["--package", "dotnet-serve"],
+    "expectedBin": "dotnet-serve",
+    "verifyCommand": ["dotnet-serve", "--version"],
+    "skip": false,
+    "notes": ".NET global tool — simple HTTP server"
+  },
+  {
+    "name": "csharprepl",
+    "url": "https://www.nuget.org/packages/csharprepl",
+    "generator": "dotnet-tool",
+    "allbrewArgs": ["--package", "csharprepl"],
+    "expectedBin": "csharprepl",
+    "verifyCommand": ["csharprepl", "--version"],
+    "skip": false,
+    "notes": ".NET global tool — C# REPL"
+  },
+  {
+    "name": "pry",
+    "url": "https://rubygems.org/gems/pry",
+    "generator": "ruby-gem",
+    "allbrewArgs": ["--gem-name", "pry"],
+    "expectedBin": "pry",
+    "verifyCommand": ["pry", "--version"],
+    "skip": false,
+    "notes": "Ruby IRB alternative — well-known gem"
+  },
+  {
+    "name": "license-finder",
+    "url": "https://rubygems.org/gems/license_finder",
+    "generator": "ruby-gem",
+    "allbrewArgs": ["--gem-name", "license_finder", "--name", "license-finder"],
+    "expectedBin": "license_finder",
+    "verifyCommand": ["license_finder", "--version"],
+    "skip": false,
+    "notes": "Ruby gem — license compliance tool"
   }
 ]

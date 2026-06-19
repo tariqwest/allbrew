@@ -95,14 +95,14 @@ The core generator is **implemented and shipping**. Recent work on `main` moved 
 | Release script → GitHub release + tap formula | ✓ |
 | First-run setup (`allbrew init`) — local tap, GitHub remote, `brew tap` auto-registration | ✓ |
 | Auto `brew update` + `brew install` after each generation | ✓ |
-| Three-tier Vitest suite: unit (261), integration (64), E2E catalog (15, DRY_RUN gated) | ✓ |
+| Three-tier Vitest suite: unit (261), integration (95), E2E catalog (21, DRY_RUN gated) | ✓ |
 
 ### What is not done
 
 - **README examples** validated for every generator path
 - **MAS install by app name** (URL with `/id{number}` only)
 - **Uninstall/zap** verification across generators
-- **Future ecosystems:** NuGet/dotnet-tool, Ruby gem, Swift SPM; **binary/cask generator** for DMG-only desktop apps (Electron/Avalonia)
+- **Future ecosystems:** ~~NuGet/dotnet-tool, Ruby gem, Swift SPM~~ ✓; **binary/cask generator** for DMG-only desktop apps (Electron/Avalonia)
 - **Ruby/tebako renderer** — experimental branch paused ([tebako-ruby-binary-status.md](./tebako-ruby-binary-status.md))
 
 ### Side experiment (paused)

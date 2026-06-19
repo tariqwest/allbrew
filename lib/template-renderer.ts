@@ -13,6 +13,9 @@ import renderPipPackage from "./templates/formula/pip-package.ts";
 import renderRawBinary from "./templates/formula/raw-binary.ts";
 import renderScriptInstall from "./templates/formula/script-install.ts";
 import renderSourceArchive from "./templates/formula/source-archive.ts";
+import renderSwiftSpm from "./templates/formula/swift-spm.ts";
+import renderDotnetTool from "./templates/formula/dotnet-tool.ts";
+import renderRubyGem from "./templates/formula/ruby-gem.ts";
 
 import renderCaskApp from "./templates/cask/cask-app.ts";
 import renderGithubReleaseCask from "./templates/cask/github-release.ts";
@@ -31,6 +34,9 @@ const FORMULA_TEMPLATES: Record<
   raw_binary: renderRawBinary,
   script_install: renderScriptInstall,
   source_archive: renderSourceArchive,
+  swift_spm: renderSwiftSpm,
+  dotnet_tool: renderDotnetTool,
+  ruby_gem: renderRubyGem,
 };
 
 const CASK_TEMPLATES: Record<CaskPayload["template"], (p: any) => string> = {

@@ -16,7 +16,10 @@ export type GeneratorName =
   | "raw-binary"
   | "cask-app"
   | "github-release-cask"
-  | "mas-app";
+  | "mas-app"
+  | "swift-spm"
+  | "dotnet-tool"
+  | "ruby-gem";
 
 export type PackageManifest = {
   name: string;
