@@ -166,6 +166,16 @@ export type RubyGemPayload = FormulaCommonFields & {
   livecheckBlock: string;
 };
 
+export type MintPayload = FormulaCommonFields & {
+  template: "mint";
+  fullName: string;
+  defaultBranch: string;
+  licenseLine: string;
+  urlLines: string;
+  binName: string;
+  livecheckBlock: string;
+};
+
 export type FormulaPayload =
   | NpmPackagePayload
   | PipPackagePayload
@@ -178,7 +188,8 @@ export type FormulaPayload =
   | RawBinaryPayload
   | SwiftSpmPayload
   | DotnetToolPayload
-  | RubyGemPayload;
+  | RubyGemPayload
+  | MintPayload;
 
 export type CaskPayload =
   | GithubReleaseCaskPayload

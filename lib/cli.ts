@@ -204,6 +204,10 @@ async function handleGithubRepoManual(url, opts) {
         value: "ruby-gem",
       },
       {
+        name: "Mint — install Swift CLI via mint install",
+        value: "mint",
+      },
+      {
         name: "Build from source — cmake / make / autotools / meson",
         value: "build-from-source",
       },
@@ -301,6 +305,14 @@ async function handleGithubRepoManual(url, opts) {
       return await generateWithConfirmation(
         "ruby-gem",
         { gemName, repoInfo },
+        opts,
+      );
+    }
+
+    case "mint": {
+      return await generateWithConfirmation(
+        "mint",
+        { repoInfo, release },
         opts,
       );
     }
@@ -1049,6 +1061,16 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       );
       break;
     }
+    case "mint": {
+      const { generateMint } =
+        await import("./generators/mint.ts");
+      result = await generateMint(
+        params.repoInfo,
+        params.release,
+        mergedOpts,
+      );
+      break;
+    }
     default:
       spinner.fail(`Unknown generator: ${generatorName}`);
       process.exit(1);
@@ -1124,6 +1146,7 @@ function isFormulaGenerator(generatorName: string) {
     "swift-spm",
     "dotnet-tool",
     "ruby-gem",
+    "mint",
   ].includes(generatorName);
 }
 

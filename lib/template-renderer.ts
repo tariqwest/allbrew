@@ -16,6 +16,7 @@ import renderSourceArchive from "./templates/formula/source-archive.ts";
 import renderSwiftSpm from "./templates/formula/swift-spm.ts";
 import renderDotnetTool from "./templates/formula/dotnet-tool.ts";
 import renderRubyGem from "./templates/formula/ruby-gem.ts";
+import renderMint from "./templates/formula/mint.ts";
 
 import renderCaskApp from "./templates/cask/cask-app.ts";
 import renderGithubReleaseCask from "./templates/cask/github-release.ts";
@@ -37,6 +38,7 @@ const FORMULA_TEMPLATES: Record<
   swift_spm: renderSwiftSpm,
   dotnet_tool: renderDotnetTool,
   ruby_gem: renderRubyGem,
+  mint: renderMint,
 };
 
 const CASK_TEMPLATES: Record<CaskPayload["template"], (p: any) => string> = {
