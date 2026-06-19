@@ -13,7 +13,9 @@ import {
   getConfigPath,
   setUpdateAutoPush,
   setUpdateScheduleHours,
+  setGithubToken,
 } from "../lib/config.ts";
+import { ensureSetup, runSetup, runConfigSetRemote } from "../lib/setup.ts";
 import { updateFormulas } from "../lib/update-formulas.ts";
 import {
   installBrewHooks,
@@ -36,16 +38,15 @@ const DEFAULT_TAP_PATH = join(homedir(), "homebrew-mytapp");
 
 async function resolveTapPath(cliTapOpt) {
   if (cliTapOpt) return resolve(cliTapOpt);
-
-  const saved = await getTapPath();
-  if (saved) return saved;
-
-  const resolved = await setTapPath(DEFAULT_TAP_PATH);
-  const chalk = (await import("chalk")).default;
-  console.log(chalk.dim(`Using default tap path: ${resolved}`));
-  console.log(chalk.dim(`Change with: allbrew config set-tap <path>`));
-  return resolved;
+  return await ensureSetup();
 }
+
+program
+  .command("init")
+  .description("First-run setup: create local tap, optionally connect to GitHub")
+  .action(async () => {
+    await runSetup();
+  });
 
 const configCmd = program
   .command("config")
@@ -114,6 +115,25 @@ configCmd
     }
     await setUpdateScheduleHours(parsed);
     console.log(chalk.green(`Update schedule set to: ${parsed} hours`));
+  });
+
+configCmd
+  .command("set-token <token>")
+  .description('Set a GitHub Personal Access Token (needs "public_repo" scope)')
+  .action(async (token) => {
+    const chalk = (await import("chalk")).default;
+    await setGithubToken(token.trim());
+    console.log(chalk.green("GitHub token saved."));
+    console.log(
+      chalk.dim("Verify with: allbrew config show"),
+    );
+  });
+
+configCmd
+  .command("set-remote")
+  .description("Connect your local tap to a GitHub repo (create or link existing)")
+  .action(async () => {
+    await runConfigSetRemote();
   });
 
 const updateFormulasCmd = program

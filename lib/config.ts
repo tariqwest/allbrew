@@ -6,8 +6,14 @@ import { resolve } from 'node:path';
 const CONFIG_DIR = join(homedir(), '.config', 'allbrew');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 
+export type RemoteMode = "local" | "github";
+
 export type AllbrewConfig = {
   tapPath?: string;
+  tapName?: string;
+  githubUser?: string;
+  githubToken?: string;
+  remoteMode?: RemoteMode;
   update?: {
     autoPush?: boolean;
     scheduleHours?: number;
@@ -54,6 +60,33 @@ export async function setUpdateScheduleHours(hours: number) {
   return hours;
 }
 
+export async function setGithubToken(token: string) {
+  const config = await loadConfig();
+  config.githubToken = token;
+  await saveConfig(config);
+}
+
+export async function setGithubUser(user: string) {
+  const config = await loadConfig();
+  config.githubUser = user;
+  await saveConfig(config);
+}
+
+export async function setRemoteMode(mode: RemoteMode) {
+  const config = await loadConfig();
+  config.remoteMode = mode;
+  await saveConfig(config);
+}
+
+export async function getGithubToken(): Promise<string | null> {
+  const config = await loadConfig();
+  return config.githubToken || process.env.GITHUB_TOKEN || null;
+}
+
 export function getConfigPath() {
   return CONFIG_FILE;
+}
+
+export function getConfigDir() {
+  return CONFIG_DIR;
 }
