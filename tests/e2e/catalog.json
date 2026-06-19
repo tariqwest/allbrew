@@ -278,5 +278,35 @@
     "verifyCommand": ["iblinter", "--version"],
     "skip": false,
     "notes": "Mint-installed Swift CLI — XIB/Storyboard linter"
+  },
+  {
+    "name": "swiftplantuml",
+    "url": "https://github.com/MarcoEidinger/SwiftPlantUML",
+    "generator": "mint",
+    "allbrewArgs": ["--name", "swiftplantuml"],
+    "expectedBin": "swiftplantuml",
+    "verifyCommand": ["swiftplantuml", "--version"],
+    "skip": false,
+    "notes": "Mint-installed Swift CLI — PlantUML class diagram generator"
+  },
+  {
+    "name": "bartycrouch",
+    "url": "https://github.com/FlineDev/BartyCrouch",
+    "generator": "mint",
+    "allbrewArgs": ["--name", "bartycrouch"],
+    "expectedBin": "bartycrouch",
+    "verifyCommand": ["bartycrouch", "--version"],
+    "skip": false,
+    "notes": "Mint-installed Swift CLI — Strings file updater/translator"
+  },
+  {
+    "name": "asccli",
+    "url": "https://github.com/tddworks/asc-cli",
+    "generator": "mint",
+    "allbrewArgs": ["--name", "asccli"],
+    "expectedBin": "asccli",
+    "verifyCommand": ["asccli", "--version"],
+    "skip": false,
+    "notes": "Mint-installed Swift CLI — App Store Connect CLI tool"
   }
 ]
