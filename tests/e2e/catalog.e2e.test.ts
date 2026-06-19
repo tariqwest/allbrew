@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
+import { readFileSync } from "node:fs";
 import catalog from "./catalog.json";
 
 /**
@@ -13,19 +14,33 @@ import catalog from "./catalog.json";
  *   - allbrew available (bun link or bun run bin/allbrew.ts)
  *   - Set E2E=1 to enable: `E2E=1 bun run test:e2e`
  *
+ * Tap mode (controlled by DRY_RUN env var):
+ *   - DRY_RUN unset or DRY_RUN=true  → local temp tap (default, no remote push)
+ *   - DRY_RUN=false                  → use the tap path from ~/.config/allbrew/config.json
+ *                                      allbrew's normal push-to-remote behaviour applies
+ *
  * Each catalog entry:
- *   1. Calls `allbrew <url> [args] --tap <tmpTap>` to generate the formula/cask
- *   2. Runs `brew install --formula|--cask <tmpTap>/...` to install
+ *   1. Calls `allbrew <url> [args] [--tap <tap>]` to generate the formula/cask
+ *   2. Runs `brew install --formula|--cask <file>` to install
  *   3. Runs `verifyCommand` and asserts exit code 0
  *   4. Runs `brew uninstall` to clean up
  */
 
 const E2E = !!process.env.E2E;
+// DRY_RUN defaults to true; set DRY_RUN=false to use the real configured tap
+const DRY_RUN = process.env.DRY_RUN !== "false";
 const TIMEOUT_MS = 300_000; // 5 min per entry
 
-function resolveTap(tapPath: string, name: string, isCask: boolean): string {
-  const subdir = isCask ? "Casks" : "Formula";
-  return join(tapPath, subdir, `${name}.rb`);
+/** Read tapPath from ~/.config/allbrew/config.json, or null if not configured. */
+function readConfiguredTapPath(): string | null {
+  try {
+    const cfg = JSON.parse(
+      readFileSync(join(homedir(), ".config", "allbrew", "config.json"), "utf-8"),
+    );
+    return cfg.tapPath ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function isCaskGenerator(generator: string): boolean {
@@ -65,16 +80,35 @@ function allbrewAvailable(): boolean {
 }
 
 describe.skipIf(!E2E)("E2E catalog tests", () => {
-  let tmpTap = "";
+  let tapDir = "";
+  let isTmpTap = false;
 
   beforeAll(() => {
     if (!brewAvailable()) throw new Error("brew is not installed or not in PATH");
-    tmpTap = mkdtempSync(join(tmpdir(), "allbrew-e2e-tap-"));
+
+    if (DRY_RUN) {
+      tapDir = mkdtempSync(join(tmpdir(), "allbrew-e2e-tap-"));
+      mkdirSync(join(tapDir, "Formula"), { recursive: true });
+      mkdirSync(join(tapDir, "Casks"), { recursive: true });
+      isTmpTap = true;
+      console.log(`[E2E] DRY_RUN mode — temp tap: ${tapDir}`);
+    } else {
+      const configured = readConfiguredTapPath();
+      if (!configured) {
+        throw new Error(
+          "DRY_RUN=false but no tap path found in ~/.config/allbrew/config.json. Run: allbrew init",
+        );
+      }
+      tapDir = configured;
+      isTmpTap = false;
+      console.log(`[E2E] LIVE mode — using configured tap: ${tapDir}`);
+    }
   });
 
   afterAll(() => {
-    if (tmpTap && existsSync(tmpTap)) {
-      rmSync(tmpTap, { recursive: true, force: true });
+    // Only clean up the temp dir; never delete the user's real tap
+    if (isTmpTap && tapDir && existsSync(tapDir)) {
+      rmSync(tapDir, { recursive: true, force: true });
     }
   });
 
@@ -83,17 +117,22 @@ describe.skipIf(!E2E)("E2E catalog tests", () => {
 
     const cask = isCaskGenerator(entry.generator);
     const formulaFlag = cask ? "--cask" : "--formula";
-    const installTarget = cask
-      ? `${tmpTap}/Casks/${entry.name}.rb`
-      : `${tmpTap}/Formula/${entry.name}.rb`;
 
     it(
       `${entry.name} (${entry.generator}): generate → install → verify`,
       async () => {
+        const installTarget = cask
+          ? join(tapDir, "Casks", `${entry.name}.rb`)
+          : join(tapDir, "Formula", `${entry.name}.rb`);
+
         // Step 1: Generate
+        // DRY_RUN=true: pass --tap explicitly so allbrew writes to the temp dir
+        // DRY_RUN=false: omit --tap so allbrew uses its configured tap (and may push)
+        const tapArgs = DRY_RUN ? ["--tap", tapDir] : [];
+        const baseArgs = [entry.url, "--name", entry.name, ...tapArgs, ...entry.allbrewArgs];
         const allbrewCmd = allbrewAvailable()
-          ? ["allbrew", entry.url, "--name", entry.name, "--tap", tmpTap, ...entry.allbrewArgs]
-          : ["bun", "run", "bin/allbrew.ts", entry.url, "--name", entry.name, "--tap", tmpTap, ...entry.allbrewArgs];
+          ? ["allbrew", ...baseArgs]
+          : ["bun", "run", "bin/allbrew.ts", ...baseArgs];
 
         const gen = runCommand(allbrewCmd);
         expect(gen.code, `allbrew generation failed:\n${gen.stderr}`).toBe(0);
