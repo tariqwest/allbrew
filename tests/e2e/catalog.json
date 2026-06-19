@@ -308,5 +308,15 @@
     "verifyCommand": ["asccli", "--version"],
     "skip": false,
     "notes": "Mint-installed Swift CLI — App Store Connect CLI tool"
+  },
+  {
+    "name": "licenseplist",
+    "url": "https://github.com/mono0926/LicensePlist",
+    "generator": "mint",
+    "allbrewArgs": ["--name", "licenseplist"],
+    "expectedBin": "license-plist",
+    "verifyCommand": ["license-plist", "--version"],
+    "skip": false,
+    "notes": "Mint-installed Swift CLI — iOS license list generator"
   }
 ]
