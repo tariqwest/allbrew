@@ -1,0 +1,101 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { collectRubyGemPayload } from "../../../lib/generators/ruby-gem.ts";
+
+vi.mock("../../../lib/sha256.ts", () => ({
+  hashUrl: vi.fn().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
+  downloadAndHash: vi.fn().mockResolvedValue({ sha256: "mocked_sha256_hash" }),
+}));
+
+describe("collectRubyGemPayload", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+
+    global.fetch = vi.fn((url: string) => {
+      if (url.includes("rubygems.org") && url.includes("/pry")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              version: "0.14.2",
+              gem_uri: "https://rubygems.org/gems/pry-0.14.2.gem",
+              info: "A runtime developer console",
+              homepage_uri: "https://pry.github.io",
+              licenses: ["MIT"],
+            }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+      });
+    }) as any;
+  });
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectRubyGemPayload("pry");
+    expect(payload.template).toBe("ruby_gem");
+  });
+
+  it("extracts name from gem name", async () => {
+    const payload = await collectRubyGemPayload("pry");
+    expect(payload.name).toBe("pry");
+  });
+
+  it("derives className from name", async () => {
+    const payload = await collectRubyGemPayload("pry");
+    expect(payload.className).toBe("Pry");
+  });
+
+  it("uses gem info for description", async () => {
+    const payload = await collectRubyGemPayload("pry");
+    expect(payload.desc).toContain("runtime developer console");
+  });
+
+  it("uses homepage_uri from gem data", async () => {
+    const payload = await collectRubyGemPayload("pry");
+    expect(payload.homepage).toBe("https://pry.github.io");
+  });
+
+  it("wraps gemName as ruby string", async () => {
+    const payload = await collectRubyGemPayload("pry");
+    expect(payload.gemName).toContain("pry");
+  });
+
+  it("generates license line from gem data", async () => {
+    const payload = await collectRubyGemPayload("pry");
+    expect(payload.licenseLine).toContain("MIT");
+  });
+
+  it("generates RubyGems livecheck block", async () => {
+    const payload = await collectRubyGemPayload("pry");
+    expect(payload.livecheckBlock).toContain("rubygems.org");
+    expect(payload.livecheckBlock).toContain("pry");
+    expect(payload.livecheckBlock).toContain("livecheck do");
+  });
+
+  it("respects name override", async () => {
+    const payload = await collectRubyGemPayload("pry", null, {
+      name: "my-pry",
+    });
+    expect(payload.name).toBe("my-pry");
+  });
+
+  it("includes empty service block by default", async () => {
+    const payload = await collectRubyGemPayload("pry");
+    expect(payload.serviceBlock).toBe("");
+  });
+
+  it("includes service block when configured", async () => {
+    const payload = await collectRubyGemPayload("pry", null, {
+      service: true,
+      serviceCommand: "pry",
+    });
+    expect(payload.serviceBlock).toContain("service do");
+  });
+
+  it("throws when RubyGems returns non-OK", async () => {
+    await expect(
+      collectRubyGemPayload("nonexistent-gem-xyz"),
+    ).rejects.toThrow("RubyGems lookup failed");
+  });
+});
