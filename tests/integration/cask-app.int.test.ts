@@ -90,6 +90,36 @@ describe.concurrent("cask-app integration", () => {
     const ruby = renderCask(payload);
     assertValidCask(ruby);
   });
+
+  it("Ollama ZIP: .zip containing .app produces valid cask", async () => {
+    const url = "https://ollama.com/download/Ollama-darwin.zip";
+    const payload = await collectCaskAppPayload(url, {
+      name: "ollama-test",
+      appName: "Ollama.app",
+      homepage: "https://ollama.com",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "ollama-test" do');
+    expect(ruby).toContain('app "Ollama.app"');
+  }, 60000);
+
+  it("balenaEtcher /latest/ redirect: arch in filename, no version", async () => {
+    const url =
+      "https://github.com/balena-io/etcher/releases/latest/download/balenaEtcher-darwin-arm64.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "balenaetcher",
+      appName: "balenaEtcher.app",
+      homepage: "https://etcher.balena.io",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toBe("");
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+  }, 60000);
 });
 
 describe.concurrent("github-release-cask integration", () => {
