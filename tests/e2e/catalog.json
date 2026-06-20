@@ -100,54 +100,24 @@
     "notes": "API client DMG cask — GitHub release"
   },
   {
-    "name": "right-crane",
-    "url": "https://www.rightright.me/products/",
+    "name": "ollama-zip",
+    "url": "https://ollama.com/download/Ollama-darwin.zip",
     "generator": "cask-app",
-    "allbrewArgs": ["--name", "right-crane", "--app-name", "Right Crane.app", "--homepage", "https://www.rightright.me/products/"],
+    "allbrewArgs": ["--name", "ollama-zip", "--app-name", "Ollama.app", "--homepage", "https://ollama.com"],
     "expectedBin": null,
-    "verifyCommand": ["open", "-a", "Right Crane"],
-    "skip": true,
-    "notes": "Developer website URL — needs direct DMG download link"
+    "verifyCommand": ["open", "-a", "Ollama"],
+    "skip": false,
+    "notes": "ZIP containing .app — tests listZipEntries path + developer site redirect to GitHub"
   },
   {
-    "name": "unfatten",
-    "url": "https://www.avelio.tech/unfatten",
+    "name": "balenaetcher",
+    "url": "https://github.com/balena-io/etcher/releases/latest/download/balenaEtcher-darwin-arm64.dmg",
     "generator": "cask-app",
-    "allbrewArgs": ["--name", "unfatten", "--app-name", "Unfatten.app", "--homepage", "https://www.avelio.tech/unfatten"],
+    "allbrewArgs": ["--name", "balenaetcher", "--app-name", "balenaEtcher.app", "--homepage", "https://etcher.balena.io"],
     "expectedBin": null,
-    "verifyCommand": ["open", "-a", "Unfatten"],
-    "skip": true,
-    "notes": "Developer website URL — needs direct DMG download link"
-  },
-  {
-    "name": "tokenbar",
-    "url": "https://www.tokenbar.site/get-started",
-    "generator": "cask-app",
-    "allbrewArgs": ["--name", "tokenbar", "--app-name", "TokenBar.app", "--homepage", "https://www.tokenbar.site"],
-    "expectedBin": null,
-    "verifyCommand": ["open", "-a", "TokenBar"],
-    "skip": true,
-    "notes": "Indie product page — needs direct DMG download link"
-  },
-  {
-    "name": "monk-mode",
-    "url": "https://mac.monk-mode.lifestyle",
-    "generator": "cask-app",
-    "allbrewArgs": ["--name", "monk-mode", "--app-name", "Monk Mode.app", "--homepage", "https://mac.monk-mode.lifestyle"],
-    "expectedBin": null,
-    "verifyCommand": ["open", "-a", "Monk Mode"],
-    "skip": true,
-    "notes": "Indie product page — needs direct DMG download link"
-  },
-  {
-    "name": "metricsync",
-    "url": "https://metricsync.download",
-    "generator": "cask-app",
-    "allbrewArgs": ["--name", "metricsync", "--app-name", "MetricSync.app", "--homepage", "https://metricsync.download"],
-    "expectedBin": null,
-    "verifyCommand": ["open", "-a", "MetricSync"],
-    "skip": true,
-    "notes": "Indie product page — needs direct DMG download link"
+    "verifyCommand": ["open", "-a", "balenaEtcher"],
+    "skip": false,
+    "notes": "GitHub /latest/ redirect with arch in filename — tests no-version URL pattern"
   },
   {
     "name": "taskbook",
@@ -318,5 +288,65 @@
     "verifyCommand": ["license-plist", "--version"],
     "skip": false,
     "notes": "Mint-installed Swift CLI — iOS license list generator"
+  },
+  {
+    "name": "starship-binary",
+    "url": "https://github.com/starship/starship",
+    "generator": "binary-release",
+    "allbrewArgs": ["--name", "starship-binary"],
+    "expectedBin": "starship",
+    "verifyCommand": ["starship", "--version"],
+    "skip": false,
+    "notes": "Binary release path — cross-platform prebuilt binaries from GitHub release"
+  },
+  {
+    "name": "slides",
+    "url": "https://github.com/maaslalani/slides",
+    "generator": "build-from-source",
+    "allbrewArgs": ["--name", "slides"],
+    "expectedBin": "slides",
+    "verifyCommand": ["slides", "--version"],
+    "skip": false,
+    "notes": "Build from source path — Go project built from tarball"
+  },
+  {
+    "name": "seaquel-release",
+    "url": "https://github.com/webstonehq/seaquel",
+    "generator": "github-release-cask",
+    "allbrewArgs": ["--name", "seaquel-release", "--app-name", "Seaquel.app"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "Seaquel"],
+    "skip": false,
+    "notes": "GitHub release cask path — DMG from release assets"
+  },
+  {
+    "name": "magnet",
+    "url": "https://apps.apple.com/us/app/magnet/id441258766",
+    "generator": "mas-app",
+    "allbrewArgs": ["--name", "magnet"],
+    "expectedBin": null,
+    "verifyCommand": ["mas", "info", "441258766"],
+    "skip": false,
+    "notes": "Mac App Store app — MAS-only window manager"
+  },
+  {
+    "name": "starship-raw",
+    "url": "https://github.com/starship/starship/releases/download/v1.19.0/starship-aarch64-apple-darwin.tar.gz",
+    "generator": "raw-binary",
+    "allbrewArgs": ["--name", "starship-raw"],
+    "expectedBin": "starship",
+    "verifyCommand": ["starship", "--version"],
+    "skip": false,
+    "notes": "Raw binary path — single prebuilt binary archive"
+  },
+  {
+    "name": "slides-source",
+    "url": "https://github.com/maaslalani/slides/archive/refs/tags/v0.9.0.tar.gz",
+    "generator": "source-archive",
+    "allbrewArgs": ["--name", "slides-source"],
+    "expectedBin": "slides",
+    "verifyCommand": ["slides", "--version"],
+    "skip": false,
+    "notes": "Source archive path — Go project from source tarball"
   }
 ]

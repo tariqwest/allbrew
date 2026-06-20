@@ -114,4 +114,99 @@ describe.concurrent("go-package integration", () => {
     });
     expect(payload.livecheckBlock).toContain("wakapi/v2/@latest");
   });
+
+  const gokapiRepoInfo = {
+    name: "Gokapi",
+    fullName: "Forceu/Gokapi",
+    description: "Lightweight selfhosted Firefox Send alternative without public upload",
+    homepage: "https://github.com/Forceu/Gokapi",
+    htmlUrl: "https://github.com/Forceu/Gokapi",
+    license: "AGPL-3.0",
+    defaultBranch: "master",
+  };
+
+  it("gokapi: generates valid formula (go:embed web app)", async () => {
+    const payload = await collectGoPackagePayload(gokapiRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("gokapi");
+    expect(payload.className).toBe("Gokapi");
+    expect(ruby).toContain("class Gokapi < Formula");
+    expect(payload.licenseLine).toContain("AGPL-3.0");
+  });
+
+  const gottyRepoInfo = {
+    name: "gotty",
+    fullName: "sorenisanerd/gotty",
+    description: "Share your terminal as a web application",
+    homepage: "https://github.com/sorenisanerd/gotty",
+    htmlUrl: "https://github.com/sorenisanerd/gotty",
+    license: "MIT",
+    defaultBranch: "master",
+  };
+
+  it("gotty: generates valid formula (terminal sharing web app)", async () => {
+    const payload = await collectGoPackagePayload(gottyRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("gotty");
+    expect(ruby).toContain("class Gotty < Formula");
+  });
+
+  const updoRepoInfo = {
+    name: "updo",
+    fullName: "Owloops/updo",
+    description: "Uptime monitoring CLI tool with alerting and TUI",
+    homepage: "https://github.com/Owloops/updo",
+    htmlUrl: "https://github.com/Owloops/updo",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  it("updo: generates valid formula (uptime monitor TUI)", async () => {
+    const payload = await collectGoPackagePayload(updoRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("updo");
+    expect(ruby).toContain("class Updo < Formula");
+  });
+
+  const supersonicRepoInfo = {
+    name: "supersonic",
+    fullName: "dweymouth/supersonic",
+    description: "A lightweight cross-platform desktop client for Subsonic music servers",
+    homepage: "https://github.com/dweymouth/supersonic",
+    htmlUrl: "https://github.com/dweymouth/supersonic",
+    license: "GPL-3.0",
+    defaultBranch: "main",
+  };
+
+  it("supersonic: generates valid formula (Fyne desktop GUI)", async () => {
+    const payload = await collectGoPackagePayload(supersonicRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("supersonic");
+    expect(payload.className).toBe("Supersonic");
+    expect(ruby).toContain("class Supersonic < Formula");
+    expect(payload.licenseLine).toContain("GPL-3.0");
+  });
+
+  it("goatcounter: generates valid formula (CGO/SQLite web analytics)", async () => {
+    const goatcounterRepoInfo = {
+      name: "goatcounter",
+      fullName: "arp242/goatcounter",
+      description: "Easy web analytics. No tracking of personal data.",
+      homepage: "https://www.goatcounter.com",
+      htmlUrl: "https://github.com/arp242/goatcounter",
+      license: "EUPL-1.2",
+      defaultBranch: "master",
+    };
+    const payload = await collectGoPackagePayload(goatcounterRepoInfo, null, {
+      goModule: "zgo.at/goatcounter/v2",
+    });
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("goatcounter");
+    expect(payload.livecheckBlock).toContain("goatcounter/v2/@latest");
+  });
 });

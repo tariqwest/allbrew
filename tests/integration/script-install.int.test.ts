@@ -81,4 +81,49 @@ describe.concurrent("script-install integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
   });
+
+  it("mise: bare domain URL resolves to valid payload", async () => {
+    const payload = await collectScriptInstallPayload(
+      "https://mise.run",
+      { name: "mise" },
+    );
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Mise < Formula");
+  });
+
+  it("nvm: version in URL path resolves to valid payload", async () => {
+    const payload = await collectScriptInstallPayload(
+      "https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh",
+      { name: "nvm" },
+    );
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.scriptFilename).toBe("install.sh");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Nvm < Formula");
+  });
+
+  it("sdkman: get. subdomain + no extension resolves to valid payload", async () => {
+    const payload = await collectScriptInstallPayload(
+      "https://get.sdkman.io",
+      { name: "sdkman" },
+    );
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Sdkman < Formula");
+  });
+
+  it("poetry: Python script (not bash) resolves to valid payload", async () => {
+    const payload = await collectScriptInstallPayload(
+      "https://install.python-poetry.org",
+      { name: "poetry" },
+    );
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Poetry < Formula");
+  });
 });

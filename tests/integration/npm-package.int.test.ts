@@ -63,6 +63,15 @@ describe.concurrent("npm-package integration", () => {
     expect(payload.name).toBe("verdaccio");
   });
 
+  it("@hehehai/buke: generates valid formula for scoped npm package", async () => {
+    const payload = await collectNpmPackagePayload("@hehehai/buke");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("hehehai-buke");
+    expect(payload.className).toBe("HehehaiBuke");
+    expect(payload.url).toContain("registry.npmjs.org/@hehehai/buke");
+  });
+
   it("nonexistent-pkg-xyz: throws on missing package", async () => {
     await expect(
       collectNpmPackagePayload("nonexistent-allbrew-test-xyz-999"),
