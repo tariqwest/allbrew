@@ -204,8 +204,8 @@ async function handleGithubRepoManual(url, opts) {
         value: "ruby-gem",
       },
       {
-        name: "Mint — install Swift CLI via mint install",
-        value: "mint",
+        name: "Swift Mint — install Swift CLI via mint install",
+        value: "swift-mint",
       },
       {
         name: "Build from source — cmake / make / autotools / meson",
@@ -309,9 +309,9 @@ async function handleGithubRepoManual(url, opts) {
       );
     }
 
-    case "mint": {
+    case "swift-mint": {
       return await generateWithConfirmation(
-        "mint",
+        "swift-mint",
         { repoInfo, release },
         opts,
       );
@@ -1061,10 +1061,10 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       );
       break;
     }
-    case "mint": {
-      const { generateMint } =
-        await import("./generators/mint.ts");
-      result = await generateMint(
+    case "swift-mint": {
+      const { generateSwiftMint } =
+        await import("./generators/swift-mint.ts");
+      result = await generateSwiftMint(
         params.repoInfo,
         params.release,
         mergedOpts,
@@ -1146,7 +1146,7 @@ function isFormulaGenerator(generatorName: string) {
     "swift-spm",
     "dotnet-tool",
     "ruby-gem",
-    "mint",
+    "swift-mint",
   ].includes(generatorName);
 }
 

@@ -9,14 +9,14 @@ import {
 import { hashUrl } from "../sha256.ts";
 import { githubLatestLivecheckBlock } from "./livecheck.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
-import type { MintPayload } from "../template-payload.ts";
+import type { SwiftMintPayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
-export async function collectMintPayload(
+export async function collectSwiftMintPayload(
   repoInfo: any,
   release: any,
   options: any = {},
-): Promise<MintPayload> {
+): Promise<SwiftMintPayload> {
   const name = options.name || toFormulaName(repoInfo.name);
   const className = toClassName(name);
   const desc =
@@ -40,7 +40,7 @@ export async function collectMintPayload(
   const binName = options.binName || repoInfo.name || name;
 
   return {
-    template: "mint",
+    template: "swift_mint",
     name,
     className,
     desc: rubyEscape(desc),
@@ -57,11 +57,11 @@ export async function collectMintPayload(
   };
 }
 
-export async function generateMint(
+export async function generateSwiftMint(
   repoInfo: any,
   release: any,
   options: any = {},
 ) {
-  const payload = await collectMintPayload(repoInfo, release, options);
+  const payload = await collectSwiftMintPayload(repoInfo, release, options);
   return writeRenderedFormula(payload, options.tapPath);
 }

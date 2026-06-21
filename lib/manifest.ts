@@ -20,7 +20,7 @@ export type GeneratorName =
   | "swift-spm"
   | "dotnet-tool"
   | "ruby-gem"
-  | "mint";
+  | "swift-mint";
 
 export type PackageManifest = {
   name: string;
