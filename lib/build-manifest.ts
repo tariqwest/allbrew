@@ -107,6 +107,28 @@ function buildSource(
       };
     case "cask-app-mas":
       return { appStoreUrl: params.url };
+    case "spm-package":
+      return {
+        fullName: repoInfo?.fullName,
+        defaultBranch: repoInfo?.defaultBranch || "main",
+        releaseTag: release?.tagName || null,
+      };
+    case "dotnet-package":
+      return {
+        packageName: params.packageName,
+        fullName: repoInfo?.fullName || null,
+      };
+    case "gem-package":
+      return {
+        gemName: params.gemName,
+        fullName: repoInfo?.fullName || null,
+      };
+    case "mint-package":
+      return {
+        fullName: repoInfo?.fullName,
+        defaultBranch: repoInfo?.defaultBranch || "main",
+        releaseTag: release?.tagName || null,
+      };
     default:
       return {};
   }

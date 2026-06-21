@@ -77,8 +77,14 @@ export async function run(url, opts: any = {}) {
             },
           ],
         });
-        classification.type = choice;
-        return await run(url, opts);
+        switch (choice) {
+          case "bash-script":
+            return await handleBashScript(classification.url, opts);
+          case "cask-dmg":
+            return await handleCaskDmg(classification.url, opts);
+          case "archive":
+            return await handleArchive(classification.url, opts);
+        }
     }
   } catch (err) {
     console.error(chalk.red(`\nError: ${err.message}`));

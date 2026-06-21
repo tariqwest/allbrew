@@ -22,6 +22,13 @@ async function githubContext(source: Record<string, unknown>) {
   return { repoInfo, release };
 }
 
+async function optionalRepoInfo(source: Record<string, unknown>) {
+  const fullName = String(source.fullName || "");
+  if (!fullName) return null;
+  const { owner, repo } = parseFullName(fullName);
+  return getRepoInfo(owner, repo);
+}
+
 export type UpdateResult = {
   name: string;
   filePath: string;
@@ -221,6 +228,66 @@ export async function updateManagedPackage(
         filePath: result.filePath,
         kind: "cask",
         recordedVersion: version,
+      };
+    }
+    case "spm-package": {
+      const { collectSpmPackagePayload } = await import("./generators/spm-package.ts");
+      const { writeRenderedFormula } = await import("./template-renderer.ts");
+      const { repoInfo, release } = await githubContext(manifest.source);
+      const payload = await collectSpmPackagePayload(repoInfo, release, opts);
+      const result = await writeRenderedFormula(payload, manifest.tapPath);
+      return {
+        name: result.name,
+        filePath: result.filePath,
+        kind: "formula",
+        recordedVersion: extractVersionFromTag(release.tagName),
+      };
+    }
+    case "dotnet-package": {
+      const { collectDotnetPackagePayload } = await import("./generators/dotnet-package.ts");
+      const { writeRenderedFormula } = await import("./template-renderer.ts");
+      const repoInfo = await optionalRepoInfo(manifest.source);
+      const payload = await collectDotnetPackagePayload(
+        String(manifest.source.packageName),
+        repoInfo,
+        opts,
+      );
+      const result = await writeRenderedFormula(payload, manifest.tapPath);
+      return {
+        name: result.name,
+        filePath: result.filePath,
+        kind: "formula",
+        recordedVersion: payload.version,
+      };
+    }
+    case "gem-package": {
+      const { collectGemPackagePayload } = await import("./generators/gem-package.ts");
+      const { writeRenderedFormula } = await import("./template-renderer.ts");
+      const repoInfo = await optionalRepoInfo(manifest.source);
+      const payload = await collectGemPackagePayload(
+        String(manifest.source.gemName),
+        repoInfo,
+        opts,
+      );
+      const result = await writeRenderedFormula(payload, manifest.tapPath);
+      return {
+        name: result.name,
+        filePath: result.filePath,
+        kind: "formula",
+        recordedVersion: payload.version,
+      };
+    }
+    case "mint-package": {
+      const { collectMintPackagePayload } = await import("./generators/mint-package.ts");
+      const { writeRenderedFormula } = await import("./template-renderer.ts");
+      const { repoInfo, release } = await githubContext(manifest.source);
+      const payload = await collectMintPackagePayload(repoInfo, release, opts);
+      const result = await writeRenderedFormula(payload, manifest.tapPath);
+      return {
+        name: result.name,
+        filePath: result.filePath,
+        kind: "formula",
+        recordedVersion: extractVersionFromTag(release.tagName),
       };
     }
     default:
