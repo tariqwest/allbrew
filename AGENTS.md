@@ -101,24 +101,26 @@ flowchart TD
   Update --> TapGit[tap-git commit/push]
 ```
 
-### Generators (12 total)
+### Generators (16 total)
 
 | Generator | Output | Install / deps | Livecheck |
 |-----------|--------|----------------|-----------|
 | `binary-release` | Formula | GitHub release tarballs | `:github_latest` |
-| `build-from-source` | Formula | cmake/autotools/make/meson | tag / github |
+| `source-build` | Formula | cmake/autotools/make/meson | tag / github |
 | `npm-package` | Formula | `node`, `std_npm_args` | npm registry |
 | `pip-package` | Formula | `virtualenv`, transitive `resource` | PyPI |
 | `cargo-package` | Formula | `rust`, `std_cargo_args` | crates.io |
 | `go-package` | Formula | `go`, `std_go_args` | Go module proxy |
-| `script-install` | Formula | runs `.sh` with Cellar `PREFIX` | url |
-| `source-archive` | Formula | build from extracted source | url |
-| `raw-binary` | Formula | `bin.install` prebuilt exe | url |
+| `install-script` | Formula | runs `.sh` with Cellar `PREFIX` | url |
+| `archive-build` | Formula | build from extracted source | url |
+| `binary-direct` | Formula | `bin.install` prebuilt exe | url |
 | `cask-app` | Cask | DMG/ZIP `.app` URL | url |
-| `github-release-cask` | Cask | release `.dmg`/`.zip` | github |
-| `mas-app` | Cask | `mas` installer | MAS |
-
-Additional generators implemented: `swift-spm`, `dotnet-tool`, `ruby-gem`, `swift-mint`. These follow the same payload → template pattern.
+| `cask-app-release` | Cask | release `.dmg`/`.zip` | github |
+| `cask-app-mas` | Cask | `mas` installer | MAS |
+| `spm-package` | Formula | `swift`, `swift build` | `:github_latest` |
+| `dotnet-package` | Formula | `dotnet`, `dotnet tool install` | NuGet |
+| `gem-package` | Formula | `ruby`, `gem install` | rubygems.org |
+| `mint-package` | Formula | `mint`, `mint install` | `:github_latest` |
 
 ### Template layer
 

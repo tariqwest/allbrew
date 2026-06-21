@@ -74,27 +74,27 @@ function buildSource(
         fullName: repoInfo?.fullName,
         releaseTag: release?.tagName,
       };
-    case "build-from-source":
+    case "source-build":
       return {
         fullName: repoInfo?.fullName,
         defaultBranch: repoInfo?.defaultBranch || "main",
         buildSystem: params.buildSystem,
         releaseTag: release?.tagName || null,
       };
-    case "github-release-cask":
+    case "cask-app-release":
       return {
         fullName: repoInfo?.fullName,
         releaseTag: release?.tagName,
         appName: opts.appName || params.appName || null,
       };
-    case "script-install":
+    case "install-script":
       return { url: params.url };
-    case "source-archive":
+    case "archive-build":
       return {
         downloadUrl: archiveInfo?.downloadUrl,
         forcedBuildSystem: archiveInfo?.forcedBuildSystem || null,
       };
-    case "raw-binary":
+    case "binary-direct":
       return {
         downloadUrl: archiveInfo?.downloadUrl,
         selectedBinaries:
@@ -105,7 +105,7 @@ function buildSource(
         url: params.url,
         appName: params.appName || opts.appName || null,
       };
-    case "mas-app":
+    case "cask-app-mas":
       return { appStoreUrl: params.url };
     default:
       return {};
@@ -120,7 +120,7 @@ function inferRecordedVersion(
   if (release?.tagName) {
     return extractVersionFromTag(String(release.tagName));
   }
-  if (generatorName === "mas-app" && params.version) {
+  if (generatorName === "cask-app-mas" && params.version) {
     return String(params.version);
   }
   return "";

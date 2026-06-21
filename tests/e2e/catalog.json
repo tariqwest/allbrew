@@ -72,7 +72,7 @@
   {
     "name": "starship",
     "url": "https://starship.rs/install.sh",
-    "generator": "script-install",
+    "generator": "install-script",
     "allbrewArgs": ["--name", "starship"],
     "expectedBin": "starship",
     "verifyCommand": ["starship", "--version"],
@@ -152,7 +152,7 @@
   {
     "name": "uv",
     "url": "https://astral.sh/uv/install.sh",
-    "generator": "script-install",
+    "generator": "install-script",
     "allbrewArgs": ["--name", "uv"],
     "expectedBin": "uv",
     "verifyCommand": ["uv", "--version"],
@@ -182,7 +182,7 @@
   {
     "name": "rugby",
     "url": "https://github.com/swiftyfinch/Rugby",
-    "generator": "swift-spm",
+    "generator": "spm-package",
     "allbrewArgs": ["--name", "rugby"],
     "expectedBin": "rugby",
     "verifyCommand": ["rugby", "--version"],
@@ -192,7 +192,7 @@
   {
     "name": "doedit",
     "url": "https://github.com/wendyliga/doedit",
-    "generator": "swift-spm",
+    "generator": "spm-package",
     "allbrewArgs": ["--name", "doedit"],
     "expectedBin": "doedit",
     "verifyCommand": ["doedit", "--help"],
@@ -202,7 +202,7 @@
   {
     "name": "dotnet-serve",
     "url": "https://www.nuget.org/packages/dotnet-serve",
-    "generator": "dotnet-tool",
+    "generator": "dotnet-package",
     "allbrewArgs": ["--package", "dotnet-serve"],
     "expectedBin": "dotnet-serve",
     "verifyCommand": ["dotnet-serve", "--version"],
@@ -212,7 +212,7 @@
   {
     "name": "csharprepl",
     "url": "https://www.nuget.org/packages/csharprepl",
-    "generator": "dotnet-tool",
+    "generator": "dotnet-package",
     "allbrewArgs": ["--package", "csharprepl"],
     "expectedBin": "csharprepl",
     "verifyCommand": ["csharprepl", "--version"],
@@ -222,7 +222,7 @@
   {
     "name": "pry",
     "url": "https://rubygems.org/gems/pry",
-    "generator": "ruby-gem",
+    "generator": "gem-package",
     "allbrewArgs": ["--gem-name", "pry"],
     "expectedBin": "pry",
     "verifyCommand": ["pry", "--version"],
@@ -232,7 +232,7 @@
   {
     "name": "license-finder",
     "url": "https://rubygems.org/gems/license_finder",
-    "generator": "ruby-gem",
+    "generator": "gem-package",
     "allbrewArgs": ["--gem-name", "license_finder", "--name", "license-finder"],
     "expectedBin": "license_finder",
     "verifyCommand": ["license_finder", "--version"],
@@ -242,7 +242,7 @@
   {
     "name": "iblinter",
     "url": "https://github.com/IBDecodable/IBLinter",
-    "generator": "swift-mint",
+    "generator": "mint-package",
     "allbrewArgs": ["--name", "iblinter"],
     "expectedBin": "iblinter",
     "verifyCommand": ["iblinter", "--version"],
@@ -252,7 +252,7 @@
   {
     "name": "swiftplantuml",
     "url": "https://github.com/MarcoEidinger/SwiftPlantUML",
-    "generator": "swift-mint",
+    "generator": "mint-package",
     "allbrewArgs": ["--name", "swiftplantuml"],
     "expectedBin": "swiftplantuml",
     "verifyCommand": ["swiftplantuml", "--version"],
@@ -262,7 +262,7 @@
   {
     "name": "bartycrouch",
     "url": "https://github.com/FlineDev/BartyCrouch",
-    "generator": "swift-mint",
+    "generator": "mint-package",
     "allbrewArgs": ["--name", "bartycrouch"],
     "expectedBin": "bartycrouch",
     "verifyCommand": ["bartycrouch", "--version"],
@@ -272,7 +272,7 @@
   {
     "name": "asccli",
     "url": "https://github.com/tddworks/asc-cli",
-    "generator": "swift-mint",
+    "generator": "mint-package",
     "allbrewArgs": ["--name", "asccli"],
     "expectedBin": "asccli",
     "verifyCommand": ["asccli", "--version"],
@@ -282,7 +282,7 @@
   {
     "name": "licenseplist",
     "url": "https://github.com/mono0926/LicensePlist",
-    "generator": "swift-mint",
+    "generator": "mint-package",
     "allbrewArgs": ["--name", "licenseplist"],
     "expectedBin": "license-plist",
     "verifyCommand": ["license-plist", "--version"],
@@ -302,7 +302,7 @@
   {
     "name": "slides",
     "url": "https://github.com/maaslalani/slides",
-    "generator": "build-from-source",
+    "generator": "source-build",
     "allbrewArgs": ["--name", "slides"],
     "expectedBin": "slides",
     "verifyCommand": ["slides", "--version"],
@@ -312,7 +312,7 @@
   {
     "name": "seaquel-release",
     "url": "https://github.com/webstonehq/seaquel",
-    "generator": "github-release-cask",
+    "generator": "cask-app-release",
     "allbrewArgs": ["--name", "seaquel-release", "--app-name", "Seaquel.app"],
     "expectedBin": null,
     "verifyCommand": ["open", "-a", "Seaquel"],
@@ -322,7 +322,7 @@
   {
     "name": "magnet",
     "url": "https://apps.apple.com/us/app/magnet/id441258766",
-    "generator": "mas-app",
+    "generator": "cask-app-mas",
     "allbrewArgs": ["--name", "magnet"],
     "expectedBin": null,
     "verifyCommand": ["mas", "info", "441258766"],
@@ -332,7 +332,7 @@
   {
     "name": "starship-raw",
     "url": "https://github.com/starship/starship/releases/download/v1.19.0/starship-aarch64-apple-darwin.tar.gz",
-    "generator": "raw-binary",
+    "generator": "binary-direct",
     "allbrewArgs": ["--name", "starship-raw"],
     "expectedBin": "starship",
     "verifyCommand": ["starship", "--version"],
@@ -342,7 +342,7 @@
   {
     "name": "slides-source",
     "url": "https://github.com/maaslalani/slides/archive/refs/tags/v0.9.0.tar.gz",
-    "generator": "source-archive",
+    "generator": "archive-build",
     "allbrewArgs": ["--name", "slides-source"],
     "expectedBin": "slides",
     "verifyCommand": ["slides", "--version"],

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { collectCaskAppPayload } from "../../lib/generators/cask-app.ts";
-import { collectGithubReleaseCaskPayload } from "../../lib/generators/github-release-cask.ts";
+import { collectCaskAppReleasePayload } from "../../lib/generators/cask-app-release.ts";
 import { renderCask } from "../../lib/template-renderer.ts";
 import { assertValidCask } from "./helpers/validate-ruby.ts";
 
@@ -122,7 +122,7 @@ describe.concurrent("cask-app integration", () => {
   }, 60000);
 });
 
-describe.concurrent("github-release-cask integration", () => {
+describe.concurrent("cask-app-release integration", () => {
   const seaquelRepoInfo = {
     name: "seaquel",
     fullName: "webstonehq/seaquel",
@@ -147,11 +147,11 @@ describe.concurrent("github-release-cask integration", () => {
   };
 
   it("Seaquel: payload from release is well-formed", async () => {
-    const payload = await collectGithubReleaseCaskPayload(
+    const payload = await collectCaskAppReleasePayload(
       seaquelRepoInfo,
       seaquelRelease,
     );
-    expect(payload.template).toBe("github_release");
+    expect(payload.template).toBe("cask_app_release");
     expect(payload.name).toBe("seaquel");
     expect(payload.version).toBe("2026.4.8");
     expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -160,7 +160,7 @@ describe.concurrent("github-release-cask integration", () => {
   });
 
   it("Seaquel: generates structurally valid Ruby cask", async () => {
-    const payload = await collectGithubReleaseCaskPayload(
+    const payload = await collectCaskAppReleasePayload(
       seaquelRepoInfo,
       seaquelRelease,
     );

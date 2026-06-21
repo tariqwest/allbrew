@@ -112,11 +112,11 @@ export async function updateManagedPackage(
         recordedVersion: extractVersionFromTag(release.tagName),
       };
     }
-    case "build-from-source": {
-      const { collectBuildFromSourcePayload } = await import("./generators/build-from-source.ts");
+    case "source-build": {
+      const { collectSourceBuildPayload } = await import("./generators/source-build.ts");
       const { writeRenderedFormula } = await import("./template-renderer.ts");
       const { repoInfo, release } = await githubContext(manifest.source);
-      const payload = await collectBuildFromSourcePayload(
+      const payload = await collectSourceBuildPayload(
         repoInfo,
         release,
         manifest.source.buildSystem,
@@ -130,11 +130,11 @@ export async function updateManagedPackage(
         recordedVersion: extractVersionFromTag(release.tagName),
       };
     }
-    case "github-release-cask": {
-      const { collectGithubReleaseCaskPayload } = await import("./generators/github-release-cask.ts");
+    case "cask-app-release": {
+      const { collectCaskAppReleasePayload } = await import("./generators/cask-app-release.ts");
       const { writeRenderedCask } = await import("./template-renderer.ts");
       const { repoInfo, release } = await githubContext(manifest.source);
-      const payload = await collectGithubReleaseCaskPayload(repoInfo, release, {
+      const payload = await collectCaskAppReleasePayload(repoInfo, release, {
         ...opts,
         appName: manifest.source.appName,
       });
@@ -146,10 +146,10 @@ export async function updateManagedPackage(
         recordedVersion: extractVersionFromTag(release.tagName),
       };
     }
-    case "script-install": {
-      const { collectScriptInstallPayload } = await import("./generators/script-install.ts");
+    case "install-script": {
+      const { collectInstallScriptPayload } = await import("./generators/install-script.ts");
       const { writeRenderedFormula } = await import("./template-renderer.ts");
-      const payload = await collectScriptInstallPayload(String(manifest.source.url), opts);
+      const payload = await collectInstallScriptPayload(String(manifest.source.url), opts);
       const result = await writeRenderedFormula(payload, manifest.tapPath);
       return {
         name: result.name,
@@ -158,8 +158,8 @@ export async function updateManagedPackage(
         recordedVersion: manifest.recordedVersion,
       };
     }
-    case "source-archive": {
-      const { collectSourceArchivePayload } = await import("./generators/source-archive.ts");
+    case "archive-build": {
+      const { collectArchiveBuildPayload } = await import("./generators/archive-build.ts");
       const { writeRenderedFormula } = await import("./template-renderer.ts");
       const inspected = await inspectArchive(String(manifest.source.downloadUrl));
       const archiveInfo = {
@@ -168,7 +168,7 @@ export async function updateManagedPackage(
           ? { forcedBuildSystem: manifest.source.forcedBuildSystem }
           : {}),
       };
-      const payload = await collectSourceArchivePayload(archiveInfo, opts);
+      const payload = await collectArchiveBuildPayload(archiveInfo, opts);
       const result = await writeRenderedFormula(payload, manifest.tapPath);
       return {
         name: result.name,
@@ -177,11 +177,11 @@ export async function updateManagedPackage(
         recordedVersion: manifest.recordedVersion,
       };
     }
-    case "raw-binary": {
-      const { collectRawBinaryPayload } = await import("./generators/raw-binary.ts");
+    case "binary-direct": {
+      const { collectBinaryDirectPayload } = await import("./generators/binary-direct.ts");
       const { writeRenderedFormula } = await import("./template-renderer.ts");
       const archiveInfo = await inspectArchive(String(manifest.source.downloadUrl));
-      const payload = await collectRawBinaryPayload(
+      const payload = await collectBinaryDirectPayload(
         archiveInfo,
         manifest.source.selectedBinaries,
         opts,
@@ -209,10 +209,10 @@ export async function updateManagedPackage(
         recordedVersion: manifest.recordedVersion,
       };
     }
-    case "mas-app": {
-      const { collectMasAppPayload } = await import("./generators/mas-app.ts");
+    case "cask-app-mas": {
+      const { collectCaskAppMasPayload } = await import("./generators/cask-app-mas.ts");
       const { writeRenderedCask } = await import("./template-renderer.ts");
-      const payload = await collectMasAppPayload(String(manifest.source.appStoreUrl), opts);
+      const payload = await collectCaskAppMasPayload(String(manifest.source.appStoreUrl), opts);
       const result = await writeRenderedCask(payload, manifest.tapPath);
       const appId = String(manifest.source.appStoreUrl).match(/\/id(\d+)/)?.[1];
       const version = appId ? await masLatestVersion(appId) : payload.version;
