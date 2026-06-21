@@ -1,19 +1,50 @@
-# Package-manager test cases — deep research pass (June 2026)
+# allbrew test cases — deep research pass (June 2026)
 
-Companion to [package-manager-test-cases.md](./package-manager-test-cases.md). This is an
+## Research brief
+
+### Goal
+
+Build a **compelling test-case catalog** for allbrew across **all of its install-path generators**, each case chosen to **stress real edge cases** when generating, installing, and running an app end-to-end on **macOS**:
+
+- **package-manager path** — `pip-package`, `npm-package`, `cargo-package`, `go-package` (+ future `ruby-gem` / `swift-spm` / `nuget`·`dotnet-tool`)
+- **`script-install`** — `curl | bash` install scripts
+- **`cask-app`** — direct `.dmg`/`.zip`/`.pkg` downloads
+- **`binary-release` / `raw-binary` / `github-release-cask` / `build-from-source` / `source-archive`** — the "ignore brew, pull from releases or build from source" fallback paths
+- **`mas-app`** — Mac App Store apps
+
+The research **started** with the package-manager path (the original brief below) and was **extended to every generator** — see [Deeper dive](#deeper-dive) for the generator-to-section map.
+
+### Original request
+
+> To really test this app and flex its edge cases we need to develop a list of compelling test case URLs/apps to install. For the language ecosystem/package manager app formula generation path, identify a set of **standalone, globally-installed apps** (rather than packages that are only imported for use programmatically within other projects), **macOS-compatible** apps that **do not have a Homebrew formula or cask already**. This set should include (1) desktop apps with a traditional desktop GUI, (2) locally-hosted server apps with a web UI served via the browser, and (3) TUI apps that live in the terminal. These apps should be distributed via (1) pip/pipx/uv, (2) rubygem, (3) npm/bun/deno, (4) cargo, (5) go modules, and (6) Swift Package Manager / (7) NuGet/dotnet tool. For each UI type × language ecosystem, provide **at least 5 examples**, preferably popular and highly-used apps — about **25 test cases minimum**; find more if readily available. Use the [Google/Gemini starting matrix](./Package%20manager%20app%20examples%20from%20google.md) as a starting point but **don’t take its results as given**; do your own search and evaluation.
+
+### Deeper dive
+Companion to [allbrew_test_cases.md](./allbrew_test_cases.md). This is an
 **independently re-verified** catalog: every pick below was checked against the full
 Homebrew formula **and** cask name lists (`brew formulae` + `brew casks`, 25,388 tokens,
 June 2026) and filtered for **standalone, globally-installable, macOS-compatible apps**.
 
-Scope expanded beyond package-manager generators to also cover:
-- **[§ Script-install](#script-install-test-cases--curl--bash-installs-generator-script-install)** — `curl | bash` install scripts (25+ verified URLs)
-- **[§ Direct-download cask-app](#direct-download-cask-app-test-cases--dmg--zip--pkg-generator-cask-app)** — `.dmg`/`.zip`/`.pkg` downloads from developer sites and GitHub releases
+**Scope expanded to cover every allbrew generator, not just the package-manager path.** The
+original brief targeted `pip`/`npm`/`cargo`/`go`-package; this catalog now provides test inputs
+for all 12 generators, so each install path has real apps to exercise it:
+
+| Generator | Where the test inputs live |
+|-----------|----------------------------|
+| `pip-package` / `npm-package` / `cargo-package` / `go-package` | the per-ecosystem sections ([Python](#python--pip--pipx--uv-tool-install--generator-pip-package), [Node](#node--npm-i--g--bun--deno--generator-npm-package), [Rust](#rust--cargo-install--generator-cargo-package), [Go](#go--go-install-latest--generator-go-package)) |
+| future `ruby-gem` / `swift-spm` / `nuget`/`dotnet-tool` | the [Ruby](#ruby--gem-install--generator-not-yet--future-ruby-gem), [Swift](#swift--spm--mint--generator-not-yet--future-swift-spm), and [.NET](#net--dotnet-tool-install--g--generator-not-yet--future-nuget-packagedotnet-tool) sections |
+| `script-install` | [§ Script-install](#script-install-test-cases--curl--bash-installs-generator-script-install) — `curl \| bash` install scripts (25+ verified URLs) |
+| `cask-app` | [§ Direct-download cask-app](#direct-download-cask-app-test-cases--dmg--zip--pkg-generator-cask-app) — `.dmg`/`.zip`/`.pkg` from developer sites and GitHub releases |
+| `binary-release` / `raw-binary` / `github-release-cask` / `build-from-source` / `source-archive` | [§ In-Homebrew fallback paths](#in-homebrew-candidates--non-brew-fallback-paths-releases--source) — in-HB apps whose releases ship prebuilt binaries / DMGs (test the "ignore brew, pull from releases or build from source" path) |
+| `mas-app` | MAS-only apps (Magnet, ColorSlurp, Bear) flagged in the [direct-download section](#direct-download-cask-app-test-cases--dmg--zip--pkg-generator-cask-app) |
+
+Every app is captured in one place in the [§ Combined master table](#combined-master-table--all-apps-from-every-table-above) ([extracted file](./allbrew_test_cases.md)), whose `is_*` / `has_*` / `in_*` columns map each app to the
+generator(s) it can exercise.
 
 The brief was to dig past the first page of search results for *hidden gems*. Two findings
 shaped the result:
 
 1. **Many "not in Homebrew" picks from the original doc have since been packaged.** See
-   [§ Corrections](#corrections-now-in-homebrew--exclude). Re-verify before every test cycle.
+   [§ Corrections](#corrections--now-in-homebrew--exclude). Re-verify before every test cycle.
 2. **The thin columns are thin for structural reasons, not lack of searching.** Ruby,
    npm-desktop-GUI, Rust-web, and .NET-GUI genuinely lack standalone apps on the package-manager
    path — consumer apps in those ecosystems ship as casks/DMGs or are dev CLIs already in HB.
@@ -31,7 +62,9 @@ token matches, plus a fuzzy substring pass to catch token-spelling variants (thi
 
 ---
 
-## Coverage summary (verified, not-in-HB picks)
+## Coverage summary
+
+**Package-manager path** (verified, not-in-HB picks) — UI type × ecosystem:
 
 | Ecosystem | TUI | Web | Desktop GUI |
 |-----------|----:|----:|------------:|
@@ -43,8 +76,20 @@ token matches, plus a fuzzy substring pass to catch token-spelling variants (thi
 | **Swift** (SPM/Mint) | 2 (emerging) | 0 | 1 (macMLX, DMG) + 2 dev CLIs |
 | **.NET** (dotnet tool) | 2 | 3 | 0 (ships as cask) |
 
-≈ **80 verified picks**, well past the 25-case minimum. The matrix is intentionally uneven:
-where a UI × ecosystem cell has no real standalone apps, that is the finding.
+≈ **80 verified package-manager picks**, well past the 25-case minimum. The matrix is intentionally
+uneven: where a UI × ecosystem cell has no real standalone apps, that is the finding.
+
+**Other generators** (added in the scope expansion):
+
+| Generator(s) | Count | Section |
+|--------------|------:|---------|
+| `script-install` | 25+ verified URLs (3 found on this machine) | [§ Script-install](#script-install-test-cases--curl--bash-installs-generator-script-install) |
+| `cask-app` | 16 on-machine apps + 6 web-researched + URL-pattern matrix | [§ Direct-download cask-app](#direct-download-cask-app-test-cases--dmg--zip--pkg-generator-cask-app) |
+| `binary-release` / `github-release-cask` / `build-from-source` / `raw-binary` / `source-archive` | 66 in-HB apps with release/binary data | [§ In-Homebrew fallback paths](#in-homebrew-candidates--non-brew-fallback-paths-releases--source) |
+| `mas-app` | Magnet, ColorSlurp, Bear (MAS-only) | [§ Direct-download cask-app](#direct-download-cask-app-test-cases--dmg--zip--pkg-generator-cask-app) |
+
+All ≈ **230 apps** across every generator are consolidated in the
+[§ Combined master table](#combined-master-table--all-apps-from-every-table-above) ([extracted file](./allbrew_test_cases.md)).
 
 ---
 
@@ -404,7 +449,7 @@ gh search code "<dep-token>" --filename <manifest> --json repository --limit 50 
 | SydneyQt | Wails (Go) | 881 | Bing/Copilot desktop client |
 | digler · nui · gotohp · qiwentaidi/Slack | Wails (Go) | 1.2k/629/343/1.1k | recovery / NATS GUI / Photos client / sec toolkit |
 | LottieViewConvert | Avalonia (.NET) | 574 | TGS/Lottie converter desktop app |
-| Popcorn Time | Tauri (Node) | 10.6k | media streamer |
+| Popcorn Time | NW.js/Electron (Node) | 10.6k | media streamer (`popcorn-official/popcorn-desktop`) |
 | dev-manager-desktop | Tauri (Node) | 2.3k | webOS homebrew manager |
 
 > **Excluded — caught in HB by this pass:** `comictagger` (formula), `extraterm` (cask),
@@ -556,6 +601,17 @@ brew install managarr && managarr
 # go (GitHub repo; embedded-frontend web app = best stress)
 allbrew https://github.com/muety/wakapi --manual        # → go-package
 brew install wakapi && wakapi
+
+# script-install (curl | bash)
+allbrew https://starship.rs/install.sh --manual         # → script-install
+brew install starship && starship --version
+
+# cask-app (direct .dmg / .zip / .pkg download)
+allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual  # → cask-app
+brew install --cask seaquel && open -a Seaquel
+
+# fallback path (in-HB app, pull from release binaries instead of brew)
+allbrew https://github.com/YS-L/csvlens --manual        # → binary-release / build-from-source
 
 # future generators (manual today)
 allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned)
@@ -780,240 +836,10 @@ verification, redirect handling, and whether the formula/cask installs and runs 
 
 ## Combined master table — all apps from every table above
 
-Every app broken out across the section tables above, unified into one row per app with
-presence/identifier columns. Blank cell = not applicable or not found. `in_*` columns include
-the identifier or URL where known.
+The combined master table has been extracted to its own file for easier machine consumption
+and cross-referencing: **[allbrew_test_cases.md](./allbrew_test_cases.md)**.
 
-| app | lang | framework | in_dev_website | in_github | in_homebrew | in_mas | in_npm | in_pip | in_cargo | in_go_mod | in_ruby_gem | in_swiftpm | in_mint | in_dotnet | is_tui_app | is_gui_app | is_webui_app | is_cask_dist | has_source_dist | has_prebuilt_bin_dist | has_script_install | notes |
-|-----|------|-----------|---------------|-----------|-------------|--------|--------|--------|----------|-----------|------------|------------|---------|-----------|-----------|-----------|-------------|--------------|-----------------|----------------------|--------------------|-------|
-| browsr | Python | Textual | | github.com/flopp/browsr | | | | pypi.org/project/browsr | | | | | | | yes | | | | yes | | | |
-| elia | Python | Textual | | github.com/sdmonti/elia-chat | | | | pypi.org/project/elia-chat | | | | | | | yes | | | | yes | | | cmd `elia` |
-| toolong | Python | Textual | | github.com/Textualize/toolong | | | | pypi.org/project/toolong | | | | | | | yes | | | | yes | | | cmd `tl` |
-| baca | Python | Textual | | github.com/williamhjackson/baca | | | | pypi.org/project/baca | | | | | | | yes | | | | yes | | | EPUB reader |
-| kupo | Python | Textual | | github.com/snhm/kupo | | | | pypi.org/project/kupo | | | | | | | yes | | | | yes | | | |
-| gitsimulator | Python | Textual | | github.com/commitizen-gitsimulator | | | | pypi.org/project/gitsimulator | | | | | | | yes | | | | yes | | | |
-| s-tui | Python | urwid | | github.com/amanusk/s-tui | | | | pypi.org/project/s-tui | | | | | | | yes | | | | yes | | | CPU monitor |
-| castero | Python | Textual | | github.com/xuri-castero/castero | | | | pypi.org/project/castero | | | | | | | yes | | | | yes | | | podcast client |
-| pudb | Python | urwid | | github.com/inducer/pudb | | | | pypi.org/project/pudb | | | | | | | yes | | | | yes | | | visual debugger |
-| frogmouth | Python | Textual | | github.com/Textualize/frogmouth | | | | pypi.org/project/frogmouth | | | | | | | yes | | | | yes | | | Markdown browser |
-| euporie | Python | Textual | | github.com/euporie/euporie | | | | pypi.org/project/euporie | | | | | | | yes | | | | yes | | | cmd `euporie-notebook` |
-| pokete | Python | urwid | | github.com/lxgr-linux/pokete | | | | pypi.org/project/pokete | | | | | | | yes | | | | yes | | | terminal RPG |
-| marimo | Python | | | github.com/marimo-team/marimo | | | | pypi.org/project/marimo | | | | | | | | | yes | | yes | | | `marimo edit` |
-| mlflow | Python | | | github.com/mlflow/mlflow | | | | pypi.org/project/mlflow | | | | | | | | | yes | | yes | | | `mlflow ui` |
-| aim | Python | | | github.com/aimhubio/aim | | | | pypi.org/project/aim | | | | | | | | | yes | | yes | | | `aim up` |
-| label-studio | Python | Django | | github.com/HumanSignal/label-studio | | | | pypi.org/project/label-studio | | | | | | | | | yes | | yes | | | heavy deps |
-| chainlit | Python | | | github.com/Chainlit/chainlit | | | | pypi.org/project/chainlit | | | | | | | | | yes | | yes | | | `chainlit hello` |
-| visdom | Python | | | github.com/facebookresearch/visdom | | | | pypi.org/project/visdom | | | | | | | | | yes | | yes | | | |
-| streamlit | Python | | | github.com/streamlit/streamlit | | | | pypi.org/project/streamlit | | | | | | | | | yes | | yes | | | `streamlit hello` |
-| flower | Python | | | github.com/celery/flwr | | | | pypi.org/project/flower | | | | | | | | | yes | | yes | | | `celery flower` |
-| gradio | Python | | | github.com/gradio-app/gradio | | | | pypi.org/project/gradio | | | | | | | | | yes | | yes | | | needs script |
-| napari | Python | Qt | | github.com/napari/napari | | | | pypi.org/project/napari | | | | | | | | yes | | | yes | | | n-D image viewer |
-| orange3 | Python | Qt | | github.com/biolab/orange3 | | | | pypi.org/project/Orange3 | | | | | | | | yes | | | yes | | | cmd `orange-canvas` |
-| bleachbit | Python | GTK | | github.com/bleachbit/bleachbit | | | | pypi.org/project/BleachBit | | | | | | | | yes | | | yes | | | disk cleaner |
-| gridplayer | Python | Qt | | github.com/vincentvibe/gridplayer | | | | pypi.org/project/GridPlayer | | | | | | | | yes | | | yes | | | needs `mpv` |
-| cq-editor | Python | Qt | | github.com/CadQuery/cadquery-editor | | | | pypi.org/project/CQ-editor | | | | | | | | yes | | | yes | | | CadQuery 3D |
-| friture | Python | Qt | | github.com/tlecomte/friture | | | | pypi.org/project/friture | | | | | | | | yes | | | yes | | | audio analyzer |
-| eric-ide | Python | Qt | | github.com/python-eric/eric-ide | | | | pypi.org/project/eric-ide | | | | | | | | yes | | | yes | | | cmd `eric7` |
-| beeref | Python | Qt | | github.com/rbreu/beeref | | | | pypi.org/project/beeref | | | | | | | | yes | | | yes | | | GitHub-sourced |
-| pypdfeditor-gui | Python | Qt | | github.com/harupy/PyPDFEditor-GUI | | | | pypi.org/project/PyPDFEditor-GUI | | | | | | | | yes | | | yes | | | cmd `pdfeditor` |
-| FMPy | Python | PySide | | github.com/CATIA-Systems/FMPy | | | | pypi.org/project/FMPy | | | | | | | | yes | | | yes | | | cmd `fmpy gui` |
-| tabulous | Python | Qt | | github.com/hanjinliu/tabulous | | | | pypi.org/project/tabulous | | | | | | | | yes | | | yes | | | spreadsheet viewer |
-| pyNastran | Python | Qt | | github.com/SteveDoyle2/pyNastran | | | | pypi.org/project/pyNastran | | | | | | | | yes | | | yes | | | cmd `pyNastranGUI` |
-| pyqt-openai | Python | PyQt6 | | github.com/yjg30737/pyqt-openai | | | | pypi.org/project/pyqt-openai | | | | | | | | yes | | | yes | | | VividNode |
-| caliscope | Python | PySide6 | | github.com/mprib/caliscope | | | | pypi.org/project/caliscope | | | | | | | | yes | | | yes | | | motion-capture |
-| pry | Ruby | | | github.com/pry/pry | | | | | | rubygems.org/gems/pry | | | | yes | | | | yes | | | REPL |
-| taskjuggler | Ruby | | | github.com/taskjuggler/taskjuggler | | | | | | rubygems.org/gems/taskjuggler | | | | yes | | | | yes | | | cmd `tj3` |
-| license_finder | Ruby | | | github.com/pivotal-legacy/LicenseFinder | | | | | | rubygems.org/gems/license_finder | | | | yes | | | | yes | | | license audit |
-| smashing | Ruby | Sinatra | | github.com/Smashing/smashing | | | | | | rubygems.org/gems/smashing | | | | | | yes | | yes | | | `smashing start` |
-| geminabox | Ruby | Sinatra | | github.com/geminabox/geminabox | | | | | | rubygems.org/gems/geminabox | | | | | | yes | | yes | | | gem server |
-| rubio-radio | Ruby | LibUI | | github.com/kojix2/rubio-radio | | | | | | rubygems.org/gems/rubio-radio | | | | | yes | | | yes | | | radio player |
-| adamantite | Ruby | LibUI | | github.com/kojix2/adamantite | | | | | | rubygems.org/gems/adamantite | | | | | yes | | | yes | | | password manager |
-| htsgrid | Ruby | LibUI | | github.com/kojix2/htsgrid | | | | | | rubygems.org/gems/htsgrid | | | | | yes | | | yes | | | genomics viewer |
-| taskbook | Node | | | github.com/thespicywhale/taskbook | | | npmjs.com/package/taskbook | | | | | | | | yes | | | | yes | | | cmd `tb` |
-| vtop | Node | | | github.com/Mayank179289/vtop | | | npmjs.com/package/vtop | | | | | | | | yes | | | | yes | | | activity monitor |
-| npm-check | Node | | | github.com/dylang/npm-check | | | npmjs.com/package/npm-check | | | | | | | | yes | | | | yes | | | `npm-check -u` |
-| npkill | Node | | | github.com/voidcosmos/npkill | | | npmjs.com/package/npkill | | | | | | | | yes | | | | yes | | | node_modules cleaner |
-| deputui | Node | | | github.com/ryukina/deputui | | | npmjs.com/package/deputui | | | | | | | | yes | | | | yes | | | dep updater |
-| forage-cli | Node | | | github.com/forage-cli/forage | | | npmjs.com/package/forage-cli | | | | | | | | yes | | | | yes | | | cmd `forage` |
-| maildev | Node | | | github.com/maildev/maildev | | | npmjs.com/package/maildev | | | | | | | | | | yes | yes | | | SMTP catcher |
-| verdaccio | Node | | | github.com/verdaccio/verdaccio | | | npmjs.com/package/verdaccio | | | | | | | | | | yes | yes | | | private npm registry |
-| json-server | Node | | | github.com/typicode/json-server | | | npmjs.com/package/json-server | | | | | | | | | | yes | yes | | | `json-server db.json` |
-| wetty | Node | | | github.com/butlerx/wetty | | | npmjs.com/package/wetty | | | | | | | | | | yes | yes | | | browser terminal |
-| browser-sync | Node | | | github.com/BrowserSync/browser-sync | | | npmjs.com/package/browser-sync | | | | | | | | | | yes | yes | | | `browser-sync start` |
-| pm2 | Node | | | github.com/Unitech/pm2 | | | npmjs.com/package/pm2 | | | | | | | | | | yes | yes | | | `pm2 monit` |
-| markserv | Node | | | github.com/sdeering/markserv | | | npmjs.com/package/markserv | | | | | | | | | | yes | yes | | | markdown server |
-| docsify-cli | Node | | | github.com/docsifyjs/docsify-cli | | | npmjs.com/package/docsify-cli | | | | | | | | | | yes | yes | | | cmd `docsify` |
-| tiddlywiki | Node | | | github.com/Jermolene/TiddlyWiki | | | npmjs.com/package/tiddlywiki | | | | | | | | | | yes | yes | | | `tiddlywiki wiki --listen` |
-| clinic | Node | | | github.com/clinicjs/node-clinic | | | npmjs.com/package/clinic | | | | | | | | | | yes | yes | | | `clinic doctor` |
-| nativefier | Node | Electron | | github.com/nativefier/nativefier | | | npmjs.com/package/nativefier | | | | | | | | | yes | | yes | | | URL→app wrapper |
-| appbun | Node | Electrobun | | github.com/appbun/appbun | | | npmjs.com/package/appbun | | | | | | | | | yes | | yes | | | webpage→app |
-| @hehehai/buke | Node | Electrobun | | github.com/hehehai/buke | | | npmjs.com/package/@hehehai/buke | | | | | | | | | yes | | yes | | | cmd `buke` |
-| oatmeal | Rust | ratatui | | github.com/huggingface/oatmeal | | | | | crates.io/crates/oatmeal | | | | | | yes | | | | yes | | | LLM chat TUI |
-| managarr | Rust | ratatui | | github.com/managarr/managarr | | | | | crates.io/crates/managarr | | | | | | yes | | | | yes | | | Servarr manager |
-| manga-tui | Rust | ratatui | | github.com/josueBarretogit/manga-tui | | | | | crates.io/crates/manga-tui | | | | | | yes | | | | yes | | | manga reader |
-| twitch-tui | Rust | ratatui | | github.com/Xithrius/twitch-tui | | | | | crates.io/crates/twitch-tui | | | | | | yes | | | | yes | | | Twitch chat |
-| tickrs | Rust | ratatui | | github.com/tarkah/tickrs | | | | | crates.io/crates/tickrs | | | | | | yes | | | | yes | | | stock ticker |
-| nostui | Rust | ratatui | | github.com/akiomik/nostui | | | | | crates.io/crates/nostui | | | | | | yes | | | | yes | | | Nostr client |
-| gobang | Rust | ratatui | | github.com/TaKO8Ki/gobang | | | | | github.com/TaKO8Ki/gobang | | | | | | yes | | | | yes | | | DB manager |
-| ddv | Rust | ratatui | | github.com/lusingander/ddv | | | | | github.com/lusingander/ddv | | | | | | yes | | | | yes | | | DynamoDB viewer |
-| rrtop | Rust | ratatui | | github.com/wojciech-zurek/rrtop | | | | | github.com/wojciech-zurek/rrtop | | | | | | yes | | | | yes | | | Redis monitor |
-| tgt | Rust | ratatui | | github.com/FedericoBruzzone/tgt | | | | | github.com/FedericoBruzzone/tgt | | | | | | yes | | | | yes | | | needs TDLib |
-| oculante | Rust | egui | | github.com/woelper/oculante | | | | | crates.io/crates/oculante | | | | | | | yes | | | yes | yes | | | image viewer |
-| emulsion | Rust | egui | | github.com/ArtBlnd/emulsion | | | | | crates.io/crates/emulsion | | | | | | | yes | | | yes | yes | | | image viewer |
-| krokiet | Rust | slint | | github.com/qarmin/krokiet | | | | | crates.io/crates/krokiet | | | | | | | yes | | | yes | yes | | | dupe-finder GUI |
-| rerun | Rust | wgpu | | github.com/rerun-io/rerun | | | | | crates.io/crates/rerun-cli | | | | | | | yes | | | yes | yes | | | cmd `rerun` |
-| kiorg | Rust | egui | | github.com/sicheng-pang/kiorg | | | | | github.com/sicheng-pang/kiorg | | | | | | | yes | | | yes | yes | | | file manager |
-| process-compose | Go | | | github.com/F1bonacc1/process-compose | | | | | | github.com/F1bonacc1/process-compose | | | | | yes | | | | yes | | | process orchestrator |
-| wander | Go | | | github.com/robinovitch61/wander | | | | | | github.com/robinovitch61/wander | | | | | yes | | | | yes | | | Nomad TUI |
-| updo | Go | | | github.com/Owloops/updo | | | | | | github.com/Owloops/updo | | | | | yes | | | | yes | | | uptime monitor |
-| planor | Go | | | github.com/mrusme/planor | | | | | | github.com/mrusme/planor | | | | | yes | | | | yes | | | multi-cloud TUI |
-| tdash | Go | | | github.com/jessfraz/tdash | | | | | | github.com/jessfraz/tdash | | | | | yes | | | | yes | | | CI dashboard |
-| damon | Go | | | github.com/hashicorp/damon | | | | | | github.com/hashicorp/damon | | | | | yes | | | | yes | | | Nomad dashboard |
-| dashbrew | Go | | | github.com/rasjonell/dashbrew | | | | | | github.com/rasjonell/dashbrew | | | | | yes | | | | yes | | | terminal dashboards |
-| claws | Go | | | (confirm repo) | | | | | | (confirm module) | | | | | yes | | | | yes | | | AWS TUI |
-| wakapi | Go | | | github.com/muety/wakapi | | | | | | github.com/muety/wakapi | | | | | | | yes | | yes | | | WakaTime backend |
-| gotty | Go | | | github.com/sorenisanerd/gotty | | | | | | github.com/sorenisanerd/gotty | | | | | | | yes | | yes | | | `gotty bash` |
-| goatcounter | Go | | | github.com/arp242/goatcounter | | | | | | zgo.at/goatcounter/v2 | | | | | | | yes | | yes | | | CGO/SQLite |
-| gokapi | Go | | | github.com/Forceu/Gokapi | | | | | | github.com/Forceu/Gokapi | | | | | | | yes | | yes | | | go:embed |
-| picoshare | Go | | | github.com/mtlynch/picoshare | | | | | | github.com/mtlynch/picoshare | | | | | | | yes | | yes | | | go:embed + SQLite |
-| supersonic | Go | Fyne | | github.com/dweymouth/supersonic | | | | | | github.com/dweymouth/supersonic | | | | | | yes | | | yes | | | music client |
-| rymdport | Go | Fyne | | github.com/Jacalz/rymdport | | | | | | github.com/Jacalz/rymdport | | | | | | yes | | | yes | | | wormhole GUI |
-| paw | Go | Fyne | | github.com/lucor/paw | | | | | | github.com/lucor/paw | | | | | | yes | | | yes | | | password manager |
-| goshot | Go | Fyne | | github.com/janpfeifer/goshot | | | | | | github.com/janpfeifer/goshot | | | | | | yes | | | yes | | | screenshot tool |
-| EasyLPAC | Go | Fyne | | github.com/creamlike1024/EasyLPAC | | | | | | github.com/creamlike1024/EasyLPAC | | | | | | yes | | | yes | | | eSIM GUI |
-| horcrux-ui | Go | Fyne | | github.com/jesseduffield/horcrux-ui | | | | | | github.com/jesseduffield/horcrux-ui | | | | | | yes | | | yes | | | file-splitting GUI |
-| macMLX (CLI) | Swift | SwiftTUI | | github.com/magicnight/Mac-MLX | | | | | | | | yes | | | yes | | | | yes | | | cmd `macmlx` |
-| doedit | Swift | TUIkit | | github.com/danterobles/doedit | | | | | | | | yes | | | yes | | | | yes | | | text editor |
-| macMLX (app) | Swift | SwiftUI | | github.com/magicnight/Mac-MLX | | | | | | | | | | | | yes | | macMLX.dmg | | yes | | | native LLM app |
-| Rugby | Swift | | | github.com/swiftyfinch/Rugby | | | | | | | | | mint install swiftyfinch/Rugby | | | | | | | yes | | | Xcode cache tool |
-| swiftpolyglot | Swift | | | github.com/fwcd/SwiftPolyglot | | | | | | | | | mint install ⚠️ | | | | | | | yes | | | localization checker |
-| Rnwood.Smtp4dev | .NET | | | github.com/rnwood/smtp4dev | | | | | | | | | | nuget.org/packages/Rnwood.Smtp4dev | | | yes | | yes | | | cmd `smtp4dev` |
-| dotnet-serve | .NET | | | github.com/natemcmaster/dotnet-serve | | | | | | | | | | nuget.org/packages/dotnet-serve | | | yes | | yes | | | static HTTP server |
-| dotnet-monitor | .NET | | | github.com/dotnet/dotnet-monitor | | | | | | | | | | nuget.org/packages/dotnet-monitor | yes | | | yes | | | `dotnet-monitor collect` |
-| CSharpRepl | .NET | | | github.com/willdean/CSharpRepl | | | | | | | | | | nuget.org/packages/CSharpRepl | yes | | | | yes | | | C# REPL |
-| dotnet-counters | .NET | | | github.com/dotnet/diagnostics | | | | | | | | | | nuget.org/packages/dotnet-counters | yes | | | | yes | | | `dotnet-counters monitor` |
-| ilspycmd | .NET | | | github.com/icsharpcode/ILSpy | | | | | | | | | | nuget.org/packages/ilspycmd | | | | | yes | | | .NET decompiler |
-| DepotDownloader | .NET | | | github.com/SteamRE/DepotDownloader | | | | | | | | | | nuget.org/packages/DepotDownloader | | | | | yes | | | Steam depot downloader |
-| Liana | Rust | iced | | github.com/wizardsardine/liana | | | | | | | | | | | | yes | | | yes | yes | | | Bitcoin wallet |
-| ER-Save-Editor | Rust | egui | | github.com/TwoAbove/er-save-editor | | | | | | | | | | | | yes | | | yes | yes | | | Elden Ring save editor |
-| tes3edit | Rust | egui | | github.com/tes3edit/tes3edit | | | | | | | | | | | | yes | | | yes | yes | | | Morrowind editor |
-| SydneyQt | Go | Wails | | github.com/sdnzcn/SydneyQt | | | | | | | | | | | | yes | | | yes | yes | | | Bing/Copilot client |
-| LottieViewConvert | .NET | Avalonia | | github.com/LottieViewConvert/LottieViewConvert | | | | | | | | | | | | yes | | | yes | yes | | | Lottie converter |
-| Popcorn Time | Node | Tauri | | github.com/popcorn-official/popcorn-desktop | | | | | | | | | | | | yes | | | yes | yes | | | media streamer |
-| dev-manager-desktop | Node | Tauri | | github.com/webosbrew/dev-manager-desktop | | | | | | | | | | | | yes | | | yes | yes | | | webOS homebrew manager |
-| gogs | Go | | | github.com/gogs/gogs | gogs (cask) | | | | | | github.com/gogs/gogs | | | | | | | | yes | yes (14) | | |
-| rio | Rust | | | github.com/raphamorim/rio | rio (cask) | | | | | | | | | | yes | | | rio.dmg | yes | yes (13) | | |
-| pyzo | Python | Qt | | github.com/pyzo/pyzo | pyzo (cask) | | | | | | | | | | | yes | | pyzo.dmg | yes | yes (8) | | |
-| extraterm | TypeScript | | | github.com/sedwards2009/extraterm | extraterm (cask) | | npmjs.com/package/extraterm | | | | | | | | yes | | | extraterm.dmg | yes | yes (6) | | |
-| shiori | Go | | | github.com/go-shiori/shiori | shiori (cask) | | | | | | github.com/go-shiori/shiori | | | | | | | | yes | yes (6) | | |
-| veusz | Python | Qt | | github.com/veusz/veusz | veusz (cask) | | | | | | | | | | | yes | | veusz.dmg | yes | yes (6) | | |
-| frescobaldi | Python | Qt | | github.com/frescobaldi/frescobaldi | frescobaldi (cask) | | | | | | | | | | | yes | | frescobaldi.dmg | yes | yes (4) | | |
-| persepolis-download-manager | Python | GTK | | github.com/persepolisdm/persepolis | persepolis-download-manager (cask) | | | | | | | | | | | yes | | .dmg | yes | yes (4) | | |
-| manuskript | Python | Qt | | github.com/olivierkes/manuskript | manuskript (cask) | | | | | | | | | | | yes | | manuskript.dmg | yes | yes (3) | | |
-| wombat | Go | Wails | | github.com/rogchap/wombat | wombat (cask) | | | | | | | | | | | yes | | wombat.dmg | yes | yes (3) | | |
-| vorta | Python | Qt | | github.com/borgbase/vorta | vorta (cask) | | | | | | | | | | | yes | | vorta.dmg | yes | yes (2) | | |
-| electrum | Python | Qt | electrum.org | github.com/spesmilo/electrum | electrum (cask) | | | | | | | | | | | yes | | | yes | none | | | 0 GH releases; off-GitHub signed builds |
-| pake | Rust | Tauri | | github.com/tw93/Pake | pake (formula) | | | | | | | | | | | yes | | pake.dmg | yes | yes (30) | | |
-| pop | Go | | | github.com/charmbracelet/pop | pop (formula) | | | | | | github.com/charmbracelet/pop | | | | yes | | | | yes | yes (26) | | |
-| wishlist | Go | | | github.com/charmbracelet/wishlist | wishlist (formula) | | | | | | github.com/charmbracelet/wishlist | | | | | | yes | | yes | yes (25) | | |
-| portal | Go | | | github.com/SpatiumPortae/portal | portal (formula) | | | | | | github.com/SpatiumPortae/portal | | | | yes | | | | yes | yes (15) | | |
-| sniffnet | Rust | iced | | github.com/GyulyVGC/sniffnet | sniffnet (formula) | | | | | | | | | | | yes | | | yes | yes (15) | | |
-| jwt-ui | Rust | ratatui | | github.com/jwt-rs/jwt-ui | jwt-ui (formula) | | | | | | | | | | yes | | | | yes | yes (12) | | |
-| kdash | Rust | ratatui | | github.com/kdash-rs/kdash | kdash (formula) | | | | | | | | | | yes | | | | yes | yes (12) | | |
-| television | Rust | ratatui | | github.com/alexpasmantier/television | television (formula) | | | | | | | | | | yes | | | | yes | yes (11) | | |
-| rainfrog | Rust | ratatui | | github.com/achristmascarl/rainfrog | rainfrog (formula) | | | | | | | | | | yes | | | | yes | yes (10) | | |
-| csvlens | Rust | ratatui | | github.com/YS-L/csvlens | csvlens (formula) | | | | | | | | | | yes | | | | yes | yes (8) | | |
-| doxx | Rust | ratatui | | github.com/bgreenwell/doxx | doxx (formula) | | | | | | | | | | yes | | | | yes | yes (8) | | |
-| go2tv | Go | | | github.com/alexballas/go2tv | go2tv (formula) | | | | | | github.com/alexballas/go2tv | | | | yes | | | | yes | yes (8) | | |
-| termscp | Rust | ratatui | | github.com/veeso/termscp | termscp (formula) | | | | | | | | | | yes | | | | yes | yes (8) | | |
-| dnote | Go | | | github.com/dnote/dnote | dnote (formula) | | | | | | github.com/dnote/dnote | | | | | | yes | | yes | yes (7) | | |
-| md-tui | Rust | ratatui | | github.com/henriklovhaug/md-tui | md-tui (formula) | | | | | | | | | | yes | | | | yes | yes (7) | | |
-| tabiew | Rust | ratatui | | github.com/shshemi/tabiew | tabiew (formula) | | | | | | | | | | yes | | | | yes | yes (7) | | |
-| pug | Go | | | github.com/leg100/pug | pug (formula) | | | | | | github.com/leg100/pug | | | | yes | | | | yes | yes (6) | | |
-| serpl | Rust | ratatui | | github.com/yassinebridi/serpl | serpl (formula) | | | | | | | | | | yes | | | | yes | yes (6) | | |
-| stu | Rust | ratatui | | github.com/lusingander/stu | stu (formula) | | | | | | | | | | yes | | | | yes | yes (6) | | |
-| yozefu | Rust | ratatui | | github.com/MAIF/yozefu | yozefu (formula) | | | | | | | | | | yes | | | | yes | yes (6) | | |
-| gitu | Rust | ratatui | | github.com/altsem/gitu | gitu (formula) | | | | | | | | | | yes | | | | yes | yes (5) | | |
-| nicotine-plus | Python | GTK | | github.com/nicotine-plus/nicotine-plus | nicotine-plus (formula) | | | | | | | | | | | yes | | | yes | yes (5) | | |
-| scooter | Rust | ratatui | | github.com/thomasschafer/scooter | scooter (formula) | | | | | | | | | | yes | | | | yes | yes (5) | | |
-| slides | Go | | | github.com/maaslalani/slides | slides (formula) | | | | | | github.com/maaslalani/slides | | | | yes | | | | yes | yes (5) | | |
-| xplr | Rust | ratatui | | github.com/sayanarijit/xplr | xplr (formula) | | | | | | | | | | yes | | | | yes | yes (5) | | |
-| lazyjournal | Go | | | github.com/Lifailon/lazyjournal | lazyjournal (formula) | | | | | | github.com/Lifailon/lazyjournal | | | | yes | | | | yes | yes (4) | | |
-| mockolo | Swift | | | github.com/uber/mockolo | mockolo (formula) | | | | | | | yes | mint install uber/mockolo | | | | | | yes | yes (4) | | |
-| otree | Rust | ratatui | | github.com/fioncat/otree | otree (formula) | | | | | | | | | | yes | | | | yes | yes (4) | | |
-| spotify_player | Rust | ratatui | | github.com/aome510/spotify-player | spotify_player (formula) | | | | | | | | | | yes | | | | yes | yes (4) | | | underscore token |
-| sshs | Rust | ratatui | | github.com/quantumsheep/sshs | sshs (formula) | | | | | | | | | | yes | | | | yes | yes (4) | | |
-| licenseplist | Swift | | | github.com/mono0926/LicensePlist | licenseplist (formula) | | | | | | | yes | mint install mono0926/LicensePlist | | | | | | yes | yes (3) | | |
-| comictagger | Python | Qt | | github.com/comictagger/comictagger | comictagger (formula) | | | | | | | | | | | yes | | | yes | yes (2) | | |
-| gotify | Go | | | github.com/gotify/cli | gotify (formula) | | | | | | github.com/gotify/cli | | | | | | | | yes | yes (2) | | |
-| swift-outdated | Swift | | | github.com/kiliankoe/swift-outdated | swift-outdated (formula) | | | | | | | yes | mint install kiliankoe/swift-outdated | | | | | | yes | yes (2) | | |
-| tenere | Rust | ratatui | | github.com/pythops/tenere | tenere (formula) | | | | | | | | | | yes | | | | yes | yes (2) | | |
-| diskonaut | Rust | ratatui | | github.com/imsnif/diskonaut | diskonaut (formula) | | | | | | | | | | yes | | | | yes | yes (1) | | |
-| dooit | Python | Textual | | github.com/kraanzu/dooit | dooit (formula) | | | | | | | | | | yes | | | | yes | yes (1) | | |
-| gpg-tui | Rust | ratatui | | github.com/orhun/gpg-tui | gpg-tui (formula) | | | | | | | | | | yes | | | | yes | yes (1) | | |
-| iblinter | Swift | | | github.com/IBDecodable/IBLinter | iblinter (formula) | | | | | | | yes | mint install IBDecodable/IBLinter | | | | | | yes | yes (1) | | |
-| kubetui | Rust | ratatui | | github.com/sarub0b0/kubetui | kubetui (formula) | | | | | | | | | | yes | | | | yes | yes (1) | | |
-| asccli | Swift | | | github.com/tddworks/asc-cli | asccli (formula) | | | | | | | yes | mint install tddworks/asc-cli | | | | | | yes | tags only | | | hyphen gotcha |
-| bartycrouch | Swift | | | github.com/FlineDev/BartyCrouch | bartycrouch (formula) | | | | | | | yes | mint install FlineDev/BartyCrouch | | | | | | yes | tags only | | |
-| czkawka | Rust | | | github.com/qarmin/czkawka | czkawka (formula) | | | | | | | | | | | | | | yes | tags only | | | CLI; krokiet is GUI |
-| gtop | JavaScript | | | github.com/aksakalli/gtop | gtop (formula) | | npmjs.com/package/gtop | | | | | | | | yes | | | | yes | tags only | | |
-| jiratui | Python | | | github.com/whyisdifficult/jiratui | jiratui (formula) | | | | | | | | | | yes | | | | yes | tags only | | |
-| joshuto | Rust | ratatui | | github.com/kamiyaa/joshuto | joshuto (formula) | | | | | | | | | | yes | | | | yes | tags only | | |
-| lazyjj | Rust | ratatui | | github.com/Cretezy/lazyjj | lazyjj (formula) | | | | | | | | | | yes | | | | yes | tags only | | |
-| mailcatcher | Ruby | Sinatra | | github.com/sj26/mailcatcher | mailcatcher (formula) | | | | | rubygems.org/gems/mailcatcher | | | | | | yes | | yes | tags only | | |
-| mapscii | JavaScript | | | github.com/rastapasta/mapscii | mapscii (formula) | | npmjs.com/package/mapscii | | | | | | | | yes | | | | yes | tags only | | |
-| memray | Python | | | github.com/bloomberg/memray | memray (formula) | | | | | | | | | | | | | | yes | tags only | | |
-| recoverpy | Python | | | github.com/PabloLec/recoverpy | recoverpy (formula) | | | | | | | | | | yes | | | | yes | tags only | | |
-| reveal-md | JavaScript | | | github.com/webpro/reveal-md | reveal-md (formula) | | npmjs.com/package/reveal-md | | | | | | | | | | yes | yes | tags only | | |
-| swiftplantuml | Swift | | | github.com/MarcoEidinger/SwiftPlantUML | swiftplantuml (formula) | | | | | | | yes | mint install MarcoEidinger/SwiftPlantUML | | | | | | yes | tags only | | |
-| tuisky | Rust | ratatui | | github.com/sugyan/tuisky | tuisky (formula) | | | | | | | | | | yes | | | | yes | tags only | | |
-| Seaquel | Rust | | | github.com/webstonehq/seaquel | | | | | | | | | | | | yes | | Seaquel.dmg | yes | yes | | | not in HB; download via GitHub releases |
-| ApiArk | Rust | | | github.com/berbicanes/apiark | | | | | | | | | | | | yes | | ApiArk.dmg | yes | yes | | | not in HB; download via GitHub releases |
-| Right Crane | | | rightright.me/products | | | | | | | | | | | | | yes | | .dmg | | | | | developer site download |
-| Unfatten | | | avelio.tech/unfatten | | | | | | | | | | | | | yes | | .dmg | | | | | developer site download |
-| Ollama | Go | | ollama.com/download | github.com/ollama/ollama | ollama (cask) | | | | | | | | | | | yes | | Ollama-darwin.zip | | yes | https://ollama.com/install.sh | site→GitHub redirect |
-| Proxyman | | | proxyman.io | | proxyman (cask) | | | | | | | | | | | yes | | Proxyman_latest.dmg | | yes | | | CDN "latest" |
-| Docker Desktop | Go | | docker.com | github.com/docker/desktop | docker-desktop (cask) | | | | | | | | | | | yes | | Docker.dmg | | yes | https://get.docker.com | arch in path |
-| zoom | | | zoom.us | | zoom (cask) | | | | | | | | | | | yes | | Zoom.pkg | | yes | | | PKG format |
-| Trae | | | trae.ai | | trae (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
-| Paste | | | paste.app | | paste (cask) | yes | | | | | | | | | | yes | | .dmg | | | | | also on MAS |
-| EasyFind | | | devmate.com | | easyfind (cask) | yes | | | | | | | | | | yes | | .dmg | | | | | also on MAS |
-| Hermes | | | hermesapp.io | | hermes (cask) | yes | | | | | | | | | | yes | | .dmg | | | | | also on MAS |
-| Terax | | | terax.app | | terax (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
-| Prefs Editor | | | tenten.co | | prefs-editor (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
-| Setapp | | | setapp.com/download | | setapp (cask) | | | | | | | | | | | yes | | .dmg | | | | | |
-| Raycast Beta | | | raycast.com | | raycast (cask) | | | | | | | | | | | yes | | .dmg | | | | | beta channel |
-| Magnet | | | | | | yes | | | | | | | | | | yes | | | | | | | MAS only; no direct download |
-| ColorSlurp | | | | | | yes | | | | | | | | | | yes | | | | | | | MAS only; no direct download |
-| Bear | | | bear.app | | | yes | | | | | | | | | | yes | | .dmg | | | | | MAS + direct download; no HB cask |
-| TokenBar | | | tokenbar.site/get-started | | | | | | | | | | | | | yes | | .dmg | | | | | indie, $5/mo |
-| Monk Mode | | | mac.monk-mode.lifestyle | | | | | | | | | | | | | yes | | .dmg | | | | | indie, $15 |
-| MetricSync | | | metricsync.download | | | | | | | | | | | | | yes | | .dmg | | | | | indie, $5/mo |
-| UTM | | | | github.com/utmapp/UTM | utm (cask) | | | | | | | | | | | yes | | UTM.dmg | | yes | | /latest/ redirect; download via GitHub |
-| balenaEtcher | | | | github.com/balena-io/etcher | balenaetcher (cask) | | | | | | | | | | | yes | | balenaEtcher-darwin-arm64.dmg | | yes | | /latest/, arch in filename; download via GitHub |
-| LocalSend | Flutter | | | github.com/localsend/localsend | localsend (cask) | | | | | | | | | | | yes | | LocalSend-1.17.0.dmg | | yes | | version in filename; download via GitHub |
-| IINA | | | | github.com/iina/iina | iina (cask) | | | | | | | | | | | yes | | IINA.dmg | | yes | | release page; download via GitHub |
-| Transmission | | | | github.com/transmission/transmission | transmission (cask) | | | | | | | | | | | yes | | Transmission.dmg | | yes | | version+revision; download via GitHub |
-| Tailscale | Go | | tailscale.com | github.com/tailscale/tailscale | tailscale (cask) | yes | | | | | | | | | | yes | | Tailscale-latest-macos.zip | | yes | https://tailscale.com/install.sh | .zip, "latest"→302; also on MAS |
-| Homebrew | Ruby | | | github.com/Homebrew/brew | | | | | | | | | | | | | | | | | | https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | canonical curl\|bash |
-| Rustup | Rust | | | github.com/rust-lang/rustup | rustup (formula) | | | | | | | | | | | | | | | | https://sh.rustup.rs | no .sh extension |
-| Bun | Zig/JS | | | github.com/oven-sh/bun | bun (formula) | | | | | | | | | | | | | | | | https://bun.sh/install | no .sh extension |
-| Deno | Rust | | | github.com/denoland/deno | deno (formula) | | | | | | | | | | | | | | | | https://deno.land/install.sh | standard .sh |
-| uv | Rust | | | github.com/astral-sh/uv | | | | | | | | | | | | | | | | https://astral.sh/uv/install.sh | not in HB |
-| Volta | Rust | | | github.com/volta-cli/volta | | | | | | | | | | | | | | | | https://get.volta.sh | not in HB; no .sh |
-| Starship | Rust | | | github.com/starship/starship | starship (formula) | | | | | | | | | | | | | | | | https://starship.rs/install.sh | detects platform+arch |
-| Devbox | Go | | | github.com/jetify-com/devbox | | | | | | | | | | | | | | | | https://get.jetify.com/devbox | not in HB; launcher script |
-| Mise | Rust | | | github.com/jdx/mise | mise (formula) | | | | | | | | | | | | | | | | https://mise.run | bare domain |
-| Poetry | Python | | | github.com/python-poetry/poetry | poetry (formula) | | | | | | | | | | | | | | | | https://install.python-poetry.org | Python script |
-| Oh My Zsh | Shell | | | github.com/ohmyzsh/ohmyzsh | | | | | | | | | | | | | | | | https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | modifies shell config |
-| nvm | Shell | | | github.com/nvm-sh/nvm | nvm (cask) | | | | | | | | | | | | | | | | https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | version in URL path |
-| Atuin | Rust | | | github.com/atuinsh/atuin | atuin (formula) | | | | | | | | | | | | | | | | https://setup.atuin.sh | setup. subdomain |
-| Pixi | Rust | | | github.com/prefix-dev/pixi | pixi (formula) | | | | | | | | | | | | | | | | https://pixi.sh/install.sh | standard .sh |
-| pnpm | Node | | | github.com/pnpm/pnpm | pnpm (formula) | | npmjs.com/package/pnpm | | | | | | | | | | | | | | https://get.pnpm.io/install.sh | get. subdomain |
-| Fly.io CLI | Go | | | github.com/superfly/flyctl | flyctl (formula) | | | | | | | | | | | | | | | | https://fly.io/install.sh | installs to ~/.fly/bin |
-| Railway CLI | Node | | | github.com/railwayapp/cli | | | npmjs.com/package/@railway/cli | | | | | | | | | | | | | | https://raw.githubusercontent.com/railwayapp/cli/master/install.sh | not in HB |
-| CuaDriver | | | | github.com/trycua/cua | | | | | | | | | | | | yes | | | | | https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh | drops .app + symlink |
-| Nix | C++ | | | github.com/NixOS/nix | nix (formula) | | | | | | | | | | | | | | | | https://nixos.org/nix/install | no extension |
-| SDKMAN! | Java | | | github.com/sdkman/sdkman-cli | | | | | | | | | | | | | | | | https://get.sdkman.io | get. subdomain |
-| croc | Go | | | github.com/schollz/croc | croc (formula) | | | | | | github.com/schollz/croc | | | | | | | | yes | yes | https://getcroc.schollz.com | bare domain redirect |
-| Zellij | Rust | | | github.com/zellij-org/zellij | zellij (formula) | | | | | | | | | | | | | | | | https://zellij.dev/launch | unusual path /launch |
+It contains every app from every section table above, unified into one row per app with
+presence/identifier columns (23 columns total). Blank cell = not applicable or not found.
+`in_*` columns include the identifier or URL where known.
+
