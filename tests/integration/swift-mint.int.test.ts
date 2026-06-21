@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { collectMintPayload } from "../../lib/generators/mint.ts";
+import { collectSwiftMintPayload } from "../../lib/generators/swift-mint.ts";
 import { renderFormula } from "../../lib/template-renderer.ts";
 import { assertValidFormula } from "./helpers/validate-ruby.ts";
 
@@ -84,10 +84,10 @@ const ascCliRepoInfo = {
   defaultBranch: "main",
 };
 
-describe.concurrent("mint integration", () => {
+describe.concurrent("swift-mint integration", () => {
   it("iblinter: payload fields are well-formed (with release)", async () => {
-    const payload = await collectMintPayload(iblinterRepoInfo, iblinterRelease);
-    expect(payload.template).toBe("mint");
+    const payload = await collectSwiftMintPayload(iblinterRepoInfo, iblinterRelease);
+    expect(payload.template).toBe("swift_mint");
     expect(payload.name).toBe("iblinter");
     expect(payload.className).toBe("Iblinter");
     expect(payload.fullName).toBe("IBDecodable/IBLinter");
@@ -95,7 +95,7 @@ describe.concurrent("mint integration", () => {
   });
 
   it("iblinter: generates structurally valid Ruby formula", async () => {
-    const payload = await collectMintPayload(iblinterRepoInfo, iblinterRelease);
+    const payload = await collectSwiftMintPayload(iblinterRepoInfo, iblinterRelease);
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Iblinter < Formula");
@@ -107,14 +107,14 @@ describe.concurrent("mint integration", () => {
   });
 
   it("iblinter: head-only mode (no release)", async () => {
-    const payload = await collectMintPayload(iblinterRepoInfo, null);
+    const payload = await collectSwiftMintPayload(iblinterRepoInfo, null);
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("head \"https://github.com/IBDecodable/IBLinter.git");
   });
 
   it("mockolo: generates valid formula (head-only)", async () => {
-    const payload = await collectMintPayload(mockoloRepoInfo, null);
+    const payload = await collectSwiftMintPayload(mockoloRepoInfo, null);
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Mockolo < Formula");
@@ -122,28 +122,28 @@ describe.concurrent("mint integration", () => {
   });
 
   it("swift-outdated: generates valid formula (head-only)", async () => {
-    const payload = await collectMintPayload(swiftOutdatedRepoInfo, null);
+    const payload = await collectSwiftMintPayload(swiftOutdatedRepoInfo, null);
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class SwiftOutdated < Formula");
   });
 
   it("licenseplist: generates valid formula (head-only)", async () => {
-    const payload = await collectMintPayload(licensePlistRepoInfo, null);
+    const payload = await collectSwiftMintPayload(licensePlistRepoInfo, null);
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Licenseplist < Formula");
   });
 
   it("bartycrouch: generates valid formula (head-only)", async () => {
-    const payload = await collectMintPayload(bartyCrouchRepoInfo, null);
+    const payload = await collectSwiftMintPayload(bartyCrouchRepoInfo, null);
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Bartycrouch < Formula");
   });
 
   it("swiftplantuml: generates valid formula (head-only)", async () => {
-    const payload = await collectMintPayload(swiftPlantUmlRepoInfo, null);
+    const payload = await collectSwiftMintPayload(swiftPlantUmlRepoInfo, null);
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Swiftplantuml < Formula");
@@ -151,7 +151,7 @@ describe.concurrent("mint integration", () => {
   });
 
   it("asccli: generates valid formula (head-only)", async () => {
-    const payload = await collectMintPayload(ascCliRepoInfo, null);
+    const payload = await collectSwiftMintPayload(ascCliRepoInfo, null);
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Asccli < Formula");

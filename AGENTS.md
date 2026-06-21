@@ -118,7 +118,7 @@ flowchart TD
 | `github-release-cask` | Cask | release `.dmg`/`.zip` | github |
 | `mas-app` | Cask | `mas` installer | MAS |
 
-Additional generators implemented: `swift-spm`, `dotnet-tool`, `ruby-gem`, `mint`. These follow the same payload → template pattern.
+Additional generators implemented: `swift-spm`, `dotnet-tool`, `ruby-gem`, `swift-mint`. These follow the same payload → template pattern.
 
 ### Template layer
 
@@ -230,7 +230,7 @@ Key flags: `--manual`, `--name`, `--desc`, `--tap`, `--service`, `--service-comm
 | URL → formula/cask generation (12+ generators) | done |
 | Interactive + `--manual` mode | done |
 | Package-manager formulas (pip, npm, cargo, go) + livecheck | done |
-| Swift SPM, dotnet-tool, ruby-gem, mint generators | done |
+| Swift SPM, dotnet-tool, ruby-gem, swift-mint generators | done |
 | Binary / source / script / cask / MAS paths | done |
 | `brew services` block inference + flags | done |
 | TypeScript template renderer + parity suite | done |

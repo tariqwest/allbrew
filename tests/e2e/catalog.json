@@ -242,7 +242,7 @@
   {
     "name": "iblinter",
     "url": "https://github.com/IBDecodable/IBLinter",
-    "generator": "mint",
+    "generator": "swift-mint",
     "allbrewArgs": ["--name", "iblinter"],
     "expectedBin": "iblinter",
     "verifyCommand": ["iblinter", "--version"],
@@ -252,7 +252,7 @@
   {
     "name": "swiftplantuml",
     "url": "https://github.com/MarcoEidinger/SwiftPlantUML",
-    "generator": "mint",
+    "generator": "swift-mint",
     "allbrewArgs": ["--name", "swiftplantuml"],
     "expectedBin": "swiftplantuml",
     "verifyCommand": ["swiftplantuml", "--version"],
@@ -262,7 +262,7 @@
   {
     "name": "bartycrouch",
     "url": "https://github.com/FlineDev/BartyCrouch",
-    "generator": "mint",
+    "generator": "swift-mint",
     "allbrewArgs": ["--name", "bartycrouch"],
     "expectedBin": "bartycrouch",
     "verifyCommand": ["bartycrouch", "--version"],
@@ -272,7 +272,7 @@
   {
     "name": "asccli",
     "url": "https://github.com/tddworks/asc-cli",
-    "generator": "mint",
+    "generator": "swift-mint",
     "allbrewArgs": ["--name", "asccli"],
     "expectedBin": "asccli",
     "verifyCommand": ["asccli", "--version"],
@@ -282,7 +282,7 @@
   {
     "name": "licenseplist",
     "url": "https://github.com/mono0926/LicensePlist",
-    "generator": "mint",
+    "generator": "swift-mint",
     "allbrewArgs": ["--name", "licenseplist"],
     "expectedBin": "license-plist",
     "verifyCommand": ["license-plist", "--version"],

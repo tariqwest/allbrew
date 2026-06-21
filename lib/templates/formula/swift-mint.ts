@@ -1,6 +1,6 @@
-import type { MintPayload } from "../../template-payload.ts";
+import type { SwiftMintPayload } from "../../template-payload.ts";
 
-export default function renderMint(p: MintPayload): string {
+export default function renderSwiftMint(p: SwiftMintPayload): string {
   return `class ${p.className} < Formula
   desc "${p.desc}"
   homepage "${p.homepage}"
