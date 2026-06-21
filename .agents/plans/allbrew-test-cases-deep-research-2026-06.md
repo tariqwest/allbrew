@@ -19,9 +19,9 @@ The research **started** with the package-manager path (the original brief below
 > To really test this app and flex its edge cases we need to develop a list of compelling test case URLs/apps to install. For the language ecosystem/package manager app formula generation path, identify a set of **standalone, globally-installed apps** (rather than packages that are only imported for use programmatically within other projects), **macOS-compatible** apps that **do not have a Homebrew formula or cask already**. This set should include (1) desktop apps with a traditional desktop GUI, (2) locally-hosted server apps with a web UI served via the browser, and (3) TUI apps that live in the terminal. These apps should be distributed via (1) pip/pipx/uv, (2) rubygem, (3) npm/bun/deno, (4) cargo, (5) go modules, and (6) Swift Package Manager / (7) NuGet/dotnet tool. For each UI type × language ecosystem, provide **at least 5 examples**, preferably popular and highly-used apps — about **25 test cases minimum**; find more if readily available. Use the [Google/Gemini starting matrix](./Package%20manager%20app%20examples%20from%20google.md) as a starting point but **don’t take its results as given**; do your own search and evaluation.
 
 ### Deeper dive
-Companion to [allbrew_test_cases.md](./allbrew_test_cases.md). This is an
+Companion to [allbrew-test-cases.md](./allbrew-test-cases.md). This is an
 **independently re-verified** catalog: every pick below was checked against the full
-Homebrew formula **and** cask name lists (`brew formulae` + `brew casks`, 25,388 tokens,
+Homebrew formula **and** cask name lists (`brew formulae` + `brew casks`,
 June 2026) and filtered for **standalone, globally-installable, macOS-compatible apps**.
 
 **Scope expanded to cover every allbrew generator, not just the package-manager path.** The
@@ -37,7 +37,7 @@ for all 12 generators, so each install path has real apps to exercise it:
 | `binary-release` / `raw-binary` / `github-release-cask` / `build-from-source` / `source-archive` | [§ In-Homebrew fallback paths](#in-homebrew-candidates--non-brew-fallback-paths-releases--source) — in-HB apps whose releases ship prebuilt binaries / DMGs (test the "ignore brew, pull from releases or build from source" path) |
 | `mas-app` | MAS-only apps (Magnet, ColorSlurp, Bear) flagged in the [direct-download section](#direct-download-cask-app-test-cases--dmg--zip--pkg-generator-cask-app) |
 
-Every app is captured in one place in the [§ Combined master table](#combined-master-table--all-apps-from-every-table-above) ([extracted file](./allbrew_test_cases.md)), whose `is_*` / `has_*` / `in_*` columns map each app to the
+Every app is captured in one place in the [§ Combined master table](#combined-master-table--all-apps-from-every-table-above) ([extracted file](./allbrew-test-cases.md)), whose `is_*` / `has_*` / `in_*` columns map each app to the
 generator(s) it can exercise.
 
 The brief was to dig past the first page of search results for *hidden gems*. Two findings
@@ -89,7 +89,7 @@ uneven: where a UI × ecosystem cell has no real standalone apps, that is the fi
 | `mas-app` | Magnet, ColorSlurp, Bear (MAS-only) | [§ Direct-download cask-app](#direct-download-cask-app-test-cases--dmg--zip--pkg-generator-cask-app) |
 
 All ≈ **230 apps** across every generator are consolidated in the
-[§ Combined master table](#combined-master-table--all-apps-from-every-table-above) ([extracted file](./allbrew_test_cases.md)).
+[§ Combined master table](#combined-master-table--all-apps-from-every-table-above) ([extracted file](./allbrew-test-cases.md)).
 
 ---
 
@@ -583,46 +583,6 @@ fallback instead. Desktop GUIs (casks: rio, pyzo, frescobaldi, vorta, manuskript
 
 ---
 
-## How to drive a test (recap)
-
-```bash
-# pip / uv / pipx
-allbrew https://pypi.org/project/marimo/ --manual      # → pip-package
-brew install marimo && marimo edit
-
-# npm
-allbrew https://www.npmjs.com/package/taskbook --manual # → npm-package
-brew install taskbook && tb
-
-# cargo (crates.io or GitHub)
-allbrew https://crates.io/crates/managarr --manual      # → cargo-package
-brew install managarr && managarr
-
-# go (GitHub repo; embedded-frontend web app = best stress)
-allbrew https://github.com/muety/wakapi --manual        # → go-package
-brew install wakapi && wakapi
-
-# script-install (curl | bash)
-allbrew https://starship.rs/install.sh --manual         # → script-install
-brew install starship && starship --version
-
-# cask-app (direct .dmg / .zip / .pkg download)
-allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual  # → cask-app
-brew install --cask seaquel && open -a Seaquel
-
-# fallback path (in-HB app, pull from release binaries instead of brew)
-allbrew https://github.com/YS-L/csvlens --manual        # → binary-release / build-from-source
-
-# future generators (manual today)
-allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned)
-```
-
-Record per pick: generator chosen, bin name vs package name drift, livecheck source, service
-block (flower/wakapi/smtp4dev), and any native-build failures (tgt/TDLib, goatcounter/CGO,
-Fyne/`fyne install`).
-
----
-
 ## Script-install test cases — `curl | bash` installs (generator: `script-install`)
 
 allbrew input: URL to a shell script (`.sh`, `.bash`, or extensionless).
@@ -789,57 +749,4 @@ and filename via `url.split("/").pop().split("?")[0]`.
 | Version in filename only | `Seaquel_2026.4.8_aarch64.dmg` | `2026.4.8` | Underscore separators (not hyphen) |
 | Platform-specific URLs | `arm64` vs `x64` variants | same | User must pick correct arch |
 
-### How to drive a test
-
-```bash
-# Not-in-HB app (GitHub release DMG)
-allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual
-brew install --cask seaquel && open -a Seaquel
-
-# Not-in-HB app (GitHub release DMG, different naming)
-allbrew https://github.com/berbicanes/apiark/releases/download/v0.4.6/ApiArk_0.4.6_aarch64.dmg --manual
-brew install --cask apiark && open -a ApiArk
-
-# Developer site redirect → GitHub .zip
-allbrew https://ollama.com/download/Ollama-darwin.zip --manual
-brew install --cask ollama && ollama --version
-
-# Developer CDN "latest" DMG
-allbrew https://proxyman.io/release/osx/Proxyman_latest.dmg --manual
-brew install --cask proxyman && open -a Proxyman
-
-# PKG installer (not DMG)
-allbrew https://zoom.us/client/latest/Zoom.pkg --manual
-brew install --cask zoom && open -a zoom.us
-
-# GitHub /latest/ redirect (no version in URL)
-allbrew https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg --manual
-brew install --cask utm && open -a UTM
-
-# Script-install test
-allbrew https://starship.rs/install.sh --manual
-brew install starship && starship --version
-
-# Script-install — no .sh extension
-allbrew https://get.volta.sh --manual
-brew install volta && volta --version
-
-# Script-install — launcher script (not one-shot)
-allbrew https://get.jetify.com/devbox --manual
-brew install devbox && devbox version
-```
-
-Record per pick: generator chosen, detected app name, version extraction result, SHA256
-verification, redirect handling, and whether the formula/cask installs and runs correctly.
-
----
-
-## Combined master table — all apps from every table above
-
-The combined master table has been extracted to its own file for easier machine consumption
-and cross-referencing: **[allbrew_test_cases.md](./allbrew_test_cases.md)**.
-
-It contains every app from every section table above, unified into one row per app with
-presence/identifier columns (23 columns total). Blank cell = not applicable or not found.
-`in_*` columns include the identifier or URL where known.
 

@@ -260,3 +260,88 @@ not found. `in_*` columns include the identifier or URL where known.
 | croc | Go |  |  | github.com/schollz/croc | croc (formula) |  |  |  |  |  | github.com/schollz/croc |  |  |  |  |  |  |  | yes | yes | https://getcroc.schollz.com | bare domain redirect |
 | Zellij | Rust |  |  | github.com/zellij-org/zellij | zellij (formula) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | https://zellij.dev/launch | unusual path /launch |
 | Pool |  |  | downloads.poolside.ai/pool/install.sh | github.com/poolsideai/pool |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | https://downloads.poolside.ai/pool/install.sh | AI coding assistant; downloads. subdomain |
+
+---
+
+## How to drive a test (all generators)
+
+```bash
+# pip / uv / pipx
+allbrew https://pypi.org/project/marimo/ --manual      # → pip-package
+brew install marimo && marimo edit
+
+# npm
+allbrew https://www.npmjs.com/package/taskbook --manual # → npm-package
+brew install taskbook && tb
+
+# cargo (crates.io or GitHub)
+allbrew https://crates.io/crates/managarr --manual      # → cargo-package
+brew install managarr && managarr
+
+# go (GitHub repo; embedded-frontend web app = best stress)
+allbrew https://github.com/muety/wakapi --manual        # → go-package
+brew install wakapi && wakapi
+
+# script-install (curl | bash)
+allbrew https://starship.rs/install.sh --manual         # → script-install
+brew install starship && starship --version
+
+# cask-app (direct .dmg / .zip / .pkg download)
+allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual  # → cask-app
+brew install --cask seaquel && open -a Seaquel
+
+# fallback path (in-HB app, pull from release binaries instead of brew)
+allbrew https://github.com/YS-L/csvlens --manual        # → binary-release / build-from-source
+
+# future generators (manual today)
+allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned)
+```
+
+Record per pick: generator chosen, bin name vs package name drift, livecheck source, service
+block (flower/wakapi/smtp4dev), and any native-build failures (tgt/TDLib, goatcounter/CGO,
+Fyne/`fyne install`).
+
+---
+
+## How to drive a test (cask-app & script-install)
+
+```bash
+# Not-in-HB app (GitHub release DMG)
+allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual
+brew install --cask seaquel && open -a Seaquel
+
+# Not-in-HB app (GitHub release DMG, different naming)
+allbrew https://github.com/berbicanes/apiark/releases/download/v0.4.6/ApiArk_0.4.6_aarch64.dmg --manual
+brew install --cask apiark && open -a ApiArk
+
+# Developer site redirect → GitHub .zip
+allbrew https://ollama.com/download/Ollama-darwin.zip --manual
+brew install --cask ollama && ollama --version
+
+# Developer CDN "latest" DMG
+allbrew https://proxyman.io/release/osx/Proxyman_latest.dmg --manual
+brew install --cask proxyman && open -a Proxyman
+
+# PKG installer (not DMG)
+allbrew https://zoom.us/client/latest/Zoom.pkg --manual
+brew install --cask zoom && open -a zoom.us
+
+# GitHub /latest/ redirect (no version in URL)
+allbrew https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg --manual
+brew install --cask utm && open -a UTM
+
+# Script-install test
+allbrew https://starship.rs/install.sh --manual
+brew install starship && starship --version
+
+# Script-install — no .sh extension
+allbrew https://get.volta.sh --manual
+brew install volta && volta --version
+
+# Script-install — launcher script (not one-shot)
+allbrew https://get.jetify.com/devbox --manual
+brew install devbox && devbox version
+```
+
+Record per pick: generator chosen, detected app name, version extraction result, SHA256
+verification, redirect handling, and whether the formula/cask installs and runs correctly.

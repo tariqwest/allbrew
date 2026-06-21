@@ -2,7 +2,7 @@
 
 > **Deeper planning & architecture docs** live in [`.agents/plans/`](./.agents/plans/):
 > - [`allbrew-test-cases-deep-research-2026-06.md`](./.agents/plans/allbrew-test-cases-deep-research-2026-06.md) — full research narrative, per-ecosystem tables, generator-coverage analysis
-> - [`allbrew_test_cases.md`](./.agents/plans/allbrew_test_cases.md) — combined master table of ~230 test-case apps across all 12 generators
+> - [`allbrew-test-cases.md`](./.agents/plans/allbrew-test-cases.md) — combined master table of ~230 test-case apps across all 12 generators
 > - [`tebako-ruby-binary-status.md`](./.agents/plans/tebako-ruby-binary-status.md) — paused Ruby binary experiment
 
 ## Project overview
