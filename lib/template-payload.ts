@@ -56,8 +56,8 @@ export type GoPackagePayload = FormulaCommonFields & {
   livecheckBlock: string;
 };
 
-export type BuildFromSourcePayload = FormulaCommonFields & {
-  template: "build_from_source";
+export type SourceBuildPayload = FormulaCommonFields & {
+  template: "source_build";
   fullName: string;
   defaultBranch: string;
   licenseLine: string;
@@ -75,16 +75,16 @@ export type BinaryReleasePayload = FormulaCommonFields & {
   platformBlocks: string;
 };
 
-export type ScriptInstallPayload = FormulaCommonFields & {
-  template: "script_install";
+export type InstallScriptPayload = FormulaCommonFields & {
+  template: "install_script";
   url: string;
   sha256: string;
   scriptFilename: string;
   livecheckBlock: string;
 };
 
-export type SourceArchivePayload = FormulaCommonFields & {
-  template: "source_archive";
+export type ArchiveBuildPayload = FormulaCommonFields & {
+  template: "archive_build";
   url: string;
   sha256: string;
   dependenciesLines: string;
@@ -92,16 +92,16 @@ export type SourceArchivePayload = FormulaCommonFields & {
   livecheckBlock: string;
 };
 
-export type RawBinaryPayload = FormulaCommonFields & {
-  template: "raw_binary";
+export type BinaryDirectPayload = FormulaCommonFields & {
+  template: "binary_direct";
   url: string;
   sha256: string;
   installBody: string;
   livecheckBlock: string;
 };
 
-export type GithubReleaseCaskPayload = {
-  template: "github_release";
+export type CaskAppReleasePayload = {
+  template: "cask_app_release";
   name: string;
   version: string;
   sha256: string;
@@ -126,8 +126,8 @@ export type CaskAppPayload = {
   livecheckBlock: string;
 };
 
-export type MasAppPayload = {
-  template: "mas_app";
+export type CaskAppMasPayload = {
+  template: "cask_app_mas";
   name: string;
   appId: string;
   appName: string;
@@ -138,8 +138,8 @@ export type MasAppPayload = {
   livecheckBlock: string;
 };
 
-export type SwiftSpmPayload = FormulaCommonFields & {
-  template: "swift_spm";
+export type SpmPackagePayload = FormulaCommonFields & {
+  template: "spm_package";
   fullName: string;
   defaultBranch: string;
   licenseLine: string;
@@ -148,8 +148,8 @@ export type SwiftSpmPayload = FormulaCommonFields & {
   livecheckBlock: string;
 };
 
-export type DotnetToolPayload = FormulaCommonFields & {
-  template: "dotnet_tool";
+export type DotnetPackagePayload = FormulaCommonFields & {
+  template: "dotnet_package";
   packageName: string;
   version: string;
   licenseLine: string;
@@ -157,8 +157,8 @@ export type DotnetToolPayload = FormulaCommonFields & {
   livecheckBlock: string;
 };
 
-export type RubyGemPayload = FormulaCommonFields & {
-  template: "ruby_gem";
+export type GemPackagePayload = FormulaCommonFields & {
+  template: "gem_package";
   gemName: string;
   version: string;
   licenseLine: string;
@@ -166,8 +166,8 @@ export type RubyGemPayload = FormulaCommonFields & {
   livecheckBlock: string;
 };
 
-export type SwiftMintPayload = FormulaCommonFields & {
-  template: "swift_mint";
+export type MintPackagePayload = FormulaCommonFields & {
+  template: "mint_package";
   fullName: string;
   defaultBranch: string;
   licenseLine: string;
@@ -181,17 +181,17 @@ export type FormulaPayload =
   | PipPackagePayload
   | CargoPackagePayload
   | GoPackagePayload
-  | BuildFromSourcePayload
+  | SourceBuildPayload
   | BinaryReleasePayload
-  | ScriptInstallPayload
-  | SourceArchivePayload
-  | RawBinaryPayload
-  | SwiftSpmPayload
-  | DotnetToolPayload
-  | RubyGemPayload
-  | SwiftMintPayload;
+  | InstallScriptPayload
+  | ArchiveBuildPayload
+  | BinaryDirectPayload
+  | SpmPackagePayload
+  | DotnetPackagePayload
+  | GemPackagePayload
+  | MintPackagePayload;
 
 export type CaskPayload =
-  | GithubReleaseCaskPayload
+  | CaskAppReleasePayload
   | CaskAppPayload
-  | MasAppPayload;
+  | CaskAppMasPayload;

@@ -5,46 +5,46 @@ import type {
 import { writeCask, writeFormula } from "./utils.ts";
 
 import renderBinaryRelease from "./templates/formula/binary-release.ts";
-import renderBuildFromSource from "./templates/formula/build-from-source.ts";
+import renderSourceBuild from "./templates/formula/source-build.ts";
 import renderCargoPackage from "./templates/formula/cargo-package.ts";
 import renderGoPackage from "./templates/formula/go-package.ts";
 import renderNpmPackage from "./templates/formula/npm-package.ts";
 import renderPipPackage from "./templates/formula/pip-package.ts";
-import renderRawBinary from "./templates/formula/raw-binary.ts";
-import renderScriptInstall from "./templates/formula/script-install.ts";
-import renderSourceArchive from "./templates/formula/source-archive.ts";
-import renderSwiftSpm from "./templates/formula/swift-spm.ts";
-import renderDotnetTool from "./templates/formula/dotnet-tool.ts";
-import renderRubyGem from "./templates/formula/ruby-gem.ts";
-import renderSwiftMint from "./templates/formula/swift-mint.ts";
+import renderBinaryDirect from "./templates/formula/binary-direct.ts";
+import renderInstallScript from "./templates/formula/install-script.ts";
+import renderArchiveBuild from "./templates/formula/archive-build.ts";
+import renderSpmPackage from "./templates/formula/spm-package.ts";
+import renderDotnetPackage from "./templates/formula/dotnet-package.ts";
+import renderGemPackage from "./templates/formula/gem-package.ts";
+import renderMintPackage from "./templates/formula/mint-package.ts";
 
 import renderCaskApp from "./templates/cask/cask-app.ts";
-import renderGithubReleaseCask from "./templates/cask/github-release.ts";
-import renderMasApp from "./templates/cask/mas-app.ts";
+import renderCaskAppRelease from "./templates/cask/cask-app-release.ts";
+import renderCaskAppMas from "./templates/cask/cask-app-mas.ts";
 
 const FORMULA_TEMPLATES: Record<
   FormulaPayload["template"],
   (p: any) => string
 > = {
   binary_release: renderBinaryRelease,
-  build_from_source: renderBuildFromSource,
+  source_build: renderSourceBuild,
   cargo_package: renderCargoPackage,
   go_package: renderGoPackage,
   npm_package: renderNpmPackage,
   pip_package: renderPipPackage,
-  raw_binary: renderRawBinary,
-  script_install: renderScriptInstall,
-  source_archive: renderSourceArchive,
-  swift_spm: renderSwiftSpm,
-  dotnet_tool: renderDotnetTool,
-  ruby_gem: renderRubyGem,
-  swift_mint: renderSwiftMint,
+  binary_direct: renderBinaryDirect,
+  install_script: renderInstallScript,
+  archive_build: renderArchiveBuild,
+  spm_package: renderSpmPackage,
+  dotnet_package: renderDotnetPackage,
+  gem_package: renderGemPackage,
+  mint_package: renderMintPackage,
 };
 
 const CASK_TEMPLATES: Record<CaskPayload["template"], (p: any) => string> = {
   cask_app: renderCaskApp,
-  github_release: renderGithubReleaseCask,
-  mas_app: renderMasApp,
+  cask_app_release: renderCaskAppRelease,
+  cask_app_mas: renderCaskAppMas,
 };
 
 export function renderFormula(payload: FormulaPayload): string {

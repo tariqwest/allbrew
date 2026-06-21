@@ -6,21 +6,21 @@ export type PackageKind = "formula" | "cask";
 
 export type GeneratorName =
   | "binary-release"
-  | "build-from-source"
+  | "source-build"
   | "npm-package"
   | "pip-package"
   | "cargo-package"
   | "go-package"
-  | "script-install"
-  | "source-archive"
-  | "raw-binary"
+  | "install-script"
+  | "archive-build"
+  | "binary-direct"
   | "cask-app"
-  | "github-release-cask"
-  | "mas-app"
-  | "swift-spm"
-  | "dotnet-tool"
-  | "ruby-gem"
-  | "swift-mint";
+  | "cask-app-release"
+  | "cask-app-mas"
+  | "spm-package"
+  | "dotnet-package"
+  | "gem-package"
+  | "mint-package";
 
 export type PackageManifest = {
   name: string;

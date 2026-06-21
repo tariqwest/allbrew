@@ -25,12 +25,12 @@ const cases: Case[] = [
   buildCargoPackageCase(),
   buildGoPackageCase(),
   buildPipPackageCase(),
-  buildRawBinaryCase(),
-  buildScriptInstallCase(),
-  buildSourceArchiveCase(),
+  buildBinaryDirectCase(),
+  buildInstallScriptCase(),
+  buildArchiveBuildCase(),
   buildGithubReleaseCase(),
   buildCaskAppCase(),
-  buildMasAppCase(),
+  buildCaskAppMasCase(),
 ];
 
 function main() {
@@ -108,7 +108,7 @@ function buildGithubReleaseCase(): Case {
     `    "~/Library/Application Support/Foo",\n` +
     `  ]\n`;
   const payload: CaskPayload = {
-    template: "github_release",
+    template: "cask_app_release",
     name: "foo",
     version: "1.2.3",
     sha256: "44",
@@ -134,7 +134,7 @@ function buildGithubReleaseCase(): Case {
     `  app "Foo.app"\n\n` +
     zap +
     `end\n`;
-  return { template: "github_release", kind: "cask", payload, expected };
+  return { template: "cask_app_release", kind: "cask", payload, expected };
 }
 
 function buildBinaryReleaseCase(): Case {
@@ -185,7 +185,7 @@ function buildBinaryReleaseCase(): Case {
 
 function buildBuildFromSourceCase(): Case {
   const payload: FormulaPayload = {
-    template: "build_from_source",
+    template: "source_build",
     name: "foo",
     className: "Foo",
     desc: "Foo from source",
@@ -224,7 +224,7 @@ function buildBuildFromSourceCase(): Case {
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
     `  end\n` +
     `end\n`;
-  return { template: "build_from_source", kind: "formula", payload, expected };
+  return { template: "source_build", kind: "formula", payload, expected };
 }
 
 function buildCargoPackageCase(): Case {
@@ -357,11 +357,11 @@ function buildPipPackageCase(): Case {
   return { template: "pip_package", kind: "formula", payload, expected };
 }
 
-function buildRawBinaryCase(): Case {
+function buildBinaryDirectCase(): Case {
   const installBody =
     `    bin.install "foo"\n` + `\n` + `    man1.install "foo.1"\n`;
   const payload: FormulaPayload = {
-    template: "raw_binary",
+    template: "binary_direct",
     name: "foo",
     className: "Foo",
     desc: "Install foo",
@@ -389,12 +389,12 @@ function buildRawBinaryCase(): Case {
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
     `  end\n` +
     `end\n`;
-  return { template: "raw_binary", kind: "formula", payload, expected };
+  return { template: "binary_direct", kind: "formula", payload, expected };
 }
 
-function buildScriptInstallCase(): Case {
+function buildInstallScriptCase(): Case {
   const payload: FormulaPayload = {
-    template: "script_install",
+    template: "install_script",
     name: "foo",
     className: "Foo",
     desc: "Install foo via setup script",
@@ -427,16 +427,16 @@ function buildScriptInstallCase(): Case {
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
     `  end\n` +
     `end\n`;
-  return { template: "script_install", kind: "formula", payload, expected };
+  return { template: "install_script", kind: "formula", payload, expected };
 }
 
-function buildSourceArchiveCase(): Case {
+function buildArchiveBuildCase(): Case {
   const installBody =
     `    system "meson", "setup", "build", *std_meson_args\n` +
     `    system "meson", "compile", "-C", "build"\n` +
     `    system "meson", "install", "-C", "build"\n`;
   const payload: FormulaPayload = {
-    template: "source_archive",
+    template: "archive_build",
     name: "foo",
     className: "Foo",
     desc: "Install foo from source archive",
@@ -467,7 +467,7 @@ function buildSourceArchiveCase(): Case {
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
     `  end\n` +
     `end\n`;
-  return { template: "source_archive", kind: "formula", payload, expected };
+  return { template: "archive_build", kind: "formula", payload, expected };
 }
 
 function buildCaskAppCase(): Case {
@@ -497,7 +497,7 @@ function buildCaskAppCase(): Case {
   return { template: "cask_app", kind: "cask", payload, expected };
 }
 
-function buildMasAppCase(): Case {
+function buildCaskAppMasCase(): Case {
   const zap =
     `  zap trash: [\n` +
     `    "~/Library/Application Support/Foo",\n` +
@@ -506,7 +506,7 @@ function buildMasAppCase(): Case {
     `    "~/Library/Saved Application State/com.example.foo.savedState",\n` +
     `  ]\n`;
   const payload: CaskPayload = {
-    template: "mas_app",
+    template: "cask_app_mas",
     name: "foo",
     appId: "12345",
     appName: "Foo",
@@ -532,7 +532,7 @@ function buildMasAppCase(): Case {
     `  uninstall delete: "/Applications/Foo.app"\n\n` +
     zap +
     `end\n`;
-  return { template: "mas_app", kind: "cask", payload, expected };
+  return { template: "cask_app_mas", kind: "cask", payload, expected };
 }
 
 main();

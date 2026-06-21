@@ -225,9 +225,9 @@ describe("renderFormula", () => {
     expect(renderFormula(payload)).toBe(expected);
   });
 
-  it("renders build_from_source template", () => {
+  it("renders source_build template", () => {
     const payload: FormulaPayload = {
-      template: "build_from_source",
+      template: "source_build",
       name: "foo",
       className: "Foo",
       desc: "Foo from source",
@@ -269,9 +269,9 @@ describe("renderFormula", () => {
     expect(renderFormula(payload)).toBe(expected);
   });
 
-  it("renders script_install template", () => {
+  it("renders install_script template", () => {
     const payload: FormulaPayload = {
-      template: "script_install",
+      template: "install_script",
       name: "foo",
       className: "Foo",
       desc: "Install foo via setup script",
@@ -307,11 +307,11 @@ describe("renderFormula", () => {
     expect(renderFormula(payload)).toBe(expected);
   });
 
-  it("renders raw_binary template", () => {
+  it("renders binary_direct template", () => {
     const installBody =
       `    bin.install "foo"\n` + `\n` + `    man1.install "foo.1"\n`;
     const payload: FormulaPayload = {
-      template: "raw_binary",
+      template: "binary_direct",
       name: "foo",
       className: "Foo",
       desc: "Install foo",
@@ -342,13 +342,13 @@ describe("renderFormula", () => {
     expect(renderFormula(payload)).toBe(expected);
   });
 
-  it("renders source_archive template", () => {
+  it("renders archive_build template", () => {
     const installBody =
       `    system "meson", "setup", "build", *std_meson_args\n` +
       `    system "meson", "compile", "-C", "build"\n` +
       `    system "meson", "install", "-C", "build"\n`;
     const payload: FormulaPayload = {
-      template: "source_archive",
+      template: "archive_build",
       name: "foo",
       className: "Foo",
       desc: "Install foo from source archive",
@@ -411,13 +411,13 @@ describe("renderFormula", () => {
 });
 
 describe("renderCask", () => {
-  it("renders github_release cask template", () => {
+  it("renders cask_app_release cask template", () => {
     const zap =
       `  zap trash: [\n` +
       `    "~/Library/Application Support/Foo",\n` +
       `  ]\n`;
     const payload: CaskPayload = {
-      template: "github_release",
+      template: "cask_app_release",
       name: "foo",
       version: "1.2.3",
       sha256: "44",
@@ -473,7 +473,7 @@ describe("renderCask", () => {
     expect(renderCask(payload)).toBe(expected);
   });
 
-  it("renders mas_app template", () => {
+  it("renders cask_app_mas template", () => {
     const zap =
       `  zap trash: [\n` +
       `    "~/Library/Application Support/Foo",\n` +
@@ -482,7 +482,7 @@ describe("renderCask", () => {
       `    "~/Library/Saved Application State/com.example.foo.savedState",\n` +
       `  ]\n`;
     const payload: CaskPayload = {
-      template: "mas_app",
+      template: "cask_app_mas",
       name: "foo",
       appId: "12345",
       appName: "Foo",

@@ -181,7 +181,7 @@ async function handleGithubRepoManual(url, opts) {
       },
       {
         name: "App cask — install .dmg/.zip app bundle from GitHub releases",
-        value: "github-release-cask",
+        value: "cask-app-release",
         disabled: !release ? "(no releases found)" : false,
       },
       { name: "npm package — install via Node.js / npm", value: "npm-package" },
@@ -193,23 +193,23 @@ async function handleGithubRepoManual(url, opts) {
       { name: "Go package — build via Go / go install", value: "go-package" },
       {
         name: "Swift SPM — build via Swift Package Manager",
-        value: "swift-spm",
+        value: "spm-package",
       },
       {
         name: ".NET global tool — install via dotnet tool install",
-        value: "dotnet-tool",
+        value: "dotnet-package",
       },
       {
         name: "Ruby gem — install via gem install",
-        value: "ruby-gem",
+        value: "gem-package",
       },
       {
         name: "Swift Mint — install Swift CLI via mint install",
-        value: "swift-mint",
+        value: "mint-package",
       },
       {
         name: "Build from source — cmake / make / autotools / meson",
-        value: "build-from-source",
+        value: "source-build",
       },
     ],
   });
@@ -222,9 +222,9 @@ async function handleGithubRepoManual(url, opts) {
         opts,
       );
 
-    case "github-release-cask":
+    case "cask-app-release":
       return await generateWithConfirmation(
-        "github-release-cask",
+        "cask-app-release",
         { repoInfo, release },
         opts,
       );
@@ -277,47 +277,47 @@ async function handleGithubRepoManual(url, opts) {
       );
     }
 
-    case "swift-spm": {
+    case "spm-package": {
       return await generateWithConfirmation(
-        "swift-spm",
+        "spm-package",
         { repoInfo, release },
         opts,
       );
     }
 
-    case "dotnet-tool": {
+    case "dotnet-package": {
       const packageName = await input({
         message: "NuGet package name:",
         default: repoInfo?.name || "",
       });
       return await generateWithConfirmation(
-        "dotnet-tool",
+        "dotnet-package",
         { packageName, repoInfo },
         opts,
       );
     }
 
-    case "ruby-gem": {
+    case "gem-package": {
       const gemName = await input({
         message: "Ruby gem name:",
         default: repoInfo?.name || "",
       });
       return await generateWithConfirmation(
-        "ruby-gem",
+        "gem-package",
         { gemName, repoInfo },
         opts,
       );
     }
 
-    case "swift-mint": {
+    case "mint-package": {
       return await generateWithConfirmation(
-        "swift-mint",
+        "mint-package",
         { repoInfo, release },
         opts,
       );
     }
 
-    case "build-from-source": {
+    case "source-build": {
       const system = await select({
         message: "Build system:",
         choices: [
@@ -329,7 +329,7 @@ async function handleGithubRepoManual(url, opts) {
         ],
       });
       return await generateWithConfirmation(
-        "build-from-source",
+        "source-build",
         {
           repoInfo,
           release,
@@ -395,7 +395,7 @@ async function handleArchiveManual(url: string, opts: any) {
       }
     }
     return await generateWithConfirmation(
-      "source-archive",
+      "archive-build",
       { archiveInfo, serviceConfig: archiveServiceConfig },
       opts,
     );
@@ -418,7 +418,7 @@ async function handleArchiveManual(url: string, opts: any) {
         });
       }
       return await generateWithConfirmation(
-        "raw-binary",
+        "binary-direct",
         {
           archiveInfo,
           selectedBinaries: selected,
@@ -445,7 +445,7 @@ async function handleArchiveManual(url: string, opts: any) {
     });
     archiveInfo.binaries = selected;
     return await generateWithConfirmation(
-      "raw-binary",
+      "binary-direct",
       {
         archiveInfo,
         selectedBinaries: selected,
@@ -506,7 +506,7 @@ async function handleGithubRepo(classification, opts) {
 
       if (choice === "cask") {
         return await generateWithConfirmation(
-          "github-release-cask",
+          "cask-app-release",
           { repoInfo, release },
           opts,
         );
@@ -524,7 +524,7 @@ async function handleGithubRepo(classification, opts) {
         `  Detected ${chalk.cyan("macOS app")} assets: ${appAssets.map((a) => a.name).join(", ")}`,
       );
       return await generateWithConfirmation(
-        "github-release-cask",
+        "cask-app-release",
         { repoInfo, release },
         opts,
       );
@@ -666,7 +666,7 @@ async function handleGithubRepo(classification, opts) {
           );
         case "build":
           return await generateWithConfirmation(
-            "build-from-source",
+            "source-build",
             {
               repoInfo,
               release,
@@ -756,7 +756,7 @@ async function handleGithubRepo(classification, opts) {
         );
       case "build":
         return await generateWithConfirmation(
-          "build-from-source",
+          "source-build",
           {
             repoInfo,
             release,
@@ -771,11 +771,11 @@ async function handleGithubRepo(classification, opts) {
   // Fallback: build from source with make
   console.log(
     chalk.dim(
-      "  No specific build system detected, defaulting to build-from-source",
+      "  No specific build system detected, defaulting to source-build",
     ),
   );
   return await generateWithConfirmation(
-    "build-from-source",
+    "source-build",
     {
       repoInfo,
       release,
@@ -787,7 +787,7 @@ async function handleGithubRepo(classification, opts) {
 }
 
 async function handleBashScript(url, opts) {
-  return await generateWithConfirmation("script-install", { url }, opts);
+  return await generateWithConfirmation("install-script", { url }, opts);
 }
 
 async function handleCaskDmg(url, opts) {
@@ -823,7 +823,7 @@ async function handleArchive(url: string, opts: any) {
     case "source":
       console.log("  Contains source code with build markers");
       return await generateWithConfirmation(
-        "source-archive",
+        "archive-build",
         { archiveInfo, serviceConfig: archiveServiceConfig },
         opts,
       );
@@ -845,7 +845,7 @@ async function handleArchive(url: string, opts: any) {
         });
       }
       return await generateWithConfirmation(
-        "raw-binary",
+        "binary-direct",
         {
           archiveInfo,
           selectedBinaries: selected,
@@ -868,14 +868,14 @@ async function handleArchive(url: string, opts: any) {
 
       if (choice === "source") {
         return await generateWithConfirmation(
-          "source-archive",
+          "archive-build",
           { archiveInfo, serviceConfig: archiveServiceConfig },
           opts,
         );
       } else if (choice === "binary") {
         archiveInfo.binaries = archiveInfo.files;
         return await generateWithConfirmation(
-          "raw-binary",
+          "binary-direct",
           { archiveInfo, serviceConfig: archiveServiceConfig },
           opts,
         );
@@ -886,7 +886,7 @@ async function handleArchive(url: string, opts: any) {
 }
 
 async function handleMacAppStore(url, opts) {
-  return await generateWithConfirmation("mas-app", { url }, opts);
+  return await generateWithConfirmation("cask-app-mas", { url }, opts);
 }
 
 async function generateWithConfirmation(generatorName, params: any, opts: any) {
@@ -939,10 +939,10 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       );
       break;
     }
-    case "build-from-source": {
-      const { generateBuildFromSource } =
-        await import("./generators/build-from-source.ts");
-      result = await generateBuildFromSource(
+    case "source-build": {
+      const { generateSourceBuild } =
+        await import("./generators/source-build.ts");
+      result = await generateSourceBuild(
         params.repoInfo,
         params.release,
         params.buildSystem,
@@ -987,21 +987,21 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       });
       break;
     }
-    case "script-install": {
-      const { generateScriptInstall } =
-        await import("./generators/script-install.ts");
-      result = await generateScriptInstall(params.url, mergedOpts);
+    case "install-script": {
+      const { generateInstallScript } =
+        await import("./generators/install-script.ts");
+      result = await generateInstallScript(params.url, mergedOpts);
       break;
     }
-    case "source-archive": {
-      const { generateSourceArchive } =
-        await import("./generators/source-archive.ts");
-      result = await generateSourceArchive(params.archiveInfo, mergedOpts);
+    case "archive-build": {
+      const { generateArchiveBuild } =
+        await import("./generators/archive-build.ts");
+      result = await generateArchiveBuild(params.archiveInfo, mergedOpts);
       break;
     }
-    case "raw-binary": {
-      const { generateRawBinary } = await import("./generators/raw-binary.ts");
-      result = await generateRawBinary(
+    case "binary-direct": {
+      const { generateBinaryDirect } = await import("./generators/binary-direct.ts");
+      result = await generateBinaryDirect(
         params.archiveInfo,
         params.selectedBinaries,
         mergedOpts,
@@ -1016,55 +1016,55 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       });
       break;
     }
-    case "github-release-cask": {
-      const { generateGithubReleaseCask } =
-        await import("./generators/github-release-cask.ts");
-      result = await generateGithubReleaseCask(
+    case "cask-app-release": {
+      const { generateCaskAppRelease } =
+        await import("./generators/cask-app-release.ts");
+      result = await generateCaskAppRelease(
         params.repoInfo,
         params.release,
         mergedOpts,
       );
       break;
     }
-    case "mas-app": {
-      const { generateMasApp } = await import("./generators/mas-app.ts");
-      result = await generateMasApp(params.url, mergedOpts);
+    case "cask-app-mas": {
+      const { generateCaskAppMas } = await import("./generators/cask-app-mas.ts");
+      result = await generateCaskAppMas(params.url, mergedOpts);
       break;
     }
-    case "swift-spm": {
-      const { generateSwiftSpm } =
-        await import("./generators/swift-spm.ts");
-      result = await generateSwiftSpm(
+    case "spm-package": {
+      const { generateSpmPackage } =
+        await import("./generators/spm-package.ts");
+      result = await generateSpmPackage(
         params.repoInfo,
         params.release,
         mergedOpts,
       );
       break;
     }
-    case "dotnet-tool": {
-      const { generateDotnetTool } =
-        await import("./generators/dotnet-tool.ts");
-      result = await generateDotnetTool(
+    case "dotnet-package": {
+      const { generateDotnetPackage } =
+        await import("./generators/dotnet-package.ts");
+      result = await generateDotnetPackage(
         params.packageName,
         params.repoInfo,
         mergedOpts,
       );
       break;
     }
-    case "ruby-gem": {
-      const { generateRubyGem } =
-        await import("./generators/ruby-gem.ts");
-      result = await generateRubyGem(
+    case "gem-package": {
+      const { generateGemPackage } =
+        await import("./generators/gem-package.ts");
+      result = await generateGemPackage(
         params.gemName,
         params.repoInfo,
         mergedOpts,
       );
       break;
     }
-    case "swift-mint": {
-      const { generateSwiftMint } =
-        await import("./generators/swift-mint.ts");
-      result = await generateSwiftMint(
+    case "mint-package": {
+      const { generateMintPackage } =
+        await import("./generators/mint-package.ts");
+      result = await generateMintPackage(
         params.repoInfo,
         params.release,
         mergedOpts,
@@ -1135,18 +1135,18 @@ async function brewAutoInstall(result: any, opts: any) {
 function isFormulaGenerator(generatorName: string) {
   return [
     "binary-release",
-    "build-from-source",
+    "source-build",
     "npm-package",
     "pip-package",
     "cargo-package",
     "go-package",
-    "script-install",
-    "source-archive",
-    "raw-binary",
-    "swift-spm",
-    "dotnet-tool",
-    "ruby-gem",
-    "swift-mint",
+    "install-script",
+    "archive-build",
+    "binary-direct",
+    "spm-package",
+    "dotnet-package",
+    "gem-package",
+    "mint-package",
   ].includes(generatorName);
 }
 
