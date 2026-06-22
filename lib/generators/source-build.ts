@@ -61,6 +61,7 @@ export async function collectSourceBuildPayload(
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+    isPython: system === "python",
   };
 }
 
@@ -91,6 +92,8 @@ function getDependencies(system: string): string[] {
       ];
     case "go":
       return ['"go" => :build'];
+    case "python":
+      return ['"python@3.13"'];
     default:
       return [];
   }
@@ -117,6 +120,12 @@ function getInstallBlock(system: string) {
       );
     case "go":
       return `    system "go", "build", *std_go_args(ldflags: "-s -w")\n`;
+    case "python":
+      return (
+        `    venv = virtualenv_create(libexec, "python3.13")\n` +
+        `    system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."\n` +
+        `    bin.install_symlink Dir["#{libexec}/bin/*"]\n`
+      );
     default:
       return `    system "make", "PREFIX=#{prefix}", "install"\n`;
   }
