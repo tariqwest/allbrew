@@ -135,6 +135,33 @@ describe.concurrent("go-package integration", () => {
     expect(payload.licenseLine).toContain("AGPL-3.0");
   });
 
+  const godnsRepoInfo = {
+    name: "godns",
+    fullName: "TimothyYe/godns",
+    description:
+      "A dynamic DNS client tool with multi-provider support and a built-in web panel",
+    homepage: "https://github.com/TimothyYe/godns",
+    htmlUrl: "https://github.com/TimothyYe/godns",
+    license: "Apache-2.0",
+    defaultBranch: "master",
+  };
+
+  it("godns: generates valid formula for cmd/godns module path", async () => {
+    const payload = await collectGoPackagePayload(godnsRepoInfo, null, {
+      goModule: "github.com/TimothyYe/godns/cmd/godns",
+    });
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("godns");
+    expect(payload.className).toBe("Godns");
+    expect(payload.livecheckBlock).toContain(
+      "proxy.golang.org/github.com/TimothyYe/godns/cmd/godns/@latest",
+    );
+    expect(ruby).toContain("class Godns < Formula");
+    expect(ruby).toContain('depends_on "go" => :build');
+    expect(payload.licenseLine).toContain("Apache-2.0");
+  });
+
   const gottyRepoInfo = {
     name: "gotty",
     fullName: "sorenisanerd/gotty",

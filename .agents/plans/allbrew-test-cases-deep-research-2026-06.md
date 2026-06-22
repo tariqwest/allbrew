@@ -253,6 +253,11 @@ for web coverage.**
 | **rerun** ⚠️ | `cargo install rerun-cli` (bin `rerun`) | data/3D visualizer; heavy GPU + large build |
 | **kiorg** ⚠️ | github.com/sicheng-pang/kiorg | egui file manager |
 
+### CLI / Protocol adapters
+| Pick | Crate / repo | Why |
+|------|--------------|-----|
+| **agy-acp** | github.com/hicder/agy-acp | ACP stdio adapter for Google Antigravity CLI (`agy`); tests `cargo-package` GitHub-only path (no crates.io, no GH releases); used as custom agent server in Zed |
+
 ---
 
 ## Go — `go install …@latest`  (generator: `go-package`)

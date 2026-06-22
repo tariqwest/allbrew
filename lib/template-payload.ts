@@ -65,6 +65,7 @@ export type SourceBuildPayload = FormulaCommonFields & {
   dependenciesLines: string;
   installBody: string;
   livecheckBlock: string;
+  isPython?: boolean;
 };
 
 export type BinaryReleasePayload = FormulaCommonFields & {

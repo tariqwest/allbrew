@@ -102,6 +102,7 @@ not found. `in_*` columns include the identifier or URL where known.
 | krokiet | Rust | slint |  | github.com/qarmin/czkawka |  |  |  |  | crates.io/crates/krokiet |  |  |  |  |  |  | yes |  |  | yes | yes |  | Czkawka GUI dupe-finder; ships from qarmin/czkawka monorepo; czkawka CLI is in HB, krokiet GUI is not |
 | rerun | Rust | wgpu |  | github.com/rerun-io/rerun |  |  |  |  | crates.io/crates/rerun-cli |  |  |  |  |  |  | yes |  |  | yes | yes |  | data/3D visualizer; crate rerun-cli in rerun-io/rerun monorepo; heavy GPU build |
 | kiorg | Rust | egui |  | github.com/houqp/kiorg |  |  |  |  | github.com/houqp/kiorg |  |  |  |  |  |  | yes |  |  | yes | yes |  | egui file manager; GitHub-sourced (not on crates.io) |
+| agy-acp | Rust |  |  | github.com/hicder/agy-acp |  |  |  |  | github.com/hicder/agy-acp |  |  |  |  |  |  |  |  |  | yes |  |  | ACP stdio adapter for Google Antigravity CLI (agy); GitHub Cargo (no crates.io publish, no releases); for Zed etc. |
 | process-compose | Go |  |  | github.com/F1bonacc1/process-compose |  |  |  |  |  | github.com/F1bonacc1/process-compose |  |  |  |  | yes |  |  |  | yes |  |  | process orchestrator |
 | wander | Go |  |  | github.com/robinovitch61/wander |  |  |  |  |  | github.com/robinovitch61/wander |  |  |  |  | yes |  |  |  | yes |  |  | Nomad TUI |
 | updo | Go |  |  | github.com/Owloops/updo |  |  |  |  |  | github.com/Owloops/updo |  |  |  |  | yes |  |  |  | yes |  |  | uptime monitor |
@@ -114,6 +115,7 @@ not found. `in_*` columns include the identifier or URL where known.
 | gotty | Go |  |  | github.com/sorenisanerd/gotty |  |  |  |  |  | github.com/sorenisanerd/gotty |  |  |  |  |  |  | yes |  | yes |  |  | `gotty bash` |
 | goatcounter | Go |  |  | github.com/arp242/goatcounter |  |  |  |  |  | zgo.at/goatcounter/v2 |  |  |  |  |  |  | yes |  | yes |  |  | CGO/SQLite; module is zgo.at/goatcounter/v2; CGO/SQLite build |
 | gokapi | Go |  |  | github.com/Forceu/Gokapi |  |  |  |  |  | github.com/Forceu/Gokapi |  |  |  |  |  |  | yes |  | yes |  |  | go:embed; go:embed assets |
+| godns | Go |  |  | github.com/TimothyYe/godns |  |  |  |  |  | github.com/TimothyYe/godns |  |  |  |  |  |  | yes |  | yes | yes (21) |  | DDNS client with built-in web panel; cmd path `cmd/godns`; service-block candidate; latest release also ships `godns-web` zip |
 | picoshare | Go |  |  | github.com/mtlynch/picoshare |  |  |  |  |  | github.com/mtlynch/picoshare |  |  |  |  |  |  | yes |  | yes |  |  | go:embed + SQLite; go:embed + SQLite |
 | supersonic | Go | Fyne |  | github.com/dweymouth/supersonic |  |  |  |  |  | github.com/dweymouth/supersonic |  |  |  |  |  | yes |  |  | yes |  |  | music client; Fyne -> `fyne install`, not bare `go install` |
 | rymdport | Go | Fyne |  | github.com/Jacalz/rymdport |  |  |  |  |  | github.com/Jacalz/rymdport |  |  |  |  |  | yes |  |  | yes |  |  | wormhole GUI; Fyne -> `fyne install`, not bare `go install` |
@@ -260,6 +262,14 @@ not found. `in_*` columns include the identifier or URL where known.
 | croc | Go |  |  | github.com/schollz/croc | croc (formula) |  |  |  |  |  | github.com/schollz/croc |  |  |  |  |  |  |  | yes | yes | https://getcroc.schollz.com | bare domain redirect |
 | Zellij | Rust |  |  | github.com/zellij-org/zellij | zellij (formula) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | https://zellij.dev/launch | unusual path /launch |
 | Pool |  |  | downloads.poolside.ai/pool/install.sh | github.com/poolsideai/pool |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | https://downloads.poolside.ai/pool/install.sh | AI coding assistant; downloads. subdomain |
+| ddclient | Perl |  |  | github.com/ddclient/ddclient | ddclient (formula) |  |  |  |  |  |  |  |  |  |  |  |  |  | yes | tags only |  | dynamic DNS client; autotools build (./configure, make); service-block candidate (daemon mode); v4.0.0; uses curl |
+| agent-deck | Go |  |  | github.com/asheshgoplani/agent-deck |  |  |  |  |  | github.com/asheshgoplani/agent-deck |  |  |  |  | yes |  | yes |  | yes | yes | https://raw.githubusercontent.com/asheshgoplani/agent-deck/main/install.sh | AI agent session manager TUI; `go install` path; install.sh downloads prebuilt binaries; web UI mode (`agent-deck web`); not in HB core (author tap only); 344 releases |
+| Poe |  |  | poe.com/pages/get-poe |  | poe (cask) | yes |  |  |  |  |  |  |  |  |  | yes |  | Poe.dmg |  | yes |  | AI chat client by Quora; CDN DMG (desktop-app.poecdn.net); no version in URL; also on MAS; closed-source |
+| PopClip |  |  | popclip.app |  | popclip (cask) | yes |  |  |  |  |  |  |  |  |  | yes |  | PopClip-2025.9.2.zip |  | yes |  | text action tool; developer site .zip (pilotmoon.com/downloads); version in filename; also on MAS (outdated); also on Setapp; closed-source |
+| Mission Control Plus |  |  | fadel.io/missioncontrolplus | github.com/ronyfadel/MissionControlPlusReleases | mission-control-plus (cask) |  |  |  |  |  |  |  |  |  |  | yes |  | .dmg |  | yes |  | window manager for Mission Control; GitHub releases-only repo (no source); v1.24; closed-source; requires Accessibility permission |
+| Hermes Desktop | Swift | SwiftUI |  | github.com/dodo-reach/hermes-desktop |  |  |  |  |  |  |  |  |  |  |  | yes |  | HermesDesktop.app.zip | yes |  |  | native macOS companion for Hermes Agent; GitHub release .zip; ad-hoc signed (not notarized); MIT; v1.2.0; build script `./scripts/build-macos-app.sh`; 1.9k stars |
+| Veronum | TypeScript | Electron | thetoolswebsite.com | github.com/DylanWain/veronum-desktop |  |  |  |  |  |  |  |  |  |  |  | yes |  | Veronum.dmg |  |  |  | multi-LLM workspace desktop app; GitHub /latest/ redirect DMG (no version in URL); signed + notarized; v0.1.2; not in HB |
+| authsec-bridge | Python |  |  | github.com/authsec-ai/authsec-bridge |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | session bridge for Claude Code/Codex/Gemini CLI; `pip install -e .` from git clone; no PyPI package; no releases; MIT; edge case for source-build (Python not autotools) |
 
 ---
 
@@ -281,6 +291,8 @@ brew install managarr && managarr
 # go (GitHub repo; embedded-frontend web app = best stress)
 allbrew https://github.com/muety/wakapi --manual        # → go-package
 brew install wakapi && wakapi
+allbrew https://github.com/TimothyYe/godns --manual     # → go-package / binary-release
+brew install godns && godns -h
 
 # script-install (curl | bash)
 allbrew https://starship.rs/install.sh --manual         # → script-install
@@ -291,7 +303,19 @@ allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaque
 brew install --cask seaquel && open -a Seaquel
 
 # fallback path (in-HB app, pull from release binaries instead of brew)
-allbrew https://github.com/YS-L/csvlens --manual        # → binary-release / build-from-source
+allbrew https://github.com/YS-L/csvlens --manual        # → binary-release / source-build
+
+# source-build (autotools; in-HB Perl app)
+allbrew https://github.com/ddclient/ddclient --manual   # → source-build
+brew install ddclient && ddclient --version
+
+# source-build (Python pip install from GitHub; no PyPI; no releases)
+allbrew https://github.com/authsec-ai/authsec-bridge --manual  # → source-build
+brew install authsec-bridge && sb --help
+
+# go-package (not-in-HB Go TUI with web UI)
+allbrew https://github.com/asheshgoplani/agent-deck --manual  # → go-package
+brew install agent-deck && agent-deck --version
 
 # future generators (manual today)
 allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned)
@@ -322,6 +346,22 @@ brew install --cask ollama && ollama --version
 allbrew https://proxyman.io/release/osx/Proxyman_latest.dmg --manual
 brew install --cask proxyman && open -a Proxyman
 
+# Developer CDN DMG (no version in URL; closed-source; also on MAS)
+allbrew https://desktop-app.poecdn.net/downloads/Poe.dmg --manual
+brew install --cask poe && open -a Poe
+
+# Developer site .zip (version in filename; closed-source; also on MAS)
+allbrew https://pilotmoon.com/downloads/PopClip-2025.9.2.zip --manual
+brew install --cask popclip && open -a PopClip
+
+# GitHub release cask (releases-only repo; closed-source)
+allbrew https://github.com/ronyfadel/MissionControlPlusReleases --manual
+brew install --cask mission-control-plus && open -a "Mission Control Plus"
+
+# GitHub release cask (.zip with .app; open-source Swift; unsigned)
+allbrew https://github.com/dodo-reach/hermes-desktop --manual
+brew install --cask hermes-desktop && open -a HermesDesktop
+
 # PKG installer (not DMG)
 allbrew https://zoom.us/client/latest/Zoom.pkg --manual
 brew install --cask zoom && open -a zoom.us
@@ -329,6 +369,10 @@ brew install --cask zoom && open -a zoom.us
 # GitHub /latest/ redirect (no version in URL)
 allbrew https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg --manual
 brew install --cask utm && open -a UTM
+
+# GitHub /latest/ redirect DMG (Electron app; signed + notarized)
+allbrew https://github.com/DylanWain/veronum-desktop/releases/latest/download/Veronum.dmg --manual
+brew install --cask veronum && open -a Veronum
 
 # Script-install test
 allbrew https://starship.rs/install.sh --manual

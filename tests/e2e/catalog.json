@@ -60,6 +60,16 @@
     "notes": "WakaTime-compatible coding stats server"
   },
   {
+    "name": "godns",
+    "url": "https://github.com/TimothyYe/godns",
+    "generator": "binary-release",
+    "allbrewArgs": [],
+    "expectedBin": "godns",
+    "verifyCommand": ["godns", "-h"],
+    "skip": false,
+    "notes": "DDNS client with built-in web panel; GitHub releases ship Darwin/Linux binary archives"
+  },
+  {
     "name": "process-compose",
     "url": "https://github.com/F1bonacc1/process-compose",
     "generator": "go-package",
@@ -348,5 +358,95 @@
     "verifyCommand": ["slides", "--version"],
     "skip": false,
     "notes": "Source archive path — Go project from source tarball"
+  },
+  {
+    "name": "ddclient",
+    "url": "https://github.com/ddclient/ddclient",
+    "generator": "source-build",
+    "allbrewArgs": ["--name", "ddclient"],
+    "expectedBin": "ddclient",
+    "verifyCommand": ["ddclient", "--version"],
+    "skip": false,
+    "notes": "Perl dynamic DNS client — autotools build from GitHub releases; service-block candidate"
+  },
+  {
+    "name": "agent-deck",
+    "url": "https://github.com/asheshgoplani/agent-deck",
+    "generator": "go-package",
+    "allbrewArgs": ["--name", "agent-deck"],
+    "expectedBin": "agent-deck",
+    "verifyCommand": ["agent-deck", "--version"],
+    "skip": false,
+    "notes": "Go TUI for AI agent session management — go install path; web UI mode; not in HB core"
+  },
+  {
+    "name": "poe",
+    "url": "https://desktop-app.poecdn.net/downloads/Poe.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "poe", "--app-name", "Poe.app", "--homepage", "https://poe.com"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "Poe"],
+    "skip": false,
+    "notes": "AI chat client DMG — CDN hosted, no version in URL; closed-source; also on MAS"
+  },
+  {
+    "name": "popclip",
+    "url": "https://pilotmoon.com/downloads/PopClip-2025.9.2.zip",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "popclip", "--app-name", "PopClip.app", "--homepage", "https://www.popclip.app"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "PopClip"],
+    "skip": false,
+    "notes": "Text action tool .zip — developer site download, version in filename; closed-source; also on MAS"
+  },
+  {
+    "name": "mission-control-plus",
+    "url": "https://github.com/ronyfadel/MissionControlPlusReleases",
+    "generator": "cask-app-release",
+    "allbrewArgs": ["--name", "mission-control-plus", "--app-name", "Mission Control Plus.app", "--homepage", "https://www.fadel.io/missioncontrolplus"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "Mission Control Plus"],
+    "skip": false,
+    "notes": "Window manager DMG from GitHub releases-only repo — closed-source; requires Accessibility permission"
+  },
+  {
+    "name": "hermes-desktop",
+    "url": "https://github.com/dodo-reach/hermes-desktop",
+    "generator": "cask-app-release",
+    "allbrewArgs": ["--name", "hermes-desktop", "--app-name", "HermesDesktop.app", "--homepage", "https://github.com/dodo-reach/hermes-desktop"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "HermesDesktop"],
+    "skip": false,
+    "notes": "Native macOS Hermes Agent companion — Swift/SwiftUI; GitHub release .zip; ad-hoc signed (not notarized); MIT; open-source"
+  },
+  {
+    "name": "veronum",
+    "url": "https://github.com/DylanWain/veronum-desktop/releases/latest/download/Veronum.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": ["--name", "veronum", "--app-name", "Veronum.app", "--homepage", "https://www.thetoolswebsite.com"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "Veronum"],
+    "skip": false,
+    "notes": "Multi-LLM workspace Electron app — GitHub /latest/ redirect DMG; signed + notarized; not in HB"
+  },
+  {
+    "name": "authsec-bridge",
+    "url": "https://github.com/authsec-ai/authsec-bridge",
+    "generator": "source-build",
+    "allbrewArgs": ["--name", "authsec-bridge", "--desc", "Python CLI session bridge", "--no-service"],
+    "expectedBin": "sb",
+    "verifyCommand": ["sb", "--help"],
+    "skip": false,
+    "notes": "Python CLI session bridge for Claude/Codex/Gemini — pip install from GitHub; no PyPI; no releases; edge case for source-build"
+  },
+  {
+    "name": "agy-acp",
+    "url": "https://github.com/hicder/agy-acp",
+    "generator": "cargo-package",
+    "allbrewArgs": ["--desc", "ACP stdio adapter for Google Antigravity CLI (agy)", "--no-service"],
+    "expectedBin": "agy-acp",
+    "verifyCommand": ["agy-acp", "--version"],
+    "skip": false,
+    "notes": "Rust ACP stdio adapter for Google Antigravity CLI (agy); cargo-package from GitHub (no crates.io, no releases); editor integration (Zed Agent Panel)"
   }
 ]

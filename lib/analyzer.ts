@@ -32,7 +32,8 @@ const BUILD_PATTERNS = [
   { pattern: /\.\/configure/i, system: "autotools" },
   { pattern: /make\s+(?:install|all|build)?/i, system: "make" },
   { pattern: /meson\s+/i, system: "meson" },
-  { pattern: /go\s+build/i, system: "go" },
+  { pattern: /\bgo\s+build\b/i, system: "go" },
+  { pattern: /\b(?:python[3]?\s+-m\s+pip|pip[3]?)\s+install\s+(?:-[a-zA-Z]+\s+)*\./i, system: "python" },
 ];
 
 const SERVICE_HINT_RE =
