@@ -125,6 +125,7 @@ not found. `in_*` columns include the identifier or URL where known.
 | horcrux-ui | Go | Fyne |  | github.com/jesseduffield/horcrux-ui |  |  |  |  |  | github.com/jesseduffield/horcrux-ui |  |  |  |  |  | yes |  |  | yes |  |  | file-splitting GUI; Fyne -> `fyne install`; by lazygit's author |
 | macMLX (CLI) | Swift | SwiftTUI |  | github.com/magicnight/Mac-MLX |  |  |  |  |  |  |  | yes |  |  | yes |  |  |  | yes |  |  | cmd `macmlx` |
 | doedit | Swift | TUIkit |  | github.com/danterobles/doedit |  |  |  |  |  |  |  | yes |  |  | yes |  |  |  | yes |  |  | text editor |
+| utiluti | Swift |  |  | github.com/scriptingosx/utiluti |  |  |  |  |  |  |  | yes |  |  | yes |  |  |  | yes | yes |  | query/set default URL-scheme & UTI handlers; scriptingosx author |
 | macMLX (app) | Swift | SwiftUI |  | github.com/magicnight/Mac-MLX |  |  |  |  |  |  |  |  |  |  |  | yes |  | macMLX.dmg |  | yes |  | native SwiftUI local-LLM app; binary/cask path (future generator), not SPM |
 | Rugby | Swift |  |  | github.com/swiftyfinch/Rugby |  |  |  |  |  |  |  | yes | mint install swiftyfinch/Rugby |  |  |  |  |  | yes |  |  | Xcode build-cache tool |
 | swiftpolyglot | Swift |  |  | github.com/appdecostudio/SwiftPolyglot |  |  |  |  |  |  |  | yes | mint install appdecostudio/SwiftPolyglot |  |  |  |  |  | yes |  |  | localization-coverage checker |
@@ -217,6 +218,7 @@ not found. `in_*` columns include the identifier or URL where known.
 | Docker Desktop | Go |  | docker.com |  | docker-desktop (cask) |  |  |  |  |  |  |  |  |  |  | yes |  | Docker.dmg |  | yes | https://get.docker.com | arch in path; closed-source; no public source repo (docker/desktop is feedback-only) |
 | zoom |  |  | zoom.us |  | zoom (cask) |  |  |  |  |  |  |  |  |  |  | yes |  | Zoom.pkg |  | yes |  | PKG format; CDN redirect |
 | Trae |  |  | trae.ai |  | trae (cask) |  |  |  |  |  |  |  |  |  |  | yes |  | .dmg |  |  |  | developer-site download |
+| Otty |  |  | otty.sh |  |  |  |  |  |  |  |  |  |  |  |  | yes |  | Otty.dmg |  |  |  | native terminal app; developer-site DMG; ARM + Intel builds; by appmakes.io |
 | Paste |  |  | paste.app |  | paste (cask) | yes |  |  |  |  |  |  |  |  |  | yes |  | .dmg |  |  |  | also on MAS |
 | Easyfind |  |  | devmate.com |  | easyfind (cask) | yes |  |  |  |  |  |  |  |  |  | yes |  | .dmg |  |  |  | also on MAS |
 | Hermes |  |  | hermesapp.io |  | hermes (cask) | yes |  |  |  |  |  |  |  |  |  | yes |  | .dmg |  |  |  | also on MAS |
@@ -270,6 +272,8 @@ not found. `in_*` columns include the identifier or URL where known.
 | Hermes Desktop | Swift | SwiftUI |  | github.com/dodo-reach/hermes-desktop |  |  |  |  |  |  |  |  |  |  |  | yes |  | HermesDesktop.app.zip | yes |  |  | native macOS companion for Hermes Agent; GitHub release .zip; ad-hoc signed (not notarized); MIT; v1.2.0; build script `./scripts/build-macos-app.sh`; 1.9k stars |
 | Veronum | TypeScript | Electron | thetoolswebsite.com | github.com/DylanWain/veronum-desktop |  |  |  |  |  |  |  |  |  |  |  | yes |  | Veronum.dmg |  |  |  | multi-LLM workspace desktop app; GitHub /latest/ redirect DMG (no version in URL); signed + notarized; v0.1.2; not in HB |
 | authsec-bridge | Python |  |  | github.com/authsec-ai/authsec-bridge |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | session bridge for Claude Code/Codex/Gemini CLI; `pip install -e .` from git clone; no PyPI package; no releases; MIT; edge case for source-build (Python not autotools) |
+| MōIcons | TypeScript | React / MōBrowser |  | github.com/mo-browser-apps/icons |  |  |  |  |  |  |  |  |  |  |  | yes |  | MoIcons-1.0.3-arm64.dmg | yes | yes |  | AI macOS app icon generator; arm64-only DMG; signed + notarized; MIT; v1.0.3; 703 stars; not in HB |
+| ShellGPT | Python |  |  | github.com/TheR1D/shell_gpt |  |  | pypi.org/project/shell-gpt |  |  |  |  |  |  |  |  |  |  |  |  |  | CLI productivity tool for AI LLMs; `pip install shell-gpt`; bin `sgpt`; 31 releases; v1.5.1; 12.1k stars; MIT; not in HB |
 
 ---
 
@@ -279,6 +283,10 @@ not found. `in_*` columns include the identifier or URL where known.
 # pip / uv / pipx
 allbrew https://pypi.org/project/marimo/ --manual      # → pip-package
 brew install marimo && marimo edit
+
+# pip-package (GitHub repo with PyPI package; bin name differs from package)
+allbrew https://github.com/TheR1D/shell_gpt --manual   # → pip-package
+brew install shell-gpt && sgpt --version
 
 # npm
 allbrew https://www.npmjs.com/package/taskbook --manual # → npm-package
@@ -312,6 +320,10 @@ brew install ddclient && ddclient --version
 # source-build (Python pip install from GitHub; no PyPI; no releases)
 allbrew https://github.com/authsec-ai/authsec-bridge --manual  # → source-build
 brew install authsec-bridge && sb --help
+
+# cask-app-release (arm64-only DMG; signed + notarized)
+allbrew https://github.com/mo-browser-apps/icons --manual  # → cask-app-release
+brew install --cask moicons && open -a MoIcons
 
 # go-package (not-in-HB Go TUI with web UI)
 allbrew https://github.com/asheshgoplani/agent-deck --manual  # → go-package

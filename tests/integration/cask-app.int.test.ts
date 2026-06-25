@@ -120,6 +120,33 @@ describe.concurrent("cask-app integration", () => {
     const ruby = renderCask(payload);
     assertValidCask(ruby);
   }, 60000);
+
+  it("Otty DMG: payload is well-formed (developer-site download)", async () => {
+    const url = "https://downloads.otty.sh/macos/Otty.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "otty",
+      appName: "Otty.app",
+      homepage: "https://otty.sh",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toBe("");
+    expect(payload.url).toContain("downloads.otty.sh");
+  }, 60000);
+
+  it("Otty DMG: generates structurally valid Ruby cask", async () => {
+    const url = "https://downloads.otty.sh/macos/Otty.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "otty",
+      appName: "Otty.app",
+      homepage: "https://otty.sh",
+    });
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "otty" do');
+    expect(ruby).toContain('app "Otty.app"');
+    expect(ruby).toContain("https://otty.sh");
+  }, 60000);
 });
 
 describe.concurrent("cask-app-release integration", () => {

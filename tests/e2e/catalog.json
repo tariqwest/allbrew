@@ -448,5 +448,25 @@
     "verifyCommand": ["agy-acp", "--version"],
     "skip": false,
     "notes": "Rust ACP stdio adapter for Google Antigravity CLI (agy); cargo-package from GitHub (no crates.io, no releases); editor integration (Zed Agent Panel)"
+  },
+  {
+    "name": "moicons",
+    "url": "https://github.com/mo-browser-apps/icons",
+    "generator": "cask-app-release",
+    "allbrewArgs": ["--name", "moicons", "--app-name", "MoIcons.app", "--homepage", "https://github.com/mo-browser-apps/icons"],
+    "expectedBin": null,
+    "verifyCommand": ["open", "-a", "MoIcons"],
+    "skip": false,
+    "notes": "AI macOS app icon generator — arm64-only DMG from GitHub releases; signed + notarized; MIT; v1.0.3"
+  },
+  {
+    "name": "shell-gpt",
+    "url": "https://github.com/TheR1D/shell_gpt",
+    "generator": "pip-package",
+    "allbrewArgs": ["--name", "shell-gpt"],
+    "expectedBin": "sgpt",
+    "verifyCommand": ["sgpt", "--version"],
+    "skip": false,
+    "notes": "Python CLI for AI LLMs — pip install shell-gpt; bin sgpt; 31 releases; v1.5.1; MIT; not in HB"
   }
 ]

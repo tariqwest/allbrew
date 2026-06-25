@@ -96,3 +96,61 @@ describe("collectSpmPackagePayload", () => {
     expect(payload.serviceBlock).toBe("");
   });
 });
+
+describe("collectSpmPackagePayload — utiluti", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const repoInfo = {
+    name: "utiluti",
+    fullName: "scriptingosx/utiluti",
+    description: "Query and set the default handler for URL schemes and UTIs",
+    homepage: "",
+    htmlUrl: "https://github.com/scriptingosx/utiluti",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const release = { tagName: "v2.0.0" };
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release);
+    expect(payload.template).toBe("spm_package");
+  });
+
+  it("derives name as utiluti (already lowercase)", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release);
+    expect(payload.name).toBe("utiluti");
+  });
+
+  it("derives className as Utiluti", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release);
+    expect(payload.className).toBe("Utiluti");
+  });
+
+  it("strips v prefix from version in tarball URL", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release);
+    expect(payload.urlLines).toContain("v2.0.0.tar.gz");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release);
+    expect(payload.desc).toContain("URL schemes");
+  });
+
+  it("sets binInstallPaths to .build/release/utiluti", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release);
+    expect(payload.binInstallPaths).toContain(".build/release/utiluti");
+  });
+
+  it("head-only mode produces empty urlLines", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, null);
+    expect(payload.urlLines).toBe("");
+  });
+
+  it("generates license line", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release);
+    expect(payload.licenseLine).toContain("MIT");
+  });
+});

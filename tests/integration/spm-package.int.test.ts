@@ -44,6 +44,16 @@ const swiftpolyglotRepoInfo = {
   defaultBranch: "main",
 };
 
+const utiliutiRepoInfo = {
+  name: "utiluti",
+  fullName: "scriptingosx/utiluti",
+  description: "Query and set the default handler for URL schemes and UTIs",
+  homepage: "https://github.com/scriptingosx/utiluti",
+  htmlUrl: "https://github.com/scriptingosx/utiluti",
+  license: "MIT",
+  defaultBranch: "main",
+};
+
 describe.concurrent("spm-package integration", () => {
   it("rugby: payload fields are well-formed (with release)", async () => {
     const payload = await collectSpmPackagePayload(rugbyRepoInfo, rugbyRelease);
@@ -83,5 +93,21 @@ describe.concurrent("spm-package integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Swiftpolyglot < Formula");
+  });
+
+  it("utiluti: payload fields are well-formed (head-only)", async () => {
+    const payload = await collectSpmPackagePayload(utiliutiRepoInfo, null);
+    expect(payload.template).toBe("spm_package");
+    expect(payload.name).toBe("utiluti");
+    expect(payload.binInstallPaths).toContain("utiluti");
+  });
+
+  it("utiluti: generates structurally valid Ruby formula (head-only)", async () => {
+    const payload = await collectSpmPackagePayload(utiliutiRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Utiluti < Formula");
+    expect(ruby).toContain("depends_on \"swift\" => :build");
+    expect(ruby).toContain("head \"https://github.com/scriptingosx/utiluti.git");
   });
 });
