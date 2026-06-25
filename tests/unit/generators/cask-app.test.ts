@@ -114,4 +114,36 @@ describe("collectCaskAppPayload", () => {
     );
     expect(payload.versionLine).toBe("");
   });
+
+  it("Otty DMG: derives cask token from filename", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://downloads.otty.sh/macos/Otty.dmg",
+    );
+    expect(payload.name).toBe("otty");
+  });
+
+  it("Otty DMG: no version in URL produces empty versionLine", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://downloads.otty.sh/macos/Otty.dmg",
+    );
+    expect(payload.versionLine).toBe("");
+  });
+
+  it("Otty DMG: respects name and appName overrides", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://downloads.otty.sh/macos/Otty.dmg",
+      { name: "otty", appName: "Otty.app", homepage: "https://otty.sh" },
+    );
+    expect(payload.name).toBe("otty");
+    expect(payload.appOrPkgBlock).toContain("Otty.app");
+    expect(payload.homepageLine).toContain("https://otty.sh");
+  });
+
+  it("Otty DMG: includes SHA256", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://downloads.otty.sh/macos/Otty.dmg",
+    );
+    expect(payload.sha256).toBeTruthy();
+    expect(payload.sha256.length).toBeGreaterThan(0);
+  });
 });
