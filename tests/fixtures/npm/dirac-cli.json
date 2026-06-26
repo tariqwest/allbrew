@@ -1,0 +1,23 @@
+{
+  "name": "dirac-cli",
+  "description": "Autonomous coding agent CLI - capable of creating/editing files, running commands, using the browser, and more",
+  "dist-tags": {
+    "latest": "0.4.9"
+  },
+  "homepage": "https://dirac.run",
+  "license": "Apache-2.0",
+  "versions": {
+    "0.4.9": {
+      "name": "dirac-cli",
+      "version": "0.4.9",
+      "license": "Apache-2.0",
+      "dist": {
+        "tarball": "https://registry.npmjs.org/dirac-cli/-/dirac-cli-0.4.9.tgz",
+        "shasum": "abc123"
+      },
+      "bin": {
+        "dirac": "dist/cli.mjs"
+      }
+    }
+  }
+}

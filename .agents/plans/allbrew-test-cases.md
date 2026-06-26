@@ -74,6 +74,8 @@ not found. `in_*` columns include the identifier or URL where known.
 | npkill | Node |  |  | github.com/zaldih/npkill |  |  | npmjs.com/package/npkill |  |  |  |  |  |  |  | yes |  |  |  | yes |  |  | node_modules cleaner |
 | deputui | Node |  |  | github.com/twiddler/deputui |  |  | npmjs.com/package/deputui |  |  |  |  |  |  |  | yes |  |  |  | yes |  |  | dep updater |
 | forage-cli | Node |  |  | github.com/starmorph/forage-cli |  |  | npmjs.com/package/forage-cli |  |  |  |  |  |  |  | yes |  |  |  | yes |  |  | cmd `forage` |
+| dirac | Node | Ink | dirac.run | github.com/dirac-run/dirac |  |  | npmjs.com/package/dirac-cli |  |  |  |  |  |  |  | yes |  |  |  | yes |  |  | cmd `dirac`; bin `dirac` != package name `dirac-cli`; Apache-2.0 |
+| cline | Node | OpenTUI | cline.bot | github.com/cline/cline | cline (formula, deprecated) |  | npmjs.com/package/cline |  |  |  |  |  |  |  | yes |  |  |  | yes | yes |  | AI coding agent TUI; deprecated in HB (non-FOSS dep + prebuilt bins); 64k stars; Apache-2.0; platform bins via optionalDeps |
 | maildev | Node |  |  | github.com/maildev/maildev |  |  | npmjs.com/package/maildev |  |  |  |  |  |  |  |  |  | yes |  | yes |  |  | SMTP catcher + web inbox |
 | verdaccio | Node |  |  | github.com/verdaccio/verdaccio |  |  | npmjs.com/package/verdaccio |  |  |  |  |  |  |  |  |  | yes |  | yes |  |  | private npm registry + web UI |
 | json-server | Node |  |  | github.com/typicode/json-server |  |  | npmjs.com/package/json-server |  |  |  |  |  |  |  |  |  | yes |  | yes |  |  | JSON->REST + browser UI; `json-server db.json` |
@@ -274,6 +276,7 @@ not found. `in_*` columns include the identifier or URL where known.
 | authsec-bridge | Python |  |  | github.com/authsec-ai/authsec-bridge |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | session bridge for Claude Code/Codex/Gemini CLI; `pip install -e .` from git clone; no PyPI package; no releases; MIT; edge case for source-build (Python not autotools) |
 | MōIcons | TypeScript | React / MōBrowser |  | github.com/mo-browser-apps/icons |  |  |  |  |  |  |  |  |  |  |  | yes |  | MoIcons-1.0.3-arm64.dmg | yes | yes |  | AI macOS app icon generator; arm64-only DMG; signed + notarized; MIT; v1.0.3; 703 stars; not in HB |
 | ShellGPT | Python |  |  | github.com/TheR1D/shell_gpt |  |  | pypi.org/project/shell-gpt |  |  |  |  |  |  |  |  |  |  |  |  |  | CLI productivity tool for AI LLMs; `pip install shell-gpt`; bin `sgpt`; 31 releases; v1.5.1; 12.1k stars; MIT; not in HB |
+| Cline | TypeScript |  | cline.bot | github.com/cline/cline | cline (formula) |  |  | npmjs.com/package/cline |  |  |  |  |  |  |  |  |  |  |  |  |  | autonomous coding agent CLI; npm i -g cline; Homebrew formula deprecated (2027-05-18); monorepo (apps/cli); 293 releases; v3.0.29; 63.9k stars; Apache-2.0 |
 
 ---
 
@@ -291,6 +294,10 @@ brew install shell-gpt && sgpt --version
 # npm
 allbrew https://www.npmjs.com/package/taskbook --manual # → npm-package
 brew install taskbook && tb
+
+# npm-package (deprecated in HB; prefer npm package)
+allbrew https://github.com/cline/cline --manual          # → npm-package
+brew install cline && cline --version
 
 # cargo (crates.io or GitHub)
 allbrew https://crates.io/crates/managarr --manual      # → cargo-package

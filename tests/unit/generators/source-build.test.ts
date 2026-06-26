@@ -114,3 +114,81 @@ describe("collectSourceBuildPayload", () => {
     expect(payload.name).toBe("custom-name");
   });
 });
+
+describe("collectSourceBuildPayload — slides", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const repoInfo = {
+    name: "slides",
+    fullName: "maaslalani/slides",
+    description: "Terminal based presentation tool",
+    homepage: "https://github.com/maaslalani/slides",
+    htmlUrl: "https://github.com/maaslalani/slides",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const release = {
+    tagName: "v0.9.0",
+    tarballUrl: "https://github.com/maaslalani/slides/archive/refs/tags/v0.9.0.tar.gz",
+  };
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectSourceBuildPayload(
+      repoInfo,
+      release,
+      { system: "cmake" },
+    );
+    expect(payload.template).toBe("source_build");
+  });
+
+  it("derives name from repo name", async () => {
+    const payload = await collectSourceBuildPayload(
+      repoInfo,
+      release,
+      { system: "cmake" },
+    );
+    expect(payload.name).toBe("slides");
+    expect(payload.className).toBe("Slides");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectSourceBuildPayload(
+      repoInfo,
+      release,
+      { system: "cmake" },
+    );
+    expect(payload.desc).toBe("Terminal based presentation tool");
+  });
+
+  it("generates source archive URL from release tag", async () => {
+    const payload = await collectSourceBuildPayload(
+      repoInfo,
+      release,
+      { system: "cmake" },
+    );
+    expect(payload.urlLines).toContain(
+      "https://github.com/maaslalani/slides/archive/refs/tags/v0.9.0.tar.gz",
+    );
+  });
+
+  it("generates MIT license line", async () => {
+    const payload = await collectSourceBuildPayload(
+      repoInfo,
+      release,
+      { system: "cmake" },
+    );
+    expect(payload.licenseLine).toContain("MIT");
+  });
+
+  it("head stanza when no release", async () => {
+    const payload = await collectSourceBuildPayload(
+      repoInfo,
+      null,
+      { system: "cmake" },
+    );
+    expect(payload.urlLines).toBe("");
+  });
+});
