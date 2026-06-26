@@ -126,3 +126,78 @@ describe("collectCaskAppMasPayload", () => {
     ).rejects.toThrow("iTunes Lookup API failed");
   });
 });
+
+describe("collectCaskAppMasPayload — Magnet", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            results: [
+              {
+                trackName: "Magnet",
+                bundleId: "id.mndt.Magnet",
+                version: "2.14.0",
+                description: "Organize Your Workspace\nSnap windows into organized tiles.",
+                sellerUrl: "https://magnet.crowdcafe.com",
+              },
+            ],
+          }),
+      }),
+    ) as any;
+  });
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectCaskAppMasPayload(
+      "https://apps.apple.com/us/app/magnet/id441258766",
+    );
+    expect(payload.template).toBe("cask_app_mas");
+  });
+
+  it("extracts app ID from URL", async () => {
+    const payload = await collectCaskAppMasPayload(
+      "https://apps.apple.com/us/app/magnet/id441258766",
+    );
+    expect(payload.appId).toBe("441258766");
+  });
+
+  it("uses track name from iTunes API", async () => {
+    const payload = await collectCaskAppMasPayload(
+      "https://apps.apple.com/us/app/magnet/id441258766",
+    );
+    expect(payload.appName).toBe("Magnet");
+  });
+
+  it("derives cask token from app name", async () => {
+    const payload = await collectCaskAppMasPayload(
+      "https://apps.apple.com/us/app/magnet/id441258766",
+    );
+    expect(payload.name).toBe("magnet");
+  });
+
+  it("uses first line of description", async () => {
+    const payload = await collectCaskAppMasPayload(
+      "https://apps.apple.com/us/app/magnet/id441258766",
+    );
+    expect(payload.desc).toContain("Organize Your Workspace");
+    expect(payload.desc).not.toContain("Snap windows");
+  });
+
+  it("uses seller URL as homepage", async () => {
+    const payload = await collectCaskAppMasPayload(
+      "https://apps.apple.com/us/app/magnet/id441258766",
+    );
+    expect(payload.homepage).toBe("https://magnet.crowdcafe.com");
+  });
+
+  it("generates zap block with bundle ID paths", async () => {
+    const payload = await collectCaskAppMasPayload(
+      "https://apps.apple.com/us/app/magnet/id441258766",
+    );
+    expect(payload.zapBlock).toContain("zap trash:");
+    expect(payload.zapBlock).toContain("id.mndt.Magnet");
+  });
+});

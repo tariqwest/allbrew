@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { collectCargoPackagePayload } from "../../../lib/generators/cargo-package.ts";
 import managarrFixture from "../../fixtures/github/managarr.json";
+import wanderFixture from "../../fixtures/github/wander.json";
 
 vi.mock("../../../lib/sha256.ts", () => ({
   hashUrl: vi.fn().mockResolvedValue("cargo_mocked_sha256_64chars_padding_abcdef0123456789abcdef0123"),
@@ -86,5 +87,58 @@ describe("collectCargoPackagePayload", () => {
   it("includes empty service block by default", async () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
     expect(payload.serviceBlock).toBe("");
+  });
+});
+
+describe("collectCargoPackagePayload — wander", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const repoInfo = wanderFixture.repo;
+  const release = wanderFixture.release;
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.template).toBe("cargo_package");
+  });
+
+  it("derives name from repo name", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.name).toBe("wander");
+    expect(payload.className).toBe("Wander");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.desc).toContain("Nomad");
+  });
+
+  it("uses htmlUrl as homepage when homepage is empty", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.homepage).toContain("github.com/robinovitch61/wander");
+  });
+
+  it("generates source archive URL from release tag", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.urlLines).toContain(
+      "https://github.com/robinovitch61/wander/archive/refs/tags/v0.22.0.tar.gz",
+    );
+  });
+
+  it("generates MIT license line", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.licenseLine).toContain("MIT");
+  });
+
+  it("generates crates.io livecheck block", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.livecheckBlock).toContain("crates.io/api/v1/crates/wander");
+  });
+
+  it("includes head reference to default branch", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.defaultBranch).toBe("main");
+    expect(payload.fullName).toBe("robinovitch61/wander");
   });
 });

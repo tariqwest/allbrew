@@ -1,0 +1,28 @@
+{
+  "repo": {
+    "name": "wander",
+    "fullName": "robinovitch61/wander",
+    "description": "wander - a terminal app for HashiCorp Nomad",
+    "homepage": "",
+    "htmlUrl": "https://github.com/robinovitch61/wander",
+    "license": "MIT",
+    "defaultBranch": "main"
+  },
+  "release": {
+    "tagName": "v0.22.0",
+    "assets": [
+      {
+        "name": "wander_0.22.0_darwin_arm64.tar.gz",
+        "url": "https://github.com/robinovitch61/wander/releases/download/v0.22.0/wander_0.22.0_darwin_arm64.tar.gz"
+      },
+      {
+        "name": "wander_0.22.0_darwin_amd64.tar.gz",
+        "url": "https://github.com/robinovitch61/wander/releases/download/v0.22.0/wander_0.22.0_darwin_amd64.tar.gz"
+      },
+      {
+        "name": "wander_0.22.0_linux_amd64.tar.gz",
+        "url": "https://github.com/robinovitch61/wander/releases/download/v0.22.0/wander_0.22.0_linux_amd64.tar.gz"
+      }
+    ]
+  }
+}

@@ -97,3 +97,40 @@ describe("collectDotnetPackagePayload", () => {
     ).rejects.toThrow("NuGet lookup failed");
   });
 });
+
+describe("collectDotnetPackagePayload — CSharpRepl", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+
+    global.fetch = vi.fn((url: string) => {
+      if (url.includes("nuget.org") && url.includes("csharprepl")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ versions: ["0.5.0", "0.6.0", "0.7.0"] }),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    }) as any;
+  });
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectDotnetPackagePayload("CSharpRepl");
+    expect(payload.template).toBe("dotnet_package");
+  });
+
+  it("derives name from package name", async () => {
+    const payload = await collectDotnetPackagePayload("CSharpRepl");
+    expect(payload.name).toBe("csharprepl");
+  });
+
+  it("generates NuGet livecheck block", async () => {
+    const payload = await collectDotnetPackagePayload("CSharpRepl");
+    expect(payload.livecheckBlock).toContain("nuget.org");
+    expect(payload.livecheckBlock).toContain("csharprepl");
+  });
+
+  it("uses latest version from NuGet versions array", async () => {
+    const payload = await collectDotnetPackagePayload("CSharpRepl");
+    expect(payload.version).toBe("0.7.0");
+  });
+});

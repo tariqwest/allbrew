@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { collectGoPackagePayload } from "../../../lib/generators/go-package.ts";
 import wakapiFixture from "../../fixtures/github/wakapi.json";
+import processComposeFixture from "../../fixtures/github/process-compose.json";
 
 vi.mock("../../../lib/sha256.ts", () => ({
   hashUrl: vi.fn().mockResolvedValue("go_mocked_sha256_64chars_padding_abcdef0123456789abcdef01234"),
@@ -91,5 +92,60 @@ describe("collectGoPackagePayload", () => {
       serviceCommand: "wakapi",
     });
     expect(payload.serviceBlock).toContain("service do");
+  });
+});
+
+describe("collectGoPackagePayload — process-compose", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const repoInfo = processComposeFixture.repo;
+  const release = processComposeFixture.release;
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.template).toBe("go_package");
+  });
+
+  it("derives name from repo name", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.name).toBe("process-compose");
+    expect(payload.className).toBe("ProcessCompose");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.desc).toContain("scheduler and orchestrator");
+  });
+
+  it("uses repo homepage", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.homepage).toBe("https://f1bonacc1.github.io/process-compose/");
+  });
+
+  it("generates source archive URL from release tag", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.urlLines).toContain(
+      "https://github.com/F1bonacc1/process-compose/archive/refs/tags/v1.116.0.tar.gz",
+    );
+  });
+
+  it("generates Go module proxy livecheck block", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.livecheckBlock).toContain(
+      "proxy.golang.org/github.com/F1bonacc1/process-compose/@latest",
+    );
+  });
+
+  it("includes head reference to default branch", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.defaultBranch).toBe("main");
+    expect(payload.fullName).toBe("F1bonacc1/process-compose");
+  });
+
+  it("generates Apache-2.0 license line", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.licenseLine).toContain("Apache-2.0");
   });
 });

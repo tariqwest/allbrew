@@ -95,3 +95,57 @@ describe("collectMintPackagePayload", () => {
     expect(payload.serviceBlock).toBe("");
   });
 });
+
+describe("collectMintPackagePayload — mockolo", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const repoInfo = {
+    name: "mockolo",
+    fullName: "uber/mockolo",
+    description: "Efficient Mock Generator for Swift",
+    homepage: "",
+    htmlUrl: "https://github.com/uber/mockolo",
+    license: "Apache-2.0",
+    defaultBranch: "master",
+  };
+
+  const release = { tagName: "2.1.1" };
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectMintPackagePayload(repoInfo, release);
+    expect(payload.template).toBe("mint_package");
+  });
+
+  it("derives name from repo name", async () => {
+    const payload = await collectMintPackagePayload(repoInfo, release);
+    expect(payload.name).toBe("mockolo");
+    expect(payload.className).toBe("Mockolo");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectMintPackagePayload(repoInfo, release);
+    expect(payload.desc).toContain("Mock Generator");
+  });
+
+  it("uses htmlUrl as homepage when homepage is empty", async () => {
+    const payload = await collectMintPackagePayload(repoInfo, release);
+    expect(payload.homepage).toContain("github.com/uber/mockolo");
+  });
+
+  it("generates Apache-2.0 license line", async () => {
+    const payload = await collectMintPackagePayload(repoInfo, release);
+    expect(payload.licenseLine).toContain("Apache-2.0");
+  });
+
+  it("includes fullName for mint install reference", async () => {
+    const payload = await collectMintPackagePayload(repoInfo, release);
+    expect(payload.fullName).toBe("uber/mockolo");
+  });
+
+  it("uses master as default branch", async () => {
+    const payload = await collectMintPackagePayload(repoInfo, release);
+    expect(payload.defaultBranch).toBe("master");
+  });
+});

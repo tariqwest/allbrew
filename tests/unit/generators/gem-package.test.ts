@@ -99,3 +99,62 @@ describe("collectGemPackagePayload", () => {
     ).rejects.toThrow("RubyGems lookup failed");
   });
 });
+
+describe("collectGemPackagePayload — license_finder", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+
+    global.fetch = vi.fn((url: string) => {
+      if (url.includes("rubygems.org") && url.includes("/license_finder")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              version: "7.2.1",
+              gem_uri: "https://rubygems.org/gems/license_finder-7.2.1.gem",
+              info: "LicenseFinder works with your package managers to find dependencies, detect the licenses of the packages in them, compare those licenses against a user-defined list of permitted licenses, and give you an actionable exception report.",
+              homepage_uri: "https://github.com/pivotal/LicenseFinder",
+              licenses: ["MIT"],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    }) as any;
+  });
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectGemPackagePayload("license_finder");
+    expect(payload.template).toBe("gem_package");
+  });
+
+  it("derives name from gem name (underscores normalized to hyphens)", async () => {
+    const payload = await collectGemPackagePayload("license_finder");
+    expect(payload.name).toBe("license-finder");
+  });
+
+  it("uses gem description", async () => {
+    const payload = await collectGemPackagePayload("license_finder");
+    expect(payload.desc).toContain("LicenseFinder");
+  });
+
+  it("uses homepage from RubyGems", async () => {
+    const payload = await collectGemPackagePayload("license_finder");
+    expect(payload.homepage).toBe("https://github.com/pivotal/LicenseFinder");
+  });
+
+  it("uses gem URI as download URL", async () => {
+    const payload = await collectGemPackagePayload("license_finder");
+    expect(payload.urlLines).toContain("license_finder-7.2.1.gem");
+  });
+
+  it("generates MIT license line", async () => {
+    const payload = await collectGemPackagePayload("license_finder");
+    expect(payload.licenseLine).toContain("MIT");
+  });
+
+  it("generates RubyGems livecheck block", async () => {
+    const payload = await collectGemPackagePayload("license_finder");
+    expect(payload.livecheckBlock).toContain("rubygems.org");
+    expect(payload.livecheckBlock).toContain("license_finder");
+  });
+});

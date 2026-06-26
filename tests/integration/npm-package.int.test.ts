@@ -72,6 +72,59 @@ describe.concurrent("npm-package integration", () => {
     expect(payload.url).toContain("registry.npmjs.org/@hehehai/buke");
   });
 
+  it("dirac-cli: payload fields are well-formed", async () => {
+    const payload = await collectNpmPackagePayload("dirac-cli");
+    expect(payload.template).toBe("npm_package");
+    expect(payload.name).toBe("dirac-cli");
+    expect(payload.url).toMatch(/^https:\/\/registry\.npmjs\.org\/dirac-cli\/\-\/dirac-cli-.+\.tgz/);
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.livecheckBlock).toContain("registry.npmjs.org/dirac-cli/latest");
+  });
+
+  it("dirac-cli: generates structurally valid Ruby formula", async () => {
+    const payload = await collectNpmPackagePayload("dirac-cli");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class DiracCli < Formula");
+    expect(ruby).toContain('depends_on "node"');
+    expect(ruby).toContain('system "npm", "install"');
+    expect(ruby).toContain("bin.install_symlink");
+  });
+
+  it("dirac-cli: name override produces correct bin-named formula", async () => {
+    const payload = await collectNpmPackagePayload("dirac-cli", null, {
+      name: "dirac",
+    });
+    expect(payload.name).toBe("dirac");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Dirac < Formula");
+  });
+
+  it("cline: payload fields are well-formed", async () => {
+    const payload = await collectNpmPackagePayload("cline");
+    expect(payload.template).toBe("npm_package");
+    expect(payload.name).toBe("cline");
+    expect(payload.url).toMatch(/^https:\/\/registry\.npmjs\.org\/cline\/-\/cline-.+\.tgz/);
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.livecheckBlock).toContain("registry.npmjs.org/cline/latest");
+  });
+
+  it("cline: generates structurally valid Ruby formula", async () => {
+    const payload = await collectNpmPackagePayload("cline");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Cline < Formula");
+    expect(ruby).toContain('depends_on "node"');
+    expect(ruby).toContain('system "npm", "install"');
+    expect(ruby).toContain("bin.install_symlink");
+  });
+
+  it("cline: homepage points to cline.bot", async () => {
+    const payload = await collectNpmPackagePayload("cline");
+    expect(payload.homepage).toBe("https://cline.bot");
+  });
+
   it("nonexistent-pkg-xyz: throws on missing package", async () => {
     await expect(
       collectNpmPackagePayload("nonexistent-allbrew-test-xyz-999"),

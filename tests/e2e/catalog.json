@@ -468,5 +468,15 @@
     "verifyCommand": ["sgpt", "--version"],
     "skip": false,
     "notes": "Python CLI for AI LLMs — pip install shell-gpt; bin sgpt; 31 releases; v1.5.1; MIT; not in HB"
+  },
+  {
+    "name": "cline",
+    "url": "https://github.com/cline/cline",
+    "generator": "npm-package",
+    "allbrewArgs": ["--name", "cline"],
+    "expectedBin": "cline",
+    "verifyCommand": ["cline", "--version"],
+    "skip": false,
+    "notes": "Autonomous coding agent CLI — npm i -g cline; Homebrew formula deprecated; monorepo; 293 releases; v3.0.29; Apache-2.0"
   }
 ]
