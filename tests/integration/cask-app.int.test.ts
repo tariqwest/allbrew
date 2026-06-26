@@ -201,6 +201,33 @@ describe.concurrent("cask-app integration", () => {
     expect(ruby).toContain('app "Discord.app"');
     expect(ruby).toContain("https://discord.com/");
   }, 120000);
+
+  it("OnyX DMG: developer-site download, payload is well-formed", async () => {
+    const url = "https://www.titanium-software.fr/download/26/OnyX.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "onyx",
+      appName: "OnyX.app",
+      homepage: "https://www.titanium-software.fr/en/onyx.html",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toBe("");
+    expect(payload.url).toContain("titanium-software.fr");
+  }, 120000);
+
+  it("OnyX DMG: generates structurally valid Ruby cask", async () => {
+    const url = "https://www.titanium-software.fr/download/26/OnyX.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "onyx",
+      appName: "OnyX.app",
+      homepage: "https://www.titanium-software.fr/en/onyx.html",
+    });
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "onyx" do');
+    expect(ruby).toContain('app "OnyX.app"');
+    expect(ruby).toContain("https://www.titanium-software.fr/en/onyx.html");
+  }, 120000);
 });
 
 describe.concurrent("cask-app-release integration", () => {
