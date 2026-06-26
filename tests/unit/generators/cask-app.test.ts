@@ -281,4 +281,46 @@ describe("collectCaskAppPayload", () => {
     expect(payload.sha256).toBeTruthy();
     expect(payload.sha256.length).toBeGreaterThan(0);
   });
+
+  it("OnyX DMG: no version in filename produces empty versionLine", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://www.titanium-software.fr/download/26/OnyX.dmg",
+      { name: "onyx", appName: "OnyX.app", homepage: "https://www.titanium-software.fr/en/onyx.html" },
+    );
+    expect(payload.versionLine).toBe("");
+  });
+
+  it("OnyX DMG: template is cask_app", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://www.titanium-software.fr/download/26/OnyX.dmg",
+      { name: "onyx", appName: "OnyX.app", homepage: "https://www.titanium-software.fr/en/onyx.html" },
+    );
+    expect(payload.template).toBe("cask_app");
+  });
+
+  it("OnyX DMG: respects name override", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://www.titanium-software.fr/download/26/OnyX.dmg",
+      { name: "onyx", appName: "OnyX.app", homepage: "https://www.titanium-software.fr/en/onyx.html" },
+    );
+    expect(payload.name).toBe("onyx");
+  });
+
+  it("OnyX DMG: respects appName and homepage overrides", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://www.titanium-software.fr/download/26/OnyX.dmg",
+      { name: "onyx", appName: "OnyX.app", homepage: "https://www.titanium-software.fr/en/onyx.html" },
+    );
+    expect(payload.appOrPkgBlock).toContain("OnyX.app");
+    expect(payload.homepageLine).toContain("https://www.titanium-software.fr/en/onyx.html");
+  });
+
+  it("OnyX DMG: includes SHA256", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://www.titanium-software.fr/download/26/OnyX.dmg",
+      { name: "onyx", appName: "OnyX.app", homepage: "https://www.titanium-software.fr/en/onyx.html" },
+    );
+    expect(payload.sha256).toBeTruthy();
+    expect(payload.sha256.length).toBeGreaterThan(0);
+  });
 });
