@@ -146,4 +146,47 @@ describe("collectCaskAppPayload", () => {
     expect(payload.sha256).toBeTruthy();
     expect(payload.sha256.length).toBeGreaterThan(0);
   });
+
+  it("Perplexity DMG: derives cask token from filename", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.perplexity.ai/downloads/Perplexity.dmg",
+      { name: "perplexity", appName: "Perplexity.app", homepage: "https://www.perplexity.ai" },
+    );
+    expect(payload.name).toBe("perplexity");
+  });
+
+  it("Perplexity DMG: no version in URL produces empty versionLine", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.perplexity.ai/downloads/Perplexity.dmg",
+      { name: "perplexity", appName: "Perplexity.app", homepage: "https://www.perplexity.ai" },
+    );
+    expect(payload.versionLine).toBe("");
+  });
+
+  it("Perplexity DMG: respects all overrides", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.perplexity.ai/downloads/Perplexity.dmg",
+      { name: "perplexity", appName: "Perplexity.app", homepage: "https://www.perplexity.ai" },
+    );
+    expect(payload.name).toBe("perplexity");
+    expect(payload.appOrPkgBlock).toContain("Perplexity.app");
+    expect(payload.homepageLine).toContain("https://www.perplexity.ai");
+  });
+
+  it("Perplexity DMG: template is cask_app", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.perplexity.ai/downloads/Perplexity.dmg",
+      { name: "perplexity", appName: "Perplexity.app", homepage: "https://www.perplexity.ai" },
+    );
+    expect(payload.template).toBe("cask_app");
+  });
+
+  it("Perplexity DMG: includes SHA256", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.perplexity.ai/downloads/Perplexity.dmg",
+      { name: "perplexity", appName: "Perplexity.app", homepage: "https://www.perplexity.ai" },
+    );
+    expect(payload.sha256).toBeTruthy();
+    expect(payload.sha256.length).toBeGreaterThan(0);
+  });
 });
