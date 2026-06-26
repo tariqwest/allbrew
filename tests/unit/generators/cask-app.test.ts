@@ -323,4 +323,53 @@ describe("collectCaskAppPayload", () => {
     expect(payload.sha256).toBeTruthy();
     expect(payload.sha256.length).toBeGreaterThan(0);
   });
+
+  it("Little Snitch DMG: version extracted from filename", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://www.obdev.at/downloads/littlesnitch/LittleSnitch-6.4.1.dmg",
+      { name: "little-snitch", appName: "Little Snitch.app", homepage: "https://www.obdev.at/products/littlesnitch/index.html" },
+    );
+    expect(payload.versionLine).toContain("6.4.1");
+  });
+
+  it("Little Snitch DMG: template is cask_app", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://www.obdev.at/downloads/littlesnitch/LittleSnitch-6.4.1.dmg",
+      { name: "little-snitch", appName: "Little Snitch.app", homepage: "https://www.obdev.at/products/littlesnitch/index.html" },
+    );
+    expect(payload.template).toBe("cask_app");
+  });
+
+  it("Little Snitch DMG: respects name override (hyphenated token)", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://www.obdev.at/downloads/littlesnitch/LittleSnitch-6.4.1.dmg",
+      { name: "little-snitch", appName: "Little Snitch.app", homepage: "https://www.obdev.at/products/littlesnitch/index.html" },
+    );
+    expect(payload.name).toBe("little-snitch");
+  });
+
+  it("Little Snitch DMG: app name with space in appOrPkgBlock", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://www.obdev.at/downloads/littlesnitch/LittleSnitch-6.4.1.dmg",
+      { name: "little-snitch", appName: "Little Snitch.app", homepage: "https://www.obdev.at/products/littlesnitch/index.html" },
+    );
+    expect(payload.appOrPkgBlock).toContain("Little Snitch.app");
+  });
+
+  it("Little Snitch DMG: homepage override", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://www.obdev.at/downloads/littlesnitch/LittleSnitch-6.4.1.dmg",
+      { name: "little-snitch", appName: "Little Snitch.app", homepage: "https://www.obdev.at/products/littlesnitch/index.html" },
+    );
+    expect(payload.homepageLine).toContain("https://www.obdev.at/products/littlesnitch/index.html");
+  });
+
+  it("Little Snitch DMG: includes SHA256", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://www.obdev.at/downloads/littlesnitch/LittleSnitch-6.4.1.dmg",
+      { name: "little-snitch", appName: "Little Snitch.app", homepage: "https://www.obdev.at/products/littlesnitch/index.html" },
+    );
+    expect(payload.sha256).toBeTruthy();
+    expect(payload.sha256.length).toBeGreaterThan(0);
+  });
 });

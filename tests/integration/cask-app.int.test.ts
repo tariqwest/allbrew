@@ -228,6 +228,33 @@ describe.concurrent("cask-app integration", () => {
     expect(ruby).toContain('app "OnyX.app"');
     expect(ruby).toContain("https://www.titanium-software.fr/en/onyx.html");
   }, 120000);
+
+  it("Little Snitch DMG: version in filename, payload is well-formed", async () => {
+    const url = "https://www.obdev.at/downloads/littlesnitch/LittleSnitch-6.4.1.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "little-snitch",
+      appName: "Little Snitch.app",
+      homepage: "https://www.obdev.at/products/littlesnitch/index.html",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toContain("6.4.1");
+    expect(payload.url).toContain("obdev.at");
+  }, 120000);
+
+  it("Little Snitch DMG: generates structurally valid Ruby cask with spaced app name", async () => {
+    const url = "https://www.obdev.at/downloads/littlesnitch/LittleSnitch-6.4.1.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "little-snitch",
+      appName: "Little Snitch.app",
+      homepage: "https://www.obdev.at/products/littlesnitch/index.html",
+    });
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "little-snitch" do');
+    expect(ruby).toContain('app "Little Snitch.app"');
+    expect(ruby).toContain("https://www.obdev.at/products/littlesnitch/index.html");
+  }, 120000);
 });
 
 describe.concurrent("cask-app-release integration", () => {
