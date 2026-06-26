@@ -233,6 +233,7 @@ not found. `in_*` columns include the identifier or URL where known.
 | Bear |  |  | bear.app |  |  | yes |  |  |  |  |  |  |  |  |  | yes |  | .dmg |  |  |  | MAS + direct download; no HB cask |
 | Perplexity |  |  | perplexity.ai/personal-computer |  |  |  |  |  |  |  |  |  |  |  |  | yes |  | .dmg |  |  |  | not in HB; new "Personal Computer" mac app; direct download only (not in MAS); login-gated DMG URL; macOS 14+; bundleId ai.perplexity.mac |
 | Postman |  |  | postman.com/downloads | | postman (cask) |  |  |  |  |  |  |  |  |  |  | yes |  | .zip |  | yes |  | in HB; CDN dl.pstmn.io; version in URL path; arch suffix (osx_arm64 vs osx64); bundleId com.postmanlabs.mac; macOS >= 11 |
+| Discord |  |  | discord.com |  | discord (cask) |  |  |  |  |  |  |  |  |  |  | yes |  | Discord.dmg | yes | yes |  | in HB; CDN dl.discordapp.net; version in URL path; livecheck header_match on redirect; OS-version split (Catalina vs Big Sur+); Electron; auto_updates; bundleId com.hnc.Discord |
 | TokenBar |  |  | tokenbar.site/get-started |  |  |  |  |  |  |  |  |  |  |  |  | yes |  | .dmg |  |  |  | indie; $5/mo or $15 lifetime |
 | Monk Mode |  |  | mac.monk-mode.lifestyle |  |  |  |  |  |  |  |  |  |  |  |  | yes |  | .dmg |  |  |  | indie; $15 lifetime |
 | MetricSync |  |  | metricsync.download |  |  |  |  |  |  |  |  |  |  |  |  | yes |  | .dmg |  |  |  | indie; $5/mo |

@@ -239,4 +239,46 @@ describe("collectCaskAppPayload", () => {
     );
     expect(payload.versionLine).toBe("");
   });
+
+  it("Discord DMG: version extracted from CDN URL path", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://dl.discordapp.net/apps/osx/0.0.385/Discord.dmg",
+      { name: "discord", appName: "Discord.app", homepage: "https://discord.com/" },
+    );
+    expect(payload.versionLine).toContain("0.0.385");
+  });
+
+  it("Discord DMG: template is cask_app", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://dl.discordapp.net/apps/osx/0.0.385/Discord.dmg",
+      { name: "discord", appName: "Discord.app", homepage: "https://discord.com/" },
+    );
+    expect(payload.template).toBe("cask_app");
+  });
+
+  it("Discord DMG: respects name override", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://dl.discordapp.net/apps/osx/0.0.385/Discord.dmg",
+      { name: "discord", appName: "Discord.app", homepage: "https://discord.com/" },
+    );
+    expect(payload.name).toBe("discord");
+  });
+
+  it("Discord DMG: respects appName and homepage overrides", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://dl.discordapp.net/apps/osx/0.0.385/Discord.dmg",
+      { name: "discord", appName: "Discord.app", homepage: "https://discord.com/" },
+    );
+    expect(payload.appOrPkgBlock).toContain("Discord.app");
+    expect(payload.homepageLine).toContain("https://discord.com/");
+  });
+
+  it("Discord DMG: includes SHA256", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://dl.discordapp.net/apps/osx/0.0.385/Discord.dmg",
+      { name: "discord", appName: "Discord.app", homepage: "https://discord.com/" },
+    );
+    expect(payload.sha256).toBeTruthy();
+    expect(payload.sha256.length).toBeGreaterThan(0);
+  });
 });

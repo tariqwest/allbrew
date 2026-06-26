@@ -174,6 +174,33 @@ describe.concurrent("cask-app integration", () => {
     expect(ruby).toContain('app "Postman.app"');
     expect(ruby).toContain("https://www.postman.com");
   }, 120000);
+
+  it("Discord DMG: version in CDN URL, payload is well-formed", async () => {
+    const url = "https://dl.discordapp.net/apps/osx/0.0.385/Discord.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "discord",
+      appName: "Discord.app",
+      homepage: "https://discord.com/",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toContain("0.0.385");
+    expect(payload.url).toContain("dl.discordapp.net");
+  }, 120000);
+
+  it("Discord DMG: generates structurally valid Ruby cask", async () => {
+    const url = "https://dl.discordapp.net/apps/osx/0.0.385/Discord.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "discord",
+      appName: "Discord.app",
+      homepage: "https://discord.com/",
+    });
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "discord" do');
+    expect(ruby).toContain('app "Discord.app"');
+    expect(ruby).toContain("https://discord.com/");
+  }, 120000);
 });
 
 describe.concurrent("cask-app-release integration", () => {
