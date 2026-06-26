@@ -189,4 +189,54 @@ describe("collectCaskAppPayload", () => {
     expect(payload.sha256).toBeTruthy();
     expect(payload.sha256.length).toBeGreaterThan(0);
   });
+
+  it("Postman: version extracted from CDN URL path", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://dl.pstmn.io/download/version/12.16.4/osx_arm64",
+      { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
+    );
+    expect(payload.versionLine).toContain("12.16.4");
+  });
+
+  it("Postman: template is cask_app", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://dl.pstmn.io/download/version/12.16.4/osx_arm64",
+      { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
+    );
+    expect(payload.template).toBe("cask_app");
+  });
+
+  it("Postman: respects name override", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://dl.pstmn.io/download/version/12.16.4/osx_arm64",
+      { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
+    );
+    expect(payload.name).toBe("postman");
+  });
+
+  it("Postman: respects appName and homepage overrides", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://dl.pstmn.io/download/version/12.16.4/osx_arm64",
+      { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
+    );
+    expect(payload.appOrPkgBlock).toContain("Postman.app");
+    expect(payload.homepageLine).toContain("https://www.postman.com");
+  });
+
+  it("Postman: includes SHA256", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://dl.pstmn.io/download/version/12.16.4/osx_arm64",
+      { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
+    );
+    expect(payload.sha256).toBeTruthy();
+    expect(payload.sha256.length).toBeGreaterThan(0);
+  });
+
+  it("Postman /latest/ URL: no version extracted", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://dl.pstmn.io/download/latest/osx",
+      { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
+    );
+    expect(payload.versionLine).toBe("");
+  });
 });

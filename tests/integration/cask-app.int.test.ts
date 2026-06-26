@@ -147,6 +147,33 @@ describe.concurrent("cask-app integration", () => {
     expect(ruby).toContain('app "Otty.app"');
     expect(ruby).toContain("https://otty.sh");
   }, 60000);
+
+  it("Postman: version in CDN URL, payload is well-formed", async () => {
+    const url = "https://dl.pstmn.io/download/version/12.16.4/osx_arm64";
+    const payload = await collectCaskAppPayload(url, {
+      name: "postman",
+      appName: "Postman.app",
+      homepage: "https://www.postman.com",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toContain("12.16.4");
+    expect(payload.url).toContain("dl.pstmn.io");
+  }, 120000);
+
+  it("Postman: generates structurally valid Ruby cask", async () => {
+    const url = "https://dl.pstmn.io/download/version/12.16.4/osx_arm64";
+    const payload = await collectCaskAppPayload(url, {
+      name: "postman",
+      appName: "Postman.app",
+      homepage: "https://www.postman.com",
+    });
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "postman" do');
+    expect(ruby).toContain('app "Postman.app"');
+    expect(ruby).toContain("https://www.postman.com");
+  }, 120000);
 });
 
 describe.concurrent("cask-app-release integration", () => {
