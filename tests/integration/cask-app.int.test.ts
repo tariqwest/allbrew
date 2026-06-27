@@ -282,6 +282,33 @@ describe.concurrent("cask-app integration", () => {
     expect(ruby).toContain('app "Pictogram.app"');
     expect(ruby).toContain("https://pictogramapp.com/");
   }, 120000);
+
+  it("IconChamp ZIP: GitHub raw rolling ZIP, payload is well-formed", async () => {
+    const url = "https://github.com/MacEnhance/appcast/raw/master/IconChamp/IconChamp.zip";
+    const payload = await collectCaskAppPayload(url, {
+      name: "iconchamp",
+      appName: "IconChamp.app",
+      homepage: "https://www.macenhance.com/iconchamp",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toBe("");
+    expect(payload.url).toContain("MacEnhance/appcast");
+  }, 120000);
+
+  it("IconChamp ZIP: generates structurally valid Ruby cask", async () => {
+    const url = "https://github.com/MacEnhance/appcast/raw/master/IconChamp/IconChamp.zip";
+    const payload = await collectCaskAppPayload(url, {
+      name: "iconchamp",
+      appName: "IconChamp.app",
+      homepage: "https://www.macenhance.com/iconchamp",
+    });
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "iconchamp" do');
+    expect(ruby).toContain('app "IconChamp.app"');
+    expect(ruby).toContain("https://www.macenhance.com/iconchamp");
+  }, 120000);
 });
 
 describe.concurrent("cask-app-release integration", () => {
