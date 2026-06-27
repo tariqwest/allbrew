@@ -7,6 +7,7 @@ import {
   githubLatestLivecheckBlock,
   urlVersionLivecheckBlock,
   masAppLivecheckBlock,
+  setappAppLivecheckBlock,
 } from "../../lib/generators/livecheck.ts";
 
 describe("npmLivecheckBlock", () => {
@@ -96,5 +97,18 @@ describe("masAppLivecheckBlock", () => {
 
   it("returns empty string for falsy input", () => {
     expect(masAppLivecheckBlock("")).toBe("");
+  });
+});
+
+
+describe("setappAppLivecheckBlock", () => {
+  it("returns Setapp app page URL", () => {
+    const result = setappAppLivecheckBlock("bartender");
+    expect(result).toContain("https://setapp.com/apps/bartender");
+    expect(result).toContain("Version");
+  });
+
+  it("returns empty string for falsy input", () => {
+    expect(setappAppLivecheckBlock("")).toBe("");
   });
 });

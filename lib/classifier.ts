@@ -3,6 +3,8 @@ const GITHUB_REPO_TREE_RE = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/(tree|bl
 
 const APP_STORE_RE = /^https?:\/\/(apps\.apple\.com|itunes\.apple\.com)\//;
 
+const SETAPP_APP_RE = /^https?:\/\/setapp\.com\/apps\/([^/?#]+)/i;
+
 const SCRIPT_EXTENSIONS = ['.sh', '.bash'];
 const RAW_GITHUB_RE = /^https?:\/\/raw\.githubusercontent\.com\//;
 
@@ -17,6 +19,11 @@ export function classify(url) {
 
   if (APP_STORE_RE.test(url)) {
     return { type: 'mac-app-store', url };
+  }
+
+  const setappMatch = url.match(SETAPP_APP_RE);
+  if (setappMatch) {
+    return { type: 'setapp-app', url, slug: setappMatch[1] };
   }
 
   const ghMatch = url.match(GITHUB_REPO_RE);

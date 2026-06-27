@@ -59,6 +59,8 @@ export async function run(url, opts: any = {}) {
         return await handleArchive(classification.url, opts);
       case "mac-app-store":
         return await handleMacAppStore(classification.url, opts);
+      case "setapp-app":
+        return await handleSetappApp(classification.url, opts);
       default:
         console.log(
           chalk.yellow(
@@ -108,6 +110,7 @@ async function runManual(url, opts) {
       { name: "Bash / shell install script", value: "bash-script" },
       { name: "macOS app (.dmg or .zip containing .app)", value: "cask-dmg" },
       { name: "Mac App Store link", value: "mac-app-store" },
+      { name: "Setapp app link", value: "setapp-app" },
       { name: "Archive (source code, binary, or app)", value: "archive" },
     ],
   });
@@ -122,6 +125,8 @@ async function runManual(url, opts) {
         return await handleCaskDmg(url, opts);
       case "mac-app-store":
         return await handleMacAppStore(url, opts);
+      case "setapp-app":
+        return await handleSetappApp(url, opts);
       case "archive":
         return await handleArchiveManual(url, opts);
     }
@@ -895,6 +900,12 @@ async function handleMacAppStore(url, opts) {
   return await generateWithConfirmation("cask-app-mas", { url }, opts);
 }
 
+async function handleSetappApp(url, opts) {
+  const { ensureSetappPrerequisites } = await import("./setapp-bootstrap.ts");
+  await ensureSetappPrerequisites(opts.tapPath);
+  return await generateWithConfirmation("cask-app-setapp", { url }, opts);
+}
+
 async function generateWithConfirmation(generatorName, params: any, opts: any) {
   console.log();
 
@@ -1035,6 +1046,11 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
     case "cask-app-mas": {
       const { generateCaskAppMas } = await import("./generators/cask-app-mas.ts");
       result = await generateCaskAppMas(params.url, mergedOpts);
+      break;
+    }
+    case "cask-app-setapp": {
+      const { generateCaskAppSetapp } = await import("./generators/cask-app-setapp.ts");
+      result = await generateCaskAppSetapp(params.url, mergedOpts);
       break;
     }
     case "spm-package": {
@@ -1221,6 +1237,7 @@ function parseCargoPackageName(cargoToml: string | null) {
 }
 
 function guessName(generatorName: any, params: any) {
+  if (params.slug) return String(params.slug).toLowerCase();
   if (params.repoInfo) return params.repoInfo.name.toLowerCase();
   if (params.packageName)
     return params.packageName

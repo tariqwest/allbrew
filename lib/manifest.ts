@@ -17,6 +17,7 @@ export type GeneratorName =
   | "cask-app"
   | "cask-app-release"
   | "cask-app-mas"
+  | "cask-app-setapp"
   | "spm-package"
   | "dotnet-package"
   | "gem-package"

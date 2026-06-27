@@ -76,6 +76,10 @@ export type BinaryReleasePayload = FormulaCommonFields & {
   platformBlocks: string;
 };
 
+export type SetappCliPayload = Omit<BinaryReleasePayload, "template"> & {
+  template: "setapp_cli";
+};
+
 export type InstallScriptPayload = FormulaCommonFields & {
   template: "install_script";
   url: string;
@@ -139,6 +143,18 @@ export type CaskAppMasPayload = {
   livecheckBlock: string;
 };
 
+export type CaskAppSetappPayload = {
+  template: "cask_app_setapp";
+  name: string;
+  slug: string;
+  appName: string;
+  version: string;
+  desc: string;
+  homepage: string;
+  zapBlock: string;
+  livecheckBlock: string;
+};
+
 export type SpmPackagePayload = FormulaCommonFields & {
   template: "spm_package";
   fullName: string;
@@ -184,6 +200,7 @@ export type FormulaPayload =
   | GoPackagePayload
   | SourceBuildPayload
   | BinaryReleasePayload
+  | SetappCliPayload
   | InstallScriptPayload
   | ArchiveBuildPayload
   | BinaryDirectPayload
@@ -195,4 +212,5 @@ export type FormulaPayload =
 export type CaskPayload =
   | CaskAppReleasePayload
   | CaskAppPayload
-  | CaskAppMasPayload;
+  | CaskAppMasPayload
+  | CaskAppSetappPayload;

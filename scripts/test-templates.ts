@@ -31,6 +31,7 @@ const cases: Case[] = [
   buildGithubReleaseCase(),
   buildCaskAppCase(),
   buildCaskAppMasCase(),
+  buildCaskAppSetappCase(),
 ];
 
 function main() {
@@ -536,3 +537,52 @@ function buildCaskAppMasCase(): Case {
 }
 
 main();
+
+
+function buildCaskAppSetappCase(): Case {
+  const zap =
+    `  zap trash: [\n` +
+    `    "~/Library/Application Support/Foo",\n` +
+    `  ]\n`;
+  const livecheck =
+    `  livecheck do\n` +
+    `    url "https://setapp.com/apps/foo"\n` +
+    `    regex(/Version\\s+(\\d+(?:\\.\\d+)+)/i)\n` +
+    `  end\n\n`;
+  const payload: CaskPayload = {
+    template: "cask_app_setapp",
+    name: "foo",
+    slug: "foo",
+    appName: "Foo",
+    version: "9.9",
+    desc: "Foo from Setapp",
+    homepage: "https://setapp.com/apps/foo",
+    zapBlock: zap,
+    livecheckBlock: livecheck,
+  };
+  const expected =
+    `cask "foo" do\n` +
+    `  version "9.9"\n` +
+    `  sha256 :no_check\n\n` +
+    `  url "https://setapp.com/apps/foo"\n` +
+    `  name "Foo"\n` +
+    `  desc "Foo from Setapp"\n` +
+    `  homepage "https://setapp.com/apps/foo"\n\n` +
+    livecheck +
+    `  depends_on formula: "setapp-cli"\n` +
+    `  depends_on cask: "setapp"\n\n` +
+    `  caveats <<~EOS\n` +
+    `    Requires an active Setapp subscription and being signed in to Setapp.\n` +
+    `  EOS\n\n` +
+    `  installer script: {\n` +
+    `    executable: "setapp-cli",\n` +
+    `    args: ["install", "Foo"],\n` +
+    `  }\n\n` +
+    `  uninstall script: {\n` +
+    `    executable: "setapp-cli",\n` +
+    `    args: ["remove", "Foo"],\n` +
+    `  }\n\n` +
+    zap +
+    `end\n`;
+  return { template: "cask_app_setapp", kind: "cask", payload, expected };
+}

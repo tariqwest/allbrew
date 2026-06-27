@@ -61,4 +61,24 @@ describe("buildManifest", () => {
     });
     expect(manifest.recordedVersion).toBe("1.2.3");
   });
+
+  it("persists source data for Setapp casks", () => {
+    const manifest = buildManifest({
+      generatorName: "cask-app-setapp",
+      params: {
+        url: "https://setapp.com/apps/bartender",
+        version: "6.5.2",
+        appName: "Bartender Pro",
+      },
+      opts: { tapPath: "/tmp/tap" },
+      result: { name: "bartender", type: "cask", recordedVersion: "6.5.2" },
+    });
+    expect(manifest.source).toEqual({
+      setappUrl: "https://setapp.com/apps/bartender",
+      appName: "Bartender Pro",
+    });
+    expect(manifest.recordedVersion).toBe("6.5.2");
+    expect(manifest.kind).toBe("cask");
+    expect(manifest.generator).toBe("cask-app-setapp");
+  });
 });

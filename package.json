@@ -51,6 +51,7 @@
     "@inquirer/prompts": "^7.0.0",
     "chalk": "^5.0.0",
     "commander": "^13.0.0",
+    "md-spreadsheet-parser": "^1.4.3",
     "octokit": "^4.0.0",
     "ora": "^8.0.0"
   },

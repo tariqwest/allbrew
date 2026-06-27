@@ -33,6 +33,7 @@ Choose the most appropriate generator from the catalog:
 - `cask-app` — Direct DMG/ZIP/PKG download URL (developer CDN, GitHub `/latest/` redirect, or static file).
 - `cask-app-release` — Cask generated from a GitHub repo's release assets.
 - `cask-app-mas` — Mac App Store app.
+- `cask-app-setapp` — Setapp subscription app (`setapp.com/apps/{slug}`).
 - `install-script` — curl/bash installer script.
 
 Prefer the registry-backed generator when a package exists. Prefer `cask-app` over `cask-app-release` when the user provides a direct asset URL.

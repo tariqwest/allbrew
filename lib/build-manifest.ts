@@ -107,6 +107,11 @@ function buildSource(
       };
     case "cask-app-mas":
       return { appStoreUrl: params.url };
+    case "cask-app-setapp":
+      return {
+        setappUrl: params.url,
+        appName: params.appName || null,
+      };
     case "spm-package":
       return {
         fullName: repoInfo?.fullName,
@@ -142,7 +147,7 @@ function inferRecordedVersion(
   if (release?.tagName) {
     return extractVersionFromTag(String(release.tagName));
   }
-  if (generatorName === "cask-app-mas" && params.version) {
+  if ((generatorName === "cask-app-mas" || generatorName === "cask-app-setapp") && params.version) {
     return String(params.version);
   }
   return "";

@@ -44,7 +44,7 @@ function readConfiguredTapPath(): string | null {
 }
 
 function isCaskGenerator(generator: string): boolean {
-  return generator === "cask-app" || generator === "cask-app-release" || generator === "cask-app-mas";
+  return generator === "cask-app" || generator === "cask-app-release" || generator === "cask-app-mas" || generator === "cask-app-setapp";
 }
 
 function runCommand(args: string[], opts: { cwd?: string } = {}): { code: number; stdout: string; stderr: string } {

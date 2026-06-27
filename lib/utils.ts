@@ -113,6 +113,11 @@ export function archPatterns() {
       /x86_64.*darwin/i,
       /x86_64.*macos/i,
     ],
+    macosUniversal: [
+      /macos[-_.]?universal/i,
+      /universal[-_.]?macos/i,
+      /darwin[-_.]?universal/i,
+    ],
     linuxArm: [
       /linux.*arm64/i,
       /linux.*aarch64/i,
