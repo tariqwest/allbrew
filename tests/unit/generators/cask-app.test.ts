@@ -421,4 +421,52 @@ describe("collectCaskAppPayload", () => {
     expect(payload.sha256).toBeTruthy();
     expect(payload.sha256.length).toBeGreaterThan(0);
   });
+
+  it("IconChamp ZIP: no version in URL produces empty versionLine", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://github.com/MacEnhance/appcast/raw/master/IconChamp/IconChamp.zip",
+      { name: "iconchamp", appName: "IconChamp.app", homepage: "https://www.macenhance.com/iconchamp" },
+    );
+    expect(payload.versionLine).toBe("");
+  });
+
+  it("IconChamp ZIP: template is cask_app", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://github.com/MacEnhance/appcast/raw/master/IconChamp/IconChamp.zip",
+      { name: "iconchamp", appName: "IconChamp.app", homepage: "https://www.macenhance.com/iconchamp" },
+    );
+    expect(payload.template).toBe("cask_app");
+  });
+
+  it("IconChamp ZIP: derives clean cask token from filename", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://github.com/MacEnhance/appcast/raw/master/IconChamp/IconChamp.zip",
+    );
+    expect(payload.name).toBe("iconchamp");
+  });
+
+  it("IconChamp ZIP: respects appName override in appOrPkgBlock", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://github.com/MacEnhance/appcast/raw/master/IconChamp/IconChamp.zip",
+      { name: "iconchamp", appName: "IconChamp.app", homepage: "https://www.macenhance.com/iconchamp" },
+    );
+    expect(payload.appOrPkgBlock).toContain("IconChamp.app");
+  });
+
+  it("IconChamp ZIP: respects homepage override", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://github.com/MacEnhance/appcast/raw/master/IconChamp/IconChamp.zip",
+      { name: "iconchamp", appName: "IconChamp.app", homepage: "https://www.macenhance.com/iconchamp" },
+    );
+    expect(payload.homepageLine).toContain("https://www.macenhance.com/iconchamp");
+  });
+
+  it("IconChamp ZIP: includes SHA256", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://github.com/MacEnhance/appcast/raw/master/IconChamp/IconChamp.zip",
+      { name: "iconchamp", appName: "IconChamp.app", homepage: "https://www.macenhance.com/iconchamp" },
+    );
+    expect(payload.sha256).toBeTruthy();
+    expect(payload.sha256.length).toBeGreaterThan(0);
+  });
 });
