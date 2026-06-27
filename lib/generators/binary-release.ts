@@ -34,6 +34,12 @@ export async function collectBinaryReleasePayload(
     if (arch) archAssets[arch] = asset;
   }
 
+  if (archAssets.macosUniversal) {
+    archAssets.macosArm = archAssets.macosUniversal;
+    archAssets.macosIntel = archAssets.macosUniversal;
+    delete archAssets.macosUniversal;
+  }
+
   if (Object.keys(archAssets).length === 0) {
     throw new Error("No platform-specific binary assets found in release");
   }

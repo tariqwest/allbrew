@@ -1,6 +1,6 @@
 # Allbrew (alpha)
 
-Make Homebrew the source of truth for all your macOS installs, regardless of whether the app is available on Homebrew. Generate Homebrew formulas and casks from arbitrary URLs. Point it at a GitHub repo, a bash install script, a binary archive, a macOS app DMG, or a Mac App Store link and it produces the right `.rb` file for your tap.
+Make Homebrew the source of truth for all your macOS installs, regardless of whether the app is available on Homebrew. Generate Homebrew formulas and casks from arbitrary URLs. Point it at a GitHub repo, a bash install script, a binary archive, a macOS app DMG, a Mac App Store link, or a Setapp app link and it produces the right `.rb` file for your tap.
 
 ## Todo
 
@@ -9,6 +9,9 @@ Make Homebrew the source of truth for all your macOS installs, regardless of whe
 - Account for formulas with background services using `brew services` formula blocks
 - Allow MAS app install by name, without full URL
 - Verify that uninstall works for all app types and install methods
+- `allbrew scan` — scan the user's system for already-installed non-Homebrew apps and retroactively create formulas/casks to track them (no reinstall, just adopt into the tap)
+- `allbrew switch` — scan for apps installed via MAS, Setapp, or other package managers that are also available in Homebrew core/casks, and offer to switch to the Homebrew-managed version
+- `allbrew hooks` uninstall detection — detect when tracked apps are removed outside of Homebrew/allbrew (manual deletion, MAS/Setapp uninstall) and clean up stale formulas/casks/manifests
 
 ## Install
 
@@ -95,6 +98,7 @@ allbrew https://github.com/some/private-repo
 | **Apps/daemons with service hints**  | Formula with a `service do` block for `brew services` when selected/detected |
 | **DMG or ZIP with .app**             | Cask with `app` stanza                                                       |
 | **Mac App Store URL**                | Cask using `mas` to install                                                  |
+| **Setapp app URL**                   | Cask using `setapp-cli` to install (auto-bootstraps `setapp-cli` + `setapp`) |
 
 ### GitHub Repos — Homebrew Detection
 

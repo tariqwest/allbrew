@@ -2,8 +2,9 @@
 
 > **Deeper planning & architecture docs** live in [`.agents/plans/`](./.agents/plans/):
 > - [`allbrew-test-cases-deep-research-2026-06.md`](./.agents/plans/allbrew-test-cases-deep-research-2026-06.md) — full research narrative, per-ecosystem tables, generator-coverage analysis
-> - [`allbrew-test-cases.md`](./.agents/plans/allbrew-test-cases.md) — combined master table of ~230 test-case apps across all 12 generators
+> - [`allbrew-test-cases.md`](./.agents/plans/allbrew-test-cases.md) — combined master table of test-case apps across all 17 generators
 > - [`tebako-ruby-binary-status.md`](./.agents/plans/tebako-ruby-binary-status.md) — paused Ruby binary experiment
+> - [`setapp-generator.md`](./.agents/plans/setapp-generator.md) — Setapp app store generator (`cask-app-setapp`)
 
 ## Project overview
 
@@ -36,7 +37,7 @@ bun run test:int                   # integration tests (live APIs: PyPI, npm, Gi
 bun run test:e2e                   # E2E catalog tests (requires E2E=1)
 bun run test:all                   # all three tiers
 bun run test:watch                 # unit tests in watch mode
-bun run test:templates             # 12 fixture payloads, byte-for-byte parity checks
+bun run test:templates             # 13 fixture payloads, byte-for-byte parity checks
 bun run test:update-formulas       # update-formulas integration test
 bun run bin/allbrew.ts --help      # verify CLI runs
 DRY_RUN=1 bun run release patch    # preview a release without side effects
@@ -49,7 +50,7 @@ Always run `bun run check` and `bun run test` before committing. Integration and
 - **Unit tests** (`tests/unit/`): 261 tests, fully mocked, offline-safe. Run with `bun run test`.
 - **Integration tests** (`tests/integration/`): 95 tests hitting live registries (PyPI, npm, crates.io, GitHub tarballs, DMG downloads). Run with `bun run test:int`.
 - **E2E tests** (`tests/e2e/`): 21 catalog-driven tests that generate formulas/casks and attempt real `brew install`. Gated behind `E2E=1` env var. Run with `bun run test:e2e`.
-- **Template parity tests** (`scripts/test-templates.ts`): 12 fixture payloads with byte-for-byte Ruby output comparison. Run with `bun run test:templates`.
+- **Template parity tests** (`scripts/test-templates.ts`): 13 fixture payloads with byte-for-byte Ruby output comparison. Run with `bun run test:templates`.
 
 To run a single test file:
 
@@ -100,7 +101,7 @@ Install if not present: `bun add md-spreadsheet-parser` (npm WASM package, works
 ### Generation flow
 
 1. User provides URL (CLI arg or prompt)
-2. **`classifier.ts`** → strategy (github-repo, bash-script, archive, cask-dmg, mac-app-store)
+2. **`classifier.ts`** → strategy (github-repo, bash-script, archive, cask-dmg, mac-app-store, setapp-app)
 3. **`github.ts`** / **`analyzer.ts`** / **`archive-inspector.ts`** → metadata, install method, service hints
 4. **`generators/*.ts`** → collect typed **payload** + download artifacts for SHA256
 5. **`template-renderer.ts`** → render Ruby from `lib/templates/formula/*` or `lib/templates/cask/*`
@@ -123,7 +124,7 @@ flowchart TD
   Update --> TapGit[tap-git commit/push]
 ```
 
-### Generators (16 total)
+### Generators (17 total)
 
 | Generator | Output | Install / deps | Livecheck |
 |-----------|--------|----------------|-----------|
@@ -139,6 +140,7 @@ flowchart TD
 | `cask-app` | Cask | DMG/ZIP `.app` URL | url |
 | `cask-app-release` | Cask | release `.dmg`/`.zip` | github |
 | `cask-app-mas` | Cask | `mas` installer | MAS |
+| `cask-app-setapp` | Cask | `setapp-cli` installer | Setapp page |
 | `spm-package` | Formula | `swift`, `swift build` | `:github_latest` |
 | `dotnet-package` | Formula | `dotnet`, `dotnet tool install` | NuGet |
 | `gem-package` | Formula | `ruby`, `gem install` | rubygems.org |
@@ -146,7 +148,7 @@ flowchart TD
 
 ### Template layer
 
-Generators build **typed payloads** (`lib/template-payload.ts`) and delegate to template modules. `bun run test:templates` runs 12 fixture payloads with byte-for-byte parity checks.
+Generators build **typed payloads** (`lib/template-payload.ts`) and delegate to template modules. `bun run test:templates` runs 13 fixture payloads with byte-for-byte parity checks.
 
 ### Managed updates
 
@@ -170,6 +172,7 @@ homebrew-allbrew/
     cli.ts                    # Orchestration: classify, route, prompt, generate, save manifest
     setup.ts                  # First-run tap setup + GitHub remote + brew tap
     classifier.ts             # URL → strategy routing
+    setapp-bootstrap.ts       # Auto-install setapp-cli + Setapp on first Setapp cask
     github.ts                 # GitHub API (releases, README, repo files via Octokit)
     analyzer.ts               # README/repo analysis: install method, service hints
     sha256.ts                 # Streaming SHA256 computation
@@ -251,11 +254,11 @@ Key flags: `--manual`, `--name`, `--desc`, `--tap`, `--service`, `--service-comm
 
 | Area | Status |
 |------|--------|
-| URL → formula/cask generation (12+ generators) | done |
+| URL → formula/cask generation (17 generators) | done |
 | Interactive + `--manual` mode | done |
 | Package-manager formulas (pip, npm, cargo, go) + livecheck | done |
 | Swift SPM, dotnet-tool, ruby-gem, swift-mint generators | done |
-| Binary / source / script / cask / MAS paths | done |
+| Binary / source / script / cask / MAS / Setapp paths | done |
 | `brew services` block inference + flags | done |
 | TypeScript template renderer + parity suite | done |
 | Manifest persistence + `allbrew update-formulas` | done |
@@ -263,7 +266,7 @@ Key flags: `--manual`, `--name`, `--desc`, `--tap`, `--service`, `--service-comm
 | Release script → GitHub release + tap formula | done |
 | First-run setup (`allbrew init`) | done |
 | Auto `brew update` + `brew install` after generation | done |
-| Three-tier Vitest suite: unit (261), integration (95), E2E (21) | done |
+| Three-tier Vitest suite: unit, integration, E2E | done |
 
 ### What is not done
 
@@ -271,6 +274,9 @@ Key flags: `--manual`, `--name`, `--desc`, `--tap`, `--service`, `--service-comm
 - MAS install by app name (URL with `/id{number}` only)
 - Uninstall/zap verification across generators
 - Binary/cask generator improvements for DMG-only desktop apps (Electron/Avalonia)
+- `allbrew scan` — scan the user's system for already-installed non-Homebrew apps and retroactively create formulas/casks to track them (no reinstall, just adopt into the tap)
+- `allbrew switch` — scan for apps installed via MAS, Setapp, or other package managers that are also available in Homebrew core/casks, and offer to switch to the Homebrew-managed version
+- `allbrew hooks` uninstall detection — detect when tracked apps are removed outside of Homebrew/allbrew (manual deletion, MAS/Setapp uninstall) and clean up stale formulas/casks/manifests
 
 ## Requirements
 

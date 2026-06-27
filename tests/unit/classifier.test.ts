@@ -45,6 +45,14 @@ describe("classify", () => {
     });
   });
 
+  describe("setapp-app", () => {
+    it("matches setapp.com/apps URL", () => {
+      const result = classify("https://setapp.com/apps/bartender");
+      expect(result.type).toBe("setapp-app");
+      expect(result.slug).toBe("bartender");
+    });
+  });
+
   describe("mac-app-store", () => {
     it("matches apps.apple.com URL", () => {
       const result = classify(

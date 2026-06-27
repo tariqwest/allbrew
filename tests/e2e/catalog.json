@@ -479,4 +479,15 @@
     "skip": false,
     "notes": "Autonomous coding agent CLI — npm i -g cline; Homebrew formula deprecated; monorepo; 293 releases; v3.0.29; Apache-2.0"
   }
+,
+  {
+    "name": "bartender-setapp",
+    "url": "https://setapp.com/apps/bartender",
+    "generator": "cask-app-setapp",
+    "allbrewArgs": ["--name", "bartender"],
+    "expectedBin": null,
+    "verifyCommand": ["setapp-cli", "list"],
+    "skip": true,
+    "notes": "Setapp app — requires Setapp subscription and setapp-cli"
+  }
 ]

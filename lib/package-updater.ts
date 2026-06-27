@@ -230,6 +230,21 @@ export async function updateManagedPackage(
         recordedVersion: version,
       };
     }
+    case "cask-app-setapp": {
+      const { collectCaskAppSetappPayload, extractSetappSlug, setappLatestVersion } = await import("./generators/cask-app-setapp.ts");
+      const { writeRenderedCask } = await import("./template-renderer.ts");
+      const setappUrl = String(manifest.source.setappUrl);
+      const payload = await collectCaskAppSetappPayload(setappUrl, opts);
+      const result = await writeRenderedCask(payload, manifest.tapPath);
+      const slug = extractSetappSlug(setappUrl);
+      const version = slug ? await setappLatestVersion(slug) : payload.version;
+      return {
+        name: result.name,
+        filePath: result.filePath,
+        kind: "cask",
+        recordedVersion: version,
+      };
+    }
     case "spm-package": {
       const { collectSpmPackagePayload } = await import("./generators/spm-package.ts");
       const { writeRenderedFormula } = await import("./template-renderer.ts");

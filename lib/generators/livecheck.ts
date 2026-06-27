@@ -69,3 +69,12 @@ export function masAppLivecheckBlock(appId: string) {
     /"version"\s*:\s*"([^"]+)"/i,
   );
 }
+
+
+export function setappAppLivecheckBlock(slug: string) {
+  if (!slug) return "";
+  return jsonRegexLivecheckBlock(
+    `https://setapp.com/apps/${encodeURIComponent(slug)}`,
+    /Version\s+(\d+(?:\.\d+)+)/i,
+  );
+}
