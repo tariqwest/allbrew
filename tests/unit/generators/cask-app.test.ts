@@ -372,4 +372,53 @@ describe("collectCaskAppPayload", () => {
     expect(payload.sha256).toBeTruthy();
     expect(payload.sha256.length).toBeGreaterThan(0);
   });
+
+  it("Pictogram ZIP: version extracted from URL (CSV first component 0.1)", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://pictogramapp.com/updates/v0.1%20%28Build%2013%29.zip",
+      { name: "pictogram", appName: "Pictogram.app", homepage: "https://pictogramapp.com/" },
+    );
+    expect(payload.versionLine).toContain("0.1");
+  });
+
+  it("Pictogram ZIP: template is cask_app", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://pictogramapp.com/updates/v0.1%20%28Build%2013%29.zip",
+      { name: "pictogram", appName: "Pictogram.app", homepage: "https://pictogramapp.com/" },
+    );
+    expect(payload.template).toBe("cask_app");
+  });
+
+  it("Pictogram ZIP: respects name override", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://pictogramapp.com/updates/v0.1%20%28Build%2013%29.zip",
+      { name: "pictogram", appName: "Pictogram.app", homepage: "https://pictogramapp.com/" },
+    );
+    expect(payload.name).toBe("pictogram");
+  });
+
+  it("Pictogram ZIP: respects appName override in appOrPkgBlock", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://pictogramapp.com/updates/v0.1%20%28Build%2013%29.zip",
+      { name: "pictogram", appName: "Pictogram.app", homepage: "https://pictogramapp.com/" },
+    );
+    expect(payload.appOrPkgBlock).toContain("Pictogram.app");
+  });
+
+  it("Pictogram ZIP: respects homepage override", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://pictogramapp.com/updates/v0.1%20%28Build%2013%29.zip",
+      { name: "pictogram", appName: "Pictogram.app", homepage: "https://pictogramapp.com/" },
+    );
+    expect(payload.homepageLine).toContain("https://pictogramapp.com/");
+  });
+
+  it("Pictogram ZIP: includes SHA256", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://pictogramapp.com/updates/v0.1%20%28Build%2013%29.zip",
+      { name: "pictogram", appName: "Pictogram.app", homepage: "https://pictogramapp.com/" },
+    );
+    expect(payload.sha256).toBeTruthy();
+    expect(payload.sha256.length).toBeGreaterThan(0);
+  });
 });

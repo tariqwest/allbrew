@@ -255,6 +255,33 @@ describe.concurrent("cask-app integration", () => {
     expect(ruby).toContain('app "Little Snitch.app"');
     expect(ruby).toContain("https://www.obdev.at/products/littlesnitch/index.html");
   }, 120000);
+
+  it("Pictogram ZIP: developer-site ZIP, payload is well-formed", async () => {
+    const url = "https://pictogramapp.com/updates/v0.1%20%28Build%2013%29.zip";
+    const payload = await collectCaskAppPayload(url, {
+      name: "pictogram",
+      appName: "Pictogram.app",
+      homepage: "https://pictogramapp.com/",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toContain("0.1");
+    expect(payload.url).toContain("pictogramapp.com");
+  }, 120000);
+
+  it("Pictogram ZIP: generates structurally valid Ruby cask", async () => {
+    const url = "https://pictogramapp.com/updates/v0.1%20%28Build%2013%29.zip";
+    const payload = await collectCaskAppPayload(url, {
+      name: "pictogram",
+      appName: "Pictogram.app",
+      homepage: "https://pictogramapp.com/",
+    });
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "pictogram" do');
+    expect(ruby).toContain('app "Pictogram.app"');
+    expect(ruby).toContain("https://pictogramapp.com/");
+  }, 120000);
 });
 
 describe.concurrent("cask-app-release integration", () => {
