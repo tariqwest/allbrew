@@ -39,11 +39,27 @@ Prefer the registry-backed generator when a package exists. Prefer `cask-app` ov
 
 ## 3. Add the table row
 
-Edit `.agents/plans/allbrew-test-cases.md`:
+Edit `.agents/plans/allbrew-test-cases.md` using **`md-spreadsheet-parser`** — never raw string splitting.
 
-- Append a new row to the master table in the appropriate ecosystem block (Python, Node, Rust, Go, Swift, .NET, cask, etc.).
-- Fill the columns that are relevant to the app: language, framework, website, GitHub repo, Homebrew status, registry URL, has GitHub releases, asset name, version-in-URL, and notes.
+**Always use the npm package to read and write the table:**
+
+```typescript
+import { scanTablesFromFile } from 'md-spreadsheet-parser';
+
+const [table] = scanTablesFromFile('.agents/plans/allbrew-test-cases.md');
+// table.headers  → string[]
+// table.rows     → string[][]
+// table.updateCell(rowIndex, colIndex, value)
+// table.toMarkdown() → string  (round-trips the whole file back)
+```
+
+To add a row, append to `table.rows` directly (it is a plain `string[][]`), then regenerate the file section via `table.toMarkdown()`. Alternatively, build the new `| … |` row string using `table.headers` as the authoritative column index — do **not** hardcode positional offsets.
+
+- Append a new row in the appropriate ecosystem block (Python, Node, Rust, Go, Swift, .NET, cask, etc.).
+- Fill all columns that are relevant; leave others as empty string `""`.
 - In the notes column, capture distinguishing facts: install method, version, signing status, license, star count, in-HB status, deprecation, monorepo layout, or any edge case.
+
+> **Why**: Raw `split('|')` breaks on cells containing backtick-quoted pipes (`` `a|b` ``), escaped pipes (`\|`), or rows that legitimately have a different column count. The parser handles all GFM edge cases and enforces uniform column counts.
 
 ## 4. Add a unit test
 

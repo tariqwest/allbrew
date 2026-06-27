@@ -73,6 +73,28 @@ bun run vitest run -t "classifies GitHub"
 - **No comments or documentation** unless explicitly requested by the user.
 - **Imports at the top of the file** — never mid-file.
 
+## Agent tool-use rules
+
+### Editing `.agents/plans/allbrew-test-cases.md`
+
+**Always use [`md-spreadsheet-parser`](https://github.com/fy-labs/md-spreadsheet-parser) — never raw `split('|')`.**
+
+The master test-case table is a 24-column GFM table with cells that can contain backtick-quoted pipes (`` `cmd|flag` ``), escaped pipes, and occasional column-count irregularities. Raw string splitting silently corrupts these rows. The parser handles all GFM edge cases correctly and enforces uniform structure on round-trip.
+
+```typescript
+import { scanTablesFromFile } from 'md-spreadsheet-parser';
+
+const [table] = scanTablesFromFile('.agents/plans/allbrew-test-cases.md');
+// Read:  table.headers (string[]), table.rows (string[][])
+// Edit:  table.updateCell(rowIndex, colIndex, value)
+//        or mutate table.rows directly
+// Write: table.toMarkdown() → regenerate the file section
+```
+
+Use `table.headers.indexOf('column_name')` to look up column positions — never hardcode numeric offsets.
+
+Install if not present: `bun add md-spreadsheet-parser` (npm WASM package, works natively in Bun).
+
 ## Architecture
 
 ### Generation flow
