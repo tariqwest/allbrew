@@ -112,4 +112,40 @@ describe.concurrent("source-build integration", () => {
     assertValidFormula(ruby);
     expect(ruby).toContain('head "https://github.com/maaslalani/slides.git"');
   });
+
+  const jockeyRepoInfo = {
+    name: "jockey",
+    fullName: "recailai/jockey",
+    description:
+      "A high-performance, open-source Multi-Agent Collaboration Platform built with Tauri, Rust, and SolidJS",
+    homepage: "https://github.com/recailai/jockey",
+    htmlUrl: "https://github.com/recailai/jockey",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  it("jockey: generates HEAD-only make payload for Tauri app", async () => {
+    const payload = await collectSourceBuildPayload(
+      jockeyRepoInfo,
+      null,
+      { system: "make" },
+    );
+    expect(payload.template).toBe("source_build");
+    expect(payload.name).toBe("jockey");
+    expect(payload.className).toBe("Jockey");
+    expect(payload.urlLines).toBe("");
+  });
+
+  it("jockey: generates structurally valid Ruby formula with head stanza", async () => {
+    const payload = await collectSourceBuildPayload(
+      jockeyRepoInfo,
+      null,
+      { system: "make" },
+    );
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Jockey < Formula");
+    expect(ruby).toContain('head "https://github.com/recailai/jockey.git"');
+    expect(ruby).toContain("make");
+  });
 });

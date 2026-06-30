@@ -192,3 +192,85 @@ describe("collectSourceBuildPayload — slides", () => {
     expect(payload.urlLines).toBe("");
   });
 });
+
+describe("collectSourceBuildPayload — Jockey (Tauri, no releases)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const jockeyRepoInfo = {
+    name: "jockey",
+    fullName: "recailai/jockey",
+    description:
+      "A high-performance, open-source Multi-Agent Collaboration Platform built with Tauri, Rust, and SolidJS",
+    homepage: "https://github.com/recailai/jockey",
+    htmlUrl: "https://github.com/recailai/jockey",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  it("returns correct template identifier", async () => {
+    const payload = await collectSourceBuildPayload(
+      jockeyRepoInfo,
+      null,
+      { system: "make" },
+    );
+    expect(payload.template).toBe("source_build");
+  });
+
+  it("derives name from repo name", async () => {
+    const payload = await collectSourceBuildPayload(
+      jockeyRepoInfo,
+      null,
+      { system: "make" },
+    );
+    expect(payload.name).toBe("jockey");
+    expect(payload.className).toBe("Jockey");
+  });
+
+  it("generates empty urlLines for HEAD-only repo", async () => {
+    const payload = await collectSourceBuildPayload(
+      jockeyRepoInfo,
+      null,
+      { system: "make" },
+    );
+    expect(payload.urlLines).toBe("");
+  });
+
+  it("generates make install body for default build system", async () => {
+    const payload = await collectSourceBuildPayload(
+      jockeyRepoInfo,
+      null,
+      { system: "make" },
+    );
+    expect(payload.installBody).toContain("make");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectSourceBuildPayload(
+      jockeyRepoInfo,
+      null,
+      { system: "make" },
+    );
+    expect(payload.desc).toContain("Multi-Agent Collaboration Platform");
+  });
+
+  it("includes MIT license line", async () => {
+    const payload = await collectSourceBuildPayload(
+      jockeyRepoInfo,
+      null,
+      { system: "make" },
+    );
+    expect(payload.licenseLine).toContain("MIT");
+  });
+
+  it("includes head reference fields", async () => {
+    const payload = await collectSourceBuildPayload(
+      jockeyRepoInfo,
+      null,
+      { system: "make" },
+    );
+    expect(payload.fullName).toBe("recailai/jockey");
+    expect(payload.defaultBranch).toBe("main");
+  });
+});

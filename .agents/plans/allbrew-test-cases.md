@@ -282,6 +282,8 @@ not found. `in_*` columns include the identifier or URL where known.
 | Mission Control Plus |  |  | fadel.io/missioncontrolplus | github.com/ronyfadel/MissionControlPlusReleases | mission-control-plus (cask) | setapp.com/apps/mission-control-plus |  |  |  |  |  |  |  |  |  |  | yes |  | .dmg |  | yes |  | window manager for Mission Control; GitHub releases-only repo (no source); v1.24; closed-source; requires Accessibility permission |
 | Hermes Desktop | Swift | SwiftUI |  | github.com/dodo-reach/hermes-desktop |  |  |  |  |  |  |  |  |  |  |  |  | yes |  | HermesDesktop.app.zip | yes |  |  | native macOS companion for Hermes Agent; GitHub release .zip; ad-hoc signed (not notarized); MIT; v1.2.0; build script `./scripts/build-macos-app.sh`; 1.9k stars |
 | Veronum | TypeScript | Electron | thetoolswebsite.com | github.com/DylanWain/veronum-desktop |  |  |  |  |  |  |  |  |  |  |  |  | yes |  | Veronum.dmg |  |  |  | multi-LLM workspace desktop app; GitHub /latest/ redirect DMG (no version in URL); signed + notarized; v0.1.2; not in HB |
+| Codeg | TypeScript / Rust | Tauri 2 |  | github.com/xintaofei/codeg |  |  |  |  |  |  |  |  |  |  |  |  | yes (132) |  | codeg_0.18.2_aarch64.dmg | yes | yes |  | multi-agent AI coding workspace (Claude Code, Codex, OpenCode, etc.); Tauri 2 desktop + server + Docker; versioned DMG with arch suffix; 1.8k stars; Apache-2.0; not in HB |
+| Jockey | TypeScript / Rust | Tauri 2 / SolidJS |  | github.com/recailai/jockey |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | multi-agent collaboration platform (ACP); Tauri 2 + Rust + SolidJS; no releases, no registry, HEAD-only; 18 stars; MIT; edge case for source-build (no build system match — requires pnpm + Rust toolchain) |
 | authsec-bridge | Python |  |  | github.com/authsec-ai/authsec-bridge |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | session bridge for Claude Code/Codex/Gemini CLI; `pip install -e .` from git clone; no PyPI package; no releases; MIT; edge case for source-build (Python not autotools) |
 | MōIcons | TypeScript | React / MōBrowser |  | github.com/mo-browser-apps/icons |  |  |  |  |  |  |  |  |  |  |  |  | yes |  | MoIcons-1.0.3-arm64.dmg | yes | yes |  | AI macOS app icon generator; arm64-only DMG; signed + notarized; MIT; v1.0.3; 703 stars; not in HB |
 | ShellGPT | Python |  |  | github.com/TheR1D/shell_gpt |  |  |  | pypi.org/project/shell-gpt |  |  |  |  |  |  |  |  |  |  |  |  |  |  | CLI productivity tool for AI LLMs; `pip install shell-gpt`; bin `sgpt`; 31 releases; v1.5.1; 12.1k stars; MIT; not in HB |
@@ -337,6 +339,9 @@ brew install ddclient && ddclient --version
 allbrew https://github.com/authsec-ai/authsec-bridge --manual  # → source-build
 brew install authsec-bridge && sb --help
 
+# source-build (Tauri desktop app; no releases, no registry; HEAD-only)
+allbrew https://github.com/recailai/jockey --manual  # → source-build (make fallback)
+
 # cask-app-release (arm64-only DMG; signed + notarized)
 allbrew https://github.com/mo-browser-apps/icons --manual  # → cask-app-release
 brew install --cask moicons && open -a MoIcons
@@ -389,6 +394,10 @@ brew install --cask mission-control-plus && open -a "Mission Control Plus"
 # GitHub release cask (.zip with .app; open-source Swift; unsigned)
 allbrew https://github.com/dodo-reach/hermes-desktop --manual
 brew install --cask hermes-desktop && open -a HermesDesktop
+
+# GitHub release cask (Tauri 2 desktop; versioned DMG with arch suffix; open-source)
+allbrew https://github.com/xintaofei/codeg --manual
+brew install --cask codeg && open -a Codeg
 
 # PKG installer (not DMG)
 allbrew https://zoom.us/client/latest/Zoom.pkg --manual

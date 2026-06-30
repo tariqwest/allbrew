@@ -359,4 +359,53 @@ describe.concurrent("cask-app-release integration", () => {
     expect(ruby).toContain("strategy :github_latest");
     expect(ruby).toContain("zap trash:");
   });
+
+  const codegRepoInfo = {
+    name: "codeg",
+    fullName: "xintaofei/codeg",
+    description:
+      "Collaborative multi-agent AI coding workspace: aggregate sessions from Claude Code, Codex, OpenCode, etc.",
+    homepage: "https://github.com/xintaofei/codeg",
+    htmlUrl: "https://github.com/xintaofei/codeg",
+    license: "Apache-2.0",
+  };
+
+  const codegRelease = {
+    tagName: "v0.18.2",
+    assets: [
+      {
+        name: "codeg_0.18.2_aarch64.dmg",
+        url: "https://github.com/xintaofei/codeg/releases/download/v0.18.2/codeg_0.18.2_aarch64.dmg",
+      },
+      {
+        name: "codeg_0.18.2_x64.dmg",
+        url: "https://github.com/xintaofei/codeg/releases/download/v0.18.2/codeg_0.18.2_x64.dmg",
+      },
+    ],
+  };
+
+  it("Codeg: payload from Tauri release is well-formed", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      codegRepoInfo,
+      codegRelease,
+    );
+    expect(payload.template).toBe("cask_app_release");
+    expect(payload.name).toBe("codeg");
+    expect(payload.version).toBe("0.18.2");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.url).toContain("#{version}");
+    expect(payload.appName).toContain(".app");
+  });
+
+  it("Codeg: generates structurally valid Ruby cask", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      codegRepoInfo,
+      codegRelease,
+    );
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "codeg" do');
+    expect(ruby).toContain("strategy :github_latest");
+    expect(ruby).toContain("zap trash:");
+  });
 });
