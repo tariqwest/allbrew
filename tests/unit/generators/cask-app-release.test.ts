@@ -135,3 +135,115 @@ describe("collectCaskAppReleasePayload", () => {
     expect(payload.url).toContain(".zip");
   });
 });
+
+describe("collectCaskAppReleasePayload — Codeg (Tauri 2)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const codegRepoInfo = {
+    name: "codeg",
+    fullName: "xintaofei/codeg",
+    description:
+      "Collaborative multi-agent AI coding workspace: aggregate sessions from Claude Code, Codex, OpenCode, etc.",
+    homepage: "https://github.com/xintaofei/codeg",
+    htmlUrl: "https://github.com/xintaofei/codeg",
+    license: "Apache-2.0",
+  };
+
+  const codegRelease = {
+    tagName: "v0.18.2",
+    assets: [
+      {
+        name: "codeg_0.18.2_aarch64.dmg",
+        url: "https://github.com/xintaofei/codeg/releases/download/v0.18.2/codeg_0.18.2_aarch64.dmg",
+      },
+      {
+        name: "codeg_0.18.2_x64.dmg",
+        url: "https://github.com/xintaofei/codeg/releases/download/v0.18.2/codeg_0.18.2_x64.dmg",
+      },
+      {
+        name: "codeg-server-darwin-arm64.tar.gz",
+        url: "https://github.com/xintaofei/codeg/releases/download/v0.18.2/codeg-server-darwin-arm64.tar.gz",
+      },
+      {
+        name: "codeg_0.18.2_amd64.deb",
+        url: "https://github.com/xintaofei/codeg/releases/download/v0.18.2/codeg_0.18.2_amd64.deb",
+      },
+    ],
+  };
+
+  it("returns correct template identifier", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      codegRepoInfo,
+      codegRelease,
+    );
+    expect(payload.template).toBe("cask_app_release");
+  });
+
+  it("derives cask token from repo name", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      codegRepoInfo,
+      codegRelease,
+    );
+    expect(payload.name).toBe("codeg");
+  });
+
+  it("extracts version from tag", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      codegRepoInfo,
+      codegRelease,
+    );
+    expect(payload.version).toBe("0.18.2");
+  });
+
+  it("prefers .dmg over server tarball and .deb", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      codegRepoInfo,
+      codegRelease,
+    );
+    expect(payload.url).toContain(".dmg");
+    expect(payload.url).not.toContain(".tar.gz");
+    expect(payload.url).not.toContain(".deb");
+  });
+
+  it("templates version into URL", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      codegRepoInfo,
+      codegRelease,
+    );
+    expect(payload.url).toContain("#{version}");
+  });
+
+  it("detects app name from DMG filename", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      codegRepoInfo,
+      codegRelease,
+    );
+    expect(payload.appName).toContain(".app");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      codegRepoInfo,
+      codegRelease,
+    );
+    expect(payload.desc).toContain("multi-agent");
+  });
+
+  it("generates zap block", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      codegRepoInfo,
+      codegRelease,
+    );
+    expect(payload.zapBlock).toContain("zap trash:");
+  });
+
+  it("includes SHA256", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      codegRepoInfo,
+      codegRelease,
+    );
+    expect(payload.sha256).toBeTruthy();
+  });
+});

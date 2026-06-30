@@ -456,6 +456,8 @@ gh search code "<dep-token>" --filename <manifest> --json repository --limit 50 
 | LottieViewConvert | Avalonia (.NET) | 574 | TGS/Lottie converter desktop app |
 | Popcorn Time | NW.js/Electron (Node) | 10.6k | media streamer (`popcorn-official/popcorn-desktop`) |
 | dev-manager-desktop | Tauri (Node) | 2.3k | webOS homebrew manager |
+| Codeg | Tauri 2 (TypeScript/Rust) | 1.8k | multi-agent AI coding workspace; aggregates Claude Code, Codex, OpenCode, Gemini CLI sessions; desktop + server + Docker; versioned DMG `codeg_{ver}_{arch}.dmg`; Apache-2.0; not in HB |
+| Jockey | Tauri 2 (Rust/SolidJS) | 18 | multi-agent collaboration platform (ACP protocol); no releases, no registry, HEAD-only; build via `pnpm tauri build`; MIT; edge case source-build |
 
 > **Excluded — caught in HB by this pass:** `comictagger` (formula), `extraterm` (cask),
 > `go2tv` (formula), `wombat` (cask). **Excluded — Linux-first / not macOS:** `gitfourchette`
