@@ -60,8 +60,13 @@ To determine if an unmanaged app is available in Homebrew, `allbrew` will cross-
 ## 4. UX flow
 
 ```
-allbrew switch [--dry-run] [--yes] [--skip <names>]
+allbrew switch [--dry-run] [--yes]
 ```
+
+`allbrew switch` presents a keyboard-navigable TUI list of every locally installed app that has a matching
+Homebrew formula or cask. The user selects which items to switch using the arrow keys and `<space>`; `<enter>`
+confirms the selection. The list is rendered with `@inquirer/prompts` `checkbox` (the same prompt library used
+throughout the CLI), not a `--skip` flag that requires the user to type names upfront.
 
 ```
 🔍  Scanning system for unmanaged apps...
@@ -71,8 +76,8 @@ allbrew switch [--dry-run] [--yes] [--skip <names>]
 
   We found 4 locally installed apps that are available in Homebrew!
 
-? Select apps to switch to the Homebrew-managed version:
-  (Press <space> to toggle, <a> to toggle all. All are selected by default.)
+? Select apps to switch to the Homebrew-managed version (↑/↓ to navigate, space to toggle, enter to confirm):
+  (All matches are selected by default.)
 
   LOCAL INSTALLATION                      HOMEBREW MATCH
   ------------------                      --------------
@@ -87,9 +92,10 @@ allbrew switch [--dry-run] [--yes] [--skip <names>]
 ◯ 1Password (8.10.30)                     1password (8.10.34)
   Location: /Applications/1Password.app   Desc: Password manager that keeps all passwords secure
   Origin: Mac App Store (id: 1333542190)  Type: Cask
-
-  [S]witch selected  [C]ancel
 ```
+
+`--yes` / `-y` skips the TUI and switches all matched apps automatically.
+`--dry-run` prints the matched table without making any changes.
 
 After confirmation:
 
@@ -120,7 +126,7 @@ runSwitch(opts)
   ├── collectCandidates(opts)           → ScanCandidate[] (From lib/scan-detect.ts)
   ├── filterAlreadyManaged(candidates)  → ScanCandidate[]
   ├── matchWithHomebrew(candidates)     → SwitchPair[]    (Fetches API, uses cache, performs matching)
-  ├── promptUserSelection(pairs)        → SwitchPair[]    (Interactive list, default all checked)
+  ├── promptUserSelection(pairs)        → SwitchPair[]    (TUI checkbox list, default all checked)
   └── executeSwitch(selected, opts)
         └── switchOne(pair)
               ├── Backup/record original path
@@ -178,10 +184,8 @@ program
   .description("Find manually installed apps that exist in Homebrew and switch them to Homebrew management")
   .option("-y, --yes", "Switch all matched apps without interactive confirmation")
   .option("--dry-run", "Print matched apps without making any changes")
-  .option("--skip <names>", "Comma-separated local app names to skip")
   .action(async (opts) => {
-    const skipSet = new Set((opts.skip ?? "").split(",").map(s => s.trim()).filter(Boolean));
-    await runSwitch({ ...opts, skipSet });
+    await runSwitch(opts);
   });
 ```
 
@@ -193,6 +197,7 @@ program
 
 - `matchWithHomebrew`: Mock the Homebrew API JSON responses. Verify that normalized local names correctly map to `cask.token` or `formula.name`. Verify aliases are checked and the cache is written to `~/.config/allbrew/brew-api-cache.json`.
 - `filterAlreadyManaged`: Verify that Homebrew-managed binaries inside `/usr/local/bin` or `/opt/homebrew/bin` are excluded from the generic `binaries` pass.
+- `promptUserSelection`: Mock the `@inquirer/prompts` `checkbox` TUI. Verify that arrow-key navigation and space-toggle produce the expected `SwitchPair[]`, and that the default state has all matches checked.
 - `executeSwitch` (dry run mode): Verify that MAS apps use `mas uninstall`, Setapp apps use `setapp-cli remove`, direct `.app` bundles are trashed, and the correct `brew install`/`brew install --cask` commands are formulated.
 - `restoreOnFailure`: Verify that when `brew install` fails, the removed local file/app is restored from Trash/backup and the failure is logged.
 
