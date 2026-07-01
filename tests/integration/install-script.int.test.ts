@@ -126,4 +126,17 @@ describe.concurrent("install-script integration", () => {
     assertValidFormula(ruby);
     expect(ruby).toContain("class Poetry < Formula");
   });
+
+  it("qoder: install script URL resolves to valid payload (requires auth)", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://qoder.com/install",
+      { name: "qoder" },
+    );
+    expect(payload.template).toBe("install_script");
+    expect(payload.name).toBe("qoder");
+    expect(payload.scriptFilename).toBe("install");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Qoder < Formula");
+  });
 });

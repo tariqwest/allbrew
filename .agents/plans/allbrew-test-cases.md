@@ -283,6 +283,7 @@ not found. `in_*` columns include the identifier or URL where known.
 | Hermes Desktop | Swift | SwiftUI |  | github.com/dodo-reach/hermes-desktop |  |  |  |  |  |  |  |  |  |  |  |  | yes |  | HermesDesktop.app.zip | yes |  |  | native macOS companion for Hermes Agent; GitHub release .zip; ad-hoc signed (not notarized); MIT; v1.2.0; build script `./scripts/build-macos-app.sh`; 1.9k stars |
 | Veronum | TypeScript | Electron | thetoolswebsite.com | github.com/DylanWain/veronum-desktop |  |  |  |  |  |  |  |  |  |  |  |  | yes |  | Veronum.dmg |  |  |  | multi-LLM workspace desktop app; GitHub /latest/ redirect DMG (no version in URL); signed + notarized; v0.1.2; not in HB |
 | Codeg | TypeScript / Rust | Tauri 2 |  | github.com/xintaofei/codeg |  |  |  |  |  |  |  |  |  |  |  |  | yes (132) |  | codeg_0.18.2_aarch64.dmg | yes | yes |  | multi-agent AI coding workspace (Claude Code, Codex, OpenCode, etc.); Tauri 2 desktop + server + Docker; versioned DMG with arch suffix; 1.8k stars; Apache-2.0; not in HB |
+| Qoder |  |  | qoder.com |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | qoder.com/install | closed-source AI coding IDE; download page at qoder.com/download (DMG behind auth); CLI via `curl -fsSL https://qoder.com/install \| bash`; also mobile MAS; not in HB |
 | Jockey | TypeScript / Rust | Tauri 2 / SolidJS |  | github.com/recailai/jockey |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | multi-agent collaboration platform (ACP); Tauri 2 + Rust + SolidJS; no releases, no registry, HEAD-only; 18 stars; MIT; edge case for source-build (no build system match — requires pnpm + Rust toolchain) |
 | authsec-bridge | Python |  |  | github.com/authsec-ai/authsec-bridge |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | session bridge for Claude Code/Codex/Gemini CLI; `pip install -e .` from git clone; no PyPI package; no releases; MIT; edge case for source-build (Python not autotools) |
 | MōIcons | TypeScript | React / MōBrowser |  | github.com/mo-browser-apps/icons |  |  |  |  |  |  |  |  |  |  |  |  | yes |  | MoIcons-1.0.3-arm64.dmg | yes | yes |  | AI macOS app icon generator; arm64-only DMG; signed + notarized; MIT; v1.0.3; 703 stars; not in HB |
@@ -323,6 +324,10 @@ brew install godns && godns -h
 # script-install (curl | bash)
 allbrew https://starship.rs/install.sh --manual         # → script-install
 brew install starship && starship --version
+
+# script-install (closed-source AI IDE; installer at qoder.com/install)
+allbrew https://qoder.com/install --manual               # → script-install
+brew install qoder && qoder --version
 
 # cask-app (direct .dmg / .zip / .pkg download)
 allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual  # → cask-app

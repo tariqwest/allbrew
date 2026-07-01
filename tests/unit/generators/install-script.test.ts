@@ -114,3 +114,56 @@ describe("collectInstallScriptPayload", () => {
     expect(payload.scriptFilename).toBe("install.sh");
   });
 });
+
+describe("collectInstallScriptPayload — Qoder", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns correct template identifier", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://qoder.com/install",
+    );
+    expect(payload.template).toBe("install_script");
+  });
+
+  it("extracts filename from URL without .sh extension", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://qoder.com/install",
+    );
+    expect(payload.scriptFilename).toBe("install");
+    expect(payload.name).toBe("install");
+    expect(payload.className).toBe("Install");
+  });
+
+  it("includes SHA256 from download", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://qoder.com/install",
+    );
+    expect(payload.sha256).toBeTruthy();
+  });
+
+  it("uses URL as homepage", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://qoder.com/install",
+    );
+    expect(payload.homepage).toBe("https://qoder.com/install");
+  });
+
+  it("respects name override", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://qoder.com/install",
+      { name: "qoder-cli" },
+    );
+    expect(payload.name).toBe("qoder-cli");
+    expect(payload.className).toBe("QoderCli");
+  });
+
+  it("generates livecheck block with install URL", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://qoder.com/install",
+    );
+    expect(payload.livecheckBlock).toContain("livecheck do");
+    expect(payload.livecheckBlock).toContain("qoder.com/install");
+  });
+});
