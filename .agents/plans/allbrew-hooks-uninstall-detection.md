@@ -61,33 +61,54 @@ Use the native **Folder Actions** infrastructure (AppleScript / JavaScript for A
 - **Behavior:**
   1. Convert each lost item to a POSIX path.
   2. Call the allbrew CLI in the background with the removed path(s).
-  3. Use the absolute path to the allbrew binary recorded at install time so Finder's minimal `PATH` is not a problem.
+  3. Resolve the allbrew binary path dynamically (see §4.3) — do **not** hardcode `/usr/local/bin/allbrew`.
+  4. Wrap the shell invocation in a `try/catch` so Finder is never blocked by a missing or failing binary.
+  5. Pass all paths from a single event as a single invocation to allow atomic deduplication inside the CLI.
 
 ```applescript
 on removing folder items from this_folder after losing these_items
-  tell application "Finder"
-    set allbrewCli to "/usr/local/bin/allbrew" -- recorded at install time
+  try
+    set allbrewCli to do shell script "cat ~/.config/allbrew/binary-path 2>/dev/null || which allbrew 2>/dev/null || echo ''"
+    if allbrewCli is "" then return
+    set pathArgs to ""
     repeat with anItem in these_items
       set itemPath to POSIX path of (anItem as alias)
-      do shell script allbrewCli & " hooks uninstall-detect --path " & quoted form of itemPath & " >/dev/null 2>&1 &"
+      set pathArgs to pathArgs & " --path " & quoted form of itemPath
     end repeat
-  end tell
+    do shell script allbrewCli & " hooks uninstall-detect" & pathArgs & " >>/tmp/allbrew-uninstall-detect.log 2>&1 &"
+  end try
 end removing folder items from
 ```
 
 (The final implementation will use JXA for easier JSON/path handling, but the AppleScript version above shows the event model.)
 
+### 4.3 Binary path discovery
+
+The installed allbrew binary can live in many places (`/usr/local/bin`, `/opt/homebrew/bin`, a bun global bin, etc.). At `allbrew hooks install` time:
+
+1. Record `process.execPath` (the running binary's absolute path) to `~/.config/allbrew/binary-path`.
+2. The JXA script reads this file first; falls back to `which allbrew`; aborts silently if neither resolves.
+3. `allbrew hooks uninstall` deletes `~/.config/allbrew/binary-path`.
+
+This removes the hardcoded `/usr/local/bin/allbrew` assumption.
+
+### 4.4 Security hardening
+
+Before executing the binary path read from disk, the JXA script verifies it is an absolute path beginning with `/` and is not world-writable. A path that fails validation is ignored and the script exits silently. This prevents a compromised `binary-path` file from causing arbitrary code execution under Finder's privileges.
+
 ### 4.2 Attaching / detaching
 
 `allbrew hooks install` will:
 
-1. Compile the JXA script to `~/Library/Scripts/Folder Action Scripts/allbrew-uninstall-detection.scpt`.
-2. For each watched folder, create a Folder Action via `osascript` and attach the script.
+1. Write `process.execPath` to `~/.config/allbrew/binary-path` (see §4.3).
+2. Compile the JXA script to `~/Library/Scripts/Folder Action Scripts/allbrew-uninstall-detection.scpt`.
+3. For each watched folder, create a Folder Action via `osascript` and attach the script.
 
 `allbrew hooks uninstall` will:
 
 1. Remove the Folder Action attachments.
 2. Delete the compiled `.scpt` file.
+3. Delete `~/.config/allbrew/binary-path`.
 
 ---
 
@@ -126,17 +147,20 @@ hooksCmd
 
 ```
 runUninstallDetect({ paths: string[] })
+  ├── deduplicatePaths(paths)                 → deduplicate in case Folder Action fires multiple times for the same event
   ├── loadAllManifests()                      → PackageManifest[]
   ├── findManifestsForPaths(paths)            → Map<manifest, removedPath>
-  ├── verifyAppIsGone(manifests)             → remove any false positives (e.g., app moved to another watched folder)
+  ├── verifyAppIsGone(manifests)             → remove false positives (app moved to watched/system folder; OS update)
   ├── removeStaleFiles(manifests)             → delete .rb file and manifest JSON
   ├── optionallySyncBrewState(manifests)      → run brew uninstall if still recorded
   └── commitCleanup(manifests, tapPath)       → tap-git commit
 ```
 
+`runUninstallDetect` must complete or time-out within a bounded duration (default 30 s). Backgrounded shell invocations from the JXA script are fire-and-forget; if the process is killed externally or times out, the next Folder Action event or a manual `allbrew hooks scan-uninstalls` will catch any missed removals.
+
 ### 6.1 Matching a removed path to a manifest
 
-For cask manifests, match by `source.appPath` (stored at generation time) or by deriving the path from `source.appName` + the watched folder that triggered the event.
+For cask manifests, match by `source.appPath` (stored at generation time) as the primary key. Fall back to deriving the path from `source.appName` + the watched folder that triggered the event only when `appPath` is absent (legacy manifests).
 
 For example, a removed path `/Applications/Raycast.app` maps to:
 
@@ -144,14 +168,20 @@ For example, a removed path `/Applications/Raycast.app` maps to:
 - `manifest.source.appPath === "/Applications/Raycast.app"`, or
 - `manifest.source.appName === "Raycast"` and the trigger folder is `/Applications`.
 
+**MAS and Setapp generators** currently store neither `appPath` nor `appName` in their source objects (`cask-app-mas` stores only `appStoreUrl`; `cask-app-setapp` stores only `setappUrl` and `appName`). Both generators must be updated to also store `appPath` at generation time so uninstall detection can match them. For `cask-app-mas`, derive `appPath` by resolving the app name returned by the MAS API against `/Applications`. For `cask-app-setapp`, derive it from the `appName` field against `/Applications/Setapp` (default) **and** record any non-default install path if Setapp is configured to install elsewhere.
+
 ### 6.2 Manifest source change
 
-`buildManifest` must store `source.appPath` for all cask generators:
+`buildManifest` must store `source.appPath` and `source.appName` for all cask generators:
 
-- `cask-app`
-- `cask-app-release`
-- `cask-app-mas`
-- `cask-app-setapp`
+| Generator | `source.appPath` | `source.appName` |
+|---|---|---|
+| `cask-app` | Derived from `app.install` stanza or `appName` + `/Applications` | existing `appName` |
+| `cask-app-release` | Same derivation | existing `appName` |
+| `cask-app-mas` | Resolved at generation time from MAS app name + `/Applications` | App name from MAS API |
+| `cask-app-setapp` | Resolved at generation time from `appName` + Setapp install dir | existing `appName` |
+
+**Setapp custom install path:** `setapp-bootstrap.ts` already knows the Setapp install directory. Pass it through to the manifest source so `appPath` is accurate when Setapp is installed to a non-default location.
 
 ### 6.3 Cleanup actions
 
@@ -176,10 +206,10 @@ For each matched manifest:
 | File | Role |
 |------|------|
 | `lib/hooks-uninstall-detect.ts` | `runUninstallDetect`, `findManifestsForPaths`, `removeStaleFiles`, `commitCleanup` |
-| `lib/folder-actions.ts` | Generate JXA script, compile with `osacompile`, attach/detach Folder Actions |
+| `lib/folder-actions.ts` | Generate JXA script, compile with `osacompile`, attach/detach Folder Actions; write/delete `~/.config/allbrew/binary-path` |
 | `lib/brew-hooks.ts` (updated) | `installBrewHooks` and `uninstallBrewHooks` now also call `folder-actions.ts` |
 | `bin/allbrew.ts` (updated) | Add `allbrew hooks uninstall-detect` command; update `install`/`uninstall` descriptions |
-| `lib/build-manifest.ts` (updated) | Store `source.appPath` for cask generators |
+| `lib/build-manifest.ts` (updated) | Store `source.appPath` and `source.appName` for all four cask generators |
 
 ---
 
@@ -188,9 +218,14 @@ For each matched manifest:
 ### Unit tests (`tests/unit/hooks-uninstall-detect.test.ts`)
 
 - `findManifestsForPaths` matches a removed `/Applications/Raycast.app` to a manifest with `source.appPath`.
-- `findManifestsForPaths` matches by `source.appName` when `appPath` is missing.
+- `findManifestsForPaths` matches by `source.appName` when `appPath` is missing (legacy manifest).
+- `findManifestsForPaths` matches a `cask-app-mas` manifest using `source.appPath` derived from the MAS app name.
+- `findManifestsForPaths` matches a `cask-app-setapp` manifest using `source.appPath` derived from a non-default Setapp install directory.
 - `findManifestsForPaths` ignores a removed app that is not tracked.
+- `deduplicatePaths` collapses duplicate paths from repeated Folder Action events.
 - `verifyAppIsGone` removes false positives when the app was moved to another watched folder.
+- `verifyAppIsGone` skips cleanup when the app is found at a system path (e.g., moved during an OS update rather than deleted by the user).
+- `removeStaleFiles` does not clean up a partially-removed bundle where the `.app` directory still exists but `Contents/MacOS` is missing — it should treat partial bundles as still present.
 - `removeStaleFiles` deletes the correct `.rb` file and manifest JSON.
 - `commitCleanup` calls `tap-git` with a single batch message.
 - `runUninstallDetect` runs `brew uninstall` only when the package is still recorded as installed.
@@ -211,8 +246,13 @@ For each matched manifest:
 | `brew uninstall --cask` | The app is removed, so the Folder Action also fires. If Homebrew no longer lists the cask, just delete the cask file and manifest. If Homebrew still lists it, run `brew uninstall` first. |
 | App moved to another watched folder | Treat as removal in the source folder. `verifyAppIsGone` checks all watched folders; if found elsewhere, update `manifest.source.appPath` instead of deleting. |
 | App moved to an unwatched folder (e.g., `/tmp`) | Folder Action treats it as deleted. `verifyAppIsGone` will confirm it is gone and clean up. The user can re-scan if they want to track it again. |
+| App moved by an OS update or system process | `verifyAppIsGone` checks for the bundle at common system paths (`/System/Applications`, `/System/Library`). If found there, skip cleanup and log a warning rather than deleting the manifest. |
 | Removal via Terminal `rm` | Folder Actions rely on Finder events; this may not trigger. Document the limitation; fallback is manual `allbrew hooks scan-uninstalls` or periodic `allbrew service`. |
+| Partial app removal (`.app` dir exists but `Contents/MacOS` is absent) | Treat the bundle as still present. `verifyAppIsGone` checks for `<path>/Contents/MacOS` as a proxy for a valid bundle. Do not clean up. |
 | Multiple manifests for the same app | Use `manifest.name` (token) and `appPath` to disambiguate. |
+| Duplicate Folder Action events for the same removal | `deduplicatePaths` collapses duplicates before any manifest lookup, so each removal is processed at most once per invocation. |
+| Setapp installed to a non-default location | `source.appPath` recorded at generation time reflects the actual path. No watched-folder assumptions needed at detection time. |
+| allbrew binary not found or moved | JXA script falls back to `which allbrew`; if neither resolves, the event is silently skipped. The next `allbrew hooks install` re-records the binary path. |
 | User deletes the app but wants to keep the formula | Not supported. Re-running `allbrew <url>` will recreate it. |
 | Folder Actions are disabled by the user | `allbrew hooks install` will fail to attach. Show a warning and suggest using `allbrew service` as a fallback. |
 | Uninstall detection triggered while allbrew is running | The CLI runs in a separate process, so it is safe. |
