@@ -718,6 +718,7 @@ single download link.
 | **Monk Mode** | Focus/distraction blocker | [mac.monk-mode.lifestyle](https://mac.monk-mode.lifestyle) | `.dmg` | Indie; $15 lifetime |
 | **MetricSync** | App Store analytics sync | [metricsync.download](https://metricsync.download) | `.dmg` | Indie; $5/mo |
 | **Magnet** | Window manager | Mac App Store only | MAS only | ✗ No direct download — not a test case |
+| **Qoder** | AI coding IDE (desktop + mobile) | [qoder.com/download](https://qoder.com/download) or [install script](https://qoder.com/install) | `.dmg` (requires auth) / CLI: `curl -fsSL https://qoder.com/install | bash` | Closed-source; also has iOS MAS version; 1 M+ global users |
 | **ColorSlurp** | Color picker | Mac App Store only | MAS only | ✗ No direct download — not a test case |
 | **Bear** | Notes app | Mac App Store + direct download | `.dmg` possible | Has no Homebrew cask |
 
