@@ -193,6 +193,103 @@ describe("collectSourceBuildPayload — slides", () => {
   });
 });
 
+describe("collectSourceBuildPayload — open-notebook (Python web app, no PyPI, source-build)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const openNotebookRepoInfo = {
+    name: "open-notebook",
+    fullName: "lfnovo/open-notebook",
+    description: "An open source implementation of a research assistant, inspired by Google Notebook LM",
+    homepage: "https://www.open-notebook.ai",
+    htmlUrl: "https://github.com/lfnovo/open-notebook",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const release = {
+    tagName: "v1.10.0",
+    tarballUrl: "https://github.com/lfnovo/open-notebook/archive/refs/tags/v1.10.0.tar.gz",
+  };
+
+  it("returns correct template identifier", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      release,
+      { system: "python" },
+    );
+    expect(payload.template).toBe("source_build");
+  });
+
+  it("derives name and className from repo name", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      release,
+      { system: "python" },
+    );
+    expect(payload.name).toBe("open-notebook");
+    expect(payload.className).toBe("OpenNotebook");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      release,
+      { system: "python" },
+    );
+    expect(payload.desc).toContain("research assistant");
+  });
+
+  it("uses homepage from repo info", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      release,
+      { system: "python" },
+    );
+    expect(payload.homepage).toBe("https://www.open-notebook.ai");
+  });
+
+  it("generates source archive URL from release tag", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      release,
+      { system: "python" },
+    );
+    expect(payload.urlLines).toContain(
+      "https://github.com/lfnovo/open-notebook/archive/refs/tags/v1.10.0.tar.gz",
+    );
+  });
+
+  it("marks payload as Python (isPython true)", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      release,
+      { system: "python" },
+    );
+    expect(payload.isPython).toBe(true);
+  });
+
+  it("includes MIT license line", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      release,
+      { system: "python" },
+    );
+    expect(payload.licenseLine).toContain("MIT");
+  });
+
+  it("generates head stanza fields", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      release,
+      { system: "python" },
+    );
+    expect(payload.fullName).toBe("lfnovo/open-notebook");
+    expect(payload.defaultBranch).toBe("main");
+  });
+});
+
 describe("collectSourceBuildPayload — Jockey (Tauri, no releases)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();

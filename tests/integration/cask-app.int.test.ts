@@ -408,4 +408,62 @@ describe.concurrent("cask-app-release integration", () => {
     expect(ruby).toContain("strategy :github_latest");
     expect(ruby).toContain("zap trash:");
   });
+
+  const knowNoteRepoInfo = {
+    name: "KnowNote",
+    fullName: "MrSibe/KnowNote",
+    description:
+      "Local-first open-source alternative to Google NotebookLM with RAG and private LLMs",
+    homepage: "https://github.com/MrSibe/KnowNote",
+    htmlUrl: "https://github.com/MrSibe/KnowNote",
+    license: "GPL-3.0",
+  };
+
+  const knowNoteRelease = {
+    tagName: "v1.2.0",
+    assets: [
+      {
+        name: "KnowNote-1.2.0-arm64-mac.zip",
+        url: "https://github.com/MrSibe/KnowNote/releases/download/v1.2.0/KnowNote-1.2.0-arm64-mac.zip",
+      },
+      {
+        name: "knownote-1.2.0.dmg",
+        url: "https://github.com/MrSibe/KnowNote/releases/download/v1.2.0/knownote-1.2.0.dmg",
+      },
+      {
+        name: "knownote-1.2.0-setup.exe",
+        url: "https://github.com/MrSibe/KnowNote/releases/download/v1.2.0/knownote-1.2.0-setup.exe",
+      },
+      {
+        name: "latest-mac.yml",
+        url: "https://github.com/MrSibe/KnowNote/releases/download/v1.2.0/latest-mac.yml",
+      },
+    ],
+  };
+
+  it("KnowNote: payload from release is well-formed", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      knowNoteRepoInfo,
+      knowNoteRelease,
+    );
+    expect(payload.template).toBe("cask_app_release");
+    expect(payload.name).toBe("knownote");
+    expect(payload.version).toBe("1.2.0");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.url).toContain("#{version}");
+    expect(payload.url).toContain(".dmg");
+    expect(payload.appName).toContain(".app");
+  }, 60000);
+
+  it("KnowNote: generates structurally valid Ruby cask", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      knowNoteRepoInfo,
+      knowNoteRelease,
+    );
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "knownote" do');
+    expect(ruby).toContain("strategy :github_latest");
+    expect(ruby).toContain("zap trash:");
+  }, 60000);
 });

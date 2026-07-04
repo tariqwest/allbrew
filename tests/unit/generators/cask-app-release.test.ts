@@ -136,6 +136,112 @@ describe("collectCaskAppReleasePayload", () => {
   });
 });
 
+describe("collectCaskAppReleasePayload — KnowNote (Electron, lowercase DMG)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const knowNoteRepoInfo = {
+    name: "KnowNote",
+    fullName: "MrSibe/KnowNote",
+    description:
+      "Local-first open-source alternative to Google NotebookLM with RAG and private LLMs",
+    homepage: "https://github.com/MrSibe/KnowNote",
+    htmlUrl: "https://github.com/MrSibe/KnowNote",
+    license: "GPL-3.0",
+  };
+
+  const knowNoteRelease = {
+    tagName: "v1.2.0",
+    assets: [
+      {
+        name: "KnowNote-1.2.0-arm64-mac.zip",
+        url: "https://github.com/MrSibe/KnowNote/releases/download/v1.2.0/KnowNote-1.2.0-arm64-mac.zip",
+      },
+      {
+        name: "knownote-1.2.0.dmg",
+        url: "https://github.com/MrSibe/KnowNote/releases/download/v1.2.0/knownote-1.2.0.dmg",
+      },
+      {
+        name: "knownote-1.2.0-setup.exe",
+        url: "https://github.com/MrSibe/KnowNote/releases/download/v1.2.0/knownote-1.2.0-setup.exe",
+      },
+      {
+        name: "latest-mac.yml",
+        url: "https://github.com/MrSibe/KnowNote/releases/download/v1.2.0/latest-mac.yml",
+      },
+    ],
+  };
+
+  it("returns correct template identifier", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      knowNoteRepoInfo,
+      knowNoteRelease,
+    );
+    expect(payload.template).toBe("cask_app_release");
+  });
+
+  it("derives cask token from repo name", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      knowNoteRepoInfo,
+      knowNoteRelease,
+    );
+    expect(payload.name).toBe("knownote");
+  });
+
+  it("extracts version from tag", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      knowNoteRepoInfo,
+      knowNoteRelease,
+    );
+    expect(payload.version).toBe("1.2.0");
+  });
+
+  it("prefers .dmg over .zip, .exe, and .yml assets", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      knowNoteRepoInfo,
+      knowNoteRelease,
+    );
+    expect(payload.url).toContain(".dmg");
+    expect(payload.url).not.toContain(".zip");
+    expect(payload.url).not.toContain(".exe");
+    expect(payload.url).not.toContain(".yml");
+  });
+
+  it("templates version into URL", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      knowNoteRepoInfo,
+      knowNoteRelease,
+    );
+    expect(payload.url).toContain("#{version}");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      knowNoteRepoInfo,
+      knowNoteRelease,
+    );
+    expect(payload.desc).toContain("NotebookLM");
+  });
+
+  it("generates zap block", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      knowNoteRepoInfo,
+      knowNoteRelease,
+    );
+    expect(payload.zapBlock).toContain("zap trash:");
+    expect(payload.zapBlock).toContain("Library/Application Support");
+  });
+
+  it("includes SHA256", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      knowNoteRepoInfo,
+      knowNoteRelease,
+    );
+    expect(payload.sha256).toBeTruthy();
+  });
+});
+
 describe("collectCaskAppReleasePayload — Codeg (Tauri 2)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();

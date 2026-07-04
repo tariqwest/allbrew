@@ -148,4 +148,49 @@ describe.concurrent("source-build integration", () => {
     expect(ruby).toContain('head "https://github.com/recailai/jockey.git"');
     expect(ruby).toContain("make");
   });
+
+  const openNotebookRepoInfo = {
+    name: "open-notebook",
+    fullName: "lfnovo/open-notebook",
+    description: "An open source implementation of a research assistant, inspired by Google Notebook LM",
+    homepage: "https://www.open-notebook.ai",
+    htmlUrl: "https://github.com/lfnovo/open-notebook",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const openNotebookRelease = {
+    tagName: "v1.10.0",
+    tarballUrl: "https://github.com/lfnovo/open-notebook/archive/refs/tags/v1.10.0.tar.gz",
+  };
+
+  it("open-notebook: payload fields are well-formed (Python web app, source-build)", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      openNotebookRelease,
+      { system: "python" },
+    );
+    expect(payload.template).toBe("source_build");
+    expect(payload.name).toBe("open-notebook");
+    expect(payload.className).toBe("OpenNotebook");
+    expect(payload.isPython).toBe(true);
+    expect(payload.urlLines).toContain("lfnovo/open-notebook/archive/refs/tags/v1.10.0.tar.gz");
+    expect(payload.urlLines).toMatch(/sha256 "[a-f0-9]{64}"/);
+    expect(payload.licenseLine).toContain("MIT");
+    expect(payload.allbrewDependency).toContain("allbrew");
+  });
+
+  it("open-notebook: generates structurally valid Ruby formula with virtualenv", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      openNotebookRelease,
+      { system: "python" },
+    );
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class OpenNotebook < Formula");
+    expect(ruby).toContain("include Language::Python::Virtualenv");
+    expect(ruby).toContain('depends_on "python@3.13"');
+    expect(ruby).toContain('head "https://github.com/lfnovo/open-notebook.git"');
+  });
 });
