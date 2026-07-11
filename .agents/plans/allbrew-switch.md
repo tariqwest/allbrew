@@ -55,6 +55,8 @@ To determine if an unmanaged app is available in Homebrew, `allbrew` will cross-
 3. **Fuzzy Matching / Heuristics:**
    If exact matches fail, apply light heuristics (e.g., matching the `CFBundleIdentifier` domain to the cask homepage, or checking `brew search <name>` programmatically as a fallback).
 
+   **Note:** Name normalization alone can be misleading (e.g. "Docker Desktop.app" → `docker` rather than `docker-desktop`). Present ambiguous matches to the user for review; do not auto-switch low-confidence matches even when `--yes` is used.
+
 ---
 
 ## 4. UX flow
@@ -153,6 +155,8 @@ export type SwitchPair = {
 
 ### 5.3 Execution: `switchOne(pair)`
 
+> **Warning:** `switch` is destructive. It removes the local installation before running `brew install`. Always show a bold summary warning before the operation, even in `--yes` mode, and require the user to understand that app settings may not migrate cleanly (especially for MAS apps).
+
 Unlike `scan`, which is non-destructive, `switch` **must** remove the local installation before running `brew install`, otherwise Homebrew might complain about symlink conflicts or existing `.app` bundles in `/Applications`.
 
 For every selected pair, `switchOne` records the original path(s) before removal so it can attempt to restore the local copy if the subsequent `brew install` fails.
@@ -170,7 +174,7 @@ For every selected pair, `switchOne` records the original path(s) before removal
 - **spm packages:** `rm` the binary from `~/.swiftpm/bin/`.
 - **standalone binaries:** Move the binary to Trash using `osascript` or a `trash` CLI helper; do not `rm` if it can be avoided.
 
-Once removed, execute `brew install <match.token>` or `brew install --cask <match.token>`. If the install fails, attempt to restore the local copy from the Trash/backup and log the failure clearly.
+Once removed, execute `brew install <match.token>` or `brew install --cask <match.token>`. If the install fails, attempt to restore the local copy from the dedicated backup directory (or Trash, if used as a fallback) and log the failure clearly. Restoration must handle name collisions: refuse to overwrite an existing item at the original path, and surface the backup path to the user.
 
 ---
 
@@ -213,8 +217,19 @@ program
 | Situation | Decision |
 |-----------|----------|
 | **MAS Apps** | Full switch is attempted. If the `mas` CLI is installed, run `mas uninstall <id>` before `brew install --cask <token>`. If `mas` is not installed, prompt the user to uninstall manually via Launchpad/App Store and skip the switch. |
+| **MAS App behavior change** | Homebrew cask versions of MAS apps may differ in entitlements, in-app purchase restoration, and iCloud support. Always warn the user and consider requiring explicit confirmation for MAS apps even when `--yes` is used. |
 | **Setapp Apps** | Full switch is attempted. If `setapp-cli` is installed, run `setapp-cli remove "<AppName>"` before `brew install --cask <token>`. Otherwise, prompt the user to uninstall via the Setapp app and skip the switch. |
 | **Data Loss Risk** | `brew install --cask` usually doesn't overwrite `~/Library/Application Support/` data, so app settings should persist. Warn users before switching that the operation removes the local copy. |
-| **Name Collisions** | A local `node` binary might match the `node` formula, but perhaps the user installed it via `nvm`. The generic `binaries` pass must skip symlinks and files inside the Homebrew prefix (`$(brew --prefix)/bin`) and known version-manager shims (`nvm`, `pyenv`, `rbenv`, `rustup`). Language-specific passes already target only their own install directories. |
-| **Generic binaries pass** | Include `/usr/local/bin`, `/opt/local/bin`, and `~/.local/bin`, but only keep non-symlink executables that are not inside the Homebrew prefix and are not known version-manager shims. |
+| **Name Collisions / matching false positives** | Normalized name matching can be wrong (e.g. "Docker Desktop.app" → `docker` instead of `docker-desktop`). Use `CFBundleIdentifier` and description as secondary signals, and present the human-readable match to the user for review. Do not switch ambiguous matches in `--yes` mode without a high-confidence score. |
+| **Generic binaries pass** | Include `/usr/local/bin`, `/opt/local/bin`, and `~/.local/bin`, but only keep non-symlink executables that are not inside the Homebrew prefix and are not known version-manager shims. Consider disabling this pass by default in v1 because it is prone to false positives; rely on language-specific passes instead. |
 | **Failed `brew install`** | If `brew install` fails after removing the local copy, attempt to restore the local copy from the Trash/backup. If restoration is impossible, clearly log the failure so the user knows they are missing the app. |
+| **`--yes` footgun** | `--yes` should still emit a bold warning summary before any destructive action. MAS and Setapp app switches may require a separate `--confirm-mas-setapp` opt-in even with `--yes`. |
+
+---
+
+## 9. Open questions / notes
+
+1. **Backup strategy:** Should `.app` bundles be copied to a temporary backup directory rather than moved to the system Trash? Trash is simpler but can fail if names collide or the user empties Trash mid-operation. A temp directory is safer but uses disk space.
+2. **API cache offline behavior:** If `formulae.brew.sh` is unreachable and no fresh cache exists, `switch` should degrade to no matches with a clear message rather than error out.
+3. **Generic binaries pass default:** Should this pass be disabled by default in the first version? It is the highest-risk source of false positives.
+4. **Tap path explicitness:** `switch` does not write to the user's allbrew tap — it only runs `brew install`. Make this clear in CLI help text; it does not accept `--tap`.

@@ -5,12 +5,10 @@
 > This file is the single consolidated table of every app including many not in the original research document.
 > The /add-test-case skill can be used to add new test cases to this file.
 
-## Data Provenance & Normalization Notes**
-
+## Data Provenance & Normalization Notes
 - Blank cell = not applicable or not found. `in_*` columns include the identifier or URL where known.
-- **`in_github` repos are API-verified.** Every GitHub repo was checked for existence; registry-derived rows (pip/npm/cargo) use the canonical repository URL reported by the PyPI / npm / crates.io APIs. This corrected ~34 wrong or fabricated repos (e.g. `flower` → `mher/flower`, not the federated-learning `flwr`; `oatmeal` → `dustinblackman/oatmeal`; `browsr` → `juftin/browsr`; `krokiet` ships from the `qarmin/czkawka` monorepo). Repos that resolve only via redirect are listed at their canonical name.
-- **Every row has exactly 24 columns** (a prior version had column-shift in ~69 rows; realigned here; `in_setapp` column added June 2026).
-- **Column reference:**
+
+## Table Column Reference
   - `app` — canonical short name used as the Homebrew formula/cask token (kebab-case)
   - `lang/runtime` — primary language or runtime (Python, Node, Rust, Go, Swift, Ruby, .NET, TypeScript, etc.)
   - `framework` — UI or app framework if notable (Textual, Ink, Tauri 2, Electron, Qt, GTK, etc.)
@@ -18,7 +16,7 @@
   - `in_github` — `github.com/<owner>/<repo>`; API-verified; blank if closed-source or not on GitHub
   - `in_homebrew` — `<token> (formula)` or `<token> (cask)` if present in Homebrew core or a tap; blank if absent; may include `deprecated` qualifier
   - `in_setapp` — `setapp.com/apps/<slug>` if available on Setapp; blank otherwise
-  - `in_mas` — `yes` if available on the Mac App Store; blank otherwise
+  - `in_mas` — `<Canonical Name> (id<N>)` if available on the Mac App Store; blank otherwise
   - `in_npm` — `npmjs.com/package/<name>` (scoped packages use `@scope/name`)
   - `in_pip` — `pypi.org/project/<name>`
   - `in_cargo` — `crates.io/crates/<name>`, or `github.com/<owner>/<repo>` for crates not published to crates.io
@@ -35,9 +33,9 @@
   - `has_prebuilt_bin_dist` — ∈ { blank, `yes`, `yes (N)` (N = binary asset count on latest release), `tags only` (tagged releases exist but no prebuilt binaries detected), `none` (no GitHub releases at all) }
   - `has_script_install` — install-script URL (e.g. `https://starship.rs/install.sh`) if a curl-pipe-bash installer exists; blank otherwise
   - `notes` — free-text: bin name if it differs from package name, service invocation, generator chosen, edge cases, version, star count, license, in-HB status
-- **Closed-source / off-GitHub apps** carry a blank `in_github` with the reason in `notes` (e.g. Docker Desktop = closed-source; electrum = signed builds hosted off-GitHub; eric-ide = hosted on eric-ide.python-projects.org).
 
-## Master Table
+
+## Table
 
 | app | lang/runtime | framework | in_dev_website | in_github | in_homebrew | in_setapp | in_mas | in_npm | in_pip | in_cargo | in_go_mod | in_ruby_gem | in_swiftpm | in_mint | in_dotnet | is_tui_app | is_gui_app | is_webui_app | is_cask_dist | has_source_dist | has_prebuilt_bin_dist | has_script_install | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -238,16 +236,16 @@
 | zoom | | | zoom.us | | zoom (cask) | | | | | | | | | | | | yes | | Zoom.pkg | | yes | | PKG format; CDN redirect |
 | Trae | | | trae.ai | | trae (cask) | | | | | | | | | | | | yes | | .dmg | | | | developer-site download |
 | Otty | | | otty.sh | | | | | | | | | | | | | | yes | | Otty.dmg | | | | native terminal app; developer-site DMG; ARM + Intel builds; by appmakes.io |
-| Paste | | | paste.app | | paste (cask) | setapp.com/apps/paste | yes | | | | | | | | | | yes | | .dmg | | | | also on MAS |
-| Easyfind | | | devmate.com | | easyfind (cask) | | yes | | | | | | | | | | yes | | .dmg | | | | also on MAS |
-| Hermes | | | hermesapp.io | | hermes (cask) | | yes | | | | | | | | | | yes | | .dmg | | | | also on MAS |
+| Paste | | | paste.app | | paste (cask) | setapp.com/apps/paste | Paste – Limitless Clipboard (id967805235) | | | | | | | | | | yes | | .dmg | | | | also on MAS |
+| Easyfind | | | devmate.com | | easyfind (cask) | | | | | | | | | | | | yes | | .dmg | | | | DEVONtechnologies direct download; not on MAS |
+| Hermes | | | hermesapp.io | | hermes (cask) | | | | | | | | | | | | yes | | .dmg | | | | Pandora client; GitHub release only; not on MAS |
 | Terax | | | terax.app | | terax (cask) | | | | | | | | | | | | yes | | .dmg | | | | developer-site download |
 | Prefs Editor | | | tenten.co | | prefs-editor (cask) | | | | | | | | | | | | yes | | .dmg | | | | developer-site download |
 | Setapp | | | setapp.com/download | | setapp (cask) | | | | | | | | | | | | yes | | .dmg | | | | app-store-alternative CDN |
 | Raycast Beta | | | raycast.com | | raycast (cask) | | | | | | | | | | | | yes | | .dmg | | | | beta channel |
-| Magnet | | | | | | | yes | | | | | | | | | | yes | | | | | | MAS only; no direct download -> not a cask-app test case |
-| ColorSlurp | | | | | | | yes | | | | | | | | | | yes | | | | | | MAS only; no direct download -> not a cask-app test case |
-| Bear | | | bear.app | | | | yes | | | | | | | | | | yes | | .dmg | | | | MAS + direct download; no HB cask |
+| Magnet | | | | | | | Magnet (id441258766) | | | | | | | | | | yes | | | | | | MAS only; no direct download -> not a cask-app test case |
+| ColorSlurp | | | | | | | ColorSlurp (id1287239339) | | | | | | | | | | yes | | | | | | MAS only; no direct download -> not a cask-app test case |
+| Bear | | | bear.app | | | | Bear - Markdown Notes (id1016366447) | | | | | | | | | | yes | | .dmg | | | | MAS + direct download; no HB cask |
 | Perplexity | | | perplexity.ai/personal-computer | | | | | | | | | | | | | | yes | | .dmg | | | | not in HB; new "Personal Computer" mac app; direct download only (not in MAS); login-gated DMG URL; macOS 14+; bundleId ai.perplexity.mac |
 | Postman | | | postman.com/downloads | | postman (cask) | | | | | | | | | | | | yes | | .zip | | yes | | in HB; CDN dl.pstmn.io; version in URL path; arch suffix (osx_arm64 vs osx64); bundleId com.postmanlabs.mac; macOS >= 11 |
 | Discord | | | discord.com | | discord (cask) | | | | | | | | | | | | yes | | Discord.dmg | yes | yes | | in HB; CDN dl.discordapp.net; version in URL path; livecheck header_match on redirect; OS-version split (Catalina vs Big Sur+); Electron; auto_updates; bundleId com.hnc.Discord |
@@ -263,7 +261,7 @@
 | LocalSend | Flutter | | | github.com/localsend/localsend | localsend (cask) | | | | | | | | | | | | yes | | LocalSend-1.17.0.dmg | | yes | | version in filename; download via GitHub |
 | IINA | | | | github.com/iina/iina | iina (cask) | | | | | | | | | | | | yes | | IINA.dmg | | yes | | release page; download via GitHub |
 | Transmission | | | | github.com/transmission/transmission | transmission (cask) | | | | | | | | | | | | yes | | Transmission.dmg | | yes | | version+revision; download via GitHub |
-| Tailscale | Go | | tailscale.com | github.com/tailscale/tailscale | tailscale (cask) | | yes | | | | | | | | | | yes | | Tailscale-latest-macos.zip | | yes | https://tailscale.com/install.sh | .zip, "latest"→302; also on MAS |
+| Tailscale | Go | | tailscale.com | github.com/tailscale/tailscale | tailscale (cask) | | Tailscale (id1475387142) | | | | | | | | | | yes | | Tailscale-latest-macos.zip | | yes | https://tailscale.com/install.sh | .zip, "latest"→302; also on MAS |
 | MerMark Editor | TypeScript | Tauri | | github.com/Vesperino/MerMarkEditor | | | | | | | | | | | | | yes | | .dmg | yes | yes | | Markdown/Mermaid editor; Tauri 2.0 + Vue 3; unsigned |
 | Archify | Swift | SwiftUI | | github.com/Oct4Pie/archify | | | | | | | | | | | | | yes | | .dmg | yes | yes | | Strips non-native arch from Universal binaries; notarized |
 | Macos App Thinner | Shell | | | github.com/mvmalyi/macos-app-thinner | | | | | | | | | | | | | | | | | yes | | CLI tool; strips x86_64 from Universal binaries via lipo; git clone + chmod + run |
@@ -292,9 +290,9 @@
 | Pool | | | downloads.poolside.ai/pool/install.sh | github.com/poolsideai/pool | | | | | | | | | | | | | | | | | | https://downloads.poolside.ai/pool/install.sh | AI coding assistant; downloads. subdomain |
 | ddclient | Perl | | | github.com/ddclient/ddclient | ddclient (formula) | | | | | | | | | | | | | | | yes | tags only | | dynamic DNS client; autotools build (./configure, make); service-block candidate (daemon mode); v4.0.0; uses curl |
 | agent-deck | Go | | | github.com/asheshgoplani/agent-deck | | | | | | | github.com/asheshgoplani/agent-deck | | | | | yes | | yes | | yes | yes | https://raw.githubusercontent.com/asheshgoplani/agent-deck/main/install.sh | AI agent session manager TUI; `go install` path; install.sh downloads prebuilt binaries; web UI mode (`agent-deck web`); not in HB core (author tap only); 344 releases |
-| Poe | | | poe.com/pages/get-poe | | poe (cask) | | yes | | | | | | | | | | yes | | Poe.dmg | | yes | | AI chat client by Quora; CDN DMG (desktop-app.poecdn.net); no version in URL; also on MAS; closed-source |
-| PopClip | | | popclip.app | | popclip (cask) | setapp.com/apps/popclip | yes | | | | | | | | | | yes | | PopClip-2025.9.2.zip | | yes | | text action tool; developer site .zip (pilotmoon.com/downloads); version in filename; also on MAS (outdated); also on Setapp; closed-source |
-| Bartender Pro | | | macbartender.com | | | setapp.com/apps/bartender | yes | | | | | | | | | | yes | | | | | | cask-app-setapp test case; slug bartender vs display name Bartender Pro; menu bar manager; Setapp + MAS; HTML scrape for version |
+| Poe | | | poe.com/pages/get-poe | | poe (cask) | | Poe – Fast AI Chat (id1640745955) | | | | | | | | | | yes | | Poe.dmg | | yes | | AI chat client by Quora; CDN DMG (desktop-app.poecdn.net); no version in URL; also on MAS; closed-source |
+| PopClip | | | popclip.app | | popclip (cask) | setapp.com/apps/popclip | | | | | | | | | | | yes | | PopClip-2025.9.2.zip | | yes | | text action tool; developer site .zip (pilotmoon.com/downloads); version in filename; left MAS (id445189367, removed 2023); also on Setapp; closed-source |
+| Bartender Pro | | | macbartender.com | | | setapp.com/apps/bartender | | | | | | | | | | | yes | | | | | | cask-app-setapp test case; slug bartender vs display name Bartender Pro; menu bar manager; Setapp + standalone only; not on MAS; HTML scrape for version |
 | CleanShot X | | | cleanshot.com | | cleanshot (cask) | setapp.com/apps/cleanshot | | | | | | | | | | | yes | | | | yes | | cask-app-setapp test case; display name with space and X suffix; also direct download via cask-app; screenshot tool |
 | Mission Control Plus | | | fadel.io/missioncontrolplus | github.com/ronyfadel/MissionControlPlusReleases | mission-control-plus (cask) | setapp.com/apps/mission-control-plus | | | | | | | | | | | yes | | .dmg | | yes | | window manager for Mission Control; GitHub releases-only repo (no source); v1.24; closed-source; requires Accessibility permission |
 | Hermes Desktop | Swift | SwiftUI | | github.com/dodo-reach/hermes-desktop | | | | | | | | | | | | | yes | | HermesDesktop.app.zip | yes | | | native macOS companion for Hermes Agent; GitHub release .zip; ad-hoc signed (not notarized); MIT; v1.2.0; build script `./scripts/build-macos-app.sh`; 1.9k stars |

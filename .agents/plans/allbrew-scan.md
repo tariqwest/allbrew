@@ -363,7 +363,7 @@ was not originally installed by allbrew/Homebrew.
 | Situation | Decision |
 |-----------|----------|
 | App in `/Applications` is also in `brew list --cask` | Caught by `filterAlreadyManaged` — skipped. |
-| Direct drag-and-drop DMG app with no traceable URL | Adopted as `cask-app` with `sha256 :no_check` and a placeholder URL. User replaces the stub later with `allbrew <real-url>`. `update-formulas` skips these stubs until the URL is real. |
+| Direct drag-and-drop DMG app with no traceable URL | Adopted as `cask-app` with `sha256 :no_check` and a placeholder URL. User replaces the stub later with `allbrew <real-url>`. `update-formulas` skips these stubs until the URL is real. Emit a clear warning in the adoption summary and consider adding a `# TODO: replace placeholder URL` comment in the generated Ruby. |
 | Same pip package in system + venv | Deduplicate by name, keep highest version. |
 | `pip` / `npm` / `go` / `cargo` not on PATH | Silent fail — skip that pass, emit dim "pass unavailable" note. |
 | Go binary has no embedded module path | Skip that binary — can't reconstruct the module URL. |
@@ -373,6 +373,10 @@ was not originally installed by allbrew/Homebrew.
 | Setapp fetch fails during adoption | Fall back to a minimal stub cask with `adoptedByScan: true` in source and a `# TODO: add url` comment. |
 | MAS `mdls` returns -1 or null for Adam ID | Fall back to iTunes search by bundle ID: `https://itunes.apple.com/lookup?bundleId=<id>`. |
 | `buildManifest` source fields | Scan passes `sourceOverrides: { adoptedByScan: true }` so the flag is stored under `source`, not `options`. |
+| MAS pass performance | `mdls` + `plutil` on every `.app` can be slow across large `/Applications` directories. Run passes concurrently and consider caching per-machine metadata if the scan is run repeatedly. |
+| Setapp false positives | A non-Setapp app creating `~/Library/Application Support/Setapp/<AppName>` could be mis-detected. Mitigation: prefer `setapp list --json` via `setapp-cli`; otherwise require both a `/Setapp/` bundle path and a matching support directory. |
+| Formula file naming for pip packages | Ensure `toFormulaName` output matches existing project conventions. The sample `Formula/python-requests.rb` should be verified against `lib/utils.ts` naming logic. |
+| `--tap` override plumbing | `runScan` must accept `tapPath` from CLI options, not always call `ensureSetup()`. Update the `runScan` signature and internal config resolution accordingly. |
 
 ---
 
@@ -395,6 +399,4 @@ was not originally installed by allbrew/Homebrew.
 4. **Interactive library (resolved):** Use `@inquirer/prompts` `checkbox` followed by `confirm`. Single-key
    accelerators are not implemented.
 
-5. **Commit granularity (open):** A single batch commit (`"allbrew scan: adopt N packages (YYYY-MM-DD)"`) is planned.
-   Should each adopted package be its own commit instead, to match the style of `allbrew <url>` which commits
-   per-package? A batch commit is more practical at scale; per-package commits are more auditable.
+5. **Commit granularity (resolved):** Use a single batch commit (`"allbrew scan: adopt N packages (YYYY-MM-DD)"`) by default. It matches `update-formulas` behavior and is easier to revert. Per-package commits can be a future opt-in if users request more granular audit history.

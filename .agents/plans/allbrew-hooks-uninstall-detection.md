@@ -35,7 +35,7 @@ The detection runs when an item is **removed** from one of these folders.
 ### Phase 2 / future work
 
 - Language-manager binaries in `~/.cargo/bin`, `~/go/bin`, `~/.npm/bin`, etc.
-- Periodic reconciliation (`allbrew hooks scan-uninstalls`) as a fallback for deletions that Folder Actions miss.
+- Periodic reconciliation (`allbrew hooks scan-uninstalls` or a scheduled `allbrew service` task) as a fallback for deletions that Folder Actions miss (e.g. `rm -rf` from Terminal).
 
 ---
 
@@ -92,10 +92,6 @@ The installed allbrew binary can live in many places (`/usr/local/bin`, `/opt/ho
 
 This removes the hardcoded `/usr/local/bin/allbrew` assumption.
 
-### 4.4 Security hardening
-
-Before executing the binary path read from disk, the JXA script verifies it is an absolute path beginning with `/` and is not world-writable. A path that fails validation is ignored and the script exits silently. This prevents a compromised `binary-path` file from causing arbitrary code execution under Finder's privileges.
-
 ### 4.2 Attaching / detaching
 
 `allbrew hooks install` will:
@@ -109,6 +105,10 @@ Before executing the binary path read from disk, the JXA script verifies it is a
 1. Remove the Folder Action attachments.
 2. Delete the compiled `.scpt` file.
 3. Delete `~/.config/allbrew/binary-path`.
+
+### 4.4 Security hardening
+
+Before executing the binary path read from disk, the JXA script verifies it is an absolute path beginning with `/` and is not world-writable. A path that fails validation is ignored and the script exits silently. This prevents a compromised `binary-path` file from causing arbitrary code execution under Finder's privileges.
 
 ---
 
@@ -169,6 +169,8 @@ For example, a removed path `/Applications/Raycast.app` maps to:
 - `manifest.source.appName === "Raycast"` and the trigger folder is `/Applications`.
 
 **MAS and Setapp generators** currently store neither `appPath` nor `appName` in their source objects (`cask-app-mas` stores only `appStoreUrl`; `cask-app-setapp` stores only `setappUrl` and `appName`). Both generators must be updated to also store `appPath` at generation time so uninstall detection can match them. For `cask-app-mas`, derive `appPath` by resolving the app name returned by the MAS API against `/Applications`. For `cask-app-setapp`, derive it from the `appName` field against `/Applications/Setapp` (default) **and** record any non-default install path if Setapp is configured to install elsewhere.
+
+**Note:** The MAS app name returned by the API may differ from the bundle name on disk. Consider also storing `bundleId` in the manifest source, which is a more stable anchor for verifying the bundle later.
 
 ### 6.2 Manifest source change
 
@@ -256,11 +258,15 @@ For each matched manifest:
 | User deletes the app but wants to keep the formula | Not supported. Re-running `allbrew <url>` will recreate it. |
 | Folder Actions are disabled by the user | `allbrew hooks install` will fail to attach. Show a warning and suggest using `allbrew service` as a fallback. |
 | Uninstall detection triggered while allbrew is running | The CLI runs in a separate process, so it is safe. |
+| Folder Action fails to attach or is partially attached | Report per-folder success/failure; warn the user and suggest `allbrew service` as fallback. Running `allbrew hooks install` again should be idempotent and not create duplicate attachments. |
+| Formula manifest matched during `.app` path cleanup | `findManifestsForPaths` should only match cask manifests when the removed item is an `.app` bundle. Formula cleanup in Phase 2 will use binary-path matching, not `appPath`. |
+| `brew uninstall` ordering | Run `brew uninstall --cask <token>` / `brew uninstall <formula>` **before** deleting the `.rb` file. Deleting the file first can leave Homebrew in a confused state where the package is still listed but its formula is missing. |
 
 ---
 
-## 10. Open questions
+## 10. Open questions / notes
 
-1. Should we run `brew uninstall` before deleting the cask file, or only delete the file and let the user run `brew uninstall` manually?
+1. **Resolved — `brew uninstall` ordering:** Run `brew uninstall` first, then delete the `.rb` file and manifest.
 2. Should `allbrew hooks install` be split into subcommands (`install-update-hooks` / `install-uninstall-detection`) so users can opt into only one?
 3. Should Phase 2 add Folder Actions for language-manager bin directories, or is a periodic `scan-uninstalls` command a better approach?
+4. **New consideration:** For MAS/Setapp manifests, should we also record `bundleId` in `source`? The bundle ID is a stronger anchor than display name when deriving or verifying `appPath`.
