@@ -1,14 +1,18 @@
 # AGENTS.md
 
 > **Deeper planning & architecture docs** live in [`.agents/plans/`](./.agents/plans/):
-> - [`allbrew-test-cases-deep-research-2026-06.md`](./.agents/plans/allbrew-test-cases-deep-research-2026-06.md) — full research narrative, per-ecosystem tables, generator-coverage analysis
+> - [`fable-app-review-2026-07-11.md`](./.agents/plans/fable-app-review-2026-07-11.md) — codebase-wide security, architecture, edge-case, and feature review
 > - [`allbrew-test-cases.md`](./.agents/plans/allbrew-test-cases.md) — combined master table of test-case apps across all 17 generators
-> - [`tebako-ruby-binary-status.md`](./.agents/plans/tebako-ruby-binary-status.md) — paused Ruby binary experiment
+> - [`allbrew-test-cases-deep-research-2026-06.md`](./.agents/plans/allbrew-test-cases-deep-research-2026-06.md) — full research narrative, per-ecosystem tables, generator-coverage analysis
+> - [`allbrew-scan.md`](./.agents/plans/allbrew-scan.md) — plan to adopt already-installed apps into the tap
+> - [`allbrew-switch.md`](./.agents/plans/allbrew-switch.md) — plan to migrate manually installed apps to official Homebrew packages
+> - [`allbrew-hooks-uninstall-detection.md`](./.agents/plans/allbrew-hooks-uninstall-detection.md) — plan to detect out-of-band uninstalls and clean up stale state
 > - [`setapp-generator.md`](./.agents/plans/setapp-generator.md) — Setapp app store generator (`cask-app-setapp`)
+> - [`tebako-ruby-binary-status.md`](./.agents/plans/tebako-ruby-binary-status.md) — paused Ruby binary experiment
 
 ## Project overview
 
-**allbrew** is a Bun/TypeScript CLI that accepts an arbitrary URL (GitHub repo, bash script, app binary/archive, or Mac App Store link) and generates the correct Homebrew formula or cask Ruby file, writing it into the user's configured tap at `Formula/` or `Casks/`. Generated packages persist manifests and can be regenerated headlessly via `allbrew update-formulas` after `brew livecheck` reports a newer version.
+**allbrew** is a Bun/TypeScript CLI that accepts an arbitrary URL (GitHub repo, bash script, app binary/archive, Mac App Store link, or Setapp app link) and generates the correct Homebrew formula or cask Ruby file, writing it into the user's configured tap at `Formula/` or `Casks/`. Generated packages persist manifests and can be regenerated headlessly via `allbrew update-formulas` after `brew livecheck` reports a newer version.
 
 **Status:** `0.0.1` (alpha). Core generator is implemented and shipping on `main`.
 
@@ -66,7 +70,7 @@ bun run vitest run -t "classifies GitHub"
 
 ## Code style
 
-- **TypeScript strict mode** — `tsc --noEmit` must pass with zero errors.
+- **`tsc --noEmit` must pass with zero errors** — currently `tsconfig.json` has `strict: false`, so the project compiles under loose settings. Treat the intent as strict: prefer typed payloads over `any`, avoid unsafe casts, and do not rely on the loose compiler setting. A migration to `strict: true` (or at least `strictNullChecks`) is planned.
 - **No runtime compilation** — Bun executes `.ts` files directly; do not add a build step.
 - **Templates over ad-hoc strings** — All Ruby output goes through typed payload objects (`lib/template-payload.ts`) and template modules (`lib/templates/`). Never embed large Ruby strings in generators.
 - **Generators collect, templates render** — Each generator's job is to gather a typed `*Payload` and delegate to `template-renderer.ts`. Generators should not produce Ruby directly.
@@ -156,7 +160,7 @@ When a formula/cask is generated, allbrew saves a **PackageManifest** JSON to `~
 
 **Automation:**
 
-- `allbrew hooks install` → shell wrapper at `$(brew --prefix)/etc/allbrew-brew-wrap` (runs `update-formulas` after `brew update`)
+- `allbrew hooks install` → shell wrapper at `$(brew --prefix)/etc/allbrew-brew-wrap` (runs `update-formulas` after `brew update`) plus macOS Folder Actions for uninstall detection (planned)
 - `allbrew service install` → LaunchAgent + `scripts/update-managed.sh` on a configurable schedule
 
 ### Formula dependency injection
@@ -235,9 +239,20 @@ Key flags: `--manual`, `--name`, `--desc`, `--tap`, `--service`, `--service-comm
 
 - **Never commit `GITHUB_TOKEN` or PATs** to the repo. Use environment variables or `allbrew config set-token`.
 - **`.env` is gitignored** — safe for local development secrets.
-- **Generated Ruby is strings, not evaluated** — allbrew never executes Ruby; it produces `.rb` files as text.
+- **Generated Ruby is strings, not evaluated by allbrew** — allbrew produces `.rb` files as text. Homebrew evaluates them at `brew install` time, so generated strings must be treated as code-equivalent: escape all user-controlled values correctly.
 - **SHA256 verification** — all downloaded artifacts are checksummed before being referenced in formulas/casks.
 - **No network calls in unit tests** — unit tests are fully mocked. Integration/E2E tests make real API calls.
+
+### Known security hardening in progress (see [`.agents/plans/fable-app-review-2026-07-11.md`](./.agents/plans/fable-app-review-2026-07-11.md))
+
+| Area | Issue | Status |
+|------|-------|--------|
+| Ruby string escaping | `rubyEscape` does not escape Ruby interpolation (`#{...}`) or newlines; malicious metadata could inject Ruby into generated formulas. | Fix planned |
+| Archive extraction | `unzip`/`tar` are invoked without path-traversal protection; a malicious archive could write outside the temp dir. | Hardening planned |
+| README command execution | When a README advertises `brew install foo`, allbrew offers to run it; `&&`-split segments are executed without an allowlist. | Review planned |
+| Config permissions | `~/.config/allbrew/config.json` (contains the GitHub token) is written with default umask. | Fix planned |
+| HTTPS enforcement | HTTP URLs are fetched without warning. | Warning planned |
+| URL fetch / SSRF | Arbitrary user-provided URLs are fetched, including private-range/link-local addresses. | Review planned |
 
 ## Design principles
 
@@ -277,6 +292,34 @@ Key flags: `--manual`, `--name`, `--desc`, `--tap`, `--service`, `--service-comm
 - `allbrew scan` — scan the user's system for already-installed non-Homebrew apps and retroactively create formulas/casks to track them (no reinstall, just adopt into the tap)
 - `allbrew switch` — scan for apps installed via MAS, Setapp, or other package managers that are also available in Homebrew core/casks, and offer to switch to the Homebrew-managed version
 - `allbrew hooks` uninstall detection — detect when tracked apps are removed outside of Homebrew/allbrew (manual deletion, MAS/Setapp uninstall) and clean up stale formulas/casks/manifests
+
+## Agent contribution priorities
+
+When picking up work, prefer this order unless the user requests otherwise:
+
+1. **Security hardening** — these block safe use of automation (hooks/service) and should land before scan/switch/uninstall-detection:
+   - Fix `rubyEscape` to handle Ruby interpolation and newlines.
+   - Harden `archive-inspector.ts` extraction against path traversal.
+   - Restrict `config.json` permissions and validate tap paths.
+   - Add HTTPS warning/non-HTTPS handling.
+2. **Type safety & manifest typing** — enables reliable `update-formulas` and all planned features that read manifests:
+   - Replace `Record<string, unknown>` manifest sources with per-generator discriminated unions.
+   - Type generator `repoInfo`/`options` and reduce `any` usage.
+   - Migrate toward strict TypeScript incrementally.
+3. **Operational robustness** — required before hooks/service can run safely alongside manual use:
+   - Add a lock file for `update-formulas` concurrent runs.
+   - Wrap livecheck JSON parsing and clean up temp dirs/partial downloads on failure.
+   - Truncate launchd logs and embed absolute brew/allbrew paths in `update-managed.sh`.
+4. **Planned features** — implement in this order because each builds on the previous:
+   - `allbrew scan` + shared `lib/scan-detect.ts`
+   - `allbrew hooks` uninstall detection (relies on scan's `appPath` metadata)
+   - `allbrew switch` (relies on `scan-detect.ts` and Homebrew API matching)
+5. **Small user-facing wins** — can be done in parallel once (1)–(3) are stable:
+   - `allbrew list`, `allbrew info`, `allbrew remove`, `allbrew regenerate`, `allbrew doctor`
+   - `--dry-run` generation output and `--json` result mode
+   - Shell completions
+
+Always open or update the relevant `.agents/plans/*.md` document before starting a new feature, and keep [`.agents/plans/fable-app-review-2026-07-11.md`](./.agents/plans/fable-app-review-2026-07-11.md) in mind — it contains the detailed rationale and file:line references for the hardening items above.
 
 ## Requirements
 

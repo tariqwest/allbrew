@@ -2,16 +2,24 @@
 
 Make Homebrew the source of truth for all your macOS installs, regardless of whether the app is available on Homebrew. Generate Homebrew formulas and casks from arbitrary URLs. Point it at a GitHub repo, a bash install script, a binary archive, a macOS app DMG, a Mac App Store link, or a Setapp app link and it produces the right `.rb` file for your tap.
 
-## Todo
+## Current limitations & roadmap
 
-- Update usage to represent all cases, and give real and validated examples
-- Verify and test instructions for all app types and install methods
-- Account for formulas with background services using `brew services` formula blocks
-- Allow MAS app install by name, without full URL
-- Verify that uninstall works for all app types and install methods
-- `allbrew scan` — scan the user's system for already-installed non-Homebrew apps and retroactively create formulas/casks to track them (no reinstall, just adopt into the tap)
-- `allbrew switch` — scan for apps installed via MAS, Setapp, or other package managers that are also available in Homebrew core/casks, and offer to switch to the Homebrew-managed version
-- `allbrew hooks` uninstall detection — detect when tracked apps are removed outside of Homebrew/allbrew (manual deletion, MAS/Setapp uninstall) and clean up stale formulas/casks/manifests
+**Implemented today:** URL → formula/cask generation for 17 generator paths, interactive/manual modes, manifest persistence, `allbrew update-formulas`, `allbrew hooks`, `allbrew service`, and a three-tier test suite. See [AGENTS.md](AGENTS.md) for the full architecture and current status.
+
+**Active/planned features** (detailed plans live in [`.agents/plans/`](.agents/plans/)):
+
+- `allbrew scan` — adopt already-installed non-Homebrew apps into your tap without reinstalling
+- `allbrew switch` — migrate manually installed apps to official Homebrew formulas/casks
+- `allbrew hooks` uninstall detection — clean up stale formulas/casks/manifests when tracked apps are removed outside of Homebrew/allbrew
+- `allbrew list`, `allbrew info`, `allbrew remove`, `allbrew regenerate`, and `allbrew doctor` — small management commands that fall out of existing infrastructure
+
+**Known rough edges:**
+
+- README examples are not yet validated for every generator path
+- MAS install requires the full App Store URL (app name/id lookup is planned)
+- Uninstall/zap behavior has not been verified across all generator paths
+- DMG-only desktop apps (Electron/Avalonia) still need generator improvements
+- Security and type-safety hardening is in progress — see [`.agents/plans/fable-app-review-2026-07-11.md`](.agents/plans/fable-app-review-2026-07-11.md)
 
 ## Install
 
@@ -78,6 +86,22 @@ allbrew https://github.com/some/repo --manual
 # Use a GitHub token to avoid rate limits
 export GITHUB_TOKEN=ghp_...
 allbrew https://github.com/some/private-repo
+
+# Install hooks so `brew update` also updates your allbrew-managed formulas
+allbrew hooks install
+
+# Install a periodic LaunchAgent that runs update-formulas on a schedule
+allbrew service install
+
+# Update all out-of-date managed formulas/casks from brew livecheck
+allbrew update-formulas
+
+# Set configuration
+allbrew config set-tap ~/homebrew-mytap
+allbrew config set-token ghp_...
+allbrew config set-update-auto-push true
+allbrew config set-update-schedule 6
+allbrew config show
 ```
 
 ## Supported URL Types
@@ -138,28 +162,32 @@ end
 
 ## Options
 
-| Flag                  | Description                                                             |
-| --------------------- | ----------------------------------------------------------------------- |
-| `-n, --name <name>`   | Override the auto-detected formula/cask name                            |
-| `-d, --desc <text>`   | Override the description                                                |
-| `-t, --token <token>` | GitHub personal access token (also reads `GITHUB_TOKEN` env var)        |
-| `-m, --manual`                  | Skip auto-detection; interactively choose URL type and install strategy          |
-| `-v, --verbose`                 | Show full error stack traces                                                   |
-| `--service`                    | Include a Homebrew `service do` block in generated formulas                     |
-| `--no-service`                 | Do not include a Homebrew service block                                         |
-| `--service-command <command>`  | Command to run from the generated service block                                 |
-| `--no-service-keep-alive`      | Omit `keep_alive true` from the generated service block                         |
-| `--tap <path>`                 | Override the tap repository path for this run                                   |
+| Flag                        | Description                                                           |
+| --------------------------- | --------------------------------------------------------------------- |
+| `-n, --name <name>`         | Override the auto-detected formula/cask name                          |
+| `-d, --desc <text>`         | Override the description                                              |
+| `-t, --token <token>`       | GitHub personal access token (also reads `GITHUB_TOKEN` env var)    |
+| `-m, --manual`              | Skip auto-detection; interactively choose URL type and install strategy |
+| `-v, --verbose`             | Show full error stack traces                                          |
+| `--tap <path>`              | Override the tap repository path for this run                         |
+| `--service`                 | Include a Homebrew `service do` block in generated formulas             |
+| `--no-service`              | Do not include a Homebrew service block                               |
+| `--service-command <cmd>`   | Command to run from the generated service block                       |
+| `--no-service-keep-alive`   | Omit `keep_alive true` from the generated service block               |
 
 ## Configuration
 
 allbrew stores its config at `~/.config/allbrew/config.json`.
 
-| Command                         | Description                         |
-| ------------------------------- | ----------------------------------- |
-| `allbrew config set-tap <path>` | Set the default tap repository path |
-| `allbrew config get-tap`        | Print the current tap path          |
-| `allbrew config show`           | Print the full configuration        |
+| Command                                      | Description                                            |
+| -------------------------------------------- | ------------------------------------------------------ |
+| `allbrew config set-tap <path>`              | Set the default tap repository path                    |
+| `allbrew config get-tap`                   | Print the current tap path                             |
+| `allbrew config set-token <token>`         | Save a GitHub personal access token                    |
+| `allbrew config set-remote`                | Connect the local tap to a GitHub repo                 |
+| `allbrew config set-update-auto-push <tf>` | Enable/disable auto-push after formula updates         |
+| `allbrew config set-update-schedule <h>`   | Set the launchd update interval in hours               |
+| `allbrew config show`                      | Print the full configuration                           |
 
 ## How It Works
 
@@ -169,13 +197,26 @@ allbrew stores its config at `~/.config/allbrew/config.json`.
 4. **Generate** the appropriate Ruby `.rb` formula or cask
 5. **Write** it to `Formula/` or `Casks/` inside your configured tap repository
 
+## Security & trust
+
+- allbrew **generates** Ruby formula/cask files; it does **not** evaluate them. Homebrew evaluates the generated `.rb` files during `brew install`.
+- Provide URLs only from sources you trust. allbrew downloads the linked artifacts and computes SHA256 checksums, but a malicious upstream could still craft descriptions, archive entries, or install scripts.
+- Your GitHub token is stored in `~/.config/allbrew/config.json`. Do not commit this file. A hardening pass to restrict file permissions is in progress.
+- When a README advertises an existing `brew install` command, allbrew offers to run it for you; review the command before confirming.
+
 ## Development
 
 ```bash
 bun install
-bun run check
+bun run check              # TypeScript type-check (tsc --noEmit)
+bun run test               # unit tests, mocked/offline
+bun run test:int           # integration tests against live APIs
+bun run test:e2e           # E2E catalog tests (requires E2E=1)
+bun run test:templates     # byte-for-byte Ruby parity checks
 bun run bin/allbrew.ts --help
 ```
+
+Always run `bun run check` and `bun run test` before committing. Integration and E2E tests hit live registries and may be slow or flaky.
 
 ## Release
 
