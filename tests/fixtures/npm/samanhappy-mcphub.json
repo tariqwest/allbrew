@@ -1,0 +1,24 @@
+{
+  "name": "@samanhappy/mcphub",
+  "description": "A hub server for mcp servers",
+  "dist-tags": {
+    "latest": "1.0.23"
+  },
+  "homepage": "https://www.mcphub.app",
+  "license": "ISC",
+  "versions": {
+    "1.0.23": {
+      "name": "@samanhappy/mcphub",
+      "version": "1.0.23",
+      "license": "ISC",
+      "description": "A hub server for mcp servers",
+      "dist": {
+        "tarball": "https://registry.npmjs.org/@samanhappy/mcphub/-/mcphub-1.0.23.tgz",
+        "shasum": "abc123"
+      },
+      "bin": {
+        "mcphub": "bin/cli.js"
+      }
+    }
+  }
+}

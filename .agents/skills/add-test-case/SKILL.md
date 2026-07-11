@@ -2,7 +2,7 @@
 name: add-test-case
 description: Add a new app to the allbrew test case table and flow it through the project's unit and integration test suites. Use when the user asks to add an app to the allbrew test cases, catalog, or test suite.
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Add an app to the allbrew test cases
@@ -40,27 +40,55 @@ Prefer the registry-backed generator when a package exists. Prefer `cask-app` ov
 
 ## 3. Add the table row
 
-Edit `.agents/plans/allbrew-test-cases.md` using **`md-spreadsheet-parser`** — never raw string splitting.
+Use the **`add-row.mjs` script** in this skill's directory — never raw string splitting or hand-rolled Node.js:
 
-**Always use the npm package to read and write the table:**
-
-```typescript
-import { scanTablesFromFile } from 'md-spreadsheet-parser';
-
-const [table] = scanTablesFromFile('.agents/plans/allbrew-test-cases.md');
-// table.headers  → string[]
-// table.rows     → string[][]
-// table.updateCell(rowIndex, colIndex, value)
-// table.toMarkdown() → string  (round-trips the whole file back)
+```bash
+node .agents/skills/add-test-case/add-row.mjs \
+  --app "<name>" \
+  --ecosystem <python|node|ruby|rust|go|swift|dotnet|cask|other> \
+  [column flags…] \
+  --notes "<distinguishing facts>"
 ```
 
-To add a row, append to `table.rows` directly (it is a plain `string[][]`), then regenerate the file section via `table.toMarkdown()`. Alternatively, build the new `| … |` row string using `table.headers` as the authoritative column index — do **not** hardcode positional offsets.
+Run `node .agents/skills/add-test-case/add-row.mjs --help` for the full flag reference.
 
-- Append a new row in the appropriate ecosystem block (Python, Node, Rust, Go, Swift, .NET, cask, etc.).
-- Fill all columns that are relevant; leave others as empty string `""`.
-- In the notes column, capture distinguishing facts: install method, version, signing status, license, star count, in-HB status, deprecation, monorepo layout, or any edge case.
+### Positioning
 
-> **Why**: Raw `split('|')` breaks on cells containing backtick-quoted pipes (`` `a|b` ``), escaped pipes (`\|`), or rows that legitimately have a different column count. The parser handles all GFM edge cases and enforces uniform column counts.
+| Flag | Behaviour |
+|------|-----------|
+| `--ecosystem <key>` | Inserts after the **last existing row** of that ecosystem group (detected from `in_pip`, `in_npm`, `in_cargo`, `in_go_mod`, `is_cask_dist`, `lang/runtime`, etc.) |
+| `--after-app <name>` | Inserts immediately after the named row |
+| _(neither)_ | Appends after the last real app row |
+
+### Column flags
+
+| Flag | Table column |
+|------|-------------|
+| `--lang <value>` | `lang/runtime` |
+| `--framework <value>` | `framework` |
+| `--in-github <value>` | `in_github` |
+| `--in-homebrew <value>` | `in_homebrew` |
+| `--in-pip / --in-npm / --in-cargo / --in-go-mod / --in-ruby-gem / --in-swiftpm / --in-mint / --in-dotnet` | registry columns |
+| `--in-mas / --in-setapp / --in-dev-website` | distribution columns |
+| `--is-tui-app / --is-gui-app / --is-webui-app` | boolean flags → `"yes"` |
+| `--is-cask-dist <filename>` | `is_cask_dist` |
+| `--has-source-dist` | flag → `"yes"` |
+| `--has-prebuilt-bin <value>` | `has_prebuilt_bin_dist` (e.g. `"yes"` or `"yes (4)"`) |
+| `--has-script-install` | flag → `"yes"` |
+| `--notes <value>` | `notes` |
+
+Always use `--dry-run` first to preview the row before writing.
+
+### Notes column conventions
+
+Capture these facts when known:
+- install method (generator name at the end, e.g. `pip-package`, `cask-app-release`)
+- version, license, star count
+- signing status for casks (`signed + notarized`, `unsigned`, `xattr -cr needed`)
+- in-Homebrew status (`in HB` / `not in HB` / deprecated)
+- monorepo layout, binary name mismatches, or any edge case
+
+> **Why a script instead of inline Node.js**: Raw `split('|')` corrupts cells that contain backtick-quoted pipes (`` `cmd|flag` ``), escaped pipes (`\|`), or rows with non-uniform column counts. The parser handles all GFM edge cases correctly. The script wraps the same `scanTables` + `insertRow` + `updateCell` + `toMarkdown` pattern used in previous sessions, generalized into a reusable CLI.
 
 ## 4. Add a unit test
 

@@ -1,43 +1,46 @@
-# Allbrew test cases — combined master table
+# Allbrew Test Cases
 
-> Extracted from [allbrew-test-cases-deep-research-2026-06.md](./allbrew-test-cases-deep-research-2026-06.md).
-> That document contains the full research narrative, per-ecosystem tables, and
-> generator-coverage analysis. This file is the single consolidated table of every app.
+> Originally extracted from [allbrew-test-cases-deep-research-2026-06.md](./allbrew-test-cases-deep-research-2026-06.md).
+> That document contains the full research narrative, per-ecosystem tables, and generator-coverage analysis.
+> This file is the single consolidated table of every app including many not in the original research document.
+> The /add-test-case skill can be used to add new test cases to this file.
 
-Every app broken out across the section tables in the deep-research document, unified
-into one row per app with presence/identifier columns. Blank cell = not applicable or
-not found. `in_*` columns include the identifier or URL where known.
+## Data Provenance & Normalization Notes**
 
-**Data provenance & normalization (June 2026 pass):**
-- **`in_github` repos are API-verified.** Every GitHub repo was checked for existence; registry-derived
-  rows (pip/npm/cargo) use the canonical repository URL reported by the PyPI / npm / crates.io APIs.
-  This corrected ~34 wrong or fabricated repos (e.g. `flower` → `mher/flower`, not the federated-learning
-  `flwr`; `oatmeal` → `dustinblackman/oatmeal`; `browsr` → `juftin/browsr`; `krokiet` ships from the
-  `qarmin/czkawka` monorepo). Repos that resolve only via redirect are listed at their canonical name.
+- Blank cell = not applicable or not found. `in_*` columns include the identifier or URL where known.
+- **`in_github` repos are API-verified.** Every GitHub repo was checked for existence; registry-derived rows (pip/npm/cargo) use the canonical repository URL reported by the PyPI / npm / crates.io APIs. This corrected ~34 wrong or fabricated repos (e.g. `flower` → `mher/flower`, not the federated-learning `flwr`; `oatmeal` → `dustinblackman/oatmeal`; `browsr` → `juftin/browsr`; `krokiet` ships from the `qarmin/czkawka` monorepo). Repos that resolve only via redirect are listed at their canonical name.
 - **Every row has exactly 24 columns** (a prior version had column-shift in ~69 rows; realigned here; `in_setapp` column added June 2026).
-- **Controlled vocabularies:** `has_prebuilt_bin_dist` ∈ { blank, `yes`, `yes (N)` (N = binary assets on
-  latest release), `tags only` (tagged releases, no prebuilt binaries detected), `none` (no releases) };
-  `has_script_install` ∈ { blank, install-script URL }; `is_*` / `has_source_dist` ∈ { blank, `yes` };
-  `is_cask_dist` = the `.dmg`/`.zip`/`.pkg` artifact name; `in_homebrew` = `<token> (formula|cask)`; `in_setapp` = `setapp.com/apps/<slug>` if app is on Setapp, blank otherwise (verified via Setapp search, June 2026).
-- **Closed-source / off-GitHub apps** carry a blank `in_github` with the reason in `notes`
-  (e.g. Docker Desktop = closed-source; electrum = signed builds hosted off-GitHub; eric-ide = hosted on
-  eric-ide.python-projects.org).
+- **Column reference:**
+  - `app` — canonical short name used as the Homebrew formula/cask token (kebab-case)
+  - `lang/runtime` — primary language or runtime (Python, Node, Rust, Go, Swift, Ruby, .NET, TypeScript, etc.)
+  - `framework` — UI or app framework if notable (Textual, Ink, Tauri 2, Electron, Qt, GTK, etc.)
+  - `in_dev_website` — product homepage (bare domain/path, no `https://`)
+  - `in_github` — `github.com/<owner>/<repo>`; API-verified; blank if closed-source or not on GitHub
+  - `in_homebrew` — `<token> (formula)` or `<token> (cask)` if present in Homebrew core or a tap; blank if absent; may include `deprecated` qualifier
+  - `in_setapp` — `setapp.com/apps/<slug>` if available on Setapp; blank otherwise
+  - `in_mas` — `yes` if available on the Mac App Store; blank otherwise
+  - `in_npm` — `npmjs.com/package/<name>` (scoped packages use `@scope/name`)
+  - `in_pip` — `pypi.org/project/<name>`
+  - `in_cargo` — `crates.io/crates/<name>`, or `github.com/<owner>/<repo>` for crates not published to crates.io
+  - `in_go_mod` — Go module path (e.g. `github.com/<owner>/<repo>` or a vanity domain like `zgo.at/...`)
+  - `in_ruby_gem` — `rubygems.org/gems/<name>`
+  - `in_swiftpm` — `yes` if the package has a `Package.swift` and is usable as a Swift Package Manager dependency; blank otherwise
+  - `in_mint` — full `mint install <owner>/<repo>` invocation
+  - `in_dotnet` — `nuget.org/packages/<name>`
+  - `is_tui_app` — `yes` if the app runs in the terminal (TUI / CLI interactive)
+  - `is_gui_app` — `yes` if the app is a native desktop GUI; optionally `yes (N)` where N = approximate star count as a rough popularity signal
+  - `is_webui_app` — `yes` if the app exposes a web UI (browser-based dashboard or interface)
+  - `is_cask_dist` — filename of the primary cask artifact (`.dmg`, `.zip`, or `.pkg`); blank for formula-only packages
+  - `has_source_dist` — `yes` if the repo can be built from source (has a build system); blank otherwise
+  - `has_prebuilt_bin_dist` — ∈ { blank, `yes`, `yes (N)` (N = binary asset count on latest release), `tags only` (tagged releases exist but no prebuilt binaries detected), `none` (no GitHub releases at all) }
+  - `has_script_install` — install-script URL (e.g. `https://starship.rs/install.sh`) if a curl-pipe-bash installer exists; blank otherwise
+  - `notes` — free-text: bin name if it differs from package name, service invocation, generator chosen, edge cases, version, star count, license, in-HB status
+- **Closed-source / off-GitHub apps** carry a blank `in_github` with the reason in `notes` (e.g. Docker Desktop = closed-source; electrum = signed builds hosted off-GitHub; eric-ide = hosted on eric-ide.python-projects.org).
+
+## Master Table
+
 | app | lang/runtime | framework | in_dev_website | in_github | in_homebrew | in_setapp | in_mas | in_npm | in_pip | in_cargo | in_go_mod | in_ruby_gem | in_swiftpm | in_mint | in_dotnet | is_tui_app | is_gui_app | is_webui_app | is_cask_dist | has_source_dist | has_prebuilt_bin_dist | has_script_install | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Data provenance & normalization (June 2026 pass):** | | | | | | | | | | | | | | | | | | | | | | | |
-| - **`in_github` repos are API-verified.** Every GitHub repo was checked for existence; registry-derived | | | | | | | | | | | | | | | | | | | | | | | |
-| rows (pip/npm/cargo) use the canonical repository URL reported by the PyPI / npm / crates.io APIs. | | | | | | | | | | | | | | | | | | | | | | | |
-| This corrected ~34 wrong or fabricated repos (e.g. `flower` → `mher/flower`, not the federated-learning | | | | | | | | | | | | | | | | | | | | | | | |
-| `flwr`; `oatmeal` → `dustinblackman/oatmeal`; `browsr` → `juftin/browsr`; `krokiet` ships from the | | | | | | | | | | | | | | | | | | | | | | | |
-| `qarmin/czkawka` monorepo). Repos that resolve only via redirect are listed at their canonical name. | | | | | | | | | | | | | | | | | | | | | | | |
-| - **Every row has exactly 24 columns** (a prior version had column-shift in ~69 rows; realigned here; `in_setapp` column added June 2026). | | | | | | | | | | | | | | | | | | | | | | | |
-| - **Controlled vocabularies:** `has_prebuilt_bin_dist` ∈ { blank, `yes`, `yes (N)` (N = binary assets on | | | | | | | | | | | | | | | | | | | | | | | |
-| latest release), `tags only` (tagged releases, no prebuilt binaries detected), `none` (no releases) }; | | | | | | | | | | | | | | | | | | | | | | | |
-| `has_script_install` ∈ { blank, install-script URL }; `is_*` / `has_source_dist` ∈ { blank, `yes` }; | | | | | | | | | | | | | | | | | | | | | | | |
-| `is_cask_dist` = the `.dmg`/`.zip`/`.pkg` artifact name; `in_homebrew` = `<token> (formula|cask)`; `in_setapp` = `setapp.com/apps/<slug>` if app is on Setapp, blank otherwise (verified via Setapp search, June 2026). | | | | | | | | | | | | | | | | | | | | | | | |
-| - **Closed-source / off-GitHub apps** carry a blank `in_github` with the reason in `notes` | | | | | | | | | | | | | | | | | | | | | | | |
-| (e.g. Docker Desktop = closed-source; electrum = signed builds hosted off-GitHub; eric-ide = hosted on | | | | | | | | | | | | | | | | | | | | | | | |
-| eric-ide.python-projects.org). | | | | | | | | | | | | | | | | | | | | | | | |
 | browsr | Python | Textual | | github.com/juftin/browsr | | | | | pypi.org/project/browsr | | | | | | | yes | | | | yes | | | |
 | elia | Python | Textual | | github.com/darrenburns/elia | | | | | pypi.org/project/elia-chat | | | | | | | yes | | | | yes | | | cmd `elia`; bin `elia`; pkg is elia-chat |
 | toolong | Python | Textual | | github.com/Textualize/toolong | | | | | pypi.org/project/toolong | | | | | | | yes | | | | yes | | | cmd `tl` |
@@ -95,6 +98,7 @@ not found. `in_*` columns include the identifier or URL where known.
 | wetty | Node | | | github.com/butlerx/wetty | | | | npmjs.com/package/wetty | | | | | | | | | | yes | | yes | | | browser terminal over HTTP |
 | browser-sync | Node | | | github.com/BrowserSync/browser-sync | | | | npmjs.com/package/browser-sync | | | | | | | | | | yes | | yes | | | dev server + live-reload UI; `browser-sync start` |
 | pm2 | Node | | | github.com/Unitech/pm2 | | | | npmjs.com/package/pm2 | | | | | | | | | | yes | | yes | | | process manager + monitoring UI; `pm2 monit` |
+| mcphub | Node | Express/Hono | mcphub.app | github.com/samanhappy/mcphub | | | | npmjs.com/package/@samanhappy/mcphub | | | | | | | | | | yes | | yes | | | MCP server hub with web dashboard; scoped pkg @samanhappy/mcphub; bin `mcphub`; ISC license; Apache-2.0 on GitHub; not in HB; 2.2k stars |
 | markserv | Node | | | github.com/markserv/markserv | | | | npmjs.com/package/markserv | | | | | | | | | | yes | | yes | | | serve markdown/dirs as live web |
 | docsify-cli | Node | | | github.com/docsifyjs/docsify-cli | | | | npmjs.com/package/docsify-cli | | | | | | | | | | yes | | yes | | | docs site server; bin `docsify` |
 | tiddlywiki | Node | | | github.com/TiddlyWiki/TiddlyWiki5 | | | | npmjs.com/package/tiddlywiki | | | | | | | | | | yes | | yes | | | self-hosted wiki; distinct from `tiddly` cask (NW.js desktop) |
@@ -301,32 +305,30 @@ not found. `in_*` columns include the identifier or URL where known.
 | Jockey | TypeScript / Rust | Tauri 2 / SolidJS | | github.com/recailai/jockey | | | | | | | | | | | | | | | | | | | multi-agent collaboration platform (ACP); Tauri 2 + Rust + SolidJS; no releases, no registry, HEAD-only; 18 stars; MIT; edge case for source-build (no build system match — requires pnpm + Rust toolchain) |
 | authsec-bridge | Python | | | github.com/authsec-ai/authsec-bridge | | | | | | | | | | | | | | | | | | | session bridge for Claude Code/Codex/Gemini CLI; `pip install -e .` from git clone; no PyPI package; no releases; MIT; edge case for source-build (Python not autotools) |
 | MōIcons | TypeScript | React / MōBrowser | | github.com/mo-browser-apps/icons | | | | | | | | | | | | | yes | | MoIcons-1.0.3-arm64.dmg | yes | yes | | AI macOS app icon generator; arm64-only DMG; signed + notarized; MIT; v1.0.3; 703 stars; not in HB |
+| Eigent | | | | eigent-ai/eigent | cask | | | | | | | | | | | | yes | | Eigent-1.0.1-arm64.dmg | | yes | | Desktop AI agent, 14.5k stars, Apache-2.0, already in HB as cask, cask-app-release generator |
+| harnesskit | Rust/TypeScript | Tauri 2 / React | | github.com/RealZST/HarnessKit | | | | | | | | | | | | | yes | | HarnessKit_1.6.5_aarch64.dmg | yes | yes (14) | | AI coding agent extension manager; Tauri 2 desktop + standalone hk CLI binary; arch-specific DMGs (aarch64 + x64); hk CLI binary also on releases; install.sh available; Apache-2.0; 352 stars; v1.6.5; not in HB; cask-app-release generator |
 | ShellGPT | Python | | | github.com/TheR1D/shell_gpt | | | | pypi.org/project/shell-gpt | | | | | | | | | | | | | | | CLI productivity tool for AI LLMs; `pip install shell-gpt`; bin `sgpt`; 31 releases; v1.5.1; 12.1k stars; MIT; not in HB |
 | open-notebook | Python | FastAPI/Next.js | open-notebook.ai | github.com/lfnovo/open-notebook | | | | | | | | | | | | | | yes | | yes | tags only | | open-source NotebookLM alternative; Docker primary; pip-installable from source (pyproject.toml); PyPI name taken by unrelated NIST project; no prebuilt binaries; generator: source-build; 34.7k stars; MIT; v1.10.0 |
 | Cline | TypeScript | | cline.bot | github.com/cline/cline | cline (formula) | | | | npmjs.com/package/cline | | | | | | | | | | | | | | autonomous coding agent CLI; npm i -g cline; Homebrew formula deprecated (2027-05-18); monorepo (apps/cli); 293 releases; v3.0.29; 63.9k stars; Apache-2.0 |
 | command-code | Node | | commandcode.ai | github.com/CommandCodeAI/command-code | | | | npmjs.com/package/command-code | | | | | | | | yes | | | | yes | none | | AI coding agent; cmd `cmd`; bin `cmd` != package name; UNLICENSED; 310 npm versions; 3.5k stars; no GitHub releases |
+| auggie | Node | | | github.com/augmentcode/auggie | | | | npmjs.com/package/@augmentcode/auggie | | | | | | | | yes | | | | yes | | | AI agentic coding CLI; scoped pkg @augmentcode/auggie; bin auggie (augment.mjs); non-SPDX license; homepage augmentcode.com; 251 stars; v0.32.0; not in HB; npm-package generator |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
----
-
-## How to drive a test (all generators)
-
-```bash
-# pip / uv / pipx
-allbrew https://pypi.org/project/marimo/ --manual      # → pip-package
-brew install marimo && marimo edit
-
-# pip-package (GitHub repo with PyPI package; bin name differs from package)
-allbrew https://github.com/TheR1D/shell_gpt --manual   # → pip-package
-brew install shell-gpt && sgpt --version
-
-# npm
-allbrew https://www.npmjs.com/package/taskbook --manual # → npm-package
-brew install taskbook && tb
-
-# npm-package (deprecated in HB; prefer npm package)
-allbrew https://github.com/cline/cline --manual          # → npm-package
-brew install cline && cline --version
-
+| --- | | | | | | | | | | | | | | | | | | | | | | | |
+| --- | | | | | | | | | | | | | | | | | | | | | | | |
+| ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
+| # pip-package (GitHub repo with PyPI package; bin name differs from package) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/TheR1D/shell_gpt --manual   # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install shell-gpt && sgpt --version | | | | | | | | | | | | | | | | | | | | | | | |
+| # npm | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://www.npmjs.com/package/taskbook --manual # → npm-package | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install taskbook && tb | | | | | | | | | | | | | | | | | | | | | | | |
+| # npm-package (deprecated in HB; prefer npm package) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/cline/cline --manual          # → npm-package | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install cline && cline --version | | | | | | | | | | | | | | | | | | | | | | | |
 # cargo (crates.io or GitHub)
 allbrew https://crates.io/crates/managarr --manual      # → cargo-package
 brew install managarr && managarr
@@ -445,5 +447,6 @@ allbrew https://get.jetify.com/devbox --manual
 brew install devbox && devbox version
 ```
 
-Record per pick: generator chosen, detected app name, version extraction result, SHA256
-verification, redirect handling, and whether the formula/cask installs and runs correctly.
+# GitHub release cask (AI desktop agent; already in HB as cask; good for testing duplicate detection)
+allbrew https://github.com/eigent-ai/eigent --manual
+brew install --cask eigent && open -a Eigent

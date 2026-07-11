@@ -125,6 +125,44 @@ describe.concurrent("npm-package integration", () => {
     expect(payload.homepage).toBe("https://cline.bot");
   });
 
+  it("@samanhappy/mcphub: payload fields are well-formed (scoped pkg, MCP hub server)", async () => {
+    const payload = await collectNpmPackagePayload("@samanhappy/mcphub");
+    expect(payload.template).toBe("npm_package");
+    expect(payload.name).toBe("samanhappy-mcphub");
+    expect(payload.url).toMatch(/^https:\/\/registry\.npmjs\.org\/@samanhappy\/mcphub\/-\/mcphub-.+\.tgz/);
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.livecheckBlock).toContain("registry.npmjs.org/%40samanhappy%2Fmcphub/latest");
+  });
+
+  it("@samanhappy/mcphub: generates structurally valid Ruby formula", async () => {
+    const payload = await collectNpmPackagePayload("@samanhappy/mcphub");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class SamanhappyMcphub < Formula");
+    expect(ruby).toContain('depends_on "node"');
+    expect(ruby).toContain('system "npm", "install"');
+    expect(ruby).toContain("bin.install_symlink");
+  });
+
+  it("@augmentcode/auggie: payload fields are well-formed (scoped pkg, agentic coding CLI)", async () => {
+    const payload = await collectNpmPackagePayload("@augmentcode/auggie");
+    expect(payload.template).toBe("npm_package");
+    expect(payload.name).toBe("augmentcode-auggie");
+    expect(payload.url).toMatch(/^https:\/\/registry\.npmjs\.org\/@augmentcode\/auggie\/-\/auggie-.+\.tgz/);
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.livecheckBlock).toContain("registry.npmjs.org/%40augmentcode%2Fauggie/latest");
+  });
+
+  it("@augmentcode/auggie: generates structurally valid Ruby formula", async () => {
+    const payload = await collectNpmPackagePayload("@augmentcode/auggie");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class AugmentcodeAuggie < Formula");
+    expect(ruby).toContain('depends_on "node"');
+    expect(ruby).toContain('system "npm", "install"');
+    expect(ruby).toContain("bin.install_symlink");
+  });
+
   it("nonexistent-pkg-xyz: throws on missing package", async () => {
     await expect(
       collectNpmPackagePayload("nonexistent-allbrew-test-xyz-999"),

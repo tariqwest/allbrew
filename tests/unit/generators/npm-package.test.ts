@@ -6,6 +6,8 @@ import clineFixture from "../../fixtures/npm/cline.json";
 import taskbookFixture from "../../fixtures/npm/taskbook.json";
 import npkillFixture from "../../fixtures/npm/npkill.json";
 import vtopFixture from "../../fixtures/npm/vtop.json";
+import samanhappyMcphubFixture from "../../fixtures/npm/samanhappy-mcphub.json";
+import augmentcodeAuggieFixture from "../../fixtures/npm/augmentcode-auggie.json";
 
 vi.mock("../../../lib/sha256.ts", () => ({
   hashUrl: vi.fn().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
@@ -51,6 +53,18 @@ describe("collectNpmPackagePayload", () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(vtopFixture),
+        });
+      }
+      if (url.includes("registry.npmjs.org/%40samanhappy%2Fmcphub") || url.includes("registry.npmjs.org/@samanhappy/mcphub")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(samanhappyMcphubFixture),
+        });
+      }
+      if (url.includes("registry.npmjs.org/%40augmentcode%2Fauggie") || url.includes("registry.npmjs.org/@augmentcode/auggie")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(augmentcodeAuggieFixture),
         });
       }
       return Promise.resolve({
@@ -413,5 +427,129 @@ describe("collectNpmPackagePayload — vtop", () => {
     expect(payload.livecheckBlock).toContain(
       "registry.npmjs.org/vtop/latest",
     );
+  });
+});
+
+describe("collectNpmPackagePayload — @samanhappy/mcphub", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+
+    global.fetch = vi.fn((url: string) => {
+      if (url.includes("registry.npmjs.org/%40samanhappy%2Fmcphub") || url.includes("registry.npmjs.org/@samanhappy/mcphub")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(samanhappyMcphubFixture),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    }) as any;
+  });
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectNpmPackagePayload("@samanhappy/mcphub");
+    expect(payload.template).toBe("npm_package");
+  });
+
+  it("derives name and className from scoped package", async () => {
+    const payload = await collectNpmPackagePayload("@samanhappy/mcphub");
+    expect(payload.name).toBe("samanhappy-mcphub");
+    expect(payload.className).toBe("SamanhappyMcphub");
+  });
+
+  it("uses npm description", async () => {
+    const payload = await collectNpmPackagePayload("@samanhappy/mcphub");
+    expect(payload.desc).toContain("hub");
+  });
+
+  it("uses tarball URL from latest version", async () => {
+    const payload = await collectNpmPackagePayload("@samanhappy/mcphub");
+    expect(payload.url).toBe(
+      "https://registry.npmjs.org/@samanhappy/mcphub/-/mcphub-1.0.23.tgz",
+    );
+  });
+
+  it("generates ISC license line", async () => {
+    const payload = await collectNpmPackagePayload("@samanhappy/mcphub");
+    expect(payload.licenseLine).toContain("ISC");
+  });
+
+  it("generates npm registry livecheck block for scoped package", async () => {
+    const payload = await collectNpmPackagePayload("@samanhappy/mcphub");
+    expect(payload.livecheckBlock).toContain("registry.npmjs.org/%40samanhappy%2Fmcphub/latest");
+  });
+
+  it("includes service block when configured as web UI server", async () => {
+    const payload = await collectNpmPackagePayload("@samanhappy/mcphub", null, {
+      service: true,
+      serviceCommand: "mcphub",
+    });
+    expect(payload.serviceBlock).toContain("service do");
+  });
+});
+
+describe("collectNpmPackagePayload — @augmentcode/auggie", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+
+    global.fetch = vi.fn((url: string) => {
+      if (url.includes("registry.npmjs.org/%40augmentcode%2Fauggie") || url.includes("registry.npmjs.org/@augmentcode/auggie")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(augmentcodeAuggieFixture),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    }) as any;
+  });
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectNpmPackagePayload("@augmentcode/auggie");
+    expect(payload.template).toBe("npm_package");
+  });
+
+  it("derives name and className from scoped package", async () => {
+    const payload = await collectNpmPackagePayload("@augmentcode/auggie");
+    expect(payload.name).toBe("augmentcode-auggie");
+    expect(payload.className).toBe("AugmentcodeAuggie");
+  });
+
+  it("uses npm description", async () => {
+    const payload = await collectNpmPackagePayload("@augmentcode/auggie");
+    expect(payload.desc).toContain("Auggie");
+  });
+
+  it("uses npm homepage", async () => {
+    const payload = await collectNpmPackagePayload("@augmentcode/auggie");
+    expect(payload.homepage).toBe("https://augmentcode.com");
+  });
+
+  it("uses tarball URL from latest version", async () => {
+    const payload = await collectNpmPackagePayload("@augmentcode/auggie");
+    expect(payload.url).toBe(
+      "https://registry.npmjs.org/@augmentcode/auggie/-/auggie-0.32.0.tgz",
+    );
+  });
+
+  it("generates npm registry livecheck block for scoped package", async () => {
+    const payload = await collectNpmPackagePayload("@augmentcode/auggie");
+    expect(payload.livecheckBlock).toContain("registry.npmjs.org/%40augmentcode%2Fauggie/latest");
+  });
+
+  it("licenseLine reflects non-SPDX license string from npm", async () => {
+    const payload = await collectNpmPackagePayload("@augmentcode/auggie");
+    expect(payload.licenseLine).toContain("SEE LICENSE IN LICENSE.md");
+  });
+
+  it("respects name override to match bin command", async () => {
+    const payload = await collectNpmPackagePayload("@augmentcode/auggie", null, {
+      name: "auggie",
+    });
+    expect(payload.name).toBe("auggie");
+    expect(payload.className).toBe("Auggie");
+  });
+
+  it("includes empty service block by default", async () => {
+    const payload = await collectNpmPackagePayload("@augmentcode/auggie");
+    expect(payload.serviceBlock).toBe("");
   });
 });

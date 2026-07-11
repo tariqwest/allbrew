@@ -466,4 +466,185 @@ describe.concurrent("cask-app-release integration", () => {
     expect(ruby).toContain("strategy :github_latest");
     expect(ruby).toContain("zap trash:");
   }, 60000);
+
+  const harnessKitRepoInfo = {
+    name: "HarnessKit",
+    fullName: "RealZST/HarnessKit",
+    description: "One home for every agent. Free, open-source app to manage all your AI coding agents.",
+    homepage: "https://github.com/RealZST/HarnessKit",
+    htmlUrl: "https://github.com/RealZST/HarnessKit",
+    license: "Apache-2.0",
+  };
+
+  const harnessKitRelease = {
+    tagName: "v1.6.5",
+    assets: [
+      {
+        name: "HarnessKit_1.6.5_aarch64.dmg",
+        url: "https://github.com/RealZST/HarnessKit/releases/download/v1.6.5/HarnessKit_1.6.5_aarch64.dmg",
+      },
+      {
+        name: "HarnessKit_1.6.5_x64.dmg",
+        url: "https://github.com/RealZST/HarnessKit/releases/download/v1.6.5/HarnessKit_1.6.5_x64.dmg",
+      },
+      {
+        name: "HarnessKit_aarch64.app.tar.gz",
+        url: "https://github.com/RealZST/HarnessKit/releases/download/v1.6.5/HarnessKit_aarch64.app.tar.gz",
+      },
+      {
+        name: "hk-macos-arm64",
+        url: "https://github.com/RealZST/HarnessKit/releases/download/v1.6.5/hk-macos-arm64",
+      },
+      {
+        name: "hk-macos-x64",
+        url: "https://github.com/RealZST/HarnessKit/releases/download/v1.6.5/hk-macos-x64",
+      },
+    ],
+  };
+
+  it("HarnessKit: payload from Tauri 2 release is well-formed", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      harnessKitRepoInfo,
+      harnessKitRelease,
+    );
+    expect(payload.template).toBe("cask_app_release");
+    expect(payload.name).toBe("harnesskit");
+    expect(payload.version).toBe("1.6.5");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.url).toContain("#{version}");
+    expect(payload.url).toContain(".dmg");
+    expect(payload.appName).toContain("HarnessKit");
+    expect(payload.appName).toContain(".app");
+  });
+
+  it("HarnessKit: generates structurally valid Ruby cask", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      harnessKitRepoInfo,
+      harnessKitRelease,
+    );
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "harnesskit" do');
+    expect(ruby).toContain("strategy :github_latest");
+    expect(ruby).toContain('app "HarnessKit.app"');
+    expect(ruby).toContain("zap trash:");
+  });
+
+  const moIconsRepoInfo = {
+    name: "icons",
+    fullName: "mo-browser-apps/icons",
+    description: "Generate macOS app icons with AI",
+    homepage: "https://github.com/mo-browser-apps/icons",
+    htmlUrl: "https://github.com/mo-browser-apps/icons",
+    license: "MIT",
+  };
+
+  const moIconsRelease = {
+    tagName: "v1.0.3",
+    assets: [
+      {
+        name: "MoIcons-1.0.3-arm64.dmg",
+        url: "https://github.com/mo-browser-apps/icons/releases/download/v1.0.3/MoIcons-1.0.3-arm64.dmg",
+      },
+    ],
+  };
+
+  it("MōIcons: payload from arm64-only release is well-formed", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+      { name: "moicons", appName: "MoIcons.app" },
+    );
+    expect(payload.template).toBe("cask_app_release");
+    expect(payload.name).toBe("moicons");
+    expect(payload.version).toBe("1.0.3");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.url).toContain("#{version}");
+    expect(payload.url).toContain(".dmg");
+    expect(payload.appName).toBe("MoIcons.app");
+  });
+
+  it("MōIcons: generates structurally valid Ruby cask", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+      { name: "moicons", appName: "MoIcons.app" },
+    );
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "moicons" do');
+    expect(ruby).toContain("strategy :github_latest");
+    expect(ruby).toContain('app "MoIcons.app"');
+    expect(ruby).toContain("zap trash:");
+  });
+
+  const eigentRepoInfo = {
+    name: "eigent",
+    fullName: "eigent-ai/eigent",
+    description: "The Open Source Cowork Desktop to Unlock Your Exceptional Productivity",
+    homepage: "https://www.eigent.ai/",
+    htmlUrl: "https://github.com/eigent-ai/eigent",
+    license: "Apache-2.0",
+  };
+
+  const eigentRelease = {
+    tagName: "v1.0.1",
+    assets: [
+      {
+        name: "Eigent-1.0.1-arm64-mac.zip",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent-1.0.1-arm64-mac.zip",
+      },
+      {
+        name: "Eigent-1.0.1-arm64.dmg",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent-1.0.1-arm64.dmg",
+      },
+      {
+        name: "Eigent-1.0.1-mac.zip",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent-1.0.1-mac.zip",
+      },
+      {
+        name: "Eigent-1.0.1.dmg",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent-1.0.1.dmg",
+      },
+      {
+        name: "Eigent-1.0.1.AppImage",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent-1.0.1.AppImage",
+      },
+      {
+        name: "Eigent.Setup.1.0.1.exe",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent.Setup.1.0.1.exe",
+      },
+    ],
+  };
+
+  it("Eigent: payload from AI desktop agent release is well-formed", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    expect(payload.template).toBe("cask_app_release");
+    expect(payload.name).toBe("eigent");
+    expect(payload.version).toBe("1.0.1");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.url).toContain("#{version}");
+    expect(payload.url).toContain(".dmg");
+    expect(payload.appName).toContain("Eigent");
+    expect(payload.appName).toContain(".app");
+    expect(payload.desc).toContain("Cowork Desktop");
+    expect(payload.homepage).toBe("https://www.eigent.ai/");
+  });
+
+  it("Eigent: generates structurally valid Ruby cask", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "eigent" do');
+    expect(ruby).toContain("strategy :github_latest");
+    expect(ruby).toContain('app "Eigent.app"');
+    expect(ruby).toContain("https://www.eigent.ai/");
+    expect(ruby).toContain("zap trash:");
+  });
 });

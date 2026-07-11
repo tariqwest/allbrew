@@ -353,3 +353,374 @@ describe("collectCaskAppReleasePayload — Codeg (Tauri 2)", () => {
     expect(payload.sha256).toBeTruthy();
   });
 });
+
+describe("collectCaskAppReleasePayload — HarnessKit (Tauri 2, arch-specific DMGs + hk CLI binary)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const harnessKitRepoInfo = {
+    name: "HarnessKit",
+    fullName: "RealZST/HarnessKit",
+    description: "One home for every agent. Free, open-source app to manage all your AI coding agents.",
+    homepage: "https://github.com/RealZST/HarnessKit",
+    htmlUrl: "https://github.com/RealZST/HarnessKit",
+    license: "Apache-2.0",
+  };
+
+  const harnessKitRelease = {
+    tagName: "v1.6.5",
+    assets: [
+      {
+        name: "HarnessKit_1.6.5_aarch64.dmg",
+        url: "https://github.com/RealZST/HarnessKit/releases/download/v1.6.5/HarnessKit_1.6.5_aarch64.dmg",
+      },
+      {
+        name: "HarnessKit_1.6.5_x64.dmg",
+        url: "https://github.com/RealZST/HarnessKit/releases/download/v1.6.5/HarnessKit_1.6.5_x64.dmg",
+      },
+      {
+        name: "HarnessKit_aarch64.app.tar.gz",
+        url: "https://github.com/RealZST/HarnessKit/releases/download/v1.6.5/HarnessKit_aarch64.app.tar.gz",
+      },
+      {
+        name: "hk-macos-arm64",
+        url: "https://github.com/RealZST/HarnessKit/releases/download/v1.6.5/hk-macos-arm64",
+      },
+      {
+        name: "hk-macos-x64",
+        url: "https://github.com/RealZST/HarnessKit/releases/download/v1.6.5/hk-macos-x64",
+      },
+      {
+        name: "hk-linux-arm64",
+        url: "https://github.com/RealZST/HarnessKit/releases/download/v1.6.5/hk-linux-arm64",
+      },
+    ],
+  };
+
+  it("returns correct template identifier", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      harnessKitRepoInfo,
+      harnessKitRelease,
+    );
+    expect(payload.template).toBe("cask_app_release");
+  });
+
+  it("derives lowercase cask token from repo name", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      harnessKitRepoInfo,
+      harnessKitRelease,
+    );
+    expect(payload.name).toBe("harnesskit");
+  });
+
+  it("extracts version from tag", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      harnessKitRepoInfo,
+      harnessKitRelease,
+    );
+    expect(payload.version).toBe("1.6.5");
+  });
+
+  it("prefers .dmg over .tar.gz and bare CLI binaries", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      harnessKitRepoInfo,
+      harnessKitRelease,
+    );
+    expect(payload.url).toContain(".dmg");
+    expect(payload.url).not.toContain(".tar.gz");
+    expect(payload.url).not.toContain("hk-macos");
+  });
+
+  it("templates version into URL", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      harnessKitRepoInfo,
+      harnessKitRelease,
+    );
+    expect(payload.url).toContain("#{version}");
+  });
+
+  it("detects app name from DMG filename", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      harnessKitRepoInfo,
+      harnessKitRelease,
+    );
+    expect(payload.appName).toContain("HarnessKit");
+    expect(payload.appName).toContain(".app");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      harnessKitRepoInfo,
+      harnessKitRelease,
+    );
+    expect(payload.desc).toContain("agent");
+  });
+
+  it("generates zap block", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      harnessKitRepoInfo,
+      harnessKitRelease,
+    );
+    expect(payload.zapBlock).toContain("zap trash:");
+    expect(payload.zapBlock).toContain("Library/Application Support");
+  });
+
+  it("includes SHA256", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      harnessKitRepoInfo,
+      harnessKitRelease,
+    );
+    expect(payload.sha256).toBeTruthy();
+  });
+
+});
+
+describe("collectCaskAppReleasePayload — MōIcons (arm64-only DMG, MōBrowser runtime)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const moIconsRepoInfo = {
+    name: "icons",
+    fullName: "mo-browser-apps/icons",
+    description: "Generate macOS app icons with AI",
+    homepage: "https://github.com/mo-browser-apps/icons",
+    htmlUrl: "https://github.com/mo-browser-apps/icons",
+    license: "MIT",
+  };
+
+  const moIconsRelease = {
+    tagName: "v1.0.3",
+    assets: [
+      {
+        name: "MoIcons-1.0.3-arm64.dmg",
+        url: "https://github.com/mo-browser-apps/icons/releases/download/v1.0.3/MoIcons-1.0.3-arm64.dmg",
+      },
+    ],
+  };
+
+  it("returns correct template identifier", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+    );
+    expect(payload.template).toBe("cask_app_release");
+  });
+
+  it("derives cask token from repo name", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+    );
+    expect(payload.name).toBe("icons");
+  });
+
+  it("respects name override for canonical cask token", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+      { name: "moicons" },
+    );
+    expect(payload.name).toBe("moicons");
+  });
+
+  it("extracts version from tag", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+    );
+    expect(payload.version).toBe("1.0.3");
+  });
+
+  it("selects the only DMG asset (arm64-only, no x64 fallback)", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+    );
+    expect(payload.url).toContain(".dmg");
+    expect(payload.url).toContain("MoIcons");
+  });
+
+  it("templates version into URL", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+    );
+    expect(payload.url).toContain("#{version}");
+  });
+
+  it("detects app name from DMG filename", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+    );
+    expect(payload.appName).toContain("MoIcons");
+    expect(payload.appName).toContain(".app");
+  });
+
+  it("respects appName override", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+      { appName: "MoIcons.app" },
+    );
+    expect(payload.appName).toBe("MoIcons.app");
+    expect(payload.displayName).toBe("MoIcons");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+    );
+    expect(payload.desc).toContain("macOS app icons");
+  });
+
+  it("generates zap block", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+    );
+    expect(payload.zapBlock).toContain("zap trash:");
+    expect(payload.zapBlock).toContain("Library/Application Support");
+  });
+
+  it("includes SHA256", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      moIconsRepoInfo,
+      moIconsRelease,
+    );
+    expect(payload.sha256).toBeTruthy();
+  });
+});
+
+describe("collectCaskAppReleasePayload — Eigent (AI Desktop Agent)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const eigentRepoInfo = {
+    name: "eigent",
+    fullName: "eigent-ai/eigent",
+    description: "The Open Source Cowork Desktop to Unlock Your Exceptional Productivity",
+    homepage: "https://www.eigent.ai/",
+    htmlUrl: "https://github.com/eigent-ai/eigent",
+    license: "Apache-2.0",
+  };
+
+  const eigentRelease = {
+    tagName: "v1.0.1",
+    assets: [
+      {
+        name: "Eigent-1.0.1-arm64-mac.zip",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent-1.0.1-arm64-mac.zip",
+      },
+      {
+        name: "Eigent-1.0.1-arm64.dmg",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent-1.0.1-arm64.dmg",
+      },
+      {
+        name: "Eigent-1.0.1-mac.zip",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent-1.0.1-mac.zip",
+      },
+      {
+        name: "Eigent-1.0.1.dmg",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent-1.0.1.dmg",
+      },
+      {
+        name: "Eigent-1.0.1.AppImage",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent-1.0.1.AppImage",
+      },
+      {
+        name: "Eigent.Setup.1.0.1.exe",
+        url: "https://github.com/eigent-ai/eigent/releases/download/v1.0.1/Eigent.Setup.1.0.1.exe",
+      },
+    ],
+  };
+
+  it("returns correct template identifier", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    expect(payload.template).toBe("cask_app_release");
+  });
+
+  it("derives cask token from repo name", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    expect(payload.name).toBe("eigent");
+  });
+
+  it("extracts version from tag", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    expect(payload.version).toBe("1.0.1");
+  });
+
+  it("prefers .dmg over .zip, .AppImage, and .exe assets", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    expect(payload.url).toContain(".dmg");
+    expect(payload.url).not.toContain(".zip");
+    expect(payload.url).not.toContain(".AppImage");
+    expect(payload.url).not.toContain(".exe");
+  });
+
+  it("templates version into URL", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    expect(payload.url).toContain("#{version}");
+  });
+
+  it("detects app name from DMG filename", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    expect(payload.appName).toContain("Eigent");
+    expect(payload.appName).toContain(".app");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    expect(payload.desc).toContain("Cowork Desktop");
+  });
+
+  it("uses repo homepage", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    expect(payload.homepage).toBe("https://www.eigent.ai/");
+  });
+
+  it("generates zap block", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    expect(payload.zapBlock).toContain("zap trash:");
+    expect(payload.zapBlock).toContain("Library/Application Support");
+  });
+
+  it("includes SHA256", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      eigentRepoInfo,
+      eigentRelease,
+    );
+    expect(payload.sha256).toBeTruthy();
+  });
+});
