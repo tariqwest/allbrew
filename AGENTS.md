@@ -9,6 +9,7 @@
 > - [`allbrew-hooks-uninstall-detection.md`](./.agents/plans/allbrew-hooks-uninstall-detection.md) — plan to detect out-of-band uninstalls and clean up stale state
 > - [`setapp-generator.md`](./.agents/plans/setapp-generator.md) — Setapp app store generator (`cask-app-setapp`)
 > - [`tebako-ruby-binary-status.md`](./.agents/plans/tebako-ruby-binary-status.md) — paused Ruby binary experiment
+> - [`allbrew-e2e-lume-vm.md`](./.agents/plans/allbrew-e2e-lume-vm.md) — Lume macOS VM + Cua Driver harness for E2E/real-world testing
 
 ## Project overview
 
@@ -66,6 +67,20 @@ To run tests matching a pattern:
 
 ```bash
 bun run vitest run -t "classifies GitHub"
+```
+
+## E2E VM testing
+
+For real-world, isolated testing on a clean macOS install, use the Lume VM scripts in `scripts/e2e-vm-*.sh`. See [`.agents/plans/allbrew-e2e-lume-vm.md`](./.agents/plans/allbrew-e2e-lume-vm.md) for the full workflow.
+
+Quick reference:
+
+```bash
+scripts/e2e-vm-setup.sh
+scripts/e2e-vm-run-tests.sh --integration --e2e
+scripts/e2e-vm-ssh.sh 'sw_vers && brew --version'
+scripts/e2e-vm-clone.sh allbrew-e2e-clean
+scripts/e2e-vm-teardown.sh --stop
 ```
 
 ## Code style
