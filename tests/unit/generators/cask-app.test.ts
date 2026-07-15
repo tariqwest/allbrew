@@ -6,7 +6,11 @@ vi.mock("../../../lib/sha256.ts", () => ({
   downloadAndHash: vi
     .fn()
     .mockResolvedValue({ sha256: "cask_sha256_64chars_padding_abcdef0123456789abcdef0123456789ab" }),
-  downloadToTemp: vi.fn().mockResolvedValue({ path: "/tmp/mock.zip" }),
+  downloadToTemp: vi.fn().mockResolvedValue({
+    path: "/tmp/mock.zip",
+    sha256: "cask_sha256_64chars_padding_abcdef0123456789abcdef0123456789ab",
+    cleanup: vi.fn(),
+  }),
 }));
 
 vi.mock("../../../lib/archive-inspector.ts", () => ({

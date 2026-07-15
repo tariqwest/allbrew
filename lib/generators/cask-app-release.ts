@@ -4,7 +4,7 @@ import {
   rubyEscape,
   isAppAsset,
 } from "../utils.ts";
-import { downloadAndHash } from "../sha256.ts";
+import { downloadToTemp } from "../sha256.ts";
 import { listZipEntries } from "../archive-inspector.ts";
 import type { CaskAppReleasePayload } from "../template-payload.ts";
 import { writeRenderedCask } from "../template-renderer.ts";
@@ -26,12 +26,17 @@ export async function collectCaskAppReleasePayload(
   );
   const bestAsset = dmgAsset || appAssets[0];
 
-  const { sha256 } = await downloadAndHash(bestAsset.url);
-
   let appName = options.appName;
-  if (!appName) {
-    appName = await detectAppNameFromAsset(bestAsset);
+
+  const { sha256, cleanup, path } = await downloadToTemp(bestAsset.url, bestAsset.name);
+  try {
+    if (!appName) {
+      appName = await detectAppNameFromAsset(bestAsset, path);
+    }
+  } finally {
+    await cleanup();
   }
+
   if (!appName) {
     appName =
       repoInfo.name.charAt(0).toUpperCase() + repoInfo.name.slice(1) + ".app";
@@ -40,7 +45,7 @@ export async function collectCaskAppReleasePayload(
   const name = options.name || toCaskToken(repoInfo.name);
   const desc =
     options.desc || repoInfo.description || `Install ${repoInfo.name}`;
-  const homepage = repoInfo.homepage || repoInfo.htmlUrl;
+  const homepage = options.homepage || repoInfo.homepage || repoInfo.htmlUrl;
   const displayName = appName.replace(/\.app$/i, "");
 
   const urlTemplate = bestAsset.url
@@ -89,7 +94,7 @@ export async function generateCaskAppRelease(
   return writeRenderedCask(payload, options.tapPath);
 }
 
-async function detectAppNameFromAsset(asset: any) {
+async function detectAppNameFromAsset(asset: any, zipPath?: string) {
   const lower = asset.name.toLowerCase();
 
   if (lower.endsWith(".dmg")) {
@@ -102,12 +107,24 @@ async function detectAppNameFromAsset(asset: any) {
 
   if (lower.endsWith(".zip")) {
     try {
-      const { downloadToTemp } = await import("../sha256.ts");
-      const { path } = await downloadToTemp(asset.url, asset.name);
-      const entries = await listZipEntries(path);
-      const appEntry = entries.find((e) => /\.app\/?$/i.test(e.trim()));
-      if (appEntry) {
-        return appEntry.trim().replace(/\/$/, "").split("/").pop();
+      if (zipPath) {
+        const entries = await listZipEntries(zipPath);
+        const appEntry = entries.find((e) => /\.app\/?$/i.test(e.trim()));
+        if (appEntry) {
+          return appEntry.trim().replace(/\/$/, "").split("/").pop();
+        }
+      } else {
+        const { downloadToTemp } = await import("../sha256.ts");
+        const { path, cleanup } = await downloadToTemp(asset.url, asset.name);
+        try {
+          const entries = await listZipEntries(path);
+          const appEntry = entries.find((e) => /\.app\/?$/i.test(e.trim()));
+          if (appEntry) {
+            return appEntry.trim().replace(/\/$/, "").split("/").pop();
+          }
+        } finally {
+          await cleanup();
+        }
       }
     } catch {
       // fall through

@@ -1,5 +1,5 @@
 import { toCaskToken, rubyEscape } from "../utils.ts";
-import { downloadAndHash } from "../sha256.ts";
+import { downloadToTemp } from "../sha256.ts";
 import { listZipEntries } from "../archive-inspector.ts";
 import type { CaskAppPayload } from "../template-payload.ts";
 import { writeRenderedCask } from "../template-renderer.ts";
@@ -9,11 +9,15 @@ export async function collectCaskAppPayload(
   url: string,
   options: any = {},
 ): Promise<CaskAppPayload> {
-  const { sha256 } = await downloadAndHash(url);
-
   let appName = options.appName;
-  if (!appName) {
-    appName = await detectAppName(url);
+
+  const { sha256, cleanup, path } = await downloadToTemp(url);
+  try {
+    if (!appName) {
+      appName = await detectAppName(url, path);
+    }
+  } finally {
+    await cleanup();
   }
 
   const filename = url.split("/").pop().split("?")[0];
@@ -64,17 +68,29 @@ export async function generateCaskApp(url: string, options: any = {}) {
   return writeRenderedCask(payload, options.tapPath);
 }
 
-async function detectAppName(url: string) {
+async function detectAppName(url: string, zipPath?: string) {
   const lower = url.toLowerCase();
 
   if (lower.endsWith(".zip")) {
     try {
-      const { downloadToTemp } = await import("../sha256.ts");
-      const { path } = await downloadToTemp(url);
-      const entries = await listZipEntries(path);
-      const appEntry = entries.find((e) => /\.app\/?$/i.test(e));
-      if (appEntry) {
-        return appEntry.replace(/\/$/, "").split("/").pop();
+      if (zipPath) {
+        const entries = await listZipEntries(zipPath);
+        const appEntry = entries.find((e) => /\.app\/?$/i.test(e));
+        if (appEntry) {
+          return appEntry.replace(/\/$/, "").split("/").pop();
+        }
+      } else {
+        const { downloadToTemp } = await import("../sha256.ts");
+        const { path, cleanup } = await downloadToTemp(url);
+        try {
+          const entries = await listZipEntries(path);
+          const appEntry = entries.find((e) => /\.app\/?$/i.test(e));
+          if (appEntry) {
+            return appEntry.replace(/\/$/, "").split("/").pop();
+          }
+        } finally {
+          await cleanup();
+        }
       }
     } catch {
       // fall through

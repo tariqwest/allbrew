@@ -8,24 +8,26 @@ const execFileAsync = promisify(execFile);
 
 export async function inspectArchive(url) {
   const download = await downloadToTemp(url);
-  const { path: archivePath, dir: tempDir, sha256 } = download;
+  const { path: archivePath, dir: tempDir, sha256, cleanup } = download;
 
-  const extractDir = join(tempDir, '_extracted');
-  await extractArchive(archivePath, extractDir);
+  try {
+    const extractDir = join(tempDir, '_extracted');
+    await extractArchive(archivePath, extractDir);
 
-  const files = await listFilesRecursive(extractDir);
-  const relativePaths = files.map(f => f.slice(extractDir.length + 1));
+    const files = await listFilesRecursive(extractDir);
+    const relativePaths = files.map(f => f.slice(extractDir.length + 1));
 
-  const classification = await classifyContents(extractDir, relativePaths);
+    const classification = await classifyContents(extractDir, relativePaths);
 
-  return {
-    ...classification,
-    sha256,
-    archivePath,
-    extractDir,
-    files: relativePaths,
-    downloadUrl: url,
-  };
+    return {
+      ...classification,
+      sha256,
+      files: relativePaths,
+      downloadUrl: url,
+    };
+  } finally {
+    await cleanup();
+  }
 }
 
 async function extractArchive(archivePath, destDir) {
