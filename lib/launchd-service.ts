@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { mkdir, writeFile, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
+import { existsSync } from "node:fs";
 import { promisify } from "node:util";
 import { loadConfig } from "./config.ts";
 import { getBrewPrefix } from "./brew-hooks.ts";
@@ -24,18 +25,58 @@ export async function updateScriptPath() {
 }
 
 export async function writeUpdateScript(scriptPath: string) {
-  const allbrewBin = join(await getBrewPrefix(), "bin", "allbrew");
+  const allbrewBin = await resolveAllbrewPath();
+  const brewPrefix = await getBrewPrefix();
+  const pathEntries = [
+    dirname(allbrewBin),
+    join(brewPrefix, "bin"),
+    process.env.PATH,
+    "/usr/bin:/bin:/usr/sbin:/sbin",
+  ]
+    .filter(Boolean)
+    .join(":");
+  const log = logPath();
   const content = `#!/bin/bash
 set -euo pipefail
-export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-exec >> "${logPath()}" 2>&1
+export PATH="${pathEntries}"
+LOG="${log}"
+if [ -f "$LOG" ]; then
+  SIZE=$(stat -f%z "$LOG" 2>/dev/null || echo 0)
+  if [ "$SIZE" -gt 10485760 ]; then
+    mv "$LOG" "${log}.1"
+  fi
+fi
+exec >> "$LOG" 2>&1
 echo "--- allbrew update-managed: $(date) ---"
 brew update
 brew livecheck --installed --newer-only --json --quiet | ${allbrewBin} update-formulas
-brew update
 `;
   await mkdir(dirname(scriptPath), { recursive: true });
   await writeFile(scriptPath, content, { mode: 0o755 });
+}
+
+async function resolveAllbrewPath(): Promise<string> {
+  try {
+    const { stdout } = await execFileAsync("bash", [
+      "-c",
+      "command -v allbrew",
+    ]);
+    const resolved = stdout.trim();
+    if (resolved && existsSync(resolved)) {
+      return resolved;
+    }
+  } catch {
+    // fall through
+  }
+
+  const fallback = join(await getBrewPrefix(), "bin", "allbrew");
+  if (existsSync(fallback)) {
+    return fallback;
+  }
+
+  throw new Error(
+    "Could not resolve allbrew binary. Make sure allbrew is installed and on PATH.",
+  );
 }
 
 function plistContent(scriptPath: string, intervalSeconds: number) {
@@ -53,10 +94,6 @@ function plistContent(scriptPath: string, intervalSeconds: number) {
   <integer>${intervalSeconds}</integer>
   <key>RunAtLoad</key>
   <true/>
-  <key>StandardOutPath</key>
-  <string>${logPath()}</string>
-  <key>StandardErrorPath</key>
-  <string>${logPath()}</string>
 </dict>
 </plist>
 `;
