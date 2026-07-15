@@ -36,7 +36,7 @@ export function indent(text, spaces = 2) {
     .join("\n");
 }
 
-const ALLBREW_FORMULA_DEPENDENCY = "tariqwest/tap/allbrew";
+const ALLBREW_FORMULA_DEPENDENCY = "";
 
 export function getAllbrewFormulaDependency() {
   return process.env.ALLBREW_FORMULA_DEPENDENCY || ALLBREW_FORMULA_DEPENDENCY;
@@ -66,7 +66,11 @@ export function rubyString(value) {
 export function rubyEscape(value) {
   return String(value ?? "")
     .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"');
+    .replace(/"/g, '\\"')
+    .replace(/#/g, "\\#")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
 }
 
 export function guessLicenseIdentifier(license) {

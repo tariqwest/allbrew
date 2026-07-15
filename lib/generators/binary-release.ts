@@ -3,6 +3,7 @@ import {
   toClassName,
   extractVersionFromTag,
   matchAssetToArch,
+  isBinaryAsset,
   rubyString,
   rubyEscape,
   guessLicenseIdentifier,
@@ -30,6 +31,7 @@ export async function collectBinaryReleasePayload(
 
   const archAssets: Record<string, any> = {};
   for (const asset of release.assets) {
+    if (!isBinaryAsset(asset.name)) continue;
     const arch = matchAssetToArch(asset.name);
     if (arch) archAssets[arch] = asset;
   }
