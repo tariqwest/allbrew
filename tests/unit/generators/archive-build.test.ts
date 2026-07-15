@@ -77,9 +77,9 @@ describe("collectArchiveBuildPayload", () => {
     expect(payload.livecheckBlock).toContain("livecheck do");
   });
 
-  it("includes allbrew dependency", async () => {
+  it("omits allbrew dependency", async () => {
     const payload = await collectArchiveBuildPayload(archiveInfo);
-    expect(payload.allbrewDependency).toContain("allbrew");
+    expect(payload.allbrewDependency).toBe("");
   });
 
   it("respects name override", async () => {

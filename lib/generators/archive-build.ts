@@ -2,7 +2,8 @@ import {
   toFormulaName,
   toClassName,
   rubyEscape,
-  getAllbrewFormulaDependency,
+  rubyString,
+  guessLicenseIdentifier,
 } from "../utils.ts";
 import { detectBuildSystemFromArchive } from "../analyzer.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
@@ -25,6 +26,8 @@ export async function collectArchiveBuildPayload(
   const name = options.name || toFormulaName(baseName);
   const className = toClassName(name);
   const desc = options.desc || `Install ${baseName} from source archive`;
+  const repoInfo = options.repoInfo || archiveInfo.repoInfo;
+  const license = guessLicenseIdentifier(options.license || repoInfo?.license || null);
 
   const buildInfo =
     archiveInfo.forcedBuildSystem || detectBuildSystemFromArchive(files);
@@ -37,10 +40,11 @@ export async function collectArchiveBuildPayload(
     homepage: rubyEscape(downloadUrl),
     url: rubyEscape(downloadUrl),
     sha256: rubyEscape(sha256),
+    licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     dependenciesLines: buildDependenciesLines(buildInfo),
     installBody: buildInstallBody(buildInfo, name),
     livecheckBlock: urlVersionLivecheckBlock(downloadUrl),
-    allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+    allbrewDependency: "",
     testBinName: rubyEscape(name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
@@ -49,7 +53,8 @@ export async function collectArchiveBuildPayload(
 function buildDependenciesLines(buildInfo: any) {
   if (!buildInfo) return "";
   const deps = getBuildDeps(buildInfo);
-  return deps.map((dep) => `  depends_on ${dep}\n`).join("");
+  if (deps.length === 0) return "";
+  return deps.map((dep) => `  depends_on ${dep}\n`).join("") + "\n";
 }
 
 function buildInstallBody(buildInfo: any, _name: string) {

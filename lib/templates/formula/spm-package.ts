@@ -6,8 +6,7 @@ export default function renderSpmPackage(p: SpmPackagePayload): string {
   homepage "${p.homepage}"
 ${p.licenseLine}${p.urlLines}  head "https://github.com/${p.fullName}.git", branch: "${p.defaultBranch}"
 
-${p.livecheckBlock}  depends_on "${p.allbrewDependency}"
-  depends_on "swift" => :build
+${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "swift" => :build
 
   def install
     system "swift", "build", "--disable-sandbox", "-c", "release"

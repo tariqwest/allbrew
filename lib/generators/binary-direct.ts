@@ -2,7 +2,8 @@ import {
   toFormulaName,
   toClassName,
   rubyEscape,
-  getAllbrewFormulaDependency,
+  rubyString,
+  guessLicenseIdentifier,
 } from "../utils.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import { urlVersionLivecheckBlock } from "./livecheck.ts";
@@ -31,6 +32,8 @@ export async function collectBinaryDirectPayload(
   const className = toClassName(name);
   const desc = options.desc || `Install ${baseName}`;
   const primaryBin = bins[0].split("/").pop();
+  const repoInfo = options.repoInfo || archiveInfo.repoInfo;
+  const license = guessLicenseIdentifier(options.license || repoInfo?.license || null);
 
   return {
     template: "binary_direct",
@@ -40,9 +43,10 @@ export async function collectBinaryDirectPayload(
     homepage: rubyEscape(downloadUrl),
     url: rubyEscape(downloadUrl),
     sha256: rubyEscape(sha256),
+    licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     installBody: buildInstallBody(bins, extras),
     livecheckBlock: urlVersionLivecheckBlock(downloadUrl),
-    allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+    allbrewDependency: "",
     testBinName: rubyEscape(primaryBin),
     serviceBlock: buildServiceBlock(
       serviceFromOptions(options, primaryBin),

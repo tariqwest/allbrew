@@ -11,9 +11,7 @@ ${p.platformBlocks}  livecheck do
     strategy :github_latest
   end
 
-  depends_on "${p.allbrewDependency}"
-
-  def install
+${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n\n` : ""}  def install
     ensure_setapp!
     bin.install "${p.binName}"
   end

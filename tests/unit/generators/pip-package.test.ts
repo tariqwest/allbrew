@@ -131,7 +131,7 @@ describe("collectPipPackagePayload", () => {
 
   it("includes allbrew dependency", async () => {
     const payload = await collectPipPackagePayload("marimo");
-    expect(payload.allbrewDependency).toContain("allbrew");
+    expect(payload.allbrewDependency).toBe("");
   });
 
   it("includes empty service block by default", async () => {

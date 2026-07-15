@@ -76,7 +76,7 @@ function buildNpmPackageCase(): Case {
     sha256: "00",
     licenseLine: '  license "MIT"\n',
     livecheckBlock: livecheck,
-    allbrewDependency: "tariqwest/tap/allbrew",
+    allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
   };
@@ -90,7 +90,6 @@ function buildNpmPackageCase(): Case {
     `\n` +
     livecheck +
     `  depends_on "node"\n` +
-    `  depends_on "tariqwest/tap/allbrew"\n` +
     `\n` +
     `  def install\n` +
     `    system "npm", "install", *std_npm_args\n` +
@@ -156,7 +155,7 @@ function buildBinaryReleaseCase(): Case {
     binName: "foo",
     licenseLine: '  license "MIT"\n',
     platformBlocks,
-    allbrewDependency: "tariqwest/tap/allbrew",
+    allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
   };
@@ -172,8 +171,6 @@ function buildBinaryReleaseCase(): Case {
     `    url :stable\n` +
     `    strategy :github_latest\n` +
     `  end\n\n` +
-    `  depends_on "tariqwest/tap/allbrew"\n` +
-    `\n` +
     `  def install\n` +
     `    bin.install "foo"\n` +
     `  end\n\n` +
@@ -195,13 +192,13 @@ function buildBuildFromSourceCase(): Case {
     defaultBranch: "main",
     licenseLine: '  license "MIT"\n',
     urlLines: '  url "https://example.com/foo-1.0.tar.gz"\n  sha256 "ab"\n',
-    dependenciesLines: `  depends_on "cmake" => :build\n  depends_on "pkg-config" => :build\n`,
+    dependenciesLines: `  depends_on "cmake" => :build\n  depends_on "pkg-config" => :build\n\n`,
     installBody:
       `    system "cmake", "-S", ".", "-B", "build", *std_cmake_args\n` +
       `    system "cmake", "--build", "build"\n` +
       `    system "cmake", "--install", "build"\n`,
     livecheckBlock: "",
-    allbrewDependency: "tariqwest/tap/allbrew",
+    allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
   };
@@ -213,7 +210,6 @@ function buildBuildFromSourceCase(): Case {
     `  url "https://example.com/foo-1.0.tar.gz"\n` +
     `  sha256 "ab"\n` +
     `  head "https://github.com/x/foo.git", branch: "main"\n\n` +
-    `  depends_on "tariqwest/tap/allbrew"\n` +
     `  depends_on "cmake" => :build\n` +
     `  depends_on "pkg-config" => :build\n\n` +
     `  def install\n` +
@@ -245,7 +241,7 @@ function buildCargoPackageCase(): Case {
     licenseLine: '  license "MIT"\n',
     urlLines: '  url "https://example.com/foo-1.0.tar.gz"\n  sha256 "cc"\n',
     livecheckBlock: livecheck,
-    allbrewDependency: "tariqwest/tap/allbrew",
+    allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
   };
@@ -258,7 +254,6 @@ function buildCargoPackageCase(): Case {
     `  sha256 "cc"\n` +
     `  head "https://github.com/x/foo.git", branch: "main"\n\n` +
     livecheck +
-    `  depends_on "tariqwest/tap/allbrew"\n` +
     `  depends_on "rust" => :build\n\n` +
     `  def install\n` +
     `    system "cargo", "install", *std_cargo_args\n` +
@@ -287,7 +282,7 @@ function buildGoPackageCase(): Case {
     licenseLine: "",
     urlLines: "",
     livecheckBlock: livecheck,
-    allbrewDependency: "tariqwest/tap/allbrew",
+    allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
   };
@@ -297,7 +292,6 @@ function buildGoPackageCase(): Case {
     `  homepage "https://github.com/x/foo"\n` +
     `  head "https://github.com/x/foo.git", branch: "main"\n\n` +
     livecheck +
-    `  depends_on "tariqwest/tap/allbrew"\n` +
     `  depends_on "go" => :build\n\n` +
     `  def install\n` +
     `    system "go", "install", *std_go_args(ldflags: "-s -w")\n` +
@@ -331,7 +325,7 @@ function buildPipPackageCase(): Case {
     licenseLine: '  license "MIT"\n',
     livecheckBlock: livecheck,
     resourcesBlock: resources,
-    allbrewDependency: "tariqwest/tap/allbrew",
+    allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
   };
@@ -345,7 +339,6 @@ function buildPipPackageCase(): Case {
     `  license "MIT"\n` +
     `\n` +
     livecheck +
-    `  depends_on "tariqwest/tap/allbrew"\n` +
     `  depends_on "python@3.13"\n\n` +
     resources +
     `  def install\n` +
@@ -369,9 +362,10 @@ function buildBinaryDirectCase(): Case {
     homepage: "https://example.com/foo.tgz",
     url: "https://example.com/foo.tgz",
     sha256: "ff",
+    licenseLine: "",
     installBody,
     livecheckBlock: "",
-    allbrewDependency: "tariqwest/tap/allbrew",
+    allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
   };
@@ -381,8 +375,7 @@ function buildBinaryDirectCase(): Case {
     `  homepage "https://example.com/foo.tgz"\n` +
     `  url "https://example.com/foo.tgz"\n` +
     `  sha256 "ff"\n` +
-    `  license "MIT"\n\n` +
-    `  depends_on "tariqwest/tap/allbrew"\n\n` +
+    `\n` +
     `  def install\n` +
     installBody +
     `  end\n\n` +
@@ -402,9 +395,10 @@ function buildInstallScriptCase(): Case {
     homepage: "https://example.com/install.sh",
     url: "https://example.com/install.sh",
     sha256: "11",
+    licenseLine: "",
     scriptFilename: "install.sh",
     livecheckBlock: "",
-    allbrewDependency: "tariqwest/tap/allbrew",
+    allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
   };
@@ -414,8 +408,7 @@ function buildInstallScriptCase(): Case {
     `  homepage "https://example.com/install.sh"\n` +
     `  url "https://example.com/install.sh"\n` +
     `  sha256 "11"\n` +
-    `  license "MIT"\n\n` +
-    `  depends_on "tariqwest/tap/allbrew"\n\n` +
+    `\n` +
     `  def install\n` +
     `    ENV["PREFIX"] = prefix.to_s\n` +
     `    ENV["DESTDIR"] = prefix.to_s\n` +
@@ -444,10 +437,11 @@ function buildArchiveBuildCase(): Case {
     homepage: "https://example.com/foo.tgz",
     url: "https://example.com/foo.tgz",
     sha256: "22",
-    dependenciesLines: `  depends_on "meson" => :build\n  depends_on "ninja" => :build\n`,
+    licenseLine: "",
+    dependenciesLines: `  depends_on "meson" => :build\n  depends_on "ninja" => :build\n\n`,
     installBody,
     livecheckBlock: "",
-    allbrewDependency: "tariqwest/tap/allbrew",
+    allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
   };
@@ -457,8 +451,7 @@ function buildArchiveBuildCase(): Case {
     `  homepage "https://example.com/foo.tgz"\n` +
     `  url "https://example.com/foo.tgz"\n` +
     `  sha256 "22"\n` +
-    `  license "MIT"\n\n` +
-    `  depends_on "tariqwest/tap/allbrew"\n` +
+    `\n` +
     `  depends_on "meson" => :build\n` +
     `  depends_on "ninja" => :build\n\n` +
     `  def install\n` +

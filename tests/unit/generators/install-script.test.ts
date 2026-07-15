@@ -100,11 +100,11 @@ describe("collectInstallScriptPayload", () => {
     expect(payload.livecheckBlock).toContain("starship.rs/install.sh");
   });
 
-  it("includes allbrew dependency", async () => {
+  it("omits allbrew dependency", async () => {
     const payload = await collectInstallScriptPayload(
       "https://starship.rs/install.sh",
     );
-    expect(payload.allbrewDependency).toContain("allbrew");
+    expect(payload.allbrewDependency).toBe("");
   });
 
   it("strips query params from filename", async () => {

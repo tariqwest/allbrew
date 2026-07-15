@@ -9,8 +9,7 @@ export default function renderPipPackage(p: PipPackagePayload): string {
   url "${p.url}"
   sha256 "${p.sha256}"
 ${p.licenseLine}
-${p.livecheckBlock}  depends_on "${p.allbrewDependency}"
-  depends_on "python@3.13"
+${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "python@3.13"
 
 ${p.resourcesBlock}  def install
     virtualenv_install_with_resources

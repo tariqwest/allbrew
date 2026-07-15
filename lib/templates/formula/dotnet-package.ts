@@ -5,8 +5,7 @@ export default function renderDotnetPackage(p: DotnetPackagePayload): string {
   desc "${p.desc}"
   homepage "${p.homepage}"
 ${p.licenseLine}${p.urlLines}
-${p.livecheckBlock}  depends_on "${p.allbrewDependency}"
-  depends_on "dotnet"
+${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "dotnet"
 
   def install
     system "dotnet", "tool", "install", ${p.packageName}, "--tool-path", "#{bin}", "--version", version.to_s

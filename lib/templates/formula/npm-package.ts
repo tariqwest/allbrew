@@ -8,8 +8,7 @@ export default function renderNpmPackage(p: NpmPackagePayload): string {
   sha256 "${p.sha256}"
 ${p.licenseLine}
 ${p.livecheckBlock}  depends_on "node"
-  depends_on "${p.allbrewDependency}"
-
+${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}
   def install
     system "npm", "install", *std_npm_args
     bin.install_symlink libexec.glob("bin/*")

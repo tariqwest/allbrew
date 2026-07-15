@@ -2,7 +2,8 @@ import {
   toFormulaName,
   toClassName,
   rubyEscape,
-  getAllbrewFormulaDependency,
+  rubyString,
+  guessLicenseIdentifier,
 } from "../utils.ts";
 import { downloadAndHash } from "../sha256.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
@@ -21,6 +22,8 @@ export async function collectInstallScriptPayload(
   const name = options.name || toFormulaName(baseName);
   const className = toClassName(name);
   const desc = options.desc || `Install ${baseName} via setup script`;
+  const repoInfo = options.repoInfo;
+  const license = guessLicenseIdentifier(options.license || repoInfo?.license || null);
 
   return {
     template: "install_script",
@@ -30,9 +33,10 @@ export async function collectInstallScriptPayload(
     homepage: rubyEscape(url),
     url: rubyEscape(url),
     sha256: rubyEscape(sha256),
+    licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     scriptFilename: rubyEscape(filename),
     livecheckBlock: urlVersionLivecheckBlock(url),
-    allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+    allbrewDependency: "",
     testBinName: rubyEscape(name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };

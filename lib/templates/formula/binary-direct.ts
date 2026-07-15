@@ -6,11 +6,8 @@ export default function renderBinaryDirect(p: BinaryDirectPayload): string {
   homepage "${p.homepage}"
   url "${p.url}"
   sha256 "${p.sha256}"
-  license "MIT"
-
-${p.livecheckBlock}  depends_on "${p.allbrewDependency}"
-
-  def install
+${p.licenseLine}
+${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n\n` : ""}  def install
 ${p.installBody}  end
 
 ${p.serviceBlock}  test do

@@ -6,8 +6,7 @@ export default function renderCargoPackage(p: CargoPackagePayload): string {
   homepage "${p.homepage}"
 ${p.licenseLine}${p.urlLines}  head "https://github.com/${p.fullName}.git", branch: "${p.defaultBranch}"
 
-${p.livecheckBlock}  depends_on "${p.allbrewDependency}"
-  depends_on "rust" => :build
+${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "rust" => :build
 
   def install
     system "cargo", "install", *std_cargo_args

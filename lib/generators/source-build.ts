@@ -67,7 +67,8 @@ export async function collectSourceBuildPayload(
 
 function buildDependenciesLines(system: string) {
   const deps = getDependencies(system);
-  return deps.map((dep) => `  depends_on ${dep}\n`).join("");
+  if (deps.length === 0) return "";
+  return deps.map((dep) => `  depends_on ${dep}\n`).join("") + "\n";
 }
 
 function buildInstallBody(system: string) {

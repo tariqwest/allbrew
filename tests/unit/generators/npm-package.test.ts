@@ -122,7 +122,7 @@ describe("collectNpmPackagePayload", () => {
 
   it("includes allbrew dependency", async () => {
     const payload = await collectNpmPackagePayload("maildev");
-    expect(payload.allbrewDependency).toContain("allbrew");
+    expect(payload.allbrewDependency).toBe("");
   });
 
   it("respects name override", async () => {

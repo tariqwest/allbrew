@@ -6,11 +6,8 @@ export default function renderInstallScript(p: InstallScriptPayload): string {
   homepage "${p.homepage}"
   url "${p.url}"
   sha256 "${p.sha256}"
-  license "MIT"
-
-${p.livecheckBlock}  depends_on "${p.allbrewDependency}"
-
-  def install
+${p.licenseLine}
+${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n\n` : ""}  def install
     ENV["PREFIX"] = prefix.to_s
     ENV["DESTDIR"] = prefix.to_s
     ENV["HOME"] = buildpath.to_s

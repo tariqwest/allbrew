@@ -17,7 +17,7 @@ describe.concurrent("pip-package integration", () => {
     expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(payload.homepage).toBeTruthy();
     expect(payload.livecheckBlock).toContain("pypi.org/pypi/marimo/json");
-    expect(payload.allbrewDependency).toContain("allbrew");
+    expect(payload.allbrewDependency).toBe("");
   });
 
   it("marimo: generates structurally valid Ruby formula", async () => {

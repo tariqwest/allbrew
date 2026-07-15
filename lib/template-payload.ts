@@ -16,7 +16,7 @@ export type FormulaCommonFields = {
   className: string;
   desc: string;
   homepage: string;
-  allbrewDependency: string;
+  allbrewDependency?: string;
   testBinName: string;
   serviceBlock: string;
 };
@@ -83,6 +83,7 @@ export type SetappCliPayload = Omit<BinaryReleasePayload, "template"> & {
 export type InstallScriptPayload = FormulaCommonFields & {
   template: "install_script";
   url: string;
+  licenseLine: string;
   sha256: string;
   scriptFilename: string;
   livecheckBlock: string;
@@ -91,6 +92,7 @@ export type InstallScriptPayload = FormulaCommonFields & {
 export type ArchiveBuildPayload = FormulaCommonFields & {
   template: "archive_build";
   url: string;
+  licenseLine: string;
   sha256: string;
   dependenciesLines: string;
   installBody: string;
@@ -100,6 +102,7 @@ export type ArchiveBuildPayload = FormulaCommonFields & {
 export type BinaryDirectPayload = FormulaCommonFields & {
   template: "binary_direct";
   url: string;
+  licenseLine: string;
   sha256: string;
   installBody: string;
   livecheckBlock: string;

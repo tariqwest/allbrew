@@ -177,7 +177,7 @@ describe.concurrent("source-build integration", () => {
     expect(payload.urlLines).toContain("lfnovo/open-notebook/archive/refs/tags/v1.10.0.tar.gz");
     expect(payload.urlLines).toMatch(/sha256 "[a-f0-9]{64}"/);
     expect(payload.licenseLine).toContain("MIT");
-    expect(payload.allbrewDependency).toContain("allbrew");
+    expect(payload.allbrewDependency).toBe("");
   });
 
   it("open-notebook: generates structurally valid Ruby formula with virtualenv", async () => {
