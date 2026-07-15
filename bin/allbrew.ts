@@ -262,6 +262,14 @@ program
     "Do not add keep_alive true to the generated service block",
   )
   .option("--tap <path>", "Override the tap repository path for this run")
+  .option("--package <name>", "npm/pip/dotnet package name")
+  .option("--gem-name <name>", "Ruby gem name")
+  .option("--crate-name <name>", "Rust crate name")
+  .option("--go-module <path>", "Go module path")
+  .option("--app-name <name>", "macOS app bundle name for casks")
+  .option("--homepage <url>", "Homepage for generated formula/cask")
+  .option("--build-system <system>", "Build system for source builds (cmake, autotools, meson, make)")
+  .option("--type <type>", "Override the generator to use (e.g. npm-package, cask-app)")
   .action(async (url, opts) => {
     if (!url) {
       const { input } = await import("@inquirer/prompts");

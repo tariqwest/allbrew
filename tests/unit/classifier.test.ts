@@ -142,15 +142,35 @@ describe("classify", () => {
     });
   });
 
-  describe("unknown", () => {
-    it("returns unknown for PyPI URLs", () => {
+  describe("package registries", () => {
+    it("matches PyPI URLs", () => {
       const result = classify("https://pypi.org/project/marimo/");
-      expect(result.type).toBe("unknown");
+      expect(result.type).toBe("pip-package");
+      expect(result.packageName).toBe("marimo");
     });
 
-    it("returns unknown for npm URLs", () => {
+    it("matches npm URLs", () => {
       const result = classify("https://www.npmjs.com/package/maildev");
-      expect(result.type).toBe("unknown");
+      expect(result.type).toBe("npm-package");
+      expect(result.packageName).toBe("maildev");
+    });
+
+    it("matches scoped npm URLs", () => {
+      const result = classify("https://www.npmjs.com/package/@hehehai/buke");
+      expect(result.type).toBe("npm-package");
+      expect(result.packageName).toBe("@hehehai/buke");
+    });
+
+    it("matches RubyGems URLs", () => {
+      const result = classify("https://rubygems.org/gems/pry");
+      expect(result.type).toBe("gem-package");
+      expect(result.gemName).toBe("pry");
+    });
+
+    it("matches NuGet URLs", () => {
+      const result = classify("https://www.nuget.org/packages/dotnet-serve");
+      expect(result.type).toBe("dotnet-package");
+      expect(result.packageName).toBe("dotnet-serve");
     });
 
     it("returns unknown for crates.io URLs", () => {

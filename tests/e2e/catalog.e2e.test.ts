@@ -52,7 +52,11 @@ function runCommand(args: string[], opts: { cwd?: string } = {}): { code: number
     encoding: "utf-8",
     cwd: opts.cwd,
     timeout: TIMEOUT_MS,
-    env: { ...process.env },
+    env: {
+      ...process.env,
+      HOMEBREW_DEVELOPER: "1",
+      HOMEBREW_NO_AUTO_UPDATE: "1",
+    },
   });
   return {
     code: result.status ?? 1,
@@ -129,7 +133,8 @@ describe.skipIf(!E2E)("E2E catalog tests", () => {
         // DRY_RUN=true: pass --tap explicitly so allbrew writes to the temp dir
         // DRY_RUN=false: omit --tap so allbrew uses its configured tap (and may push)
         const tapArgs = DRY_RUN ? ["--tap", tapDir] : [];
-        const baseArgs = [entry.url, "--name", entry.name, ...tapArgs, ...entry.allbrewArgs];
+        const typeArgs = entry.generator ? ["--type", entry.generator] : [];
+        const baseArgs = [entry.url, "--name", entry.name, ...typeArgs, ...tapArgs, ...entry.allbrewArgs];
         const allbrewCmd = allbrewAvailable()
           ? ["allbrew", ...baseArgs]
           : ["bun", "run", "bin/allbrew.ts", ...baseArgs];

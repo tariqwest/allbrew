@@ -5,6 +5,11 @@ const APP_STORE_RE = /^https?:\/\/(apps\.apple\.com|itunes\.apple\.com)\//;
 
 const SETAPP_APP_RE = /^https?:\/\/setapp\.com\/apps\/([^/?#]+)/i;
 
+const NPM_PACKAGE_RE = /^https?:\/\/(?:www\.)?npmjs\.com\/package\/(@[^/]+\/[^/]+|[^/]+)/;
+const PYPI_PACKAGE_RE = /^https?:\/\/(?:www\.)?pypi\.org\/project\/([^/]+)/;
+const RUBYGEMS_PACKAGE_RE = /^https?:\/\/(?:www\.)?rubygems\.org\/gems\/([^/]+)/;
+const NUGET_PACKAGE_RE = /^https?:\/\/(?:www\.)?nuget\.org\/packages\/([^/]+)/;
+
 const SCRIPT_EXTENSIONS = ['.sh', '.bash'];
 const RAW_GITHUB_RE = /^https?:\/\/raw\.githubusercontent\.com\//;
 
@@ -24,6 +29,26 @@ export function classify(url) {
   const setappMatch = url.match(SETAPP_APP_RE);
   if (setappMatch) {
     return { type: 'setapp-app', url, slug: setappMatch[1] };
+  }
+
+  const npmMatch = url.match(NPM_PACKAGE_RE);
+  if (npmMatch) {
+    return { type: 'npm-package', url, packageName: npmMatch[1] };
+  }
+
+  const pypiMatch = url.match(PYPI_PACKAGE_RE);
+  if (pypiMatch) {
+    return { type: 'pip-package', url, packageName: pypiMatch[1] };
+  }
+
+  const gemMatch = url.match(RUBYGEMS_PACKAGE_RE);
+  if (gemMatch) {
+    return { type: 'gem-package', url, gemName: gemMatch[1] };
+  }
+
+  const nugetMatch = url.match(NUGET_PACKAGE_RE);
+  if (nugetMatch) {
+    return { type: 'dotnet-package', url, packageName: nugetMatch[1] };
   }
 
   const ghMatch = url.match(GITHUB_REPO_RE);
@@ -76,6 +101,7 @@ export async function classifyWithHead(url) {
       method: 'HEAD',
       redirect: 'follow',
       headers: { 'User-Agent': 'allbrew/1.0' },
+      signal: AbortSignal.timeout(30_000),
     });
 
     const ct = (response.headers.get('content-type') || '').toLowerCase();

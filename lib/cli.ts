@@ -61,6 +61,14 @@ export async function run(url, opts: any = {}) {
         return await handleMacAppStore(classification.url, opts);
       case "setapp-app":
         return await handleSetappApp(classification.url, opts);
+      case "npm-package":
+        return await handleNpmPackage(classification, opts);
+      case "pip-package":
+        return await handlePipPackage(classification, opts);
+      case "gem-package":
+        return await handleGemPackage(classification, opts);
+      case "dotnet-package":
+        return await handleDotnetPackage(classification, opts);
       default:
         console.log(
           chalk.yellow(
@@ -467,6 +475,93 @@ async function handleArchiveManual(url: string, opts: any) {
   }
 }
 
+async function dispatchGithubRepoType(repoInfo, release, opts) {
+  switch (opts.type) {
+    case "npm-package":
+      return await generateWithConfirmation(
+        "npm-package",
+        { packageName: opts.package || repoInfo.name, repoInfo },
+        opts,
+      );
+    case "pip-package":
+      return await generateWithConfirmation(
+        "pip-package",
+        { packageName: opts.package || repoInfo.name, repoInfo },
+        opts,
+      );
+    case "gem-package":
+      return await generateWithConfirmation(
+        "gem-package",
+        { gemName: opts.gemName || repoInfo.name, repoInfo },
+        opts,
+      );
+    case "dotnet-package":
+      return await generateWithConfirmation(
+        "dotnet-package",
+        { packageName: opts.package || repoInfo.name, repoInfo },
+        opts,
+      );
+    case "cargo-package":
+      return await generateWithConfirmation(
+        "cargo-package",
+        {
+          repoInfo,
+          release,
+          crateName: opts.crateName || repoInfo.name,
+        },
+        opts,
+      );
+    case "go-package":
+      return await generateWithConfirmation(
+        "go-package",
+        {
+          repoInfo,
+          release,
+          goModule: opts.goModule || `github.com/${repoInfo.fullName}`,
+        },
+        opts,
+      );
+    case "spm-package":
+      return await generateWithConfirmation(
+        "spm-package",
+        { repoInfo, release },
+        opts,
+      );
+    case "mint-package":
+      return await generateWithConfirmation(
+        "mint-package",
+        { repoInfo, release },
+        opts,
+      );
+    case "source-build":
+      return await generateWithConfirmation(
+        "source-build",
+        {
+          repoInfo,
+          release,
+          buildSystem: { system: opts.buildSystem || "make" },
+        },
+        opts,
+      );
+    case "binary-release":
+      return await generateWithConfirmation(
+        "binary-release",
+        { repoInfo, release },
+        opts,
+      );
+    case "cask-app-release":
+      return await generateWithConfirmation(
+        "cask-app-release",
+        { repoInfo, release },
+        opts,
+      );
+    default:
+      throw new Error(
+        `Unknown generator type: ${opts.type}. See --help for supported types.`,
+      );
+  }
+}
+
 async function handleGithubRepo(classification, opts) {
   const { owner, repo } = classification;
   const spinner = ora("Fetching repository info...").start();
@@ -483,6 +578,10 @@ async function handleGithubRepo(classification, opts) {
   // Step 1: Check releases
   const releaseSpinner = ora("Checking for releases...").start();
   const release = await getLatestRelease(owner, repo);
+
+  if (opts.type) {
+    return await dispatchGithubRepoType(repoInfo, release, opts);
+  }
 
   if (release) {
     releaseSpinner.succeed(
@@ -637,7 +736,7 @@ async function handleGithubRepo(classification, opts) {
           return await generateWithConfirmation(
             "npm-package",
             {
-              packageName: method.package,
+              packageName: opts.package || method.package,
               repoInfo,
               serviceConfig: serviceConfigFromReadme,
             },
@@ -647,7 +746,7 @@ async function handleGithubRepo(classification, opts) {
           return await generateWithConfirmation(
             "pip-package",
             {
-              packageName: method.package,
+              packageName: opts.package || method.package,
               repoInfo,
               serviceConfig: serviceConfigFromReadme,
             },
@@ -659,7 +758,7 @@ async function handleGithubRepo(classification, opts) {
             {
               repoInfo,
               release,
-              crateName: method.package,
+              crateName: opts.crateName || method.package,
               serviceConfig: serviceConfigFromReadme,
             },
             opts,
@@ -670,7 +769,7 @@ async function handleGithubRepo(classification, opts) {
             {
               repoInfo,
               release,
-              goModule: method.package,
+              goModule: opts.goModule || method.package,
               serviceConfig: serviceConfigFromReadme,
             },
             opts,
@@ -736,7 +835,7 @@ async function handleGithubRepo(classification, opts) {
         }
         return await generateWithConfirmation(
           "npm-package",
-          { packageName, repoInfo, serviceConfig },
+          { packageName: opts.package || packageName, repoInfo, serviceConfig },
           opts,
         );
       }
@@ -744,7 +843,7 @@ async function handleGithubRepo(classification, opts) {
         return await generateWithConfirmation(
           "pip-package",
           {
-            packageName: repoInfo.name,
+            packageName: opts.package || repoInfo.name,
             repoInfo,
             serviceConfig,
           },
@@ -755,7 +854,7 @@ async function handleGithubRepo(classification, opts) {
         const crateName = parseCargoPackageName(cargoToml) || repoInfo.name;
         return await generateWithConfirmation(
           "cargo-package",
-          { repoInfo, release, crateName, serviceConfig },
+          { repoInfo, release, crateName: opts.crateName || crateName, serviceConfig },
           opts,
         );
       }
@@ -801,6 +900,54 @@ async function handleBashScript(url, opts) {
   return await generateWithConfirmation("install-script", { url }, opts);
 }
 
+async function handleNpmPackage(classification, opts) {
+  const packageName = opts.package || classification.packageName;
+  if (!packageName) {
+    throw new Error("npm package name required (use --package or an npmjs URL)");
+  }
+  return await generateWithConfirmation(
+    "npm-package",
+    { packageName, repoInfo: null },
+    opts,
+  );
+}
+
+async function handlePipPackage(classification, opts) {
+  const packageName = opts.package || classification.packageName;
+  if (!packageName) {
+    throw new Error("PyPI package name required (use --package or a pypi URL)");
+  }
+  return await generateWithConfirmation(
+    "pip-package",
+    { packageName, repoInfo: null },
+    opts,
+  );
+}
+
+async function handleGemPackage(classification, opts) {
+  const gemName = opts.gemName || classification.gemName;
+  if (!gemName) {
+    throw new Error("Ruby gem name required (use --gem-name or a rubygems URL)");
+  }
+  return await generateWithConfirmation(
+    "gem-package",
+    { gemName, repoInfo: null },
+    opts,
+  );
+}
+
+async function handleDotnetPackage(classification, opts) {
+  const packageName = opts.package || classification.packageName;
+  if (!packageName) {
+    throw new Error("NuGet package name required (use --package or a nuget URL)");
+  }
+  return await generateWithConfirmation(
+    "dotnet-package",
+    { packageName, repoInfo: null },
+    opts,
+  );
+}
+
 async function handleCaskDmg(url, opts) {
   return await generateWithConfirmation("cask-app", { url }, opts);
 }
@@ -826,7 +973,7 @@ async function handleArchive(url: string, opts: any) {
         "cask-app",
         {
           url,
-          appName: archiveInfo.appName,
+          appName: opts.appName || archiveInfo.appName,
         },
         opts,
       );
@@ -992,7 +1139,7 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
         await import("./generators/cargo-package.ts");
       result = await generateCargoPackage(params.repoInfo, params.release, {
         ...mergedOpts,
-        crateName: params.crateName,
+        crateName: params.crateName || mergedOpts.crateName,
       });
       break;
     }
@@ -1000,7 +1147,7 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       const { generateGoPackage } = await import("./generators/go-package.ts");
       result = await generateGoPackage(params.repoInfo, params.release, {
         ...mergedOpts,
-        goModule: params.goModule,
+        goModule: params.goModule || mergedOpts.goModule,
       });
       break;
     }
@@ -1029,7 +1176,7 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       const { generateCaskApp } = await import("./generators/cask-app.ts");
       result = await generateCaskApp(params.url, {
         ...mergedOpts,
-        appName: params.appName,
+        appName: params.appName || mergedOpts.appName,
       });
       break;
     }
@@ -1133,9 +1280,18 @@ async function brewAutoInstall(result: any, opts: any) {
   }
 
   // Step 2: brew install
+  const installEnv = {
+    ...process.env,
+    HOMEBREW_DEVELOPER: "1",
+    HOMEBREW_NO_AUTO_UPDATE: "1",
+  };
   const installSpinner = ora(`Running ${installLabel}...`).start();
   try {
-    await execFileAsync("brew", ["install", installFlag, result.filePath]);
+    await execFileAsync(
+      "brew",
+      ["install", installFlag, result.filePath],
+      { env: installEnv },
+    );
     installSpinner.succeed(`Installed: ${chalk.green(result.name)}`);
 
     if (!isCask && opts.serviceConfig && opts.service !== false) {
