@@ -40,7 +40,7 @@
 ```bash
 bun install                        # install dependencies
 bun run check                      # TypeScript type-check (tsc --noEmit)
-bun run test                       # unit tests (Vitest, mocked, offline)
+bun run test                       # unit tests (Bun test runner, mocked, offline)
 bun run test:int                   # integration tests (live APIs: PyPI, npm, GitHub, DMG)
 bun run test:e2e                   # E2E catalog tests (requires E2E=1)
 bun run test:e2e-tap               # E2E tap + update cycle tests (requires E2E_TAP=1)
@@ -72,7 +72,7 @@ The E2E wrappers (`scripts/test-e2e.sh` and `scripts/test-e2e-tap.sh`) default t
 
 In VM mode, the wrapper delegates to `scripts/e2e-vm-run-tests.sh`, which auto-starts (or creates) the VM via `scripts/e2e-vm-setup.sh` if it isn't running, runs the test tier inside the VM, captures a post-test readout, and optionally resets the VM (`--reset` / `--nuclear`). File filtering is not supported in VM mode — the entire tier runs.
 
-In local filesystem mode, the wrapper runs vitest directly with snapshot/restore + readout capture (see below). Extra args are passed to vitest as file filters.
+In local filesystem mode, the wrapper runs `bun test` directly with snapshot/restore + readout capture (see below). Extra args are passed to `bun test` as file filters.
 
 | Flag | Applies to | Effect |
 |------|-----------|--------|
@@ -91,29 +91,29 @@ Each local run record contains:
 | File | Contents |
 |------|----------|
 | `readout.txt` | Post-test system state captured BEFORE restore: macOS info, allbrew config/manifests, Homebrew taps/formulae/casks/Cellar/Caskroom/cache, MAS apps, Setapp, /Applications, tap repo git state, host repo git state, test results summary |
-| `test-output.log` | Captured stdout/stderr from the test run (via `tee` in the wrapper scripts) |
+| `test-output.log` | Captured stdout/stderr from the test run (written by the e2e-tap runner, or via `tee` in the e2e wrapper) |
 | `metadata.json` | Machine-readable run metadata (timestamp, run dir, host repo, git SHA/branch) |
 | `snapshot.json` | Snapshot handle (run dir, config backup dir, empty flag) |
 | `config-backup/` | The pre-test `~/.config/allbrew/` contents used for restore |
 
-- **E2E-tap**: snapshot/restore + readout capture is handled by a Vitest `globalSetup` (`tests/e2e-tap/globalSetup.ts`). Per-describe teardown also disposes disposable taps and uninstalls their packages. The wrapper script `scripts/test-e2e-tap.sh` tees output to a temp log and passes its path via `ALLBREW_TEST_LOG` so the readout can include a Test Results Summary.
+- **E2E-tap**: snapshot/restore + readout capture is handled by a wrapper script (`scripts/e2e-tap-local-runner.ts`) that snapshots `~/.config/allbrew`, runs `bun test tests/e2e-tap/`, captures a readout, and restores state. Per-describe teardown also disposes disposable taps and uninstalls their packages. The runner writes test output to `<runDir>/test-output.log` and passes its path via `ALLBREW_TEST_LOG` so the readout can include a Test Results Summary.
 - **E2E catalog**: snapshot/restore + readout capture is in `beforeAll`/`afterAll` of `tests/e2e/catalog.e2e.test.ts`. `afterAll` also uninstalls any catalog apps still installed (e.g. a test failed before its uninstall step). The wrapper script `scripts/test-e2e.sh` tees output and passes `ALLBREW_TEST_LOG` the same way.
 - **Manual recovery**: if a test run is killed, run `scripts/test-local-cleanup.sh`:
   - `--dry-run` (default): show test residue and available snapshots without changing anything.
   - `--restore`: restore `~/.config/allbrew` from the latest snapshot.
   - `--force`: restore + untap disposable `test/e2e-tap-*` taps and uninstall their packages.
-- **Debug escape hatch**: `scripts/test-e2e-tap.sh --local --no-cleanup` disables the globalSetup snapshot/restore for debugging on the local filesystem.
+- **Debug escape hatch**: `scripts/test-e2e-tap.sh --local --no-cleanup` disables the runner's snapshot/restore for debugging on the local filesystem.
 
 To run a single test file:
 
 ```bash
-bun run vitest run --project=unit tests/unit/classifier.test.ts
+bun test tests/unit/classifier.test.ts
 ```
 
 To run tests matching a pattern:
 
 ```bash
-bun run vitest run -t "classifies GitHub"
+bun test tests/unit/ --test-name-pattern "classifies GitHub"
 ```
 
 ## E2E VM testing
@@ -293,7 +293,7 @@ homebrew-allbrew/
       formula/                # TS template modules (formula output)
       cask/                   # TS template modules (cask output)
   tests/
-    unit/                     # Vitest unit tests (mocked, offline)
+    unit/                     # Bun test runner unit tests (mocked, offline)
     integration/              # Live API tests (PyPI, npm, GitHub, DMG)
     e2e/                      # Catalog-driven brew install tests
   scripts/
@@ -385,7 +385,7 @@ Key flags: `--manual`, `--name`, `--desc`, `--tap`, `--service`, `--service-comm
 | Release script → GitHub release + tap formula | done |
 | First-run setup (`allbrew init`) | done |
 | Auto `brew update` + `brew install` after generation | done |
-| Three-tier Vitest suite: unit, integration, E2E | done |
+| Three-tier Bun test suite: unit, integration, E2E | done |
 
 ### What is not done
 
