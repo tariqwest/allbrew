@@ -3,6 +3,12 @@ import { getRepoInfo, getLatestRelease } from "./github.ts";
 import { inspectArchive } from "./archive-inspector.ts";
 import { extractVersionFromTag } from "./utils.ts";
 
+function replaceVersionInUrl(url: string, version: string): string {
+  return url.replace(/v?(\d+(?:\.\d+)+)/, (match, digits) =>
+    match.replace(digits, version),
+  );
+}
+
 function parseFullName(fullName: string) {
   const [owner, repo] = fullName.split("/");
   if (!owner || !repo) {
@@ -156,7 +162,11 @@ export async function updateManagedPackage(
     case "install-script": {
       const { collectInstallScriptPayload } = await import("./generators/install-script.ts");
       const { writeRenderedFormula } = await import("./template-renderer.ts");
-      const payload = await collectInstallScriptPayload(String(manifest.source.url), opts);
+      const url = replaceVersionInUrl(
+        String(manifest.source.url),
+        manifest.recordedVersion,
+      );
+      const payload = await collectInstallScriptPayload(url, opts);
       const result = await writeRenderedFormula(payload, manifest.tapPath);
       return {
         name: result.name,
@@ -168,7 +178,11 @@ export async function updateManagedPackage(
     case "archive-build": {
       const { collectArchiveBuildPayload } = await import("./generators/archive-build.ts");
       const { writeRenderedFormula } = await import("./template-renderer.ts");
-      const inspected = await inspectArchive(String(manifest.source.downloadUrl));
+      const downloadUrl = replaceVersionInUrl(
+        String(manifest.source.downloadUrl),
+        manifest.recordedVersion,
+      );
+      const inspected = await inspectArchive(downloadUrl);
       const archiveInfo = {
         ...inspected,
         ...(manifest.source.forcedBuildSystem
@@ -187,7 +201,11 @@ export async function updateManagedPackage(
     case "binary-direct": {
       const { collectBinaryDirectPayload } = await import("./generators/binary-direct.ts");
       const { writeRenderedFormula } = await import("./template-renderer.ts");
-      const archiveInfo = await inspectArchive(String(manifest.source.downloadUrl));
+      const downloadUrl = replaceVersionInUrl(
+        String(manifest.source.downloadUrl),
+        manifest.recordedVersion,
+      );
+      const archiveInfo = await inspectArchive(downloadUrl);
       const payload = await collectBinaryDirectPayload(
         archiveInfo,
         manifest.source.selectedBinaries,
@@ -204,7 +222,11 @@ export async function updateManagedPackage(
     case "cask-app": {
       const { collectCaskAppPayload } = await import("./generators/cask-app.ts");
       const { writeRenderedCask } = await import("./template-renderer.ts");
-      const payload = await collectCaskAppPayload(String(manifest.source.url), {
+      const url = replaceVersionInUrl(
+        String(manifest.source.url),
+        manifest.recordedVersion,
+      );
+      const payload = await collectCaskAppPayload(url, {
         ...opts,
         appName: manifest.source.appName,
       });

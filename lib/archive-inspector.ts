@@ -129,6 +129,9 @@ async function isBinaryExecutable(filePath) {
     const fd = await readFile(filePath, { flag: 'r' });
     if (fd.length < 4) return false;
 
+    const isExec = (fileStat.mode & 0o111) !== 0;
+    if (isExec && fd[0] === 0x23 && fd[1] === 0x21) return true;
+
     const magic = fd.readUInt32BE(0);
     if (MACHO_MAGICS.has(magic) || magic === ELF_MAGIC) return true;
 

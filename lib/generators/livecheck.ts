@@ -60,9 +60,12 @@ export function githubLatestLivecheckBlock() {
 
 export function urlVersionLivecheckBlock(url: string) {
   if (!url) return "";
-  return jsonRegexLivecheckBlock(
-    url,
-    /[\/-]v?(\d+(?:\.\d+)+)/i,
+  return (
+    `  livecheck do\n` +
+    `    url ${rubyString(url)}\n` +
+    `    strategy :header_match\n` +
+    `    regex(/(\\d+(?:\\.\\d+)+)/)\n` +
+    `  end\n\n`
   );
 }
 
