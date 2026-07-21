@@ -24,16 +24,16 @@
 
 | Layer | Choice |
 |-------|--------|
-| Runtime | **Bun 1.0+** (`#!/usr/bin/env bun`, TypeScript executed directly) |
+| Runtime | **Bun 1.0+** (primary, `#!/usr/bin/env bun`, TS executed directly). Also runs under **Node 18+** (via [`tsx`](https://github.com/privatenumber/tsx) ESM loader, declared as `optionalDependencies`) and **Deno 2.0+** (via npm-compat). The npm `bin` entry is `bin/allbrew.js`, a runtime-dispatching shim that imports `bin/allbrew.ts` directly under Bun/Deno or registers `tsx/esm` under Node. `bin/allbrew.ts` keeps its `#!/usr/bin/env bun` shebang as the Bun-native entry. |
 | Language | **TypeScript** (`tsc --noEmit` via `bun run check`) |
 | CLI | **commander** + **@inquirer/prompts** |
 | GitHub | **octokit** |
 | UX | **chalk**, **ora** |
-| HTTP / crypto | Bun `fetch`, `node:crypto` (SHA256 streaming) |
+| HTTP / crypto | global `fetch` (Bun/Node 18+/Deno 2+), `node:crypto` (SHA256 streaming) |
 | Output | Homebrew **Ruby** `.rb` files (generated as strings, not evaluated) |
 | Config | `~/.config/allbrew/config.json` |
 | Manifests | `~/.config/allbrew/packages/*.json` |
-| Distribution | `brew tap tariqwest/allbrew`, `bun install -g`, or release tarball |
+| Distribution | `brew tap tariqwest/allbrew`, `bun install -g`, `npm install -g`, `deno install -g npm:allbrew`, or release tarball |
 
 ## Build and test commands
 
@@ -167,7 +167,7 @@ A `latest` symlink points to the most recent run. These records persist across r
 ## Code style
 
 - **`tsc --noEmit` must pass with zero errors** — currently `tsconfig.json` has `strict: false`, so the project compiles under loose settings. Treat the intent as strict: prefer typed payloads over `any`, avoid unsafe casts, and do not rely on the loose compiler setting. A migration to `strict: true` (or at least `strictNullChecks`) is planned.
-- **No runtime compilation** — Bun executes `.ts` files directly; do not add a build step.
+- **No runtime compilation** — Bun and Deno execute `.ts` files directly; Node uses the `tsx` ESM loader (registered by `bin/allbrew.js`). Do not add a separate build/emit step. Keep imports using explicit `.ts` extensions (already required by `tsconfig`'s `allowImportingTsExtensions`) so all three runtimes resolve modules identically.
 - **Templates over ad-hoc strings** — All Ruby output goes through typed payload objects (`lib/template-payload.ts`) and template modules (`lib/templates/`). Never embed large Ruby strings in generators.
 - **Generators collect, templates render** — Each generator's job is to gather a typed `*Payload` and delegate to `template-renderer.ts`. Generators should not produce Ruby directly.
 - **Homebrew Ruby conventions** — Follow existing Homebrew formula/cask style (`std_npm_args`, `std_cargo_args`, `on_macos`/`on_arm` blocks, etc.).
