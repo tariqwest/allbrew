@@ -26,6 +26,18 @@ export default defineConfig({
           testTimeout: 300_000,
         },
       },
+      {
+        test: {
+          name: "e2e-tap",
+          include: ["tests/e2e-tap/**/*.e2e-tap.test.ts"],
+          environment: "node",
+          testTimeout: 600_000,
+          hookTimeout: 120_000,
+          teardownTimeout: 60_000,
+          pool: "forks",
+          singleFork: true,
+        },
+      },
     ],
   },
 });
