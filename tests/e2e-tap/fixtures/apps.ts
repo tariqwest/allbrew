@@ -219,6 +219,10 @@ export function classifierUrl(app: FixtureApp, baseUrl: string): string {
 }
 
 export function verifyCommand(app: FixtureApp): string[] {
+  if (isCaskGenerator(app.generator)) {
+    const appName = app.appName || app.name;
+    return [`/Applications/${appName}.app/Contents/MacOS/${appName}`, "--version"];
+  }
   return [app.name, "--version"];
 }
 

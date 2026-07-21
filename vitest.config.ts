@@ -36,6 +36,7 @@ export default defineConfig({
           teardownTimeout: 60_000,
           pool: "forks",
           singleFork: true,
+          fileParallelism: false,
         },
       },
     ],

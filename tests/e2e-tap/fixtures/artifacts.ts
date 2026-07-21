@@ -1,11 +1,13 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, mkdir, writeFile, rm, readFile, readdir, stat } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm, readFile, readdir, utimes } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 
 const execFileAsync = promisify(execFile);
+
+const FIXED_MTIME = new Date("2024-01-01T00:00:00Z");
 
 export type ArtifactResult = {
   buffer: Buffer;
@@ -17,11 +19,54 @@ async function makeTempDir(prefix: string) {
   return mkdtemp(join(tmpdir(), prefix));
 }
 
+async function normalizeMtimes(dir: string, mtime = FIXED_MTIME) {
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    await utimes(fullPath, mtime, mtime);
+    if (entry.isDirectory()) {
+      await normalizeMtimes(fullPath, mtime);
+    }
+  }
+}
+
+async function listFilesRecursive(dir: string, base = dir): Promise<string[]> {
+  const results: string[] = [];
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...await listFilesRecursive(fullPath, base));
+    } else {
+      results.push("." + fullPath.slice(base.length));
+    }
+  }
+  return results;
+}
+
 async function createTarball(srcDir: string, filename: string): Promise<ArtifactResult> {
   const tmpDir = await makeTempDir("allbrew-artifact-");
   const archivePath = join(tmpDir, filename);
-  await execFileAsync("tar", ["czf", archivePath, "-C", srcDir, "."]);
-  const buffer = await readFile(archivePath);
+  const listPath = join(tmpDir, "filelist.txt");
+
+  await normalizeMtimes(srcDir);
+  const files = (await listFilesRecursive(srcDir)).sort();
+  await writeFile(listPath, files.join("\n") + "\n");
+
+  const tarPath = join(tmpDir, "archive.tar");
+  await execFileAsync("tar", [
+    "--numeric-owner",
+    "--format=ustar",
+    "-cf",
+    tarPath,
+    "-C",
+    srcDir,
+    "-T",
+    listPath,
+  ]);
+  await execFileAsync("gzip", ["-n", tarPath]);
+
+  const buffer = await readFile(`${tarPath}.gz`);
   await rm(tmpDir, { recursive: true, force: true });
   return {
     buffer,
@@ -33,7 +78,11 @@ async function createTarball(srcDir: string, filename: string): Promise<Artifact
 async function createZip(srcDir: string, filename: string): Promise<ArtifactResult> {
   const tmpDir = await makeTempDir("allbrew-artifact-");
   const archivePath = join(tmpDir, filename);
-  await execFileAsync("zip", ["-r", "-q", archivePath, "."], { cwd: srcDir });
+
+  await normalizeMtimes(srcDir);
+  const files = (await listFilesRecursive(srcDir)).sort();
+  await execFileAsync("zip", ["-r", "-q", archivePath, ...files], { cwd: srcDir });
+
   const buffer = await readFile(archivePath);
   await rm(tmpDir, { recursive: true, force: true });
   return {
@@ -49,10 +98,8 @@ export async function buildBinaryTarball(
   archSuffix: string,
 ): Promise<ArtifactResult> {
   const srcDir = await makeTempDir("allbrew-bin-");
-  const binDir = join(srcDir, "bin");
-  await mkdir(binDir, { recursive: true });
   await writeFile(
-    join(binDir, name),
+    join(srcDir, name),
     `#!/bin/sh\necho "${name} ${version}"\n`,
     { mode: 0o755 },
   );

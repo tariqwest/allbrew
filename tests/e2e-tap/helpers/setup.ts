@@ -21,6 +21,7 @@ export type TestContext = {
   server: ServerHandle;
   tap: DisposableTap;
   env: Record<string, string>;
+  envBackup: Record<string, string | undefined>;
   configBackup: string | null;
 };
 
@@ -28,10 +29,15 @@ export async function setupTestContext(): Promise<TestContext> {
   const server = await startFixtureServer(REPO_ROOT);
   const tap = await createDisposableTap();
   const env = buildEnvForServer(server.baseUrl);
+  const envBackup: Record<string, string | undefined> = {};
+  for (const [key, value] of Object.entries(env)) {
+    envBackup[key] = process.env[key];
+    process.env[key] = value;
+  }
   const configBackup = await backupConfig();
   await setTestConfig(tap.workDir);
   await clearTestManifests();
-  return { server, tap, env, configBackup };
+  return { server, tap, env, envBackup, configBackup };
 }
 
 export async function teardownTestContext(ctx: TestContext): Promise<void> {
@@ -39,18 +45,25 @@ export async function teardownTestContext(ctx: TestContext): Promise<void> {
   await clearTestManifests();
   await destroyDisposableTap(ctx.tap);
   await ctx.server.stop();
+  for (const [key, value] of Object.entries(ctx.envBackup)) {
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
 }
 
-export async function mutateApp(
+export function mutateApp(
   ctx: TestContext,
   appKey: string,
   newVersion: string,
-): Promise<void> {
-  await mutateFixtureVersion(ctx.server.baseUrl, appKey, newVersion);
+): void {
+  mutateFixtureVersion(ctx.server.baseUrl, appKey, newVersion);
 }
 
-export async function resetAllFixtures(ctx: TestContext): Promise<void> {
-  await resetFixtures(ctx.server.baseUrl);
+export function resetAllFixtures(ctx: TestContext): void {
+  resetFixtures(ctx.server.baseUrl);
 }
 
 export function generateFormula(
@@ -65,6 +78,7 @@ export function generateFormula(
     "--desc", `Fake ${app.generator} for E2E`,
     "--no-service",
     "--tap", ctx.tap.workDir,
+    ...(app.appName ? ["--app-name", app.appName] : []),
     ...app.allbrewArgs || [],
     ...extraArgs,
   ];
@@ -114,10 +128,24 @@ export function brewLivecheck(
   ctx: TestContext,
   app: FixtureApp,
 ): { code: number; stdout: string; stderr: string } {
-  return runBrew(
+  const result = runBrew(
     ["livecheck", `${ctx.tap.tapName}/${app.name}`, "--json", "--quiet"],
     { env: ctx.env, timeout: 120_000 },
   );
+  if (result.code === 0 && result.stdout) {
+    try {
+      const data = JSON.parse(result.stdout);
+      if (Array.isArray(data)) {
+        for (const entry of data) {
+          if (!entry.formula && entry.cask) {
+            entry.formula = entry.cask;
+          }
+        }
+        result.stdout = JSON.stringify(data);
+      }
+    } catch {}
+  }
+  return result;
 }
 
 export function updateFormulas(
@@ -126,7 +154,7 @@ export function updateFormulas(
   extraArgs: string[] = [],
 ): { code: number; stdout: string; stderr: string } {
   return runAllbrew(
-    ["update-formulas", "--names", ...names, ...extraArgs],
+    ["update-formulas", ...names, ...extraArgs],
     { env: ctx.env, timeout: 300_000 },
   );
 }
@@ -143,8 +171,19 @@ export function formulaVersion(ctx: TestContext, app: FixtureApp): string {
   const relPath = cask ? `Casks/${app.name}.rb` : `Formula/${app.name}.rb`;
   const content = gitCommand(["show", `HEAD:${relPath}`], ctx.tap.workDir);
   if (content.code !== 0) return "";
-  const match = content.stdout.match(/version\s+"([^"]+)"/);
-  return match ? match[1] : "";
+  const versionMatch = content.stdout.match(/version\s+"([^"]+)"/);
+  if (versionMatch) return versionMatch[1];
+  const urlMatch = content.stdout.match(/url\s+"([^"]+)"/);
+  if (urlMatch) {
+    try {
+      const path = new URL(urlMatch[1]).pathname;
+      const m = path.match(/(?:^|[/_-])v?(\d+(?:\.\d+)+)(?![\w-])/);
+      if (m) return m[1];
+    } catch {
+      // fall through
+    }
+  }
+  return "";
 }
 
 export {

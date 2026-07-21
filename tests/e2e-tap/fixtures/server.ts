@@ -432,34 +432,33 @@ async function handleRequest(req: Request, url: URL): Promise<Response> {
 
   // Direct download: /direct/:name/:version/:filename
   const directMatch = path.match(/^\/direct\/([^/]+)\/([^/]+)\/(.+)$/);
-  if (directMatch && method === "GET") {
+  if (directMatch && (method === "GET" || method === "HEAD")) {
     const appName = decodeURIComponent(directMatch[1]);
     const appKey = findAppByName(appName);
     if (!appKey) return jsonResponse({ message: "Not Found" }, 404);
     const app = getApp(appKey);
     const filename = directMatch[3];
 
-    if (filename.endsWith(".sh")) {
-      const r = await artifacts.buildInstallScript(app.name, app.version);
-      return binaryResponse(r.buffer, "text/x-shellscript", r.filename);
+    const r = await getArtifact(appKey);
+    const contentType = filename.endsWith(".zip")
+      ? "application/zip"
+      : filename.endsWith(".dmg")
+      ? "application/octet-stream"
+      : filename.endsWith(".sh")
+      ? "text/x-shellscript"
+      : "application/gzip";
+    const disposition = `attachment; filename="${r.filename}"`;
+    if (method === "HEAD") {
+      return new Response(null, {
+        status: 200,
+        headers: {
+          "Content-Type": contentType,
+          "Content-Disposition": disposition,
+          "Content-Length": String(r.buffer.length),
+        },
+      });
     }
-    if (filename.endsWith(".dmg")) {
-      const r = await artifacts.buildDmg(app.appName || app.name, app.version);
-      return binaryResponse(r.buffer, "application/octet-stream", r.filename);
-    }
-    if (filename.endsWith(".tar.gz")) {
-      if (app.artifactKind === "generic-archive") {
-        const r = await artifacts.buildGenericArchive(app.name, app.version, "tar.gz");
-        return binaryResponse(r.buffer, "application/gzip", r.filename);
-      }
-      const r = await artifacts.buildBinaryTarball(app.name, app.version, "universal");
-      return binaryResponse(r.buffer, "application/gzip", r.filename);
-    }
-    if (filename.endsWith(".zip")) {
-      const r = await artifacts.buildGenericArchive(app.name, app.version, "zip");
-      return binaryResponse(r.buffer, "application/zip", r.filename);
-    }
-    return jsonResponse({ message: "Not Found" }, 404);
+    return binaryResponse(r.buffer, contentType, r.filename);
   }
 
   return jsonResponse({ message: "Not Found", path }, 404);

@@ -14,16 +14,20 @@ export type DisposableTap = {
   remoteUrl: string;
 };
 
+let tapCounter = 0;
+
 export async function createDisposableTap(
   tapName: string = "e2e-tap",
 ): Promise<DisposableTap> {
   const pid = process.pid;
-  const name = `test/e2e-tap-${pid}`;
+  const seq = ++tapCounter;
+  const name = `test/e2e-tap-${pid}-${seq}`;
 
   const remoteDir = await mkdtemp(join(tmpdir(), `allbrew-tap-remote-`));
   const workDir = await mkdtemp(join(tmpdir(), `allbrew-tap-work-`));
 
   await execFileAsync("git", ["init", "--bare", remoteDir]);
+  await execFileAsync("git", ["-C", remoteDir, "symbolic-ref", "HEAD", "refs/heads/main"]);
   await mkdir(join(workDir, "Formula"), { recursive: true });
   await mkdir(join(workDir, "Casks"), { recursive: true });
 
@@ -50,7 +54,22 @@ export async function createDisposableTap(
 
 export async function destroyDisposableTap(tap: DisposableTap): Promise<void> {
   try {
-    runCommand(["brew", "untap", tap.tapName], { timeout: 30_000 });
+    const list = runCommand(["bash", "-c", `brew list --full-name | grep '^${tap.tapName}/' || true`], {
+      timeout: 60_000,
+    });
+    const names = list.stdout.trim().split(/\s+/).filter(Boolean);
+    if (names.length > 0) {
+      runCommand(["brew", "uninstall", "--force", ...names], { timeout: 120_000 });
+    }
+  } catch {}
+
+  try {
+    const result = runCommand(["brew", "untap", "--force", tap.tapName], {
+      timeout: 30_000,
+    });
+    if (result.code !== 0) {
+      console.error(`[destroyDisposableTap] untap failed: ${result.stderr}`);
+    }
   } catch {}
   try {
     await rm(tap.remoteDir, { recursive: true, force: true });

@@ -28,7 +28,13 @@ export function runAllbrew(
   opts: { cwd?: string; env?: Record<string, string>; timeout?: number } = {},
 ): RunResult {
   const args = ["bun", "run", "bin/allbrew.ts", ...allbrewArgs];
-  return runCommand(args, opts);
+  const env: Record<string, string> = {
+    HOMEBREW_DEVELOPER: "1",
+    HOMEBREW_NO_AUTO_UPDATE: "1",
+    HOMEBREW_NO_REQUIRE_TAP_TRUST: "1",
+    ...opts.env,
+  };
+  return runCommand(args, { ...opts, env });
 }
 
 export function runBrew(
@@ -37,7 +43,7 @@ export function runBrew(
 ): RunResult {
   const env: Record<string, string> = {
     HOMEBREW_DEVELOPER: "1",
-    HOMEBREW_NO_AUTO_UPDATE: "1",
+    HOMEBREW_NO_REQUIRE_TAP_TRUST: "1",
     ...opts.env,
   };
   return runCommand(["brew", ...brewArgs], { ...opts, env });
