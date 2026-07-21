@@ -167,3 +167,61 @@ describe("collectInstallScriptPayload — Qoder", () => {
     expect(payload.livecheckBlock).toContain("qoder.com/install");
   });
 });
+
+describe("collectInstallScriptPayload — Cua Driver", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns correct template identifier", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://cua.ai/driver/install.sh",
+    );
+    expect(payload.template).toBe("install_script");
+  });
+
+  it("extracts install.sh filename and default name", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://cua.ai/driver/install.sh",
+    );
+    expect(payload.scriptFilename).toBe("install.sh");
+    expect(payload.name).toBe("install");
+  });
+
+  it("respects cua-driver name override", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://cua.ai/driver/install.sh",
+      { name: "cua-driver" },
+    );
+    expect(payload.name).toBe("cua-driver");
+    expect(payload.className).toBe("CuaDriver");
+    expect(payload.testBinName).toBe("cua-driver");
+  });
+
+  it("uses install script URL as homepage", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://cua.ai/driver/install.sh",
+      { name: "cua-driver" },
+    );
+    expect(payload.homepage).toBe("https://cua.ai/driver/install.sh");
+    expect(payload.url).toBe("https://cua.ai/driver/install.sh");
+  });
+
+  it("includes SHA256 from download", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://cua.ai/driver/install.sh",
+      { name: "cua-driver" },
+    );
+    expect(payload.sha256).toBeTruthy();
+    expect(payload.sha256.length).toBeGreaterThan(0);
+  });
+
+  it("generates livecheck block with install script URL", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://cua.ai/driver/install.sh",
+      { name: "cua-driver" },
+    );
+    expect(payload.livecheckBlock).toContain("livecheck do");
+    expect(payload.livecheckBlock).toContain("cua.ai/driver/install.sh");
+  });
+});

@@ -289,9 +289,8 @@ describe("renderFormula", () => {
       `    ENV["PREFIX"] = prefix.to_s\n` +
       `    ENV["DESTDIR"] = prefix.to_s\n` +
       `    ENV["HOME"] = buildpath.to_s\n` +
-      `    system "bash", "install.sh"\n` +
+      `    system "bash", cached_download.to_s\n` +
       `    bin.install Dir[buildpath/"bin/*"] if (buildpath/"bin").exist?\n` +
-      `    bin.install Dir[prefix/"bin/*"] if (prefix/"bin").exist?\n` +
       `  end\n\n` +
       `  test do\n` +
       `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +

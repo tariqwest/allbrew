@@ -29,7 +29,7 @@ describe.concurrent("install-script integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Starship < Formula");
-    expect(ruby).toContain('system "bash", "install.sh"');
+    expect(ruby).toContain('system "bash", cached_download.to_s');
     expect(ruby).toContain('ENV["PREFIX"]');
   });
 
@@ -138,5 +138,40 @@ describe.concurrent("install-script integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Qoder < Formula");
+  });
+
+  it("cua-driver: install script payload is well-formed", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://cua.ai/driver/install.sh",
+      { name: "cua-driver", desc: "Background computer-use driver for agents" },
+    );
+    expect(payload.template).toBe("install_script");
+    expect(payload.name).toBe("cua-driver");
+    expect(payload.className).toBe("CuaDriver");
+    expect(payload.scriptFilename).toBe("install.sh");
+    expect(payload.url).toBe("https://cua.ai/driver/install.sh");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.desc).toContain("computer-use driver");
+  });
+
+  it("cua-driver: generates structurally valid Ruby formula", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://cua.ai/driver/install.sh",
+      { name: "cua-driver" },
+    );
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class CuaDriver < Formula");
+    expect(ruby).toContain('system "bash", cached_download.to_s');
+    expect(ruby).toContain('ENV["PREFIX"]');
+  });
+
+  it("cua-driver: livecheck references the install script URL", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://cua.ai/driver/install.sh",
+      { name: "cua-driver" },
+    );
+    expect(payload.livecheckBlock).toContain("livecheck do");
+    expect(payload.livecheckBlock).toContain("cua.ai/driver/install.sh");
   });
 });

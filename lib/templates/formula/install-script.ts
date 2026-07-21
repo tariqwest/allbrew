@@ -11,9 +11,8 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
     ENV["PREFIX"] = prefix.to_s
     ENV["DESTDIR"] = prefix.to_s
     ENV["HOME"] = buildpath.to_s
-    system "bash", "${p.scriptFilename}"
+    system "bash", cached_download.to_s
     bin.install Dir[buildpath/"bin/*"] if (buildpath/"bin").exist?
-    bin.install Dir[prefix/"bin/*"] if (prefix/"bin").exist?
   end
 
 ${p.serviceBlock}  test do
