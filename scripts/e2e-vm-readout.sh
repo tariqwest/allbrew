@@ -125,7 +125,9 @@ host_section "Host allbrew Repo Git State" 'echo "Branch: $(git branch --show-cu
 
 # --- Test results summary ---
 if [[ -n "$TEST_LOG" && -f "$TEST_LOG" ]]; then
-  cp "$TEST_LOG" "$(run_dir)/test-output.log"
+  if [[ "$TEST_LOG" != "$(run_dir)/test-output.log" ]]; then
+    cp "$TEST_LOG" "$(run_dir)/test-output.log"
+  fi
   echo "" >> "$READOUT_FILE"
   echo "------------------------------------------" >> "$READOUT_FILE"
   echo "  Test Results Summary (from $TEST_LOG)" >> "$READOUT_FILE"
