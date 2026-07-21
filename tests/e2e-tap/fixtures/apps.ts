@@ -16,6 +16,7 @@ export type FixtureApp = {
 
 export type ArtifactKind =
   | "binary-tarball"
+  | "service-binary-tarball"
   | "source-tarball"
   | "install-script"
   | "npm-tarball"
@@ -35,6 +36,18 @@ export const FIXTURE_APPS: Record<string, FixtureApp> = {
     version: "1.0.0",
     github: { owner: "fake-org", repo: "fake-cli", description: "Fake CLI for E2E", license: "MIT" },
     artifactKind: "binary-tarball",
+    archAssets: {
+      "darwin-arm64": "darwin-arm64",
+      "darwin-x86_64": "darwin-amd64",
+    },
+    allbrewArgs: [],
+  },
+  "fake-service": {
+    name: "fake-service",
+    generator: "binary-release",
+    version: "1.0.0",
+    github: { owner: "fake-org", repo: "fake-service", description: "Fake service binary for E2E", license: "MIT" },
+    artifactKind: "service-binary-tarball",
     archAssets: {
       "darwin-arm64": "darwin-arm64",
       "darwin-x86_64": "darwin-amd64",

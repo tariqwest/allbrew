@@ -47,6 +47,18 @@ async function buildArtifact(
       }
       return artifacts.buildBinaryTarball(app.name, app.version, "darwin-arm64");
     }
+    case "service-binary-tarball": {
+      if (arch) {
+        const suffix = app.archAssets?.[arch] || arch;
+        return artifacts.buildServiceBinaryTarball(app.name, app.version, suffix);
+      }
+      if (app.archAssets) {
+        const firstArch = Object.keys(app.archAssets)[0];
+        const suffix = app.archAssets[firstArch];
+        return artifacts.buildServiceBinaryTarball(app.name, app.version, suffix);
+      }
+      return artifacts.buildServiceBinaryTarball(app.name, app.version, "darwin-arm64");
+    }
     case "source-tarball":
       return artifacts.buildSourceTarball(app.name, app.version, app.buildSystem || "make");
     case "install-script":
@@ -200,7 +212,11 @@ async function handleRequest(req: Request, url: URL): Promise<Response> {
     const tag = `v${app.version}`;
 
     const assets: any[] = [];
-    if (app.artifactKind === "binary-tarball" && app.archAssets) {
+    if (
+      (app.artifactKind === "binary-tarball" ||
+        app.artifactKind === "service-binary-tarball") &&
+      app.archAssets
+    ) {
       for (const [, suffix] of Object.entries(app.archAssets)) {
         const filename = `${app.name}-${app.version}-${suffix}.tar.gz`;
         assets.push({
@@ -240,7 +256,11 @@ async function handleRequest(req: Request, url: URL): Promise<Response> {
     if (!appKey) return jsonResponse({ message: "Not Found" }, 404);
     const app = getApp(appKey);
 
-    if (app.artifactKind === "binary-tarball" && app.archAssets) {
+    if (
+      (app.artifactKind === "binary-tarball" ||
+        app.artifactKind === "service-binary-tarball") &&
+      app.archAssets
+    ) {
       for (const [arch, suffix] of Object.entries(app.archAssets)) {
         const expected = `${app.name}-${app.version}-${suffix}.tar.gz`;
         if (filename === expected) {

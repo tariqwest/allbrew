@@ -97,6 +97,29 @@ export function generateFormula(
   return runAllbrew(args, { env: ctx.env, timeout: 120_000 });
 }
 
+export function generateFormulaWithService(
+  ctx: TestContext,
+  app: FixtureApp,
+  serviceCommand?: string,
+  extraArgs: string[] = [],
+): { code: number; stdout: string; stderr: string } {
+  const url = classifierUrl(app, ctx.server.baseUrl);
+  const args = [
+    url,
+    "--name", app.name,
+    "--desc", `Fake ${app.generator} for E2E`,
+    "--service",
+    "--tap", ctx.tap.workDir,
+    ...(app.appName ? ["--app-name", app.appName] : []),
+    ...app.allbrewArgs || [],
+  ];
+  if (serviceCommand) {
+    args.push("--service-command", serviceCommand);
+  }
+  args.push(...extraArgs);
+  return runAllbrew(args, { env: ctx.env, timeout: 120_000 });
+}
+
 export function installFromTap(
   ctx: TestContext,
   app: FixtureApp,

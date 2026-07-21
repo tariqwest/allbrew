@@ -107,6 +107,21 @@ export async function buildBinaryTarball(
   return createTarball(srcDir, filename);
 }
 
+export async function buildServiceBinaryTarball(
+  name: string,
+  version: string,
+  archSuffix: string,
+): Promise<ArtifactResult> {
+  const srcDir = await makeTempDir("allbrew-svc-bin-");
+  await writeFile(
+    join(srcDir, name),
+    `#!/bin/sh\nPORT="\${1:-\${PORT:-8080}}"\npython3 -c 'import http.server,socketserver,sys\nport=int(sys.argv[1])\nclass H(http.server.BaseHTTPRequestHandler):\n def do_GET(self):\n  self.send_response(200)\n  self.end_headers()\n  self.wfile.write(b"ok")\n def log_message(self,*a):pass\nsocketserver.TCPServer(("127.0.0.1",port),H).serve_forever()' "$PORT"\n`,
+    { mode: 0o755 },
+  );
+  const filename = `${name}-${version}-${archSuffix}.tar.gz`;
+  return createTarball(srcDir, filename);
+}
+
 export async function buildSourceTarball(
   name: string,
   version: string,
