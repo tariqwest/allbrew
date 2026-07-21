@@ -27,7 +27,7 @@ export async function collectGoPackagePayload(
 
   let urlLines = "";
   if (release) {
-    const sourceUrl = `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
+    const sourceUrl = release.tarballUrl || `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
     const sha256 = await hashUrl(sourceUrl);
     urlLines = `  url ${rubyString(sourceUrl)}\n  sha256 ${rubyString(sha256)}\n`;
   }

@@ -88,8 +88,9 @@ export async function generatePipPackage(
 }
 
 async function fetchPypiData(packageName: string) {
+  const pypiBase = process.env.PYPI_URL || "https://pypi.org";
   const response = await fetch(
-    `https://pypi.org/pypi/${encodeURIComponent(packageName)}/json`,
+    `${pypiBase}/pypi/${encodeURIComponent(packageName)}/json`,
     {
       headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" },
     },

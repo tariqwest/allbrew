@@ -647,4 +647,67 @@ describe.concurrent("cask-app-release integration", () => {
     expect(ruby).toContain("https://www.eigent.ai/");
     expect(ruby).toContain("zap trash:");
   });
+
+  const hermesOneRepoInfo = {
+    name: "hermes-desktop",
+    fullName: "fathah/hermes-desktop",
+    description:
+      "Community maintained native desktop app for Hermes Agent — a self-improving AI assistant",
+    homepage: "https://hermesone.org",
+    htmlUrl: "https://github.com/fathah/hermes-desktop",
+    license: "MIT",
+  };
+
+  const hermesOneRelease = {
+    tagName: "v0.7.3",
+    assets: [
+      {
+        name: "hermes-desktop-0.7.3-arm64-mac.zip",
+        url: "https://github.com/fathah/hermes-desktop/releases/download/v0.7.3/hermes-desktop-0.7.3-arm64-mac.zip",
+      },
+      {
+        name: "hermes-desktop-0.7.3-arm64.dmg",
+        url: "https://github.com/fathah/hermes-desktop/releases/download/v0.7.3/hermes-desktop-0.7.3-arm64.dmg",
+      },
+      {
+        name: "hermes-desktop-0.7.3-x64-mac.zip",
+        url: "https://github.com/fathah/hermes-desktop/releases/download/v0.7.3/hermes-desktop-0.7.3-x64-mac.zip",
+      },
+      {
+        name: "hermes-desktop-0.7.3-x64.dmg",
+        url: "https://github.com/fathah/hermes-desktop/releases/download/v0.7.3/hermes-desktop-0.7.3-x64.dmg",
+      },
+    ],
+  };
+
+  it("Hermes One: payload from Electron release is well-formed", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
+    );
+    expect(payload.template).toBe("cask_app_release");
+    expect(payload.name).toBe("hermes-one");
+    expect(payload.version).toBe("0.7.3");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.url).toContain("#{version}");
+    expect(payload.url).toContain(".dmg");
+    expect(payload.appName).toContain(".app");
+    expect(payload.desc).toContain("Hermes Agent");
+    expect(payload.homepage).toBe("https://hermesone.org");
+  }, 60000);
+
+  it("Hermes One: generates structurally valid Ruby cask", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
+    );
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "hermes-one" do');
+    expect(ruby).toContain("strategy :github_latest");
+    expect(ruby).toContain("https://hermesone.org");
+    expect(ruby).toContain("zap trash:");
+  }, 60000);
 });

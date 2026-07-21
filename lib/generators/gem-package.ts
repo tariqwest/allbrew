@@ -66,7 +66,8 @@ export async function generateGemPackage(
 }
 
 async function fetchRubyGemsData(gemName: string) {
-  const url = `https://rubygems.org/api/v1/gems/${encodeURIComponent(gemName)}.json`;
+  const base = process.env.RUBYGEMS_URL || "https://rubygems.org";
+  const url = `${base}/api/v1/gems/${encodeURIComponent(gemName)}.json`;
   const response = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" },
   });
@@ -87,7 +88,8 @@ async function fetchRubyGemsData(gemName: string) {
 }
 
 function rubyGemsLivecheckBlock(gemName: string) {
-  const url = `https://rubygems.org/api/v1/gems/${encodeURIComponent(gemName)}.json`;
+  const base = process.env.RUBYGEMS_URL || "https://rubygems.org";
+  const url = `${base}/api/v1/gems/${encodeURIComponent(gemName)}.json`;
   return (
     `  livecheck do\n` +
     `    url ${rubyString(url)}\n` +

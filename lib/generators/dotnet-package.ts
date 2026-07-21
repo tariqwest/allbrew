@@ -18,7 +18,8 @@ export async function collectDotnetPackagePayload(
 ): Promise<DotnetPackagePayload> {
   const nugetData = await fetchNugetData(packageName);
   const version = nugetData.version;
-  const downloadUrl = `https://www.nuget.org/api/v2/package/${encodeURIComponent(packageName)}/${version}`;
+  const nugetBase = process.env.NUGET_URL || "https://www.nuget.org";
+  const downloadUrl = `${nugetBase}/api/v2/package/${encodeURIComponent(packageName)}/${version}`;
   const sha256 = await hashUrl(downloadUrl);
 
   const name = options.name || toFormulaName(packageName);
@@ -62,7 +63,8 @@ export async function generateDotnetPackage(
 }
 
 async function fetchNugetData(packageName: string) {
-  const url = `https://api.nuget.org/v3-flatcontainer/${encodeURIComponent(packageName.toLowerCase())}/index.json`;
+  const base = process.env.NUGET_FLAT_URL || process.env.NUGET_URL || "https://api.nuget.org";
+  const url = `${base}/v3-flatcontainer/${encodeURIComponent(packageName.toLowerCase())}/index.json`;
   const response = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" },
   });
@@ -78,7 +80,8 @@ async function fetchNugetData(packageName: string) {
 }
 
 function nugetLivecheckBlock(packageName: string) {
-  const url = `https://api.nuget.org/v3-flatcontainer/${encodeURIComponent(packageName.toLowerCase())}/index.json`;
+  const base = process.env.NUGET_FLAT_URL || process.env.NUGET_URL || "https://api.nuget.org";
+  const url = `${base}/v3-flatcontainer/${encodeURIComponent(packageName.toLowerCase())}/index.json`;
   return (
     `  livecheck do\n` +
     `    url ${rubyString(url)}\n` +

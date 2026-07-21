@@ -17,7 +17,8 @@ export async function collectNpmPackagePayload(
   repoInfo: any = null,
   options: any = {},
 ): Promise<NpmPackagePayload> {
-  const registryUrl = `https://registry.npmjs.org/${encodeURIComponent(packageName)}`;
+  const registryBase = process.env.NPM_REGISTRY_URL || "https://registry.npmjs.org";
+  const registryUrl = `${registryBase}/${encodeURIComponent(packageName)}`;
   const response = await fetch(registryUrl, {
     headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" },
   });

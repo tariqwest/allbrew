@@ -311,8 +311,9 @@ export async function updateManagedPackage(
 }
 
 async function npmLatestVersion(packageName: string) {
+  const base = process.env.NPM_REGISTRY_URL || "https://registry.npmjs.org";
   const response = await fetch(
-    `https://registry.npmjs.org/${encodeURIComponent(packageName)}/latest`,
+    `${base}/${encodeURIComponent(packageName)}/latest`,
     { headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" } },
   );
   if (!response.ok) throw new Error(`npm lookup failed: ${response.status}`);
@@ -321,8 +322,9 @@ async function npmLatestVersion(packageName: string) {
 }
 
 async function pypiLatestVersion(packageName: string) {
+  const base = process.env.PYPI_URL || "https://pypi.org";
   const response = await fetch(
-    `https://pypi.org/pypi/${encodeURIComponent(packageName)}/json`,
+    `${base}/pypi/${encodeURIComponent(packageName)}/json`,
     { headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" } },
   );
   if (!response.ok) throw new Error(`PyPI lookup failed: ${response.status}`);

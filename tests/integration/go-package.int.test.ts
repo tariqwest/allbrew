@@ -236,4 +236,49 @@ describe.concurrent("go-package integration", () => {
     expect(payload.name).toBe("goatcounter");
     expect(payload.livecheckBlock).toContain("goatcounter/v2/@latest");
   });
+
+  it("ugm: generates valid formula (UNIX users/groups TUI, no darwin binaries)", async () => {
+    const ugmRepoInfo = {
+      name: "ugm",
+      fullName: "ariasmn/ugm",
+      description: "A TUI to view information about UNIX users and groups",
+      homepage: "https://github.com/ariasmn/ugm",
+      htmlUrl: "https://github.com/ariasmn/ugm",
+      license: "MIT",
+      defaultBranch: "main",
+    };
+    const payload = await collectGoPackagePayload(ugmRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("ugm");
+    expect(payload.className).toBe("Ugm");
+    expect(ruby).toContain("class Ugm < Formula");
+    expect(ruby).toContain('depends_on "go" => :build');
+    expect(ruby).toContain('system "go", "install"');
+    expect(ruby).toContain('head "https://github.com/ariasmn/ugm.git"');
+    expect(payload.livecheckBlock).toContain(
+      "proxy.golang.org/github.com/ariasmn/ugm/@latest",
+    );
+    expect(payload.licenseLine).toContain("MIT");
+  });
+
+  it("ugm: with release v1.9.0, downloads real tarball and computes SHA256", async () => {
+    const ugmRepoInfo = {
+      name: "ugm",
+      fullName: "ariasmn/ugm",
+      description: "A TUI to view information about UNIX users and groups",
+      homepage: "https://github.com/ariasmn/ugm",
+      htmlUrl: "https://github.com/ariasmn/ugm",
+      license: "MIT",
+      defaultBranch: "main",
+    };
+    const release = { tagName: "v1.9.0" };
+    const payload = await collectGoPackagePayload(ugmRepoInfo, release);
+    expect(payload.urlLines).toContain(
+      "https://github.com/ariasmn/ugm/archive/refs/tags/v1.9.0.tar.gz",
+    );
+    expect(payload.urlLines).toMatch(/sha256 "[a-f0-9]{64}"/);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+  });
 });

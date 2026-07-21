@@ -34,11 +34,9 @@
   - `has_script_install` — install-script URL (e.g. `https://starship.rs/install.sh`) if a curl-pipe-bash installer exists; blank otherwise
   - `notes` — free-text: bin name if it differs from package name, service invocation, generator chosen, edge cases, version, star count, license, in-HB status
 
-
-## Table
-
 | app | lang/runtime | framework | in_dev_website | in_github | in_homebrew | in_setapp | in_mas | in_npm | in_pip | in_cargo | in_go_mod | in_ruby_gem | in_swiftpm | in_mint | in_dotnet | is_tui_app | is_gui_app | is_webui_app | is_cask_dist | has_source_dist | has_prebuilt_bin_dist | has_script_install | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ## Table | | | | | | | | | | | | | | | | | | | | | | | |
 | browsr | Python | Textual | | github.com/juftin/browsr | | | | | pypi.org/project/browsr | | | | | | | yes | | | | yes | | | |
 | elia | Python | Textual | | github.com/darrenburns/elia | | | | | pypi.org/project/elia-chat | | | | | | | yes | | | | yes | | | cmd `elia`; bin `elia`; pkg is elia-chat |
 | toolong | Python | Textual | | github.com/Textualize/toolong | | | | | pypi.org/project/toolong | | | | | | | yes | | | | yes | | | cmd `tl` |
@@ -290,6 +288,7 @@
 | Pool | | | downloads.poolside.ai/pool/install.sh | github.com/poolsideai/pool | | | | | | | | | | | | | | | | | | https://downloads.poolside.ai/pool/install.sh | AI coding assistant; downloads. subdomain |
 | ddclient | Perl | | | github.com/ddclient/ddclient | ddclient (formula) | | | | | | | | | | | | | | | yes | tags only | | dynamic DNS client; autotools build (./configure, make); service-block candidate (daemon mode); v4.0.0; uses curl |
 | agent-deck | Go | | | github.com/asheshgoplani/agent-deck | | | | | | | github.com/asheshgoplani/agent-deck | | | | | yes | | yes | | yes | yes | https://raw.githubusercontent.com/asheshgoplani/agent-deck/main/install.sh | AI agent session manager TUI; `go install` path; install.sh downloads prebuilt binaries; web UI mode (`agent-deck web`); not in HB core (author tap only); 344 releases |
+| ugm | Go | | | github.com/ariasmn/ugm | | | | | | | github.com/ariasmn/ugm | | | | | yes | | | | yes | yes (no darwin) | | UNIX users/groups TUI; MIT; v1.9.0; 163 stars; not in HB; goreleaser targets linux/freebsd/openbsd/netbsd only (no macOS binaries); go install path; go-package |
 | Poe | | | poe.com/pages/get-poe | | poe (cask) | | Poe – Fast AI Chat (id1640745955) | | | | | | | | | | yes | | Poe.dmg | | yes | | AI chat client by Quora; CDN DMG (desktop-app.poecdn.net); no version in URL; also on MAS; closed-source |
 | PopClip | | | popclip.app | | popclip (cask) | setapp.com/apps/popclip | | | | | | | | | | | yes | | PopClip-2025.9.2.zip | | yes | | text action tool; developer site .zip (pilotmoon.com/downloads); version in filename; left MAS (id445189367, removed 2023); also on Setapp; closed-source |
 | Bartender Pro | | | macbartender.com | | | setapp.com/apps/bartender | | | | | | | | | | | yes | | | | | | cask-app-setapp test case; slug bartender vs display name Bartender Pro; menu bar manager; Setapp + standalone only; not on MAS; HTML scrape for version |
@@ -304,6 +303,7 @@
 | authsec-bridge | Python | | | github.com/authsec-ai/authsec-bridge | | | | | | | | | | | | | | | | | | | session bridge for Claude Code/Codex/Gemini CLI; `pip install -e .` from git clone; no PyPI package; no releases; MIT; edge case for source-build (Python not autotools) |
 | MōIcons | TypeScript | React / MōBrowser | | github.com/mo-browser-apps/icons | | | | | | | | | | | | | yes | | MoIcons-1.0.3-arm64.dmg | yes | yes | | AI macOS app icon generator; arm64-only DMG; signed + notarized; MIT; v1.0.3; 703 stars; not in HB |
 | Eigent | | | | eigent-ai/eigent | cask | | | | | | | | | | | | yes | | Eigent-1.0.1-arm64.dmg | | yes | | Desktop AI agent, 14.5k stars, Apache-2.0, already in HB as cask, cask-app-release generator |
+| Hermes One | TypeScript | Electron | hermesone.org | github.com/fathah/hermes-desktop | | | | | | | | | | | | | yes | | hermes-desktop-0.7.3-arm64.dmg | yes | | | Hermes Agent desktop GUI; MIT; v0.7.3; 13.4k stars; not in HB; electron-builder; arm64+x64 DMG; name override needed (repo name hermes-desktop collides with dodo-reach/hermes-desktop); cask-app-release |
 | harnesskit | Rust/TypeScript | Tauri 2 / React | | github.com/RealZST/HarnessKit | | | | | | | | | | | | | yes | | HarnessKit_1.6.5_aarch64.dmg | yes | yes (14) | | AI coding agent extension manager; Tauri 2 desktop + standalone hk CLI binary; arch-specific DMGs (aarch64 + x64); hk CLI binary also on releases; install.sh available; Apache-2.0; 352 stars; v1.6.5; not in HB; cask-app-release generator |
 | ShellGPT | Python | | | github.com/TheR1D/shell_gpt | | | | pypi.org/project/shell-gpt | | | | | | | | | | | | | | | CLI productivity tool for AI LLMs; `pip install shell-gpt`; bin `sgpt`; 31 releases; v1.5.1; 12.1k stars; MIT; not in HB |
 | open-notebook | Python | FastAPI/Next.js | open-notebook.ai | github.com/lfnovo/open-notebook | | | | | | | | | | | | | | yes | | yes | tags only | | open-source NotebookLM alternative; Docker primary; pip-installable from source (pyproject.toml); PyPI name taken by unrelated NIST project; no prebuilt binaries; generator: source-build; 34.7k stars; MIT; v1.10.0 |
@@ -314,7 +314,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -327,16 +327,14 @@
 | # npm-package (deprecated in HB; prefer npm package) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://github.com/cline/cline --manual          # → npm-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install cline && cline --version | | | | | | | | | | | | | | | | | | | | | | | |
-# cargo (crates.io or GitHub)
-allbrew https://crates.io/crates/managarr --manual      # → cargo-package
-brew install managarr && managarr
-
-# go (GitHub repo; embedded-frontend web app = best stress)
-allbrew https://github.com/muety/wakapi --manual        # → go-package
-brew install wakapi && wakapi
-allbrew https://github.com/TimothyYe/godns --manual     # → go-package / binary-release
-brew install godns && godns -h
-
+| # cargo (crates.io or GitHub) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://crates.io/crates/managarr --manual      # → cargo-package | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install managarr && managarr | | | | | | | | | | | | | | | | | | | | | | | |
+| # go (GitHub repo; embedded-frontend web app = best stress) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/muety/wakapi --manual        # → go-package | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install wakapi && wakapi | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/TimothyYe/godns --manual     # → go-package / binary-release | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install godns && godns -h | | | | | | | | | | | | | | | | | | | | | | | |
 # script-install (curl | bash)
 allbrew https://starship.rs/install.sh --manual         # → script-install
 brew install starship && starship --version

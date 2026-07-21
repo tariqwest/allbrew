@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { collectGoPackagePayload } from "../../../lib/generators/go-package.ts";
 import wakapiFixture from "../../fixtures/github/wakapi.json";
 import processComposeFixture from "../../fixtures/github/process-compose.json";
+import ugmFixture from "../../fixtures/github/ugm.json";
 
 vi.mock("../../../lib/sha256.ts", () => ({
   hashUrl: vi.fn().mockResolvedValue("go_mocked_sha256_64chars_padding_abcdef0123456789abcdef01234"),
@@ -147,5 +148,60 @@ describe("collectGoPackagePayload — process-compose", () => {
   it("generates Apache-2.0 license line", async () => {
     const payload = await collectGoPackagePayload(repoInfo, release);
     expect(payload.licenseLine).toContain("Apache-2.0");
+  });
+});
+
+describe("collectGoPackagePayload — ugm", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const repoInfo = ugmFixture.repo;
+  const release = ugmFixture.release;
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.template).toBe("go_package");
+  });
+
+  it("derives name from repo name", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.name).toBe("ugm");
+    expect(payload.className).toBe("Ugm");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.desc).toContain("UNIX users and groups");
+  });
+
+  it("generates source archive URL from release tag", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.urlLines).toContain(
+      "https://github.com/ariasmn/ugm/archive/refs/tags/v1.9.0.tar.gz",
+    );
+  });
+
+  it("generates Go module proxy livecheck block", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.livecheckBlock).toContain(
+      "proxy.golang.org/github.com/ariasmn/ugm/@latest",
+    );
+  });
+
+  it("includes head reference to default branch", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.defaultBranch).toBe("main");
+    expect(payload.fullName).toBe("ariasmn/ugm");
+  });
+
+  it("handles null release (no urlLines)", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, null);
+    expect(payload.urlLines).toBe("");
+  });
+
+  it("generates MIT license line from repo info", async () => {
+    const payload = await collectGoPackagePayload(repoInfo, release);
+    expect(payload.licenseLine).toContain("MIT");
   });
 });

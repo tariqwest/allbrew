@@ -444,13 +444,12 @@ describe("collectCaskAppReleasePayload — HarnessKit (Tauri 2, arch-specific DM
     expect(payload.url).toContain("#{version}");
   });
 
-  it("detects app name from DMG filename", async () => {
+  it("detects app name from a versioned architecture-specific DMG filename", async () => {
     const payload = await collectCaskAppReleasePayload(
       harnessKitRepoInfo,
       harnessKitRelease,
     );
-    expect(payload.appName).toContain("HarnessKit");
-    expect(payload.appName).toContain(".app");
+    expect(payload.appName).toBe("HarnessKit.app");
   });
 
   it("uses repo description", async () => {
@@ -724,6 +723,163 @@ describe("collectCaskAppReleasePayload — Eigent (AI Desktop Agent)", () => {
     const payload = await collectCaskAppReleasePayload(
       eigentRepoInfo,
       eigentRelease,
+    );
+    expect(payload.sha256).toBeTruthy();
+  });
+});
+
+describe("collectCaskAppReleasePayload — Hermes One (Electron, arm64+x64 DMG, name override)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const hermesOneRepoInfo = {
+    name: "hermes-desktop",
+    fullName: "fathah/hermes-desktop",
+    description:
+      "Community maintained native desktop app for Hermes Agent — a self-improving AI assistant",
+    homepage: "https://hermesone.org",
+    htmlUrl: "https://github.com/fathah/hermes-desktop",
+    license: "MIT",
+  };
+
+  const hermesOneRelease = {
+    tagName: "v0.7.3",
+    assets: [
+      {
+        name: "hermes-desktop-0.7.3-arm64-mac.zip",
+        url: "https://github.com/fathah/hermes-desktop/releases/download/v0.7.3/hermes-desktop-0.7.3-arm64-mac.zip",
+      },
+      {
+        name: "hermes-desktop-0.7.3-arm64.dmg",
+        url: "https://github.com/fathah/hermes-desktop/releases/download/v0.7.3/hermes-desktop-0.7.3-arm64.dmg",
+      },
+      {
+        name: "hermes-desktop-0.7.3-portable.exe",
+        url: "https://github.com/fathah/hermes-desktop/releases/download/v0.7.3/hermes-desktop-0.7.3-portable.exe",
+      },
+      {
+        name: "hermes-desktop-0.7.3-setup.exe",
+        url: "https://github.com/fathah/hermes-desktop/releases/download/v0.7.3/hermes-desktop-0.7.3-setup.exe",
+      },
+      {
+        name: "hermes-desktop-0.7.3-x64-mac.zip",
+        url: "https://github.com/fathah/hermes-desktop/releases/download/v0.7.3/hermes-desktop-0.7.3-x64-mac.zip",
+      },
+      {
+        name: "hermes-desktop-0.7.3-x64.dmg",
+        url: "https://github.com/fathah/hermes-desktop/releases/download/v0.7.3/hermes-desktop-0.7.3-x64.dmg",
+      },
+    ],
+  };
+
+  it("returns correct template identifier", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
+    );
+    expect(payload.template).toBe("cask_app_release");
+  });
+
+  it("uses name override to avoid collision with dodo-reach/hermes-desktop", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
+    );
+    expect(payload.name).toBe("hermes-one");
+  });
+
+  it("defaults to repo-derived cask token without override", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+    );
+    expect(payload.name).toBe("hermes-desktop");
+  });
+
+  it("extracts version from tag", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
+    );
+    expect(payload.version).toBe("0.7.3");
+  });
+
+  it("prefers .dmg over .zip and .exe assets", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
+    );
+    expect(payload.url).toContain(".dmg");
+    expect(payload.url).not.toContain(".zip");
+    expect(payload.url).not.toContain(".exe");
+  });
+
+  it("templates version into URL", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
+    );
+    expect(payload.url).toContain("#{version}");
+  });
+
+  it("detects app name from DMG filename", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
+    );
+    expect(payload.appName).toContain(".app");
+  });
+
+  it("respects appName override", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one", appName: "Hermes Desktop.app" },
+    );
+    expect(payload.appName).toBe("Hermes Desktop.app");
+    expect(payload.displayName).toBe("Hermes Desktop");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
+    );
+    expect(payload.desc).toContain("Hermes Agent");
+  });
+
+  it("uses repo homepage", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
+    );
+    expect(payload.homepage).toBe("https://hermesone.org");
+  });
+
+  it("generates zap block", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
+    );
+    expect(payload.zapBlock).toContain("zap trash:");
+    expect(payload.zapBlock).toContain("Library/Application Support");
+  });
+
+  it("includes SHA256", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      hermesOneRepoInfo,
+      hermesOneRelease,
+      { name: "hermes-one" },
     );
     expect(payload.sha256).toBeTruthy();
   });

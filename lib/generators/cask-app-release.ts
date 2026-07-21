@@ -100,6 +100,7 @@ async function detectAppNameFromAsset(asset: any, zipPath?: string) {
   if (lower.endsWith(".dmg")) {
     const base = asset.name
       .replace(/\.(dmg)$/i, "")
+      .replace(/[-_](?:aarch64|arm64|x64|amd64|universal)$/i, "")
       .replace(/-[\d.]+$/, "")
       .replace(/_[\d.]+$/, "");
     return base + ".app";

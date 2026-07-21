@@ -3,7 +3,11 @@ import { Octokit } from 'octokit';
 let octokit = null;
 
 export function initOctokit(token?: string | null) {
-  octokit = new Octokit(token ? { auth: token } : {});
+  const baseUrl = process.env.GITHUB_API_URL;
+  const opts: Record<string, unknown> = {};
+  if (token) opts.auth = token;
+  if (baseUrl) opts.baseUrl = baseUrl;
+  octokit = new Octokit(opts);
 }
 
 function getOctokit() {
