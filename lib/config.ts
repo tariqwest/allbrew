@@ -3,8 +3,17 @@ import { homedir } from 'node:os';
 import { readFile, writeFile, mkdir, chmod, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const CONFIG_DIR = join(homedir(), '.config', 'allbrew');
-const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
+const DEFAULT_CONFIG_DIR = join(homedir(), '.config', 'allbrew');
+const DEFAULT_CONFIG_FILE = join(DEFAULT_CONFIG_DIR, 'config.json');
+
+let _configDir = DEFAULT_CONFIG_DIR;
+let _configFile = DEFAULT_CONFIG_FILE;
+
+/** @internal Test-only: override the config directory and file path. */
+export function _setConfigDirForTesting(dir: string) {
+  _configDir = dir;
+  _configFile = join(dir, 'config.json');
+}
 
 export type RemoteMode = "local" | "github";
 
@@ -22,7 +31,7 @@ export type AllbrewConfig = {
 
 export async function loadConfig(): Promise<AllbrewConfig> {
   try {
-    const data = await readFile(CONFIG_FILE, 'utf-8');
+    const data = await readFile(_configFile, 'utf-8');
     return JSON.parse(data);
   } catch {
     return {};
@@ -30,9 +39,9 @@ export async function loadConfig(): Promise<AllbrewConfig> {
 }
 
 export async function saveConfig(config: AllbrewConfig) {
-  await mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
-  await writeFile(CONFIG_FILE, JSON.stringify(config, null, 2) + '\n', 'utf-8');
-  await chmod(CONFIG_FILE, 0o600);
+  await mkdir(_configDir, { recursive: true, mode: 0o700 });
+  await writeFile(_configFile, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+  await chmod(_configFile, 0o600);
 }
 
 export async function getTapPath() {
@@ -101,9 +110,9 @@ export async function getGithubToken(): Promise<string | null> {
 }
 
 export function getConfigPath() {
-  return CONFIG_FILE;
+  return _configFile;
 }
 
 export function getConfigDir() {
-  return CONFIG_DIR;
+  return _configDir;
 }

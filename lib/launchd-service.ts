@@ -24,9 +24,12 @@ export async function updateScriptPath() {
   return join(prefix, "libexec", "allbrew", "update-managed.sh");
 }
 
-export async function writeUpdateScript(scriptPath: string) {
-  const allbrewBin = await resolveAllbrewPath();
-  const brewPrefix = await getBrewPrefix();
+export async function writeUpdateScript(
+  scriptPath: string,
+  opts?: { allbrewBin?: string; brewPrefix?: string },
+) {
+  const allbrewBin = opts?.allbrewBin ?? await resolveAllbrewPath();
+  const brewPrefix = opts?.brewPrefix ?? await getBrewPrefix();
   const pathEntries = [
     dirname(allbrewBin),
     join(brewPrefix, "bin"),
@@ -79,7 +82,7 @@ async function resolveAllbrewPath(): Promise<string> {
   );
 }
 
-function plistContent(scriptPath: string, intervalSeconds: number) {
+export function plistContent(scriptPath: string, intervalSeconds: number) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

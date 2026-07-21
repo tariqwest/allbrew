@@ -59,14 +59,17 @@ export function detectBrewInstall(readmeText) {
 
   const brewInstallRe = /brew\s+install\s+(?:--cask\s+)?([^\s;|&\n`]+)/gi;
   while ((match = brewInstallRe.exec(readmeText)) !== null) {
-    commands.push({ command: match[0].trim(), package: match[1] });
+    const isCask = /--cask/.test(match[0]);
+    commands.push({ command: match[0].trim(), package: match[1], isCask });
   }
 
   const brewCaskRe =
     /brew\s+(?:cask\s+install|install\s+--cask)\s+([^\s;|&\n`]+)/gi;
   while ((match = brewCaskRe.exec(readmeText)) !== null) {
+    const cmd = match[0].trim();
+    if (commands.some((c) => c.command === cmd)) continue;
     commands.push({
-      command: match[0].trim(),
+      command: cmd,
       package: match[1],
       isCask: true,
     });

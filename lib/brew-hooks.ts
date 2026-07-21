@@ -24,7 +24,6 @@ allbrew_brew() {
   local ret=$?
   if [ $ret -eq 0 ] && [ "$1" = "update" ]; then
     brew livecheck --installed --newer-only --json --quiet 2>/dev/null | allbrew update-formulas
-    command brew update
   fi
   return $ret
 }
@@ -33,17 +32,17 @@ allbrew_brew() {
 # alias brew=allbrew_brew
 `;
 
-export async function installBrewHooks() {
-  const prefix = await getBrewPrefix();
-  const wrapPath = brewWrapPath(prefix);
-  await mkdir(join(prefix, "etc"), { recursive: true });
+export async function installBrewHooks(prefix?: string) {
+  const brewPrefix = prefix ?? await getBrewPrefix();
+  const wrapPath = brewWrapPath(brewPrefix);
+  await mkdir(join(brewPrefix, "etc"), { recursive: true });
   await writeFile(wrapPath, BREW_WRAP_CONTENT, "utf-8");
   return wrapPath;
 }
 
-export async function uninstallBrewHooks() {
-  const prefix = await getBrewPrefix();
-  const wrapPath = brewWrapPath(prefix);
+export async function uninstallBrewHooks(prefix?: string) {
+  const brewPrefix = prefix ?? await getBrewPrefix();
+  const wrapPath = brewWrapPath(brewPrefix);
   try {
     await unlink(wrapPath);
   } catch {
