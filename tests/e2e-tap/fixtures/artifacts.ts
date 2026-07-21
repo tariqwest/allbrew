@@ -70,11 +70,6 @@ export async function buildSourceTarball(
   const innerDir = join(srcDir, topDir);
   await mkdir(innerDir, { recursive: true });
 
-  await writeFile(
-    join(innerDir, "bin", name),
-    `#!/bin/sh\necho "${name} ${version}"\n`,
-    { mode: 0o755 },
-  );
   await mkdir(join(innerDir, "bin"), { recursive: true });
   await writeFile(
     join(innerDir, "bin", name),
