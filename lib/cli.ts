@@ -1263,8 +1263,16 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       [result.filePath],
       `chore(allbrew): add ${result.name}`,
     );
-  } catch {
+  } catch (err: any) {
     // Tap may not be a git repo or lack a remote; install below still works.
+    // But don't silently swallow push failures — warn the user.
+    const chalk = (await import("chalk")).default;
+    console.warn(
+      chalk.yellow(
+        `Warning: tap commit/push failed: ${err?.message || err}. ` +
+          `The formula was written but may not be pushed to the remote tap.`,
+      ),
+    );
   }
 
   await brewAutoInstall(result, mergedOpts);

@@ -122,12 +122,19 @@ export async function updateFormulas(
     for (const [tapPath, files] of tapCommits) {
       if (files.length === 0) continue;
       const names = result.updated.join(", ");
-      await commitAndPushTap(
-        tapPath,
-        files,
-        `chore(allbrew): update ${names}`,
-        { push: autoPush },
-      );
+      try {
+        await commitAndPushTap(
+          tapPath,
+          files,
+          `chore(allbrew): update ${names}`,
+          { push: autoPush },
+        );
+      } catch (err: any) {
+        result.errors.push({
+          name: names,
+          error: `tap push failed: ${err?.message || err}`,
+        });
+      }
     }
   }
 
