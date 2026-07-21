@@ -49,6 +49,7 @@ if ! vm_running; then
 fi
 
 init_run_dir
+export LUME_RUN_TS
 TEST_LOG="$(run_dir)/test-output.log"
 
 REPO_MOUNT="$(repo_mount_path)"
@@ -67,12 +68,15 @@ run_in_vm() {
 }
 
 # Tee header
+tiers="unit"
+if $RUN_INTEGRATION; then tiers+=" +integration"; fi
+if $RUN_E2E; then tiers+=" +e2e"; fi
 {
   echo "=========================================="
   echo "  allbrew E2E Test Run"
   echo "  Timestamp: $LUME_RUN_TS"
   echo "  VM: $LUME_VM_NAME"
-  echo "  Tiers: unit${RUN_INTEGRATION:+ +integration}${RUN_E2E:+ +e2e}"
+  echo "  Tiers: $tiers"
   echo "=========================================="
 } | tee "$TEST_LOG"
 
