@@ -18,6 +18,7 @@ import {
   registerService,
   unregisterService,
 } from "../helpers/test-cleanup-registry.ts";
+import { assertUninstallResiduals } from "../helpers/uninstall-residuals.ts";
 
 // ─── A1: e2e-tap service stanza + direct-launch tests ───────────────────
 // Uses the `fake-service` fixture app (binary-release with a service binary
@@ -206,11 +207,19 @@ describe.skipIf(!E2E_TAP)("service: binary-release with --service", () => {
   });
 
   describe("cleanup", () => {
-    it("should uninstall cleanly", () => {
+    it("should uninstall cleanly", async () => {
       if (!canInstallApp(app)) return;
 
       const uninstall = uninstallFromTap(ctx, app);
       expect(uninstall.code, `brew uninstall failed:\n${uninstall.stderr}`).toBe(0);
+
+      // A2: assert uninstall residuals (manifest persists per product decision)
+      const residuals = await assertUninstallResiduals({
+        name: app.name,
+        kind: "formula",
+        env: ctx.env,
+      });
+      expect(residuals.passed, `residual checks failed:\n${residuals.failures.join("\n")}`).toBe(true);
     });
   });
 });

@@ -17,6 +17,7 @@ import {
   cleanupCurrentProcessRegistry,
   purgeOrphanedRegistries,
 } from "../helpers/test-cleanup-registry.ts";
+import { assertUninstallResiduals } from "../helpers/uninstall-residuals.ts";
 
 /**
  * Tier 3 — E2E: generate formula → brew install → verify binary runs.
@@ -255,6 +256,19 @@ describe.skipIf(!E2E)("E2E catalog tests", () => {
           uninstall.code,
           `brew uninstall failed:\n${uninstall.stderr}`,
         ).toBe(0);
+
+        // A2: assert uninstall residuals (manifest persists per product decision)
+        // e2e catalog tests generate via allbrew, so manifests should exist.
+        // skipManifestCheck is false — we assert the manifest persists.
+        const residuals = await assertUninstallResiduals({
+          name: entry.name,
+          kind: cask ? "cask" : "formula",
+          appName: cask ? entry.name : undefined,
+        });
+        expect(
+          residuals.passed,
+          `residual checks failed:\n${residuals.failures.join("\n")}`,
+        ).toBe(true);
       },
       TIMEOUT_MS,
     );

@@ -20,6 +20,7 @@ import {
 } from "./helpers/setup.ts";
 import { formulaPath, remoteHasFile, getLatestCommitMessage, getWorkHeadSha, getRemoteHeadSha } from "./helpers/tap.ts";
 import { existsSync } from "node:fs";
+import { assertUninstallResiduals } from "../helpers/uninstall-residuals.ts";
 
 describe.skipIf(!E2E_TAP)("github-binary: binary-release", () => {
   let ctx: TestContext;
@@ -63,6 +64,14 @@ describe.skipIf(!E2E_TAP)("github-binary: binary-release", () => {
 
       const uninstall = uninstallFromTap(ctx, app);
       expect(uninstall.code, `brew uninstall failed:\n${uninstall.stderr}`).toBe(0);
+
+      // A2: assert uninstall residuals (manifest persists per product decision)
+      const residuals = await assertUninstallResiduals({
+        name: app.name,
+        kind: "formula",
+        env: ctx.env,
+      });
+      expect(residuals.passed, `residual checks failed:\n${residuals.failures.join("\n")}`).toBe(true);
     });
   });
 
@@ -119,6 +128,14 @@ describe.skipIf(!E2E_TAP)("github-binary: binary-release", () => {
 
       const uninstall = uninstallFromTap(ctx, app);
       expect(uninstall.code).toBe(0);
+
+      // A2: assert uninstall residuals after upgrade cycle
+      const residuals = await assertUninstallResiduals({
+        name: app.name,
+        kind: "formula",
+        env: ctx.env,
+      });
+      expect(residuals.passed, `residual checks failed:\n${residuals.failures.join("\n")}`).toBe(true);
 
       resetAllFixtures(ctx);
     });
