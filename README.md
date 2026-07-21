@@ -36,6 +36,30 @@ brew install allbrew
 bun install -g allbrew
 ```
 
+### Node (global)
+
+```bash
+npm install -g allbrew
+```
+
+The `allbrew` bin is a small JS shim that registers [`tsx`](https://github.com/privatenumber/tsx) as the ESM loader and then imports the TypeScript entry directly — no build step. `tsx` ships as an `optionalDependency` so it auto-installs with npm. If you installed with `--no-optional`, install tsx yourself (`npm install -g tsx`) or reinstall without that flag.
+
+Requires Node 18+ (global `fetch`, `AbortSignal.timeout`, `Readable.fromWeb`).
+
+### Deno (global)
+
+```bash
+deno install -g npm:allbrew
+```
+
+Deno 2.x runs the TypeScript entry natively via its npm-compat layer. The CLI makes network calls, spawns subprocesses (`git`, `brew`, `mas`), and writes files, so grant permissions:
+
+```bash
+deno install -g --allow-all npm:allbrew
+```
+
+Requires Deno 2.0+ (global `process` and `Buffer` via node-compat).
+
 ### From source
 
 ```bash
@@ -43,6 +67,15 @@ git clone https://github.com/tariqwest/allbrew.git
 cd allbrew
 bun install
 bun link
+```
+
+Or, without Bun:
+
+```bash
+git clone https://github.com/tariqwest/allbrew.git
+cd allbrew
+npm install
+npm link            # uses the JS shim + tsx
 ```
 
 ## Setup
