@@ -85,6 +85,14 @@ lume_ssh_cmd --timeout 60 "
   '
 "
 
+# 6a. Ensure the configured repo mount path exists.
+# Lume mounts the shared directory as /Volumes/My Shared Files; create a
+# symlink at the configured path so the rest of the harness can use it.
+if [[ "$LUME_VM_REPO_MOUNT" != "/Volumes/My Shared Files" ]]; then
+  log "Creating shared directory symlink at $LUME_VM_REPO_MOUNT"
+  lume_ssh_cmd --timeout 30 "sudo ln -sf '/Volumes/My Shared Files' '$LUME_VM_REPO_MOUNT'"
+fi
+
 # 7. Install Homebrew if missing
 log "Ensuring Homebrew is installed"
 if lume_ssh_cmd 'command -v brew >/dev/null 2>&1'; then

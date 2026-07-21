@@ -29,7 +29,7 @@ LUME_REMOTE_IPSW_DIR="${LUME_REMOTE_IPSW_DIR:-/Users/app-user/Downloads}"
 # Paths excluded when syncing the repo to the remote Lume host.
 LUME_SYNC_EXCLUDES="${LUME_SYNC_EXCLUDES:-.git node_modules .lume .env .Trashes .fseventsd .DS_Store}"
 
-LUME_VM_REPO_MOUNT="/Volumes/My Shared Files"
+LUME_VM_REPO_MOUNT="/Volumes/Shared"
 
 # Run-record directory on the host. Each test run gets a timestamped
 # subdirectory containing the readout, test output, reset log, and metadata.
