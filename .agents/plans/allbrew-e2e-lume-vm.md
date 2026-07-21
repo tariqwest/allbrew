@@ -273,8 +273,8 @@ scripts/e2e-vm-run-tests.sh --integration --e2e
 scripts/e2e-vm-run-tests.sh --e2e --reset
 
 # 5. Inspect results
-cat ~/.local/share/allbrew/e2e-runs/latest/readout.txt
-cat ~/.local/share/allbrew/e2e-runs/latest/test-output.log
+cat tests/e2e-runs/latest/readout.txt
+cat tests/e2e-runs/latest/test-output.log
 
 # 6. Inspect failures interactively
 scripts/e2e-vm-ssh.sh
@@ -285,7 +285,7 @@ scripts/e2e-vm-teardown.sh --stop
 
 ### Run records
 
-Each test run produces a timestamped record under `~/.local/share/allbrew/e2e-runs/<timestamp>/`:
+Each test run produces a timestamped record under `tests/e2e-runs/<timestamp>/`:
 
 | File | Contents |
 |------|----------|
@@ -371,7 +371,7 @@ Nuclear mode additionally:
 | VM disk/config | `~/.lume/` | **No** |
 | IPSW image | `~/Downloads/` | **No** |
 | Host-specific overrides | `.env` | **No** (already gitignored) |
-| Run records | `~/.local/share/allbrew/e2e-runs/` | **No** |
+| Run records | `tests/e2e-runs/` | **No** |
 
 ---
 

@@ -27,11 +27,11 @@ LUME_REMOTE_IPSW_DIR="${LUME_REMOTE_IPSW_DIR:-$HOME/Downloads}"
 # Paths excluded when syncing the repo to the remote Lume host.
 LUME_SYNC_EXCLUDES="${LUME_SYNC_EXCLUDES:-.git node_modules .lume .env}"
 
-LUME_VM_REPO_MOUNT="/Volumes/My Shared Files"
+LUME_VM_REPO_MOUNT="/Volumes/Shared"
 
 # Run-record directory on the host. Each test run gets a timestamped
 # subdirectory containing the readout, test output, reset log, and metadata.
-LUME_RUNS_DIR="${LUME_RUNS_DIR:-$HOME/.local/share/allbrew/e2e-runs}"
+LUME_RUNS_DIR="${LUME_RUNS_DIR:-$LUME_SHARED_DIR/tests/e2e-runs}"
 
 # Generate a timestamp for this run (idempotent within a single shell session)
 LUME_RUN_TS="${LUME_RUN_TS:-$(date -u +%Y-%m-%dT%H-%M-%SZ)}"

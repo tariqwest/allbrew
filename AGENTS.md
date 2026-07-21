@@ -106,7 +106,7 @@ Then use the same commands above. Before each run the harness rsyncs the local r
 
 ### Run records
 
-Each test run produces a timestamped record under `~/.local/share/allbrew/e2e-runs/<timestamp>/`:
+Each test run produces a timestamped record under `tests/e2e-runs/<timestamp>/`:
 
 | File | Contents |
 |------|----------|
