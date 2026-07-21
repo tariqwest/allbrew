@@ -3,6 +3,26 @@
 ## Goal
 Mirror the Lume VM reset/rollback concept for local runs so that running E2E tests on the user's real macOS filesystem and Homebrew instance does not pollute `~/.config/allbrew/`, custom taps, or installed packages. Also mirror the VM harness's run-record capture (readout.txt, test-output.log, metadata.json) so local runs leave the same inspectable post-test state before rollback.
 
+## E2E execution mode (VM-first)
+
+The E2E wrappers (`scripts/test-e2e.sh` and `scripts/test-e2e-tap.sh`) default to running inside a Lume macOS VM, falling back to the local filesystem only when no VM is available. Detection priority (`scripts/test-vm-detect.sh`):
+
+1. **Remote Lume VM** — if `LUME_REMOTE_HOST` (default `app-user@homeserver.local`) is reachable via SSH and has `lume` installed. Sets `LUME_REMOTE_ENABLED=true`.
+2. **Local Lume VM** — if the `lume` CLI is installed locally. Sets `LUME_REMOTE_ENABLED=false`.
+3. **Local filesystem** — fallback when neither is available.
+
+In VM mode, the wrapper delegates to `scripts/e2e-vm-run-tests.sh`, which auto-starts (or creates) the VM if it isn't running, runs the test tier inside the VM, captures a post-test readout, and optionally resets the VM (`--reset` / `--nuclear`). File filtering is not supported in VM mode — the entire tier runs.
+
+In local filesystem mode, the wrapper runs vitest directly with snapshot/restore + readout capture. Extra args are passed to vitest as file filters.
+
+| Flag | Applies to | Effect |
+|------|-----------|--------|
+| `--local` | both | Force local filesystem mode even when a VM is available |
+| `--reset` | VM mode | Reset VM to virgin state after tests |
+| `--nuclear` | VM mode | Nuclear reset (also uninstall Homebrew/Bun/mas) |
+| `--no-readout` | VM mode | Skip post-test readout capture |
+| `--no-cleanup` | local mode (e2e-tap) | Skip `~/.config/allbrew` snapshot/restore |
+
 ## Run record contents (mirrors `tests/e2e-runs/<timestamp>/` from the Lume harness)
 
 | File | Contents |

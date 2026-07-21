@@ -60,10 +60,31 @@ Always run `bun run check` and `bun run test` before committing. Integration and
 - **Integration tests** (`tests/integration/`): 95 tests hitting live registries (PyPI, npm, crates.io, GitHub tarballs, DMG downloads). Run with `bun run test:int`.
 - **E2E tests** (`tests/e2e/`): 21 catalog-driven tests that generate formulas/casks and attempt real `brew install`. Gated behind `E2E=1` env var. Run with `bun run test:e2e` or `scripts/test-e2e.sh`.
 - **E2E tap tests** (`tests/e2e-tap/`): 39 tests that exercise the full off-machine cycle (generate → commit → push to remote tap → `brew tap`/`brew update`/`brew install <name>` → verify) plus the livecheck-driven update cycle. Uses a synthetic fixture server emulating npm/PyPI/crates.io/Go proxy/RubyGems/NuGet/GitHub APIs with fake artifacts. Gated behind `E2E_TAP=1` env var. Run with `bun run test:e2e-tap` or `scripts/test-e2e-tap.sh`.
+- **Template parity tests** (`scripts/test-templates.ts`): 13 fixture payloads with byte-for-byte Ruby output comparison. Run with `bun run test:templates`.
+
+### E2E execution mode (VM-first)
+
+The E2E wrappers (`scripts/test-e2e.sh` and `scripts/test-e2e-tap.sh`) default to running inside a Lume macOS VM, falling back to the local filesystem only when no VM is available. Detection priority (`scripts/test-vm-detect.sh`):
+
+1. **Remote Lume VM** — if `LUME_REMOTE_HOST` (default `app-user@homeserver.local`) is reachable via SSH and has `lume` installed. Sets `LUME_REMOTE_ENABLED=true`.
+2. **Local Lume VM** — if the `lume` CLI is installed locally. Sets `LUME_REMOTE_ENABLED=false`.
+3. **Local filesystem** — fallback when neither is available.
+
+In VM mode, the wrapper delegates to `scripts/e2e-vm-run-tests.sh`, which auto-starts (or creates) the VM via `scripts/e2e-vm-setup.sh` if it isn't running, runs the test tier inside the VM, captures a post-test readout, and optionally resets the VM (`--reset` / `--nuclear`). File filtering is not supported in VM mode — the entire tier runs.
+
+In local filesystem mode, the wrapper runs vitest directly with snapshot/restore + readout capture (see below). Extra args are passed to vitest as file filters.
+
+| Flag | Applies to | Effect |
+|------|-----------|--------|
+| `--local` | both | Force local filesystem mode even when a VM is available |
+| `--reset` | VM mode | Reset VM to virgin state after tests |
+| `--nuclear` | VM mode | Nuclear reset (also uninstall Homebrew/Bun/mas) |
+| `--no-readout` | VM mode | Skip post-test readout capture |
+| `--no-cleanup` | local mode (e2e-tap) | Skip `~/.config/allbrew` snapshot/restore |
 
 ### Local E2E cleanup & rollback
 
-Both E2E tiers snapshot `~/.config/allbrew/` before tests and restore it after, so local runs do not pollute the user's real allbrew config or manifests. Snapshots are preserved under `tests/e2e-runs/local/<timestamp>/` (with a `latest` symlink), mirroring the Lume VM run records under `tests/e2e-runs/<timestamp>/`.
+When E2E tests run on the local filesystem (via `--local` or automatic fallback), both tiers snapshot `~/.config/allbrew/` before tests and restore it after, so local runs do not pollute the user's real allbrew config or manifests. Snapshots are preserved under `tests/e2e-runs/local/<timestamp>/` (with a `latest` symlink), mirroring the Lume VM run records under `tests/e2e-runs/<timestamp>/`.
 
 Each local run record contains:
 
@@ -81,8 +102,7 @@ Each local run record contains:
   - `--dry-run` (default): show test residue and available snapshots without changing anything.
   - `--restore`: restore `~/.config/allbrew` from the latest snapshot.
   - `--force`: restore + untap disposable `test/e2e-tap-*` taps and uninstall their packages.
-- **Debug escape hatch**: `scripts/test-e2e-tap.sh --no-cleanup` disables the globalSetup snapshot/restore for debugging.
-- **Template parity tests** (`scripts/test-templates.ts`): 13 fixture payloads with byte-for-byte Ruby output comparison. Run with `bun run test:templates`.
+- **Debug escape hatch**: `scripts/test-e2e-tap.sh --local --no-cleanup` disables the globalSetup snapshot/restore for debugging on the local filesystem.
 
 To run a single test file:
 
