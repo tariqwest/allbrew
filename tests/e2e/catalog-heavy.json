@@ -1,0 +1,62 @@
+[
+  {
+    "name": "napari",
+    "url": "https://pypi.org/project/napari/",
+    "generator": "pip-package",
+    "allbrewArgs": ["--package", "napari"],
+    "expectedBin": "napari",
+    "verifyCommand": ["napari", "--version"],
+    "skip": false,
+    "notes": "B2 heavy: multi-resource pip package with native Qt bindings. Slow install (many resources, large wheels). Catches packaging failures that small fixtures hide."
+  },
+  {
+    "name": "streamlit",
+    "url": "https://pypi.org/project/streamlit/",
+    "generator": "pip-package",
+    "allbrewArgs": ["--package", "streamlit"],
+    "expectedBin": "streamlit",
+    "verifyCommand": ["streamlit", "--version"],
+    "skip": false,
+    "notes": "B2 heavy: pip package with many transitive deps. Tests resource block generation and dep resolution at scale."
+  },
+  {
+    "name": "mlflow",
+    "url": "https://pypi.org/project/mlflow/",
+    "generator": "pip-package",
+    "allbrewArgs": ["--package", "mlflow"],
+    "expectedBin": "mlflow",
+    "verifyCommand": ["mlflow", "--version"],
+    "skip": false,
+    "notes": "B2 heavy: pip package with deep dep tree (maxDepth=3 boundary). Tests transitive dep resolution limits."
+  },
+  {
+    "name": "json-server",
+    "url": "https://www.npmjs.com/package/json-server",
+    "generator": "npm-package",
+    "allbrewArgs": ["--package", "json-server"],
+    "expectedBin": "json-server",
+    "verifyCommand": ["json-server", "--version"],
+    "skip": false,
+    "notes": "B2 heavy: npm package with postinstall script. Tests npm install path with native deps."
+  },
+  {
+    "name": "wakapi",
+    "url": "https://github.com/muety/wakapi",
+    "generator": "binary-release",
+    "allbrewArgs": [],
+    "expectedBin": "wakapi",
+    "verifyCommand": ["wakapi", "--version"],
+    "skip": false,
+    "notes": "B2 heavy: Go binary release. Tests real GitHub release asset naming and archive structure."
+  },
+  {
+    "name": "ripgrep",
+    "url": "https://github.com/BurntSushi/ripgrep",
+    "generator": "binary-release",
+    "allbrewArgs": [],
+    "expectedBin": "rg",
+    "verifyCommand": ["rg", "--version"],
+    "skip": false,
+    "notes": "B2 heavy: cargo/go binary release with bin name != package name (rg). Tests bin-name extraction from GitHub release assets."
+  }
+]
