@@ -63,10 +63,10 @@ if ! vm_running; then
 fi
 
 init_run_dir
-RESET_LOG="$RUN_DIR/reset.log"
+RESET_LOG="$(run_dir)/reset.log"
 
 log "Reset log: $RESET_LOG"
-log "Run record preserved at: $RUN_DIR"
+log "Run record preserved at: $(run_dir)"
 
 # Optionally run readout first
 if $DO_READOUT; then
@@ -240,7 +240,7 @@ vm_run "Post-reset verification" '
 
 log "Reset complete."
 log "  Reset log:   $RESET_LOG"
-log "  Run record:  $RUN_DIR"
+log "  Run record:  $(run_dir)"
 log ""
 log "The VM is ready for the next test run."
 if $NUCLEAR; then

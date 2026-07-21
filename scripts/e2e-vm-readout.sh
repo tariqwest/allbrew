@@ -19,16 +19,16 @@ if ! vm_running; then
 fi
 
 init_run_dir
-READOUT_FILE="$RUN_DIR/readout.txt"
-METADATA_FILE="$RUN_DIR/metadata.json"
+READOUT_FILE="$(run_dir)/readout.txt"
+METADATA_FILE="$(run_dir)/metadata.json"
 
-log "Writing readout to $RUN_DIR"
+log "Writing readout to $(run_dir)"
 
 # Header with run metadata
 {
   echo "=========================================="
   echo "  allbrew E2E Run Readout"
-  echo "  Timestamp:  $RUN_TS"
+  echo "  Timestamp:  $LUME_RUN_TS"
   echo "  VM:         $LUME_VM_NAME"
   echo "  Host repo:  $LUME_SHARED_DIR"
   echo "  VM mount:   $LUME_VM_REPO_MOUNT"
@@ -125,7 +125,7 @@ host_section "Host allbrew Repo Git State" 'echo "Branch: $(git branch --show-cu
 
 # --- Test results summary ---
 if [[ -n "$TEST_LOG" && -f "$TEST_LOG" ]]; then
-  cp "$TEST_LOG" "$RUN_DIR/test-output.log"
+  cp "$TEST_LOG" "$(run_dir)/test-output.log"
   echo "" >> "$READOUT_FILE"
   echo "------------------------------------------" >> "$READOUT_FILE"
   echo "  Test Results Summary (from $TEST_LOG)" >> "$READOUT_FILE"
@@ -142,7 +142,7 @@ if [[ -n "$TEST_LOG" && -f "$TEST_LOG" ]]; then
     echo "  (could not parse test results — see test-output.log)" >> "$READOUT_FILE"
   fi
   echo "" >> "$READOUT_FILE"
-  echo "  Full test output: $RUN_DIR/test-output.log" >> "$READOUT_FILE"
+  echo "  Full test output: $(run_dir)/test-output.log" >> "$READOUT_FILE"
 else
   echo "" >> "$READOUT_FILE"
   echo "------------------------------------------" >> "$READOUT_FILE"
@@ -160,12 +160,12 @@ fi
 
 cat > "$METADATA_FILE" <<EOF
 {
-  "timestamp": "$RUN_TS",
+  "timestamp": "$LUME_RUN_TS",
   "vm": "$LUME_VM_NAME",
   $remote_host_field
   "hostRepo": "$LUME_SHARED_DIR",
   "vmMount": "$LUME_VM_REPO_MOUNT",
-  "runDir": "$RUN_DIR",
+  "runDir": "$(run_dir)",
   "testLog": "${TEST_LOG:-null}",
   "hostGitSha": "$(cd "$LUME_SHARED_DIR" && git rev-parse HEAD 2>/dev/null || echo unknown)",
   "hostGitBranch": "$(cd "$LUME_SHARED_DIR" && git branch --show-current 2>/dev/null || echo unknown)"
@@ -174,4 +174,4 @@ EOF
 
 log "Readout complete: $READOUT_FILE"
 log "Metadata: $METADATA_FILE"
-log "Run directory: $RUN_DIR"
+log "Run directory: $(run_dir)"

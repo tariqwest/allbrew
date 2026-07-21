@@ -49,7 +49,7 @@ if ! vm_running; then
 fi
 
 init_run_dir
-TEST_LOG="$RUN_DIR/test-output.log"
+TEST_LOG="$(run_dir)/test-output.log"
 
 REPO_MOUNT="$(repo_mount_path)"
 log "Running allbrew tests inside VM at $REPO_MOUNT"
@@ -70,7 +70,7 @@ run_in_vm() {
 {
   echo "=========================================="
   echo "  allbrew E2E Test Run"
-  echo "  Timestamp: $RUN_TS"
+  echo "  Timestamp: $LUME_RUN_TS"
   echo "  VM: $LUME_VM_NAME"
   echo "  Tiers: unit${RUN_INTEGRATION:+ +integration}${RUN_E2E:+ +e2e}"
   echo "=========================================="
@@ -108,7 +108,7 @@ if $RESET_AFTER; then
   fi
 fi
 
-log "Run record: $RUN_DIR"
+log "Run record: $(run_dir)"
 if $TESTS_FAILED; then
   log "Some tests failed — review $TEST_LOG"
   exit 1
