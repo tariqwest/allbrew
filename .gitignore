@@ -2,6 +2,9 @@ node_modules/
 .pnpm-store/
 .cursor/
 .DS_Store
+.fseventsd/
+.Trashes/
 *.log
 .env
 tests/e2e-runs/
+graphify-out/

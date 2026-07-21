@@ -7,35 +7,33 @@
 
 ## Data Provenance & Normalization Notes
 - Blank cell = not applicable or not found. `in_*` columns include the identifier or URL where known.
-
-## Table Column Reference
-  - `app` — canonical short name used as the Homebrew formula/cask token (kebab-case)
-  - `lang/runtime` — primary language or runtime (Python, Node, Rust, Go, Swift, Ruby, .NET, TypeScript, etc.)
-  - `framework` — UI or app framework if notable (Textual, Ink, Tauri 2, Electron, Qt, GTK, etc.)
-  - `in_dev_website` — product homepage (bare domain/path, no `https://`)
-  - `in_github` — `github.com/<owner>/<repo>`; API-verified; blank if closed-source or not on GitHub
-  - `in_homebrew` — `<token> (formula)` or `<token> (cask)` if present in Homebrew core or a tap; blank if absent; may include `deprecated` qualifier
-  - `in_setapp` — `setapp.com/apps/<slug>` if available on Setapp; blank otherwise
-  - `in_mas` — `<Canonical Name> (id<N>)` if available on the Mac App Store; blank otherwise
-  - `in_npm` — `npmjs.com/package/<name>` (scoped packages use `@scope/name`)
-  - `in_pip` — `pypi.org/project/<name>`
-  - `in_cargo` — `crates.io/crates/<name>`, or `github.com/<owner>/<repo>` for crates not published to crates.io
-  - `in_go_mod` — Go module path (e.g. `github.com/<owner>/<repo>` or a vanity domain like `zgo.at/...`)
-  - `in_ruby_gem` — `rubygems.org/gems/<name>`
-  - `in_swiftpm` — `yes` if the package has a `Package.swift` and is usable as a Swift Package Manager dependency; blank otherwise
-  - `in_mint` — full `mint install <owner>/<repo>` invocation
-  - `in_dotnet` — `nuget.org/packages/<name>`
-  - `is_tui_app` — `yes` if the app runs in the terminal (TUI / CLI interactive)
-  - `is_gui_app` — `yes` if the app is a native desktop GUI; optionally `yes (N)` where N = approximate star count as a rough popularity signal
-  - `is_webui_app` — `yes` if the app exposes a web UI (browser-based dashboard or interface)
-  - `is_cask_dist` — filename of the primary cask artifact (`.dmg`, `.zip`, or `.pkg`); blank for formula-only packages
-  - `has_source_dist` — `yes` if the repo can be built from source (has a build system); blank otherwise
-  - `has_prebuilt_bin_dist` — ∈ { blank, `yes`, `yes (N)` (N = binary asset count on latest release), `tags only` (tagged releases exist but no prebuilt binaries detected), `none` (no GitHub releases at all) }
-  - `has_script_install` — install-script URL (e.g. `https://starship.rs/install.sh`) if a curl-pipe-bash installer exists; blank otherwise
-  - `notes` — free-text: bin name if it differs from package name, service invocation, generator chosen, edge cases, version, star count, license, in-HB status
-
 | app | lang/runtime | framework | in_dev_website | in_github | in_homebrew | in_setapp | in_mas | in_npm | in_pip | in_cargo | in_go_mod | in_ruby_gem | in_swiftpm | in_mint | in_dotnet | is_tui_app | is_gui_app | is_webui_app | is_cask_dist | has_source_dist | has_prebuilt_bin_dist | has_script_install | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ## Table Column Reference | | | | | | | | | | | | | | | | | | | | | | | |
+| - `app` — canonical short name used as the Homebrew formula/cask token (kebab-case) | | | | | | | | | | | | | | | | | | | | | | | |
+| - `lang/runtime` — primary language or runtime (Python, Node, Rust, Go, Swift, Ruby, .NET, TypeScript, etc.) | | | | | | | | | | | | | | | | | | | | | | | |
+| - `framework` — UI or app framework if notable (Textual, Ink, Tauri 2, Electron, Qt, GTK, etc.) | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_dev_website` — product homepage (bare domain/path, no `https://`) | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_github` — `github.com/<owner>/<repo>`; API-verified; blank if closed-source or not on GitHub | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_homebrew` — `<token> (formula)` or `<token> (cask)` if present in Homebrew core or a tap; blank if absent; may include `deprecated` qualifier | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_setapp` — `setapp.com/apps/<slug>` if available on Setapp; blank otherwise | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_mas` — `<Canonical Name> (id<N>)` if available on the Mac App Store; blank otherwise | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_npm` — `npmjs.com/package/<name>` (scoped packages use `@scope/name`) | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_pip` — `pypi.org/project/<name>` | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_cargo` — `crates.io/crates/<name>`, or `github.com/<owner>/<repo>` for crates not published to crates.io | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_go_mod` — Go module path (e.g. `github.com/<owner>/<repo>` or a vanity domain like `zgo.at/...`) | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_ruby_gem` — `rubygems.org/gems/<name>` | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_swiftpm` — `yes` if the package has a `Package.swift` and is usable as a Swift Package Manager dependency; blank otherwise | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_mint` — full `mint install <owner>/<repo>` invocation | | | | | | | | | | | | | | | | | | | | | | | |
+| - `in_dotnet` — `nuget.org/packages/<name>` | | | | | | | | | | | | | | | | | | | | | | | |
+| - `is_tui_app` — `yes` if the app runs in the terminal (TUI / CLI interactive) | | | | | | | | | | | | | | | | | | | | | | | |
+| - `is_gui_app` — `yes` if the app is a native desktop GUI; optionally `yes (N)` where N = approximate star count as a rough popularity signal | | | | | | | | | | | | | | | | | | | | | | | |
+| - `is_webui_app` — `yes` if the app exposes a web UI (browser-based dashboard or interface) | | | | | | | | | | | | | | | | | | | | | | | |
+| - `is_cask_dist` — filename of the primary cask artifact (`.dmg`, `.zip`, or `.pkg`); blank for formula-only packages | | | | | | | | | | | | | | | | | | | | | | | |
+| - `has_source_dist` — `yes` if the repo can be built from source (has a build system); blank otherwise | | | | | | | | | | | | | | | | | | | | | | | |
+| - `has_prebuilt_bin_dist` — ∈ { blank, `yes`, `yes (N)` (N = binary asset count on latest release), `tags only` (tagged releases exist but no prebuilt binaries detected), `none` (no GitHub releases at all) } | | | | | | | | | | | | | | | | | | | | | | | |
+| - `has_script_install` — install-script URL (e.g. `https://starship.rs/install.sh`) if a curl-pipe-bash installer exists; blank otherwise | | | | | | | | | | | | | | | | | | | | | | | |
+| - `notes` — free-text: bin name if it differs from package name, service invocation, generator chosen, edge cases, version, star count, license, in-HB status | | | | | | | | | | | | | | | | | | | | | | | |
 | ## Table | | | | | | | | | | | | | | | | | | | | | | | |
 | browsr | Python | Textual | | github.com/juftin/browsr | | | | | pypi.org/project/browsr | | | | | | | yes | | | | yes | | | |
 | elia | Python | Textual | | github.com/darrenburns/elia | | | | | pypi.org/project/elia-chat | | | | | | | yes | | | | yes | | | cmd `elia`; bin `elia`; pkg is elia-chat |
@@ -280,7 +278,6 @@
 | pnpm | Node | | | github.com/pnpm/pnpm | pnpm (formula) | | | npmjs.com/package/pnpm | | | | | | | | | | | | | | https://get.pnpm.io/install.sh | get. subdomain |
 | Fly.io CLI | Go | | | github.com/superfly/flyctl | flyctl (formula) | | | | | | | | | | | | | | | | | https://fly.io/install.sh | installs to ~/.fly/bin |
 | Railway CLI | Node | | | github.com/railwayapp/cli | | | | npmjs.com/package/@railway/cli | | | | | | | | | | | | | | https://raw.githubusercontent.com/railwayapp/cli/master/install.sh | not in HB |
-| CuaDriver | | | | github.com/trycua/cua | | | | | | | | | | | | | yes | | | | | https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh | drops .app + symlink |
 | Nix | C++ | | | github.com/NixOS/nix | nix (formula) | | | | | | | | | | | | | | | | | https://nixos.org/nix/install | no extension |
 | SDKMAN! | Java | | | github.com/sdkman/sdkman-cli | | | | | | | | | | | | | | | | | | https://get.sdkman.io | no extension; get. subdomain |
 | croc | Go | | | github.com/schollz/croc | croc (formula) | | | | | | | github.com/schollz/croc | | | | | | | | yes | yes | https://getcroc.schollz.com | bare domain redirect |
@@ -310,11 +307,12 @@
 | Cline | TypeScript | | cline.bot | github.com/cline/cline | cline (formula) | | | | npmjs.com/package/cline | | | | | | | | | | | | | | autonomous coding agent CLI; npm i -g cline; Homebrew formula deprecated (2027-05-18); monorepo (apps/cli); 293 releases; v3.0.29; 63.9k stars; Apache-2.0 |
 | command-code | Node | | commandcode.ai | github.com/CommandCodeAI/command-code | | | | npmjs.com/package/command-code | | | | | | | | yes | | | | yes | none | | AI coding agent; cmd `cmd`; bin `cmd` != package name; UNLICENSED; 310 npm versions; 3.5k stars; no GitHub releases |
 | auggie | Node | | | github.com/augmentcode/auggie | | | | npmjs.com/package/@augmentcode/auggie | | | | | | | | yes | | | | yes | | | AI agentic coding CLI; scoped pkg @augmentcode/auggie; bin auggie (augment.mjs); non-SPDX license; homepage augmentcode.com; 251 stars; v0.32.0; not in HB; npm-package generator |
+| cua-driver | Rust | | cua.ai/cua-driver | github.com/trycua/cua | | | | | | | | | | | | | yes | | | yes | yes | https://cua.ai/driver/install.sh | Background computer-use driver; installs CuaDriver.app + cua-driver CLI via install script; monorepo libs/cua-driver; latest stable v0.9.1; pre-release v0.10.0; 20.4k stars; MIT; not in HB; install-script generator |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -335,14 +333,12 @@
 | brew install wakapi && wakapi | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://github.com/TimothyYe/godns --manual     # → go-package / binary-release | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install godns && godns -h | | | | | | | | | | | | | | | | | | | | | | | |
-# script-install (curl | bash)
-allbrew https://starship.rs/install.sh --manual         # → script-install
-brew install starship && starship --version
-
-# script-install (closed-source AI IDE; installer at qoder.com/install)
-allbrew https://qoder.com/install --manual               # → script-install
-brew install qoder && qoder --version
-
+| # script-install (curl | bash) | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://starship.rs/install.sh --manual         # → script-install | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install starship && starship --version | | | | | | | | | | | | | | | | | | | | | | | |
+| # script-install (closed-source AI IDE; installer at qoder.com/install) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://qoder.com/install --manual               # → script-install | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install qoder && qoder --version | | | | | | | | | | | | | | | | | | | | | | | |
 # cask-app (direct .dmg / .zip / .pkg download)
 allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual  # → cask-app
 brew install --cask seaquel && open -a Seaquel
@@ -441,6 +437,10 @@ brew install volta && volta --version
 # Script-install — launcher script (not one-shot)
 allbrew https://get.jetify.com/devbox --manual
 brew install devbox && devbox version
+
+# Script-install — macOS driver that drops CuaDriver.app + symlinks cua-driver CLI
+allbrew https://cua.ai/driver/install.sh --manual --name cua-driver
+brew install cua-driver && cua-driver --version
 ```
 
 # GitHub release cask (AI desktop agent; already in HB as cask; good for testing duplicate detection)

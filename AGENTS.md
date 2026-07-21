@@ -11,6 +11,7 @@
 > - [`tebako-ruby-binary-status.md`](./.agents/plans/tebako-ruby-binary-status.md) — paused Ruby binary experiment
 > - [`allbrew-e2e-lume-vm.md`](./.agents/plans/allbrew-e2e-lume-vm.md) — Lume macOS VM + Cua Driver harness for E2E/real-world testing
 > - [`allbrew-tap-update-e2e.md`](./.agents/plans/allbrew-tap-update-e2e.md) — E2E tap + livecheck update cycle tests with synthetic fixtures
+> - [`allbrew-user-lifecycle-test-plan.md`](./.agents/plans/allbrew-user-lifecycle-test-plan.md) — user-lifecycle test gaps (services, uninstall residuals, hooks, personas, Lume nightly journeys)
 
 ## Project overview
 
