@@ -132,10 +132,10 @@ if [[ -n "$TEST_LOG" && -f "$TEST_LOG" ]]; then
   echo "------------------------------------------" >> "$READOUT_FILE"
   echo "  Test Results Summary (from $TEST_LOG)" >> "$READOUT_FILE"
   echo "------------------------------------------" >> "$READOUT_FILE"
-  # Extract pass/fail counts from vitest output
-  local_pass=$(grep -oE 'Tests\s+[0-9]+ passed' "$TEST_LOG" | tail -1 || true)
-  local_fail=$(grep -oE 'Tests\s+[0-9]+ failed' "$TEST_LOG" | tail -1 || true)
-  local_files=$(grep -oE 'Test Files\s+[0-9]+ passed' "$TEST_LOG" | tail -1 || true)
+  # Extract pass/fail counts from `bun test` output
+  local_pass=$(grep -oE '[0-9]+ pass' "$TEST_LOG" | tail -1 || true)
+  local_fail=$(grep -oE '[0-9]+ fail' "$TEST_LOG" | tail -1 || true)
+  local_files=$(grep -oE 'Ran [0-9]+ tests? across [0-9]+ files?' "$TEST_LOG" | tail -1 || true)
   if [[ -n "$local_pass" || -n "$local_fail" ]]; then
     echo "  $local_files" >> "$READOUT_FILE"
     echo "  $local_pass" >> "$READOUT_FILE"

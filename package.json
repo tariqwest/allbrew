@@ -18,12 +18,12 @@
     "build": "tsc --noEmit",
     "check": "tsc --noEmit",
     "release": "bun run scripts/release.ts",
-    "test": "vitest run --project=unit",
-    "test:watch": "vitest --project=unit",
-    "test:int": "vitest run --project=integration",
-    "test:e2e": "E2E=1 vitest run --project=e2e",
-    "test:e2e-tap": "E2E_TAP=1 vitest run --project=e2e-tap",
-    "test:all": "vitest run",
+    "test": "bun test tests/unit/",
+    "test:watch": "bun test tests/unit/ --watch",
+    "test:int": "bun test tests/integration/ --timeout 30000",
+    "test:e2e": "E2E=1 bun test tests/e2e/ --timeout 300000",
+    "test:e2e-tap": "E2E_TAP=1 bun run scripts/e2e-tap-local-runner.ts",
+    "test:all": "bun test",
     "test:templates": "bun run scripts/test-templates.ts",
     "test:update-formulas": "bun run scripts/test-update-formulas.ts"
   },
@@ -58,7 +58,6 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "typescript": "^5.8.0",
-    "vitest": "^4.1.9"
+    "typescript": "^5.8.0"
   }
 }

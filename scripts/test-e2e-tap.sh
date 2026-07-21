@@ -14,7 +14,7 @@ set -euo pipefail
 #   scripts/test-e2e-tap.sh --nuclear          # VM mode: nuclear reset after tests
 #   scripts/test-e2e-tap.sh --no-readout       # VM mode: skip post-test readout
 #   scripts/test-e2e-tap.sh --no-cleanup       # local mode: skip snapshot/restore
-#   scripts/test-e2e-tap.sh tests/e2e-tap/foo.test.ts  # local mode: vitest file filter
+#   scripts/test-e2e-tap.sh tests/e2e-tap/foo.test.ts  # local mode: bun test file filter
 #   scripts/test-e2e-tap.sh --help
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,7 +27,7 @@ NO_CLEANUP=false
 VM_RESET=false
 VM_NUCLEAR=false
 VM_NO_READOUT=false
-VITEST_ARGS=()
+BUNTEST_ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -38,7 +38,7 @@ while [[ $# -gt 0 ]]; do
     --no-readout)   VM_NO_READOUT=true; shift ;;
     --help|-h)
       cat <<EOF
-Usage: $(basename "$0") [options] [vitest file filters...]
+Usage: $(basename "$0") [options] [bun test file filters...]
 
 Default: auto-detect VM (remote → local Lume → local filesystem).
 
@@ -50,7 +50,7 @@ Options:
   --no-readout   VM mode: skip post-test readout capture
   --help         Show this help
 
-In local mode, extra args are passed to vitest as file filters.
+In local mode, extra args are passed to bun test as file filters.
 In VM mode, the entire e2e-tap tier runs (no file filtering).
 EOF
       exit 0
@@ -60,7 +60,7 @@ EOF
       exit 1
       ;;
     *)
-      VITEST_ARGS+=("$1")
+      BUNTEST_ARGS+=("$1")
       shift
       ;;
   esac
@@ -101,7 +101,7 @@ case "$VM_MODE" in
       echo "[e2e-tap] Manual recovery: scripts/test-local-cleanup.sh --restore"
       echo ""
       E2E_TAP=1 ALLBREW_SKIP_GLOBAL_SETUP=1 \
-        bun run vitest run --project=e2e-tap "${VITEST_ARGS[@]}"
+        bun test tests/e2e-tap/ --timeout 600000 "${BUNTEST_ARGS[@]}"
     else
       echo "[e2e-tap] ~/.config/allbrew will be snapshotted before tests and restored after."
       echo "[e2e-tap] Snapshots saved to tests/e2e-runs/local/<timestamp>/"
@@ -111,13 +111,9 @@ case "$VM_MODE" in
       echo "[e2e-tap] Manual recovery: scripts/test-local-cleanup.sh --restore"
       echo ""
 
-      # Tee test output to a temp log so the globalSetup teardown can copy it
-      # into the run record and parse a Test Results Summary for readout.txt.
-      TEST_LOG="$(mktemp -t allbrew-e2e-tap-log)"
-      trap 'rm -f "$TEST_LOG"' EXIT
-      export ALLBREW_TEST_LOG="$TEST_LOG"
-
-      E2E_TAP=1 bun run vitest run --project=e2e-tap "${VITEST_ARGS[@]}" 2>&1 | tee "$TEST_LOG"
+      # The runner script handles snapshot → bun test → readout → restore.
+      # It writes test output to <runDir>/test-output.log and inherits to console.
+      E2E_TAP=1 bun run scripts/e2e-tap-local-runner.ts "${BUNTEST_ARGS[@]}"
     fi
     ;;
 esac

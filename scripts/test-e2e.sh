@@ -13,7 +13,7 @@ set -euo pipefail
 #   scripts/test-e2e.sh --reset             # VM mode: reset VM after tests
 #   scripts/test-e2e.sh --nuclear           # VM mode: nuclear reset after tests
 #   scripts/test-e2e.sh --no-readout        # VM mode: skip post-test readout
-#   scripts/test-e2e.sh tests/e2e/foo.test.ts  # local mode: vitest file filter
+#   scripts/test-e2e.sh tests/e2e/foo.test.ts  # local mode: bun test file filter
 #   scripts/test-e2e.sh --help
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,7 +25,7 @@ FORCE_LOCAL=false
 VM_RESET=false
 VM_NUCLEAR=false
 VM_NO_READOUT=false
-VITEST_ARGS=()
+BUNTEST_ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -35,7 +35,7 @@ while [[ $# -gt 0 ]]; do
     --no-readout)   VM_NO_READOUT=true; shift ;;
     --help|-h)
       cat <<EOF
-Usage: $(basename "$0") [options] [vitest file filters...]
+Usage: $(basename "$0") [options] [bun test file filters...]
 
 Default: auto-detect VM (remote → local Lume → local filesystem).
 
@@ -46,7 +46,7 @@ Options:
   --no-readout   VM mode: skip post-test readout capture
   --help         Show this help
 
-In local mode, extra args are passed to vitest as file filters.
+In local mode, extra args are passed to bun test as file filters.
 In VM mode, the entire e2e tier runs (no file filtering).
 EOF
       exit 0
@@ -56,7 +56,7 @@ EOF
       exit 1
       ;;
     *)
-      VITEST_ARGS+=("$1")
+      BUNTEST_ARGS+=("$1")
       shift
       ;;
   esac
@@ -105,6 +105,6 @@ case "$VM_MODE" in
     trap 'rm -f "$TEST_LOG"' EXIT
     export ALLBREW_TEST_LOG="$TEST_LOG"
 
-    E2E=1 bun run vitest run --project=e2e "${VITEST_ARGS[@]}" 2>&1 | tee "$TEST_LOG"
+    E2E=1 bun test tests/e2e/ --timeout 300000 "${BUNTEST_ARGS[@]}" 2>&1 | tee "$TEST_LOG"
     ;;
 esac

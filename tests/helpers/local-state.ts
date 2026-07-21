@@ -336,14 +336,14 @@ export async function captureLocalReadout(
       } catch {}
     }
     const logDataRaw = await readFile(testLog, "utf-8").catch(() => "");
-    // Strip ANSI escape codes so regexes can match vitest's colored output.
+    // Strip ANSI escape codes so regexes can match `bun test`'s colored output.
     const logData = logDataRaw.replace(/\x1b\[[0-9;]*m/g, "");
-    const passMatch = logData.match(/Tests\s+(\d+)\s+passed/);
-    const failMatch = logData.match(/Tests\s+(\d+)\s+failed/);
-    const filesMatch = logData.match(/Test Files\s+(\d+)\s+passed(?:\s+(\d+)\s+failed)?/);
+    const passMatch = logData.match(/(\d+)\s+pass/);
+    const failMatch = logData.match(/(\d+)\s+fail/);
+    const filesMatch = logData.match(/Ran\s+(\d+)\s+tests?\s+across\s+(\d+)\s+files?/);
     const summaryParts: string[] = [];
     if (filesMatch) {
-      summaryParts.push(`Test Files: ${filesMatch[1]} passed${filesMatch[2] ? `, ${filesMatch[2]} failed` : ""}`);
+      summaryParts.push(`Test Files: ${filesMatch[2]} (${filesMatch[1]} tests)`);
     }
     if (passMatch) summaryParts.push(`Tests: ${passMatch[1]} passed`);
     if (failMatch) summaryParts.push(`Tests: ${failMatch[1]} failed`);

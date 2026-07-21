@@ -11,7 +11,7 @@ const PACKAGES_DIR = join(CONFIG_DIR, "packages");
 export async function backupConfig(): Promise<string | null> {
   // Lightweight backup of config.json only, used for inter-describe isolation.
   // Full ~/.config/allbrew/ snapshot/restore is handled by the e2e-tap
-  // globalSetup (see tests/e2e-tap/globalSetup.ts).
+  // local runner script (see scripts/e2e-tap-local-runner.ts).
   try {
     const data = await readFile(CONFIG_FILE, "utf-8");
     const backupDir = await mkdtemp(join(tmpdir(), "allbrew-cfg-backup-"));
