@@ -13,15 +13,13 @@ fi
 
 log() { echo "[e2e-vm-clone] $*"; }
 
-log "Stopping source VM '$ALLBREW_E2E_VM_NAME'"
-lume stop "$ALLBREW_E2E_VM_NAME" || true
+log "Stopping source VM '$LUME_VM_NAME'"
+lume_cmd stop "$LUME_VM_NAME" || true
 
-log "Cloning '$ALLBREW_E2E_VM_NAME' to '$DEST_NAME'"
-lume clone "$ALLBREW_E2E_VM_NAME" "$DEST_NAME"
+log "Cloning '$LUME_VM_NAME' to '$DEST_NAME'"
+lume_cmd clone "$LUME_VM_NAME" "$DEST_NAME"
 
-log "Restarting source VM '$ALLBREW_E2E_VM_NAME'"
-nohup lume run --no-display "$ALLBREW_E2E_VM_NAME" --shared-dir "$ALLBREW_E2E_SHARED_DIR" \
-  >/tmp/lume-run-"$ALLBREW_E2E_VM_NAME".log 2>&1 &
-disown
+log "Restarting source VM '$LUME_VM_NAME'"
+start_vm_headless
 
-log "Clone '$DEST_NAME' is ready. Source VM '$ALLBREW_E2E_VM_NAME' is starting."
+log "Clone '$DEST_NAME' is ready. Source VM '$LUME_VM_NAME' is starting."

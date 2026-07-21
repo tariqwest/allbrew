@@ -10,4 +10,11 @@ if [[ $# -eq 0 ]]; then
   exit 1
 fi
 
-exec lume ssh "$ALLBREW_E2E_VM_NAME" "$*"
+if is_remote; then
+  # Tunnel through the remote Lume host. -t allocates a tty so that
+  # interactive shells and programs behave correctly.
+  exec ssh -t "$LUME_REMOTE_HOST" \
+    "lume ssh $(printf '%q' "$LUME_VM_NAME") $(printf '%q ' "$@")"
+fi
+
+exec lume ssh "$LUME_VM_NAME" "$@"

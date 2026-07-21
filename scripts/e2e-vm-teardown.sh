@@ -12,14 +12,14 @@ case "$MODE" in
     exit 0
     ;;
   --stop)
-    echo "Stopping VM '$ALLBREW_E2E_VM_NAME'..."
-    lume stop "$ALLBREW_E2E_VM_NAME" || true
+    echo "Stopping VM '$LUME_VM_NAME'..."
+    lume_cmd stop "$LUME_VM_NAME" || true
     ;;
   --delete)
-    echo "Stopping VM '$ALLBREW_E2E_VM_NAME'..."
-    lume stop "$ALLBREW_E2E_VM_NAME" || true
-    echo "Deleting VM '$ALLBREW_E2E_VM_NAME'..."
-    lume delete "$ALLBREW_E2E_VM_NAME" || true
+    echo "Stopping VM '$LUME_VM_NAME'..."
+    lume_cmd stop "$LUME_VM_NAME" || true
+    echo "Deleting VM '$LUME_VM_NAME'..."
+    lume_cmd delete "$LUME_VM_NAME" || true
     ;;
   *)
     echo "Usage: $(basename "$0") [--stop | --delete]" >&2

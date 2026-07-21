@@ -40,15 +40,15 @@ There is no single CUA doc page that covers "Lume VM + Cua Driver for E2E testin
 
 | Setting | Default | Override env var |
 |---|---|---|
-| VM name | `allbrew-e2e` | `ALLBREW_E2E_VM_NAME` |
-| IPSW path | `/Users/tariqwest/Downloads/UniversalMac_26.5.2_25F84_Restore.ipsw` | `ALLBREW_E2E_IPSW` |
-| CPU cores | `4` | `ALLBREW_E2E_CPU` |
-| Memory | `16GB` | `ALLBREW_E2E_MEMORY` |
-| Disk size | `100GB` | `ALLBREW_E2E_DISK` |
-| Display | `1280x800` | `ALLBREW_E2E_DISPLAY` |
-| Shared host dir | `/Users/tariqwest/Developer/allbrew` | `ALLBREW_E2E_SHARED_DIR` |
-| VM user | `lume` | `ALLBREW_E2E_USER` |
-| VM password | `lume` | `ALLBREW_E2E_PASSWORD` |
+| VM name | `allbrew-e2e` | `LUME_VM_NAME` |
+| IPSW path | `/Users/tariqwest/Downloads/UniversalMac_26.5.2_25F84_Restore.ipsw` | `LUME_IPSW` |
+| CPU cores | `4` | `LUME_VM_CPU` |
+| Memory | `4GB` | `LUME_VM_MEMORY` |
+| Disk size | `65GB` | `LUME_VM_DISK` |
+| Display | `1280x800` | `LUME_VM_DISPLAY` |
+| Shared host dir | `/Users/tariqwest/Developer/allbrew` | `LUME_SHARED_DIR` |
+| VM user | `lume` | `LUME_VM_USER` |
+| VM password | `lume` | `LUME_VM_PASSWORD` |
 
 The defaults assume the repo is checked out at `/Users/tariqwest/Developer/allbrew` and the Tahoe IPSW is the 26.5.2 file already on disk.
 
@@ -67,25 +67,25 @@ Sourced config file. Contains the table above as shell variables and helper func
 # shellcheck disable=SC2034
 set -euo pipefail
 
-ALLBREW_E2E_VM_NAME="${ALLBREW_E2E_VM_NAME:-allbrew-e2e}"
-ALLBREW_E2E_IPSW="${ALLBREW_E2E_IPSW:-/Users/tariqwest/Downloads/UniversalMac_26.5.2_25F84_Restore.ipsw}"
-ALLBREW_E2E_CPU="${ALLBREW_E2E_CPU:-4}"
-ALLBREW_E2E_MEMORY="${ALLBREW_E2E_MEMORY:-16GB}"
-ALLBREW_E2E_DISK="${ALLBREW_E2E_DISK:-100GB}"
-ALLBREW_E2E_DISPLAY="${ALLBREW_E2E_DISPLAY:-1280x800}"
-ALLBREW_E2E_SHARED_DIR="${ALLBREW_E2E_SHARED_DIR:-/Users/tariqwest/Developer/allbrew}"
-ALLBREW_E2E_USER="${ALLBREW_E2E_USER:-lume}"
-ALLBREW_E2E_PASSWORD="${ALLBREW_E2E_PASSWORD:-lume}"
-ALLBREW_E2E_SSH_KEY="${ALLBREW_E2E_SSH_KEY:-$HOME/.ssh/allbrew_e2e_vm}"
+LUME_VM_NAME="${LUME_VM_NAME:-allbrew-e2e}"
+LUME_IPSW="${LUME_IPSW:-/Users/tariqwest/Downloads/UniversalMac_26.5.2_25F84_Restore.ipsw}"
+LUME_VM_CPU="${LUME_VM_CPU:-4}"
+LUME_VM_MEMORY="${LUME_VM_MEMORY:-4GB}"
+LUME_VM_DISK="${LUME_VM_DISK:-65GB}"
+LUME_VM_DISPLAY="${LUME_VM_DISPLAY:-1280x800}"
+LUME_SHARED_DIR="${LUME_SHARED_DIR:-/Users/tariqwest/Developer/allbrew}"
+LUME_VM_USER="${LUME_VM_USER:-lume}"
+LUME_VM_PASSWORD="${LUME_VM_PASSWORD:-lume}"
+LUME_VM_SSH_KEY="${LUME_VM_SSH_KEY:-$HOME/.ssh/allbrew_e2e_vm}"
 
-ALLBREW_E2E_REPO_MOUNT="/Volumes/My Shared Files"
+LUME_VM_REPO_MOUNT="/Volumes/My Shared Files"
 
 vm_exists() {
-  lume get "$ALLBREW_E2E_VM_NAME" --format json >/dev/null 2>&1
+  lume get "$LUME_VM_NAME" --format json >/dev/null 2>&1
 }
 
 vm_state() {
-  lume get "$ALLBREW_E2E_VM_NAME" --format json 2>/dev/null \
+  lume get "$LUME_VM_NAME" --format json 2>/dev/null \
     | jq -r '.[0].status // "missing"' 2>/dev/null \
     || echo "missing"
 }
@@ -95,12 +95,12 @@ vm_running() {
 }
 
 vm_ip() {
-  lume get "$ALLBREW_E2E_VM_NAME" --format json 2>/dev/null \
+  lume get "$LUME_VM_NAME" --format json 2>/dev/null \
     | jq -r '.[0].ipAddress // empty' 2>/dev/null
 }
 
 repo_mount_path() {
-  printf '%s' "$ALLBREW_E2E_REPO_MOUNT"
+  printf '%s' "$LUME_VM_REPO_MOUNT"
 }
 ```
 
@@ -122,20 +122,20 @@ Responsibilities:
 Key command:
 
 ```bash
-lume create "$ALLBREW_E2E_VM_NAME" \
-  --ipsw "$ALLBREW_E2E_IPSW" \
+lume create "$LUME_VM_NAME" \
+  --ipsw "$LUME_IPSW" \
   --unattended tahoe \
-  --cpu "$ALLBREW_E2E_CPU" \
-  --memory "$ALLBREW_E2E_MEMORY" \
-  --disk-size "$ALLBREW_E2E_DISK" \
-  --display "$ALLBREW_E2E_DISPLAY"
+  --cpu "$LUME_VM_CPU" \
+  --memory "$LUME_VM_MEMORY" \
+  --disk-size "$LUME_VM_DISK" \
+  --display "$LUME_VM_DISPLAY"
 ```
 
 Start:
 
 ```bash
-lume run --no-display "$ALLBREW_E2E_VM_NAME" \
-  --shared-dir "$ALLBREW_E2E_SHARED_DIR"
+lume run --no-display "$LUME_VM_NAME" \
+  --shared-dir "$LUME_SHARED_DIR"
 ```
 
 ### 4.3 `scripts/e2e-vm-ssh.sh`
@@ -154,7 +154,7 @@ Implementation:
 #!/bin/bash
 set -euo pipefail
 source "$(dirname "$0")/e2e-vm-config.sh"
-exec lume ssh "$ALLBREW_E2E_VM_NAME" -- "$@"
+exec lume ssh "$LUME_VM_NAME" -- "$@"
 ```
 
 ### 4.4 `scripts/e2e-vm-run-tests.sh`
@@ -242,7 +242,7 @@ set -euo pipefail
 source "$(dirname "$0")/e2e-vm-config.sh"
 VM_IP="$(vm_ip)"
 exec ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  "${ALLBREW_E2E_USER}@${VM_IP}" /Users/lume/.local/bin/cua-driver mcp
+  "${LUME_VM_USER}@${VM_IP}" /Users/lume/.local/bin/cua-driver mcp
 ```
 
 And register it:
@@ -266,15 +266,92 @@ scripts/e2e-vm-setup.sh
 # 2. Snapshot before risky work
 scripts/e2e-vm-clone.sh allbrew-e2e-clean
 
-# 3. Run tests
+# 3. Run tests (auto-captures readout + test log)
 scripts/e2e-vm-run-tests.sh --integration --e2e
 
-# 4. Inspect failures interactively
+# 4. Run tests + reset VM for next run
+scripts/e2e-vm-run-tests.sh --e2e --reset
+
+# 5. Inspect results
+cat ~/.local/share/allbrew/e2e-runs/latest/readout.txt
+cat ~/.local/share/allbrew/e2e-runs/latest/test-output.log
+
+# 6. Inspect failures interactively
 scripts/e2e-vm-ssh.sh
 
-# 5. Teardown
+# 7. Teardown
 scripts/e2e-vm-teardown.sh --stop
 ```
+
+### Run records
+
+Each test run produces a timestamped record under `~/.local/share/allbrew/e2e-runs/<timestamp>/`:
+
+| File | Contents |
+|------|----------|
+| `readout.txt` | Full post-test state: allbrew config/manifests, Homebrew taps/formulae/casks, MAS apps, Setapp, tap repo git state, /Applications, disk usage, test results summary |
+| `test-output.log` | Captured stdout/stderr from the test run |
+| `metadata.json` | Machine-readable run metadata (timestamp, VM name, git SHA, branch) |
+| `reset.log` | Log of the reset operation (if reset was run) |
+
+A `latest` symlink points to the most recent run. Records persist across resets.
+
+---
+
+## 6a. Post-test readout (`scripts/e2e-vm-readout.sh`)
+
+Captures the full state of the VM after a test run. Run automatically by `e2e-vm-run-tests.sh`, or manually:
+
+```bash
+scripts/e2e-vm-readout.sh                    # readout only
+scripts/e2e-vm-readout.sh /path/to/test.log  # include test results summary
+```
+
+Sections captured:
+
+1. **System info** — macOS version, arch, CPU, RAM, disk
+2. **Running processes** — brew/allbrew/node/bun processes
+3. **allbrew state** — version, config, manifests, global link
+4. **Homebrew state** — version, taps, installed formulae, installed casks, cellar, caskroom, cache
+5. **MAS apps** — `mas list` output
+6. **Setapp apps** — Setapp directory listing
+7. **/Applications** — GUI apps from any source
+8. **Tap repo git state** — git log, status, diff, Formula/Casks contents
+9. **Host repo git state** — branch, recent commits, status
+10. **Test results summary** — parsed pass/fail counts from vitest output
+
+---
+
+## 6b. VM reset (`scripts/e2e-vm-reset.sh`)
+
+Returns the VM to a virgin state for the next run. Preserves the run record.
+
+```bash
+scripts/e2e-vm-reset.sh                    # full reset (keeps Homebrew/Bun/mas CLI)
+scripts/e2e-vm-reset.sh --nuclear          # also uninstall Homebrew/Bun/mas CLI
+scripts/e2e-vm-reset.sh --readout test.log # readout then reset
+```
+
+Reset steps (default):
+
+1. Uninstall all casks
+2. Uninstall all formulae (two passes for dependencies)
+3. Uninstall allbrew formula
+4. Remove custom taps (preserves homebrew/core, cask, bundle, services)
+5. Uninstall MAS apps
+6. Remove Setapp + setapp-cli
+7. Remove allbrew config and manifests (`~/.config/allbrew/`)
+8. Remove tap checkout directories (`~/homebrew-*`)
+9. Remove allbrew global link
+10. Clean Homebrew cache (`brew cleanup --prune=all`)
+11. Post-reset verification (shows what remains)
+
+Nuclear mode additionally:
+
+12. Uninstall mas CLI
+13. Uninstall Homebrew itself
+14. Remove Bun
+15. Clean shell config remnants
 
 ---
 
@@ -286,12 +363,15 @@ scripts/e2e-vm-teardown.sh --stop
 | Setup script | `scripts/e2e-vm-setup.sh` | Yes |
 | SSH helper | `scripts/e2e-vm-ssh.sh` | Yes |
 | Test runner | `scripts/e2e-vm-run-tests.sh` | Yes |
+| Post-test readout | `scripts/e2e-vm-readout.sh` | Yes |
+| VM reset | `scripts/e2e-vm-reset.sh` | Yes |
 | Clone helper | `scripts/e2e-vm-clone.sh` | Yes |
 | Teardown helper | `scripts/e2e-vm-teardown.sh` | Yes |
 | Cua Driver bridge | `scripts/cua-driver-vm-bridge.sh` | Yes |
 | VM disk/config | `~/.lume/` | **No** |
 | IPSW image | `~/Downloads/` | **No** |
 | Host-specific overrides | `.env` | **No** (already gitignored) |
+| Run records | `~/.local/share/allbrew/e2e-runs/` | **No** |
 
 ---
 
