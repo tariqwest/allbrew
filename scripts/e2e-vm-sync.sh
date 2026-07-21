@@ -27,7 +27,7 @@ for item in $LUME_SYNC_EXCLUDES; do
   excludes+=(--exclude="$item")
 done
 
-rsync -avz --delete \
+rsync -avz --delete --ignore-errors \
   "${excludes[@]}" \
   "$LUME_SHARED_DIR"/ \
   "$LUME_REMOTE_HOST:$LUME_REMOTE_DIR"/

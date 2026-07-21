@@ -27,7 +27,7 @@ LUME_REMOTE_DIR="${LUME_REMOTE_DIR:-/Users/app-user/Developer/allbrew}"
 # Directory on the remote host where the IPSW is expected or synced to.
 LUME_REMOTE_IPSW_DIR="${LUME_REMOTE_IPSW_DIR:-/Users/app-user/Downloads}"
 # Paths excluded when syncing the repo to the remote Lume host.
-LUME_SYNC_EXCLUDES="${LUME_SYNC_EXCLUDES:-.git node_modules .lume .env}"
+LUME_SYNC_EXCLUDES="${LUME_SYNC_EXCLUDES:-.git node_modules .lume .env .Trashes .fseventsd .DS_Store}"
 
 LUME_VM_REPO_MOUNT="/Volumes/Shared"
 
@@ -58,7 +58,7 @@ remote_exec() {
     return 1
   fi
   ssh -q -o BatchMode=yes -o ConnectTimeout=10 \
-    "$LUME_REMOTE_HOST" "$1"
+    "$LUME_REMOTE_HOST" "export PATH=\"\$HOME/.local/bin:\$PATH\"; $1"
 }
 
 lume_cmd() {
