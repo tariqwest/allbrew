@@ -134,7 +134,8 @@ describe.skipIf(!E2E)("E2E catalog tests", () => {
         // DRY_RUN=false: omit --tap so allbrew uses its configured tap (and may push)
         const tapArgs = DRY_RUN ? ["--tap", tapDir] : [];
         const typeArgs = entry.generator ? ["--type", entry.generator] : [];
-        const baseArgs = [entry.url, "--name", entry.name, ...typeArgs, ...tapArgs, ...entry.allbrewArgs];
+        const descArgs = entry.notes ? ["--desc", entry.notes] : [];
+        const baseArgs = [entry.url, "--name", entry.name, ...typeArgs, ...descArgs, "--no-service", ...tapArgs, ...entry.allbrewArgs];
         const allbrewCmd = allbrewAvailable()
           ? ["allbrew", ...baseArgs]
           : ["bun", "run", "bin/allbrew.ts", ...baseArgs];

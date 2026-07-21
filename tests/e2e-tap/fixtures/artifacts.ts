@@ -154,7 +154,7 @@ export async function buildPipSdist(
 
   await writeFile(
     join(innerDir, "setup.py"),
-    `from setuptools import setup\nsetup(\n    name="${packageName}",\n    version="${version}",\n    py_modules=["${packageName.replace(/-/g, "_')}"],\n    entry_points={"console_scripts": ["${packageName}=${packageName.replace(/-/g, "_')}:main"]},\n)\n`,
+    `from setuptools import setup\nsetup(\n    name="${packageName}",\n    version="${version}",\n    py_modules=["${packageName.replace(/-/g, "_")}"],\n    entry_points={"console_scripts": ["${packageName}=${packageName.replace(/-/g, "_")}:main"]},\n)\n`,
   );
 
   await writeFile(
