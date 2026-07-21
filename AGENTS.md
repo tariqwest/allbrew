@@ -10,6 +10,7 @@
 > - [`setapp-generator.md`](./.agents/plans/setapp-generator.md) — Setapp app store generator (`cask-app-setapp`)
 > - [`tebako-ruby-binary-status.md`](./.agents/plans/tebako-ruby-binary-status.md) — paused Ruby binary experiment
 > - [`allbrew-e2e-lume-vm.md`](./.agents/plans/allbrew-e2e-lume-vm.md) — Lume macOS VM + Cua Driver harness for E2E/real-world testing
+> - [`allbrew-tap-update-e2e.md`](./.agents/plans/allbrew-tap-update-e2e.md) — E2E tap + livecheck update cycle tests with synthetic fixtures
 
 ## Project overview
 
@@ -40,7 +41,8 @@ bun run check                      # TypeScript type-check (tsc --noEmit)
 bun run test                       # unit tests (Vitest, mocked, offline)
 bun run test:int                   # integration tests (live APIs: PyPI, npm, GitHub, DMG)
 bun run test:e2e                   # E2E catalog tests (requires E2E=1)
-bun run test:all                   # all three tiers
+bun run test:e2e-tap               # E2E tap + update cycle tests (requires E2E_TAP=1)
+bun run test:all                   # all tiers
 bun run test:watch                 # unit tests in watch mode
 bun run test:templates             # 13 fixture payloads, byte-for-byte parity checks
 bun run test:update-formulas       # update-formulas integration test
@@ -55,6 +57,7 @@ Always run `bun run check` and `bun run test` before committing. Integration and
 - **Unit tests** (`tests/unit/`): 261 tests, fully mocked, offline-safe. Run with `bun run test`.
 - **Integration tests** (`tests/integration/`): 95 tests hitting live registries (PyPI, npm, crates.io, GitHub tarballs, DMG downloads). Run with `bun run test:int`.
 - **E2E tests** (`tests/e2e/`): 21 catalog-driven tests that generate formulas/casks and attempt real `brew install`. Gated behind `E2E=1` env var. Run with `bun run test:e2e`.
+- **E2E tap tests** (`tests/e2e-tap/`): 39 tests that exercise the full off-machine cycle (generate → commit → push to remote tap → `brew tap`/`brew update`/`brew install <name>` → verify) plus the livecheck-driven update cycle. Uses a synthetic fixture server emulating npm/PyPI/crates.io/Go proxy/RubyGems/NuGet/GitHub APIs with fake artifacts. Gated behind `E2E_TAP=1` env var. Run with `bun run test:e2e-tap` or `scripts/test-e2e-tap.sh`.
 - **Template parity tests** (`scripts/test-templates.ts`): 13 fixture payloads with byte-for-byte Ruby output comparison. Run with `bun run test:templates`.
 
 To run a single test file:
@@ -78,10 +81,41 @@ Quick reference:
 ```bash
 scripts/e2e-vm-setup.sh
 scripts/e2e-vm-run-tests.sh --integration --e2e
+scripts/e2e-vm-run-tests.sh --e2e --reset          # run tests + reset VM afterwards
+scripts/e2e-vm-run-tests.sh --e2e --nuclear         # run tests + full uninstall (Homebrew/Bun/mas)
+scripts/e2e-vm-readout.sh                            # capture post-test state (auto-run after tests)
+scripts/e2e-vm-reset.sh                              # reset VM to virgin state
+scripts/e2e-vm-reset.sh --nuclear                    # reset + uninstall Homebrew/Bun/mas CLI
+scripts/e2e-vm-reset.sh --readout test-output.log    # readout then reset
 scripts/e2e-vm-ssh.sh 'sw_vers && brew --version'
 scripts/e2e-vm-clone.sh allbrew-e2e-clean
 scripts/e2e-vm-teardown.sh --stop
 ```
+
+### Remote Lume host (optional)
+
+You can run the Lume VM on a remote Apple Silicon Mac (`homeserver.local`) while keeping the orchestration scripts and run records on your local machine. Set:
+
+```bash
+export LUME_REMOTE_HOST=app-user@homeserver.local
+export LUME_REMOTE_DIR=/Users/app-user/Developer/allbrew
+export LUME_REMOTE_IPSW_DIR=/Users/app-user/Downloads
+```
+
+Then use the same commands above. Before each run the harness rsyncs the local repo to `LUME_REMOTE_DIR` on the remote host, because Lume's `--shared-dir` can only mount a directory that lives on the host running the VM. The IPSW is synced once to the remote Downloads folder if it is not already there. The remote host only needs Lume installed and an active macOS user session with Virtualization Framework permissions.
+
+### Run records
+
+Each test run produces a timestamped record under `~/.local/share/allbrew/e2e-runs/<timestamp>/`:
+
+| File | Contents |
+|------|----------|
+| `readout.txt` | Full post-test state: allbrew config/manifests, Homebrew taps/formulae/casks, MAS apps, Setapp, tap repo git state, /Applications, disk usage, test results summary |
+| `test-output.log` | Captured stdout/stderr from the test run |
+| `metadata.json` | Machine-readable run metadata (timestamp, VM name, git SHA, branch) |
+| `reset.log` | Log of the reset operation (if reset was run) |
+
+A `latest` symlink points to the most recent run. These records persist across resets, providing a full history of what was tested, what passed/failed, and the final system state.
 
 ## Code style
 
@@ -249,6 +283,14 @@ Key flags: `--manual`, `--name`, `--desc`, `--tap`, `--service`, `--service-comm
 - `ALLBREW_GITHUB_CLIENT_ID` — enable browser OAuth during `allbrew init`
 - `DRY_RUN=false` — in E2E tests, use the real configured tap instead of a temp dir
 - `E2E=1` — enable E2E test tier
+- `E2E_TAP=1` — enable E2E tap + update cycle test tier
+- `GITHUB_API_URL` — override GitHub API base URL (used by E2E tap tests to redirect to fixture server)
+- `NPM_REGISTRY_URL` — override npm registry base URL (used by E2E tap tests)
+- `PYPI_URL` — override PyPI base URL (used by E2E tap tests)
+- `CRATES_URL` — override crates.io base URL (used by E2E tap tests)
+- `GO_PROXY_URL` — override Go module proxy base URL (used by E2E tap tests)
+- `RUBYGEMS_URL` — override RubyGems base URL (used by E2E tap tests)
+- `NUGET_URL` / `NUGET_FLAT_URL` — override NuGet base URLs (used by E2E tap tests)
 
 ## Security considerations
 
