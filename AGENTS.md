@@ -56,11 +56,15 @@ Always run `bun run check` and `bun run test` before committing. Integration and
 
 ## Testing instructions
 
-- **Unit tests** (`tests/unit/`): 261 tests, fully mocked, offline-safe. Run with `bun run test`.
+- **Unit tests** (`tests/unit/`): 751 tests, fully mocked, offline-safe. Run with `bun run test`. Includes suites for analyzer, brew-hooks, launchd-service, config, sha256, uninstall-residuals, and test-cleanup-registry (Tier 0/A coverage).
 - **Integration tests** (`tests/integration/`): 95 tests hitting live registries (PyPI, npm, crates.io, GitHub tarballs, DMG downloads). Run with `bun run test:int`.
 - **E2E tests** (`tests/e2e/`): 21 catalog-driven tests that generate formulas/casks and attempt real `brew install`. Gated behind `E2E=1` env var. Run with `bun run test:e2e` or `scripts/test-e2e.sh`.
-- **E2E tap tests** (`tests/e2e-tap/`): 39 tests that exercise the full off-machine cycle (generate → commit → push to remote tap → `brew tap`/`brew update`/`brew install <name>` → verify) plus the livecheck-driven update cycle. Uses a synthetic fixture server emulating npm/PyPI/crates.io/Go proxy/RubyGems/NuGet/GitHub APIs with fake artifacts. Gated behind `E2E_TAP=1` env var. Run with `bun run test:e2e-tap` or `scripts/test-e2e-tap.sh`.
+- **E2E tap tests** (`tests/e2e-tap/`): 39 tests that exercise the full off-machine cycle (generate → commit → push to remote tap → `brew tap`/`brew update`/`brew install <name>` → verify) plus the livecheck-driven update cycle. Includes a service lifecycle test (`service.e2e-tap.test.ts`) that validates `--service` generation, stanza inspection, direct launch + HTTP probe, and `brew services` start/stop round-trip. Uses a synthetic fixture server emulating npm/PyPI/crates.io/Go proxy/RubyGems/NuGet/GitHub APIs with fake artifacts. Gated behind `E2E_TAP=1` env var. Run with `bun run test:e2e-tap` or `scripts/test-e2e-tap.sh`.
 - **Template parity tests** (`scripts/test-templates.ts`): 13 fixture payloads with byte-for-byte Ruby output comparison. Run with `bun run test:templates`.
+
+### Uninstall residual checks (Tier A)
+
+After every successful `brew uninstall` in e2e and e2e-tap, `assertUninstallResiduals()` (from `tests/helpers/uninstall-residuals.ts`) verifies the package is gone from `brew list`, the binary (formulae) or app path (casks) is absent, and the manifest persists (allbrew is the system of record; `deleteManifest` is dead code; `allbrew remove`/doctor/OOB detection in Tier C will handle deletion). The helper does NOT assert `manifestGone` because plain `brew uninstall` has no call path that deletes a manifest.
 
 ### E2E execution mode (VM-first)
 

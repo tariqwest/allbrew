@@ -360,6 +360,8 @@ Ship these before treating hooks/service automation as production-safe.
 
 #### A1. Service lifecycle personas (Lume-first, 3 stacks minimum)
 
+**Status: e2e-tap scope implemented (PR3).** `tests/e2e-tap/service.e2e-tap.test.ts` covers generation with `--service`, stanza inspection, direct launch + HTTP probe, and `brew services` start/stop round-trip for the `fake-service` fixture (binary-release). Lume full lifecycle (upgrade-while-running, no LaunchAgent residue) remains blocked by PR0b (T0.5 sparsebundle prefix).
+
 Service runtime validation affects user-level launchd and Homebrew service state. It is **Lume-first**; e2e-tap covers only generation and stanza inspection.
 
 | ID | Stack | Suggested real or fixture app | Tier | Assertions |
@@ -397,13 +399,17 @@ Service runtime validation affects user-level launchd and Homebrew service state
 
 #### A2. Uninstall residual checks (all e2e paths)
 
+**Status: Implemented (PR1).** Helper: `tests/helpers/uninstall-residuals.ts`. Wired into e2e catalog + e2e-tap github-binary + e2e-tap service. 11 unit tests in `tests/unit/uninstall-residuals.test.ts`.
+
+**Manifest semantics decision: Manifests persist** (allbrew is system of record). `deleteManifest` is currently dead code — plain `brew uninstall` has no call path that deletes a manifest. The residual helper asserts the manifest still exists after uninstall and does NOT assert `manifestGone`. Deletion will be handled by `allbrew remove`/doctor/OOB detection in Tier C / `allbrew-hooks-uninstall-detection.md`.
+
 **Prerequisite — manifest semantics decision (required before implementation):**
 
 A product decision must be made and documented **before** writing the residual helper. Today, generation and updates save manifests (`lib/manifest.ts` exposes `saveManifest` and `deleteManifest`), but plain `brew uninstall` has no call path that deletes a manifest. The residual helper must not assert behavior the product cannot perform.
 
 | Decision | Helper behavior |
 |----------|-----------------|
-| **Manifests persist** (allbrew is system of record) | Assert manifest still exists after `brew uninstall`; document that `allbrew remove`/`doctor` (Tier C) will handle deletion. Do not assert `manifestGone`. |
+| **Manifests persist** (allbrew is system of record) ✅ chosen | Assert manifest still exists after `brew uninstall`; document that `allbrew remove`/`doctor` (Tier C) will handle deletion. Do not assert `manifestGone`. |
 | **Manifests deleted on uninstall** | Implement an allbrew-owned uninstall/removal path (or out-of-band detection per `allbrew-hooks-uninstall-detection.md`) **first**. Only then assert `manifestGone`. Do not assert `manifestGone` after plain `brew uninstall`. |
 
 The helper should assert only facts that are already valid product behavior.
@@ -423,9 +429,9 @@ If product choice is “manifests persist until `allbrew remove`,” document th
 
 The hook wrapper is opt-in: it instructs users to source it and alias `brew` (`lib/brew-hooks.ts` `BREW_WRAP_CONTENT`). Testing only that the wrapper file exists is insufficient.
 
-**Prerequisite — resolve the double-`brew update` question:**
+**Prerequisite — resolve the double-`brew update` question: Resolved (bug, fixed in PR2).**
 
-`BREW_WRAP_CONTENT` in `lib/brew-hooks.ts` runs `command brew update` again after the wrapper's own `brew update` branch fires. Decide whether this is intentional or a bug **before** making it the lifecycle baseline. If it is a bug, fix it first; if intentional, document why.
+`BREW_WRAP_CONTENT` in `lib/brew-hooks.ts` previously ran `command brew update` again after the wrapper's own `brew update` branch fired. This was a bug — the first `command brew "$@"` already executed `brew update`, making the trailing `command brew update` redundant. Fixed in PR2 (commit `fix(hooks): remove redundant double brew update`). The wrapper now runs `brew update` once, then `brew livecheck ... | allbrew update-formulas`. Unit tests in `tests/unit/brew-hooks.test.ts` assert no duplicate `command brew update` remains.
 
 **Test sequence:**
 
@@ -447,6 +453,8 @@ The hook wrapper is opt-in: it instructs users to source it and alias `brew` (`l
 
 #### A5. Analyzer unit suite
 
+**Status: Implemented (PR2).** 61 tests in `tests/unit/analyzer.test.ts` covering `detectBrewInstall`, `detectInstallMethod`, `detectServiceConfig`, `detectServiceConfigFromFiles`, `detectBuildSystemFromFiles`, `detectBuildSystemFromArchive`. Uses inline README fixture strings (no I/O, no network, no brew calls). Also fixed a bug where `brew install --cask foo` was detected without `isCask=true`.
+
 Fixtures under `tests/fixtures/readme/` (or similar):
 
 | Fixture | Expect |
@@ -459,6 +467,14 @@ Fixtures under `tests/fixtures/readme/` (or similar):
 Cover `lib/analyzer.ts` paths currently only exercised indirectly via CLI.
 
 #### A6. Module unit smoke for ops code (split per module)
+
+**Status: Implemented (PR2).** 61 tests across 4 new unit suites:
+- `tests/unit/brew-hooks.test.ts` (15 tests): wrapper content assertions, path construction, install/uninstall round-trip with tmpdir prefix. Also asserts the double-`brew update` bug is fixed.
+- `tests/unit/launchd-service.test.ts` (15 tests): `plistContent` XML validity + fields, `writeUpdateScript` PATH resolution + log rotation + executable mode + parent dir creation.
+- `tests/unit/config.test.ts` (20 tests): 0o600 file perms, 0o700 dir perms, tap path validation, round-trip, GitHub token env fallback.
+- `tests/unit/sha256.test.ts` (11 tests): SHA256 correctness, dest write, 404 rejection, 2GB size cap, multi-chunk streams, temp cleanup.
+
+Testability seams added: `installBrewHooks`/`uninstallBrewHooks` optional prefix, `writeUpdateScript` optional allbrewBin/brewPrefix, `plistContent` exported, `_setConfigDirForTesting` for config dir override.
 
 Minimal pure tests (no full brew). Each module has distinct testable surfaces — do not conflate them.
 
@@ -721,14 +737,14 @@ Security items in [`fable-app-review-2026-07-11.md`](./fable-app-review-2026-07-
 
 ### 11.1 Tier A done when
 
-- [ ] Manifest semantics decision documented (persist vs delete); residual helper asserts only valid product behavior.
+- [x] Manifest semantics decision documented (persist vs delete); residual helper asserts only valid product behavior.
 - [ ] At least 3 service personas (npm, pip, go/binary) pass: e2e-tap covers stanza + direct-launch; Lume covers full `brew services` lifecycle + HTTP + residual uninstall.
 - [ ] Service tests use dynamically allocated ports and unique per-run formula/tap names.
-- [ ] Shared residual uninstall helper used by e2e + e2e-tap.
-- [ ] Analyzer has a dedicated unit suite with README fixtures.
+- [x] Shared residual uninstall helper used by e2e + e2e-tap.
+- [x] Analyzer has a dedicated unit suite with README fixtures.
 - [ ] Hooks smoke passes on Lume: wrapper is sourced, `brew` is invoked through `allbrew_brew`, update-formulas side effect is asserted. Double-`brew update` question resolved.
 - [ ] One zap persona passes.
-- [ ] Ops modules have split unit coverage: `brew-hooks` (wrapper content/path), `launchd-service` (update script + plist separately, `plutil -lint` in Lume), `config` (perms/validation), `sha256` (limits/cleanup).
+- [x] Ops modules have split unit coverage: `brew-hooks` (wrapper content/path), `launchd-service` (update script + plist separately, `plutil -lint` in Lume), `config` (perms/validation), `sha256` (limits/cleanup).
 - [ ] AGENTS.md "What is not done" / testing section updated to reflect service/lifecycle coverage.
 
 ### 11.2 Tier B done when
