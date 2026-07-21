@@ -40,11 +40,17 @@ export type UpdateFormulasResult = {
 export async function updateFormulas(
   options: UpdateFormulasOptions = {},
 ): Promise<UpdateFormulasResult> {
-  const entries =
-    options.entries ??
-    (options.livecheck || stdin.isTTY
-      ? await runBrewLivecheck()
-      : await readStdinLivecheck());
+  let entries: LivecheckEntry[];
+  if (options.entries) {
+    entries = options.entries;
+  } else if (options.livecheck || stdin.isTTY) {
+    entries = await runBrewLivecheck();
+  } else {
+    entries = await readStdinLivecheck();
+    if (entries.length === 0) {
+      entries = await runBrewLivecheck();
+    }
+  }
 
   const config = await loadConfig();
   const autoPush = options.push ?? config.update?.autoPush ?? true;
@@ -90,9 +96,12 @@ export async function updateFormulas(
     }
 
     try {
+      if (entry.version?.latest) {
+        manifest.recordedVersion = entry.version.latest;
+      }
       const updateResult = await updateManagedPackage(manifest);
       manifest.recordedVersion =
-        entry.version?.latest || updateResult.recordedVersion;
+        updateResult.recordedVersion || manifest.recordedVersion;
       manifest.recordedAt = new Date().toISOString();
       await saveManifest(manifest);
 
@@ -126,12 +135,27 @@ export async function updateFormulas(
 }
 
 async function runBrewLivecheck(): Promise<LivecheckEntry[]> {
-  const { stdout } = await execFileAsync(
-    "brew",
-    ["livecheck", "--installed", "--newer-only", "--json", "--quiet"],
-    { maxBuffer: 10 * 1024 * 1024 },
-  );
-  return parseLivecheckJson(stdout);
+  try {
+    const { stdout } = await execFileAsync(
+      "brew",
+      ["livecheck", "--installed", "--newer-only", "--json", "--quiet"],
+      {
+        maxBuffer: 10 * 1024 * 1024,
+        env: {
+          ...process.env,
+          HOMEBREW_DEVELOPER: "1",
+          HOMEBREW_NO_AUTO_UPDATE: "1",
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: "1",
+        },
+      },
+    );
+    return parseLivecheckJson(stdout);
+  } catch (error: any) {
+    if (error.stdout) {
+      return parseLivecheckJson(error.stdout);
+    }
+    return [];
+  }
 }
 
 async function readStdinLivecheck(): Promise<LivecheckEntry[]> {
