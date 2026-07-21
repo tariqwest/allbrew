@@ -10,6 +10,8 @@ const PYPI_PACKAGE_RE = /^https?:\/\/(?:www\.)?pypi\.org\/project\/([^/]+)/;
 const RUBYGEMS_PACKAGE_RE = /^https?:\/\/(?:www\.)?rubygems\.org\/gems\/([^/]+)/;
 const NUGET_PACKAGE_RE = /^https?:\/\/(?:www\.)?nuget\.org\/packages\/([^/]+)/;
 
+const CRATES_PACKAGE_RE = /^https?:\/\/(?:www\.)?crates\.io\/crates\/([^/]+)/;
+
 const SCRIPT_EXTENSIONS = ['.sh', '.bash'];
 const RAW_GITHUB_RE = /^https?:\/\/raw\.githubusercontent\.com\//;
 
@@ -49,6 +51,11 @@ export function classify(url) {
   const nugetMatch = url.match(NUGET_PACKAGE_RE);
   if (nugetMatch) {
     return { type: 'dotnet-package', url, packageName: nugetMatch[1] };
+  }
+
+  const cratesMatch = url.match(CRATES_PACKAGE_RE);
+  if (cratesMatch) {
+    return { type: 'cargo-package', url, crateName: cratesMatch[1] };
   }
 
   const ghMatch = url.match(GITHUB_REPO_RE);

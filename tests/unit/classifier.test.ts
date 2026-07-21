@@ -173,9 +173,10 @@ describe("classify", () => {
       expect(result.packageName).toBe("dotnet-serve");
     });
 
-    it("returns unknown for crates.io URLs", () => {
+    it("matches crates.io URLs as cargo-package", () => {
       const result = classify("https://crates.io/crates/managarr");
-      expect(result.type).toBe("unknown");
+      expect(result.type).toBe("cargo-package");
+      expect(result.crateName).toBe("managarr");
     });
 
     it("returns unknown for bare domains without extensions", () => {
