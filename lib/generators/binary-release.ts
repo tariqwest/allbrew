@@ -66,7 +66,7 @@ export async function collectBinaryReleasePayload(
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     platformBlocks: buildPlatformBlocks(hashes, urlTemplate),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    testBinName: rubyEscape(name),
+    testBinName: rubyEscape(options.binName || name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
 }

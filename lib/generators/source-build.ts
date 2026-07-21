@@ -59,7 +59,7 @@ export async function collectSourceBuildPayload(
     installBody: buildInstallBody(system),
     livecheckBlock: githubLatestLivecheckBlock(),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    testBinName: rubyEscape(name),
+    testBinName: rubyEscape(options.binName || name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
     isPython: system === "python",
   };

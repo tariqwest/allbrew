@@ -45,7 +45,7 @@ export async function collectArchiveBuildPayload(
     installBody: buildInstallBody(buildInfo, name),
     livecheckBlock: urlVersionLivecheckBlock(downloadUrl),
     allbrewDependency: "",
-    testBinName: rubyEscape(name),
+    testBinName: rubyEscape(options.binName || name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
 }

@@ -55,6 +55,8 @@ export async function collectNpmPackagePayload(
 
   const service = serviceFromOptions(options, name);
 
+  const binName = options.binName || extractNpmBinName(versionData, packageName) || name;
+
   return {
     template: "npm_package",
     name,
@@ -64,11 +66,49 @@ export async function collectNpmPackagePayload(
     url: rubyEscape(tarballUrl),
     sha256: rubyEscape(tarballSha),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    testBinName: rubyEscape(name),
+    testBinName: rubyEscape(binName),
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     livecheckBlock: npmLivecheckBlock(packageName),
     serviceBlock: buildServiceBlock(service, name),
   };
+}
+
+/**
+ * Extract the primary bin name from npm version data.
+ *
+ * npm `bin` can be:
+ * - A string: `"bin": "cli.js"` → bin name is the package name (last segment
+ *   of scoped packages)
+ * - An object: `"bin": { "tb": "taskbook.js" }` → bin name is the key (`tb`)
+ * - An object with multiple keys: prefer the key matching the package name,
+ *   otherwise the first key
+ * - Absent: return null (caller falls back to formula name)
+ */
+export function extractNpmBinName(versionData: any, packageName: string): string | null {
+  const bin = versionData?.bin;
+  if (!bin) return null;
+
+  if (typeof bin === "string") {
+    // When bin is a string, the binary is named after the package
+    // (last segment for scoped packages like @org/pkg)
+    const lastSegment = packageName.split("/").pop() || packageName;
+    return lastSegment;
+  }
+
+  if (typeof bin === "object" && !Array.isArray(bin)) {
+    const keys = Object.keys(bin);
+    if (keys.length === 0) return null;
+
+    // Prefer the key matching the package name (or its last segment)
+    const lastSegment = packageName.split("/").pop() || packageName;
+    const match = keys.find((k) => k === packageName || k === lastSegment);
+    if (match) return match;
+
+    // Otherwise, return the first key
+    return keys[0];
+  }
+
+  return null;
 }
 
 export async function generateNpmPackage(

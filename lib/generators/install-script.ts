@@ -37,7 +37,7 @@ export async function collectInstallScriptPayload(
     scriptFilename: rubyEscape(filename),
     livecheckBlock: urlVersionLivecheckBlock(url),
     allbrewDependency: "",
-    testBinName: rubyEscape(name),
+    testBinName: rubyEscape(options.binName || name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
 }

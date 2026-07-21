@@ -267,6 +267,7 @@ program
   .option("--crate-name <name>", "Rust crate name")
   .option("--go-module <path>", "Go module path")
   .option("--app-name <name>", "macOS app bundle name for casks")
+  .option("--bin-name <name>", "Override the binary/executable name (when it differs from the package name)")
   .option("--homepage <url>", "Homepage for generated formula/cask")
   .option("--build-system <system>", "Build system for source builds (cmake, autotools, meson, make)")
   .option("--type <type>", "Override the generator to use (e.g. npm-package, cask-app)")
