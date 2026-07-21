@@ -7,6 +7,7 @@ source "$SCRIPT_DIR/e2e-vm-config.sh"
 
 RUN_INTEGRATION=false
 RUN_E2E=false
+RUN_E2E_TAP=false
 RESET_AFTER=false
 NUCLEAR_RESET=false
 SKIP_READOUT=false
@@ -14,14 +15,16 @@ for arg in "$@"; do
   case "$arg" in
     --integration) RUN_INTEGRATION=true ;;
     --e2e) RUN_E2E=true ;;
+    --e2e-tap) RUN_E2E_TAP=true ;;
     --reset) RESET_AFTER=true ;;
     --nuclear) NUCLEAR_RESET=true; RESET_AFTER=true ;;
     --no-readout) SKIP_READOUT=true ;;
     --help|-h)
-      echo "Usage: $(basename "$0") [--integration] [--e2e] [--reset] [--nuclear] [--no-readout]"
+      echo "Usage: $(basename "$0") [--integration] [--e2e] [--e2e-tap] [--reset] [--nuclear] [--no-readout]"
       echo ""
       echo "  --integration  Run integration tests (live APIs)"
       echo "  --e2e          Run E2E catalog tests (requires E2E=1 inside VM)"
+      echo "  --e2e-tap      Run E2E tap + livecheck update cycle tests (requires E2E_TAP=1 inside VM)"
       echo "  --reset        Reset VM to virgin state after tests complete"
       echo "  --nuclear      Reset + also uninstall Homebrew/Bun/mas CLI (--reset implied)"
       echo "  --no-readout   Skip the post-test state readout"
@@ -29,7 +32,7 @@ for arg in "$@"; do
       ;;
     *)
       echo "Unknown option: $arg" >&2
-      echo "Usage: $(basename "$0") [--integration] [--e2e] [--reset] [--nuclear] [--no-readout]" >&2
+      echo "Usage: $(basename "$0") [--integration] [--e2e] [--e2e-tap] [--reset] [--nuclear] [--no-readout]" >&2
       exit 1
       ;;
   esac
@@ -71,6 +74,7 @@ run_in_vm() {
 tiers="unit"
 if $RUN_INTEGRATION; then tiers+=" +integration"; fi
 if $RUN_E2E; then tiers+=" +e2e"; fi
+if $RUN_E2E_TAP; then tiers+=" +e2e-tap"; fi
 {
   echo "=========================================="
   echo "  allbrew E2E Test Run"
@@ -91,6 +95,10 @@ fi
 
 if $RUN_E2E; then
   run_in_vm "E2E tests" E2E=1 bun run test:e2e || TESTS_FAILED=true
+fi
+
+if $RUN_E2E_TAP; then
+  run_in_vm "E2E tap tests" E2E_TAP=1 bun run test:e2e-tap || TESTS_FAILED=true
 fi
 
 log "All tests completed (failures: $TESTS_FAILED)"
