@@ -22,6 +22,7 @@ import { matchAssetToArch, isAppAsset, isBinaryAsset } from "./utils.ts";
 import { buildManifest } from "./build-manifest.ts";
 import { saveManifest } from "./manifest.ts";
 import type { GeneratorName } from "./manifest.ts";
+import { commitAndPushTap } from "./tap-git.ts";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -1255,6 +1256,16 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       result,
     }),
   );
+
+  try {
+    await commitAndPushTap(
+      mergedOpts.tapPath,
+      [result.filePath],
+      `chore(allbrew): add ${result.name}`,
+    );
+  } catch {
+    // Tap may not be a git repo or lack a remote; install below still works.
+  }
 
   await brewAutoInstall(result, mergedOpts);
 

@@ -5,6 +5,7 @@ import * as artifacts from "./artifacts.ts";
 import { writeFile } from "node:fs/promises";
 
 const PORT = parseInt(process.env.FIXTURE_PORT || "0", 10);
+let actualPort = PORT;
 
 const runtimeVersions: Record<string, string> = {};
 for (const [key, app] of Object.entries(FIXTURE_APPS)) {
@@ -167,7 +168,7 @@ async function handleRequest(req: Request, url: URL): Promise<Response> {
     return jsonResponse({ ok: true });
   }
 
-  const baseUrl = `http://localhost:${PORT}`;
+  const baseUrl = `http://localhost:${actualPort}`;
 
   // GitHub API: /api/repos/:owner/:repo
   const repoMatch = path.match(/^\/api\/repos\/([^/]+)\/([^/]+)$/);
@@ -476,6 +477,8 @@ const server = Bun.serve({
     }
   },
 });
+
+actualPort = server.port;
 
 console.log(`[fixture-server] Listening on http://localhost:${server.port}`);
 
