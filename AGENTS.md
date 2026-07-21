@@ -96,13 +96,15 @@ Each local run record contains:
 | `snapshot.json` | Snapshot handle (run dir, config backup dir, empty flag) |
 | `config-backup/` | The pre-test `~/.config/allbrew/` contents used for restore |
 
-- **E2E-tap**: snapshot/restore + readout capture is handled by a wrapper script (`scripts/e2e-tap-local-runner.ts`) that snapshots `~/.config/allbrew`, runs `bun test tests/e2e-tap/`, captures a readout, and restores state. Per-describe teardown also disposes disposable taps and uninstalls their packages. The runner writes test output to `<runDir>/test-output.log` and passes its path via `ALLBREW_TEST_LOG` so the readout can include a Test Results Summary.
-- **E2E catalog**: snapshot/restore + readout capture is in `beforeAll`/`afterAll` of `tests/e2e/catalog.e2e.test.ts`. `afterAll` also uninstalls any catalog apps still installed (e.g. a test failed before its uninstall step). The wrapper script `scripts/test-e2e.sh` tees output and passes `ALLBREW_TEST_LOG` the same way.
+- **E2E-tap**: snapshot/restore + readout capture is handled by a wrapper script (`scripts/e2e-tap-local-runner.ts`) that snapshots `~/.config/allbrew`, runs `bun test tests/e2e-tap/`, captures a readout, and restores state. Per-describe teardown also disposes disposable taps, uninstalls their packages, stops registered service agents, and kills orphaned fixture processes. The runner writes test output to `<runDir>/test-output.log` and passes its path via `ALLBREW_TEST_LOG` so the readout can include a Test Results Summary.
+- **E2E catalog**: snapshot/restore + readout capture is in `beforeAll`/`afterAll` of `tests/e2e/catalog.e2e.test.ts`. `afterAll` also uninstalls any catalog apps still installed (e.g. a test failed before its uninstall step), stops registered services, kills orphaned fixtures, and purges orphaned registry files. The wrapper script `scripts/test-e2e.sh` tees output and passes `ALLBREW_TEST_LOG` the same way.
+- **Test cleanup registry** (Tier 0, T0.2): `tests/helpers/test-cleanup-registry.ts` tracks fixture process PIDs and Homebrew service agents started during a test run in per-process JSON files under `${TMPDIR}/allbrew-test-registries/`. On clean teardown the runner stops registered services, kills orphaned fixtures (those whose owning test process is dead), and purges orphaned registry files. This covers the Ctrl-C / crash case where Vitest teardown does not run.
 - **Manual recovery**: if a test run is killed, run `scripts/test-local-cleanup.sh`:
-  - `--dry-run` (default): show test residue and available snapshots without changing anything.
+  - `--dry-run` (default): show test residue, available snapshots, and the cleanup registry (fixture PIDs + registered services) without changing anything.
   - `--restore`: restore `~/.config/allbrew` from the latest snapshot.
-  - `--force`: restore + untap disposable `test/e2e-tap-*` taps and uninstall their packages.
+  - `--force`: restore + untap disposable `test/e2e-tap-*` taps and uninstall their packages + stop registered Homebrew services from dead test processes + kill orphaned fixture processes + purge orphaned registry files.
 - **Debug escape hatch**: `scripts/test-e2e-tap.sh --local --no-cleanup` disables the runner's snapshot/restore for debugging on the local filesystem.
+- **Lume-first lifecycle tests** (Tier 0, T0.4): destructive lifecycle tests (services, zap, hooks — A1/A3/A4) live under `tests/e2e-lume/` and are gated by `tests/helpers/lifecycle-gate.ts`. They run on Lume by default (`ALLBREW_LUME=1`, set by the VM harness); local execution requires explicit opt-in via `ALLBREW_LIFECYCLE_LOCAL=1`. Use the `lifecycleDescribe()` wrapper or `shouldRunLifecycleTests()` check so they skip cleanly otherwise.
 
 To run a single test file:
 

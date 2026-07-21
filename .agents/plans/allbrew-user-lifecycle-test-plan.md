@@ -2,7 +2,7 @@
 
 > **Goal:** Close the gap between “allbrew emits valid Homebrew Ruby” and “a macOS user can trust allbrew as their global solution for installing, updating, tracking, and uninstalling CLIs, GUI apps, and long-running service apps (including tools they would otherwise install via `npm -g`, `uv tool`, `pipx`, `cargo install`, etc.).”
 >
-> **Status:** Plan only. Implementation not started. Derived from a full-suite evaluation (unit / integration / E2E catalog / E2E-tap / Lume VM) against real-world user personas.
+> **Status:** Tier 0 (PR0: T0.1–T0.4) **implemented** in the allbrew repo. T0.5 (PR0b: exclusive `/opt/homebrew` sparsebundle) pending in `lume-macos-testing-harness`. Tier A–C plan only. Derived from a full-suite evaluation (unit / integration / E2E catalog / E2E-tap / Lume VM) against real-world user personas.
 >
 > **Related plans:**
 > - [`allbrew-tap-update-e2e.md`](./allbrew-tap-update-e2e.md) — fixture server + generate → tap install → livecheck update cycle (**implemented**)
@@ -711,10 +711,10 @@ Security items in [`fable-app-review-2026-07-11.md`](./fable-app-review-2026-07-
 
 ### 11.0 Tier 0 done when
 
-- [ ] `~/.config/allbrew/` (config + manifests) is snapshotted and restored across e2e/e2e-tap runs, including the "directory did not exist" case.
-- [ ] Test-created disposable taps, installed packages, service agents, and fixture processes are removed even after failed/interrupted tests.
-- [ ] `scripts/test-local-cleanup.sh --dry-run|--restore|--force` exists and works for manual recovery.
-- [ ] Destructive lifecycle tests (services, zap, hooks) are Lume-first; local execution requires explicit opt-in.
+- [x] `~/.config/allbrew/` (config + manifests) is snapshotted and restored across e2e/e2e-tap runs, including the "directory did not exist" case.
+- [x] Test-created disposable taps, installed packages, service agents, and fixture processes are removed even after failed/interrupted tests.
+- [x] `scripts/test-local-cleanup.sh --dry-run|--restore|--force` exists and works for manual recovery.
+- [x] Destructive lifecycle tests (services, zap, hooks) are Lume-first; local execution requires explicit opt-in.
 - [ ] Lume Homebrew uses exclusive real `/opt/homebrew` via per-user sparsebundle + mutex (T0.5); no FUSE spoof; no primary custom-prefix E2E path.
 - [ ] Acquire/release/reset of the prefix is documented and verified (detach + lock release on failure; sparsebundle deleted on project reset).
 - [ ] Cask installs in Lume target `$HOME/Applications`; system `/Applications` stays clean across runs.
@@ -833,3 +833,4 @@ This lifecycle plan **does** expand scope for services, residuals, hooks, zap, a
 | 2026-07-21 | Initial plan from full-suite evaluation (user-lifecycle lens: CLI, GUI, services, global tools, day-2 ops). |
 | 2026-07-21 | Refined after assessment: added Tier 0 isolation prerequisite, Lume-first services, manifest semantics decision gate, hooks activation test, A6 testability split, nightly operational model, revised PR sequence. |
 | 2026-07-21 | Homebrew multi-user isolation: reject macFUSE/FSKit and primary `$HOME/.homebrew`; adopt exclusive `/opt/homebrew` sparsebundle + mutex (T0.5), cask appdir under `$HOME/Applications`, PR0b, nightly/readout/acceptance updates; link harness migration plan. |
+| 2026-07-21 | Tier 0 (PR0) implemented in allbrew repo: test-cleanup-registry (fixture PID + service agent tracking, orphan kill/stop/purge), wired into e2e-tap server/teardown + e2e catalog afterAll + local runner; `scripts/test-local-cleanup.sh --force` extended to kill orphaned fixtures + stop services + purge registries; `tests/helpers/lifecycle-gate.ts` + `tests/e2e-lume/` scaffold for Lume-first destructive tests (`ALLBREW_LIFECYCLE_LOCAL=1` / `ALLBREW_LUME=1`); 15 unit tests for the registry. T0.5 (PR0b) remains pending in lume-macos-testing-harness. |
