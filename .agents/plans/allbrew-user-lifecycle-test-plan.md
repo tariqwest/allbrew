@@ -7,6 +7,7 @@
 > **Related plans:**
 > - [`allbrew-tap-update-e2e.md`](./allbrew-tap-update-e2e.md) — fixture server + generate → tap install → livecheck update cycle (**implemented**)
 > - [`allbrew-e2e-lume-vm.md`](./allbrew-e2e-lume-vm.md) — isolated macOS VM harness
+> - [`lume-macos-testing-harness/.../allbrew-migration.md`](../../../lume-macos-testing-harness/.agents/plans/allbrew-migration.md) — harness migration; **exclusive `/opt/homebrew` sparsebundle model** (§2.5)
 > - [`allbrew-test-cases.md`](./allbrew-test-cases.md) — research master table (~200 apps)
 > - [`allbrew-hooks-uninstall-detection.md`](./allbrew-hooks-uninstall-detection.md) — OOB uninstall (feature + future tests)
 > - [`allbrew-scan.md`](./allbrew-scan.md) / [`allbrew-switch.md`](./allbrew-switch.md) — planned features
@@ -74,6 +75,8 @@ The suite almost never asserts (2)–(4) beyond “binary prints a version” or
 - Full GUI automation with Cua for every cask (optional later; not required for Tier A).
 - Live MAS/Setapp install in CI without test accounts (document limits; mock where possible).
 - Implementing scan/switch/list/doctor features themselves (only their test requirements once shipped).
+- Concurrent multi-user bottle-correct Homebrew on one macOS instance (macOS mounts are global; see T0.5 / harness migration §2.5).
+- macFUSE/FSKit path spoofing of `/opt/homebrew` (rejected: FSKit cannot mount outside `/Volumes`; kext unavailable in VMs).
 
 ---
 
@@ -154,10 +157,10 @@ Each persona is a **named journey** with setup, actions, and residual-state asse
 | | |
 |--|--|
 | **Examples** | Seaquel, LocalSend, UTM, Ollama, balenaEtcher |
-| **User intent** | App in `/Applications`, opens, updates via brew, zap removes leftovers |
-| **Must prove** | App path exists; launch does not immediately crash; uninstall removes app; `--zap` hits trash paths |
+| **User intent** | App installed via cask, opens, updates via brew, zap removes leftovers |
+| **Must prove** | App path exists (Lume: `$HOME/Applications/<App>.app` under harness cask opts; production-default may be `/Applications`); launch does not immediately crash; uninstall removes app; `--zap` hits trash paths |
 | **Today** | `open -a` smoke; zap strings only |
-| **Add** | Path asserts; zap persona; optional quarantine/xattr note for real DMGs |
+| **Add** | Path asserts under the active cask appdir; zap persona; optional quarantine/xattr note for real DMGs |
 
 ### P5 — MAS / Setapp
 
@@ -286,33 +289,124 @@ Each persona is a **named journey** with setup, actions, and residual-state asse
 
 ## 6. Implementation tiers
 
+### Tier 0 — State isolation and recovery (prerequisite)
+
+Ship this **before** any Tier A work that mutates host Homebrew or allbrew state. Without reliable snapshot/restore, every subsequent lifecycle test signal is unreliable and host-state-dependent.
+
+#### T0.1 Snapshot and restore `~/.config/allbrew/`
+
+The existing e2e-tap helper (`tests/e2e-tap/helpers/config.ts`) only backs up `config.json`, misreads the packages directory as a file, and cannot restore an initially-absent configuration. Replace it with:
+
+1. Snapshot the **entire** `~/.config/allbrew/` directory — `config.json` **and** `packages/*.json` manifests.
+2. Restore both cases:
+   - pre-existing state (config + manifests), and
+   - the "directory/config did not exist" case (delete the test-created directory on restore).
+3. Snapshot at suite start (Vitest `globalSetup`), restore at suite end and on interruption.
+
+#### T0.2 Remove test-created state even after failed tests
+
+- Disposable taps: `brew untap --force` + remove work/remote dirs (extend `destroyDisposableTap` in `tests/e2e-tap/helpers/tap.ts`).
+- Installed packages: `brew uninstall --force` for anything installed during the run.
+- Service agents: `brew services stop` + `launchctl unload` for any service started during the run.
+- Fixture processes: kill orphaned fixture server PIDs (track started PIDs in a registry; clean up in teardown and via a manual recovery script).
+
+#### T0.3 Manual recovery for interrupted runs
+
+Provide `scripts/test-local-cleanup.sh` with:
+- `--dry-run` — show what would be removed without acting.
+- `--restore` — restore the most recent snapshot.
+- `--force` — skip confirmation prompts.
+
+This covers the Ctrl-C / crash case where Vitest teardown does not run.
+
+#### T0.4 Destructive lifecycle tests are Lume-first
+
+Service lifecycle (A1), zap (A4), and hooks (A3) tests mutate launchd, app install locations, and Homebrew service state. These run on **Lume by default**; local execution is explicitly opt-in via an env flag (e.g., `ALLBREW_LIFECYCLE_LOCAL=1`). The e2e-tap runner is serialized (`vitest.config.ts` singleFork) but still operates against the active host's Homebrew installation with developer/trust bypass env vars (`tests/e2e-tap/helpers/run.ts`), so it is not a production-equivalence environment.
+
+#### T0.5 Bottle-compatible Homebrew prefix on multi-user Lume VMs
+
+Lifecycle journeys that install real formulae/casks, run `brew services`, or assert PATH/Cellar residuals must use a **real default prefix** (`/opt/homebrew` on Apple Silicon). Custom prefixes such as `$HOME/.homebrew` are **not** the primary model: many bottles refuse to pour or misbehave off the default prefix.
+
+**Decided approach** (aligned with [`allbrew-migration.md` §2.5](../../../lume-macos-testing-harness/.agents/plans/allbrew-migration.md)):
+
+1. **Exclusive, time-multiplexed `/opt/homebrew`** — not concurrent per-user views of the same path.
+2. Each Lume project user owns an APFS sparsebundle, e.g. `$HOME/Library/LumeHomebrew/homebrew.sparsebundle`.
+3. Before Homebrew-mutating journeys/profiles, the harness:
+   - acquires a VM-global lock;
+   - detaches any volume at `/opt/homebrew`;
+   - attaches that user’s sparsebundle at `/opt/homebrew`;
+   - ensures a default-prefix Homebrew install exists on the volume;
+   - runs tests as the project user with `/opt/homebrew/bin` on `PATH` and `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`.
+4. Always detach + unlock in `finally`; project reset deletes the sparsebundle (and recovers stale mounts/locks).
+5. **Rejected:** macFUSE/FSKit spoofing of `/opt/homebrew` (global mounts; FSKit mountpoints limited to `/Volumes`; kext unsupported in VMs).
+6. **Rejected as primary:** shared group-writable `/opt/homebrew`, or silent fallback to custom prefix for bottle/lifecycle tests.
+7. **Concurrency:** multiple project users may coexist (homes, configs, sparsebundles); only one may hold `/opt/homebrew` at a time. Parallel bottle-heavy suites require separate VMs.
+
+**Test implications:**
+
+| Assertion surface | Expected path under Lume exclusive session |
+|-------------------|--------------------------------------------|
+| Formula bins | `/opt/homebrew/bin/<name>` → Cellar |
+| Cask apps | `$HOME/Applications/<App>.app` (not system `/Applications`) |
+| `brew --prefix` | `/opt/homebrew` |
+| Service plists / `brew services` | Default-prefix Homebrew behavior |
+| Residual checks after uninstall | Cellar/link gone under mounted prefix; cask path under `$HOME/Applications` |
+
+Catalog/helper `verifyPaths` for Lume journeys should use `/opt/homebrew/...` for formulae and `$HOME/Applications/...` for casks. Local opt-in lifecycle runs may use the developer host’s existing Homebrew but must document non-isolation.
+
 ### Tier A — High leverage (do first)
 
 Ship these before treating hooks/service automation as production-safe.
 
-#### A1. Service e2e personas (3 stacks minimum)
+#### A1. Service lifecycle personas (Lume-first, 3 stacks minimum)
 
-| ID | Stack | Suggested real or fixture app | Assertions |
-|----|-------|-------------------------------|------------|
-| A1a | npm-package | maildev or fixture HTTP server | generate **with** `--service` + command → install → `brew services start` → `curl` HTTP 200 → stop → uninstall → no LaunchAgent for formula |
-| A1b | pip-package | lightweight webui or fixture | same |
-| A1c | go-package or binary-release | wakapi / godns or fixture | same |
+Service runtime validation affects user-level launchd and Homebrew service state. It is **Lume-first**; e2e-tap covers only generation and stanza inspection.
 
-**Implementation notes:**
+| ID | Stack | Suggested real or fixture app | Tier | Assertions |
+|----|-------|-------------------------------|------|------------|
+| A1a | npm-package | maildev or fixture HTTP server | e2e-tap + Lume | see split below |
+| A1b | pip-package | lightweight webui or fixture | e2e-tap + Lume | same |
+| A1c | go-package or binary-release | wakapi / godns or fixture | e2e-tap + Lume | same |
 
-- Do **not** pass `--no-service` for these tests (new helper: `generateFormulaWithService`).
-- Prefer controllable fixtures in e2e-tap for determinism; keep 1–2 real-catalog service smokes in E2E/Lume.
-- HTTP probe: wait/retry with timeout; assert port from service command.
-- Residual: `brew services list` shows none; `launchctl list` / agent path absent.
+**e2e-tap scope (deterministic, no `brew services`):**
+
+- Generate **with** `--service` + command (new helper: `generateFormulaWithService`).
+- Install from tap.
+- Assert generated Ruby contains correct `service do` block, `run` args, `keep_alive`, log paths.
+- Optionally directly launch the fixture executable (not via `brew services`) and HTTP-probe it, then kill the process. This validates the service command without touching launchd.
+
+**Lume user journey scope (full `brew services` lifecycle):**
+
+- `brew services start` → HTTP readiness probe (retry with timeout) → `brew services status` → upgrade-while-running → `brew services stop` → uninstall → assert no LaunchAgent remains (`launchctl list`, agent path absent).
+- `brew services list` shows none after uninstall.
+
+**Implementation requirements:**
+
+- Do **not** pass `--no-service` for these tests.
+- **Dynamically allocated ports**: each test records its port in a registry; no fixed ports (collisions with prior test residue cause false failures).
+- **Unique formula/tap names per test run**: avoid collision with residue from prior runs (the e2e-tap `tapCounter` pattern in `tests/e2e-tap/helpers/tap.ts` is a starting point).
+- Prefer controllable fixtures in e2e-tap for determinism; keep 1–2 real-catalog service smokes in Lume nightly.
 
 **Files (expected):**
 
-- `tests/e2e-tap/fixtures/` — optional service-capable fake apps that listen on a port.
-- `tests/e2e-tap/service.e2e-tap.test.ts` (new) or persona section in cross-cutting.
+- `tests/e2e-tap/fixtures/` — service-capable fake apps that bind `127.0.0.1:$PORT` and return 200 on `/`.
+- `tests/e2e-tap/service.e2e-tap.test.ts` (new) — stanza inspection + direct-launch smoke.
+- `tests/e2e-lume/service-lifecycle.lume.test.ts` (new, gated) — full `brew services` lifecycle.
 - `tests/e2e/catalog.json` — optional `serviceCommand` + `verifyHttp` fields for real apps.
 - Extend `catalog.e2e.test.ts` / helpers to honor those fields.
 
 #### A2. Uninstall residual checks (all e2e paths)
+
+**Prerequisite — manifest semantics decision (required before implementation):**
+
+A product decision must be made and documented **before** writing the residual helper. Today, generation and updates save manifests (`lib/manifest.ts` exposes `saveManifest` and `deleteManifest`), but plain `brew uninstall` has no call path that deletes a manifest. The residual helper must not assert behavior the product cannot perform.
+
+| Decision | Helper behavior |
+|----------|-----------------|
+| **Manifests persist** (allbrew is system of record) | Assert manifest still exists after `brew uninstall`; document that `allbrew remove`/`doctor` (Tier C) will handle deletion. Do not assert `manifestGone`. |
+| **Manifests deleted on uninstall** | Implement an allbrew-owned uninstall/removal path (or out-of-band detection per `allbrew-hooks-uninstall-detection.md`) **first**. Only then assert `manifestGone`. Do not assert `manifestGone` after plain `brew uninstall`. |
+
+The helper should assert only facts that are already valid product behavior.
 
 After every successful uninstall in e2e and e2e-tap:
 
@@ -325,14 +419,25 @@ After every successful uninstall in e2e and e2e-tap:
 
 If product choice is “manifests persist until `allbrew remove`,” document that and assert persistence; do not leave behavior accidental.
 
-#### A3. Hooks smoke (Lume)
+#### A3. Hooks smoke (Lume) — test actual activation
+
+The hook wrapper is opt-in: it instructs users to source it and alias `brew` (`lib/brew-hooks.ts` `BREW_WRAP_CONTENT`). Testing only that the wrapper file exists is insufficient.
+
+**Prerequisite — resolve the double-`brew update` question:**
+
+`BREW_WRAP_CONTENT` in `lib/brew-hooks.ts` runs `command brew update` again after the wrapper's own `brew update` branch fires. Decide whether this is intentional or a bug **before** making it the lifecycle baseline. If it is a bug, fix it first; if intentional, document why.
+
+**Test sequence:**
 
 1. Fresh VM or clean prefix.
-2. `allbrew hooks install`.
-3. Generate + install managed package (fixture or catalog).
-4. Mutate upstream (fixture) or simulate outdated livecheck.
-5. Run `brew update` (or invoke wrapper directly if brew update is too heavy).
-6. Assert update-formulas side effect (formula version / commit / log line).
+2. `allbrew hooks install` → assert wrapper file exists at expected path.
+3. Source the generated wrapper in a non-interactive shell.
+4. Alias/invoke `brew` through `allbrew_brew` (the wrapper function).
+5. Generate + install a managed package (fixture or catalog).
+6. Mutate upstream (fixture) or simulate outdated livecheck.
+7. Run `brew update` through the aliased wrapper (or invoke wrapper directly if `brew update` is too heavy).
+8. Assert update-formulas side effect: formula version bumped, tap commit created, manifest updated, log line present.
+9. Assert no unexpected side effects (e.g., double update does not cause duplicate commits if that is the resolved behavior).
 
 #### A4. Zap persona (one cask)
 
@@ -353,14 +458,16 @@ Fixtures under `tests/fixtures/readme/` (or similar):
 
 Cover `lib/analyzer.ts` paths currently only exercised indirectly via CLI.
 
-#### A6. Module unit smoke for ops code
+#### A6. Module unit smoke for ops code (split per module)
 
-Minimal pure tests (no full brew):
+Minimal pure tests (no full brew). Each module has distinct testable surfaces — do not conflate them.
 
-- `brew-hooks.ts` — install writes expected wrapper path; uninstall removes it (tmpdir mocks).
-- `launchd-service.ts` — plist contents include absolute paths / log rotate policy.
-- `config.ts` — permissions 0o600; invalid tap path rejected.
-- `sha256.ts` — size/time limit behavior with mock/small fixtures.
+| Module | Test targets |
+|--------|-------------|
+| `brew-hooks.ts` | Pure wrapper content (`BREW_WRAP_CONTENT` string assertions); `brewWrapPath()` path construction; install writes to expected path; uninstall removes it. Use tmpdir + mocked `getBrewPrefix()` (no real brew call). |
+| `launchd-service.ts` | **Update script** (`writeUpdateScript`): assert PATH resolution from `resolveAllbrewPath` + `getBrewPrefix`, log rotation at 10MB (`stat -f%z` branch), executable mode `0o755`, `set -euo pipefail` present. **Plist** (`plistContent`): assert XML validity, Label, ProgramArguments, StartInterval, RunAtLoad. Validate with `plutil -lint` in Lume. Do **not** assert "plist includes log rotation" — rotation lives in the update script, not the plist. |
+| `config.ts` | File permissions `0o600` on write; invalid/missing tap path rejected by `set-tap` validation; round-trip read/write of config JSON. |
+| `sha256.ts` | 10-minute fetch timeout behavior; 2GB size cap enforcement; temp-file cleanup on success and failure. Use mock/small fixtures, not real downloads. |
 
 ---
 
@@ -471,6 +578,19 @@ A fixed, short list that must pass on the Lume harness (local or remote). **Not*
 - Record results under `tests/e2e-runs/<ts>/` with explicit journey pass/fail section in `readout.txt`.
 - Failure of any Tier A journey blocks “hooks/service ready” claim in AGENTS status table.
 
+### 7.2.1 Operational model (required for reliable nightly)
+
+| Requirement | Detail |
+|-------------|--------|
+| Clean-VM precondition | Reset or fresh clone before nightly run; no assumption of prior state. |
+| Exclusive Homebrew prefix | Journeys run under harness `acquireHomebrewPrefix` for the project user (real `/opt/homebrew` sparsebundle). No custom-prefix fallback. |
+| Single runner-owned workspace | All journeys operate within one project user/workspace holding the Homebrew lock for the run; no cross-project concurrent `/opt/homebrew` use. |
+| Per-journey timeout and cleanup | Each journey has its own timeout; cleanup runs after each journey regardless of pass/fail. |
+| Final residue audit | After all journeys: `brew services list`, launch agents, taps, manifests, `$HOME/Applications`, disk usage, Homebrew mount/lock state. Record in readout. |
+| Prefix release | Detach `/opt/homebrew` and release lock after the journey suite (`finally`), even on failure. |
+| Machine-readable result file | `tests/e2e-runs/<ts>/journeys.json` with per-journey `{name, status, duration, error?}`. Not only human-readable `readout.txt`. |
+| Retry policy | Retry only transient network failures (timeout, DNS, 5xx). Never retry product/service failures — those are real signals. |
+
 ### 7.3 What remains optional
 
 - Full `E2E=1` catalog (49) — weekly or on-demand.
@@ -527,12 +647,15 @@ Optional fields:
 ```json
 {
   "serviceCommand": "maildev",
-  "verifyHttp": { "url": "http://127.0.0.1:1080", "expectStatus": 200 },
+  "verifyHttp": { "url": "http://127.0.0.1:$PORT", "expectStatus": 200 },
   "verifyPaths": ["/opt/homebrew/bin/maildev"],
+  "verifyAppPaths": ["$HOME/Applications/Example.app"],
   "uninstallAsserts": { "manifestGone": true, "binGone": true },
   "zap": true
 }
 ```
+
+On Lume, formula `verifyPaths` assume the exclusive default prefix session (`/opt/homebrew`). Cask app paths use `$HOME/Applications` when `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications` is set by the harness.
 
 ### 9.3 Helper APIs
 
@@ -545,23 +668,28 @@ Optional fields:
 
 ### 9.4 Lume readout extensions
 
-Add to `e2e-vm-readout.sh`:
+Add to readout (legacy `e2e-vm-readout.sh` or harness `readout`):
 
 - `brew services list`
 - LaunchAgents mentioning allbrew/managed formulas
 - Manifest count + names
 - Journey summary JSON
+- Homebrew exclusive-session state: lock holder, whether `/opt/homebrew` is mounted, sparsebundle path, `brew --prefix`
+- `$HOME/Applications` listing for the project user
 
 ---
 
 ## 10. Priority order and dependencies
 
 ```text
+T0 state isolation/recovery
+  (config snapshot + exclusive /opt/homebrew sparsebundle) ─┐
+                                                             ▼
 A5 analyzer unit ─────────────────────────────┐
-A6 hooks/launchd/config unit ─────────────────┤
-A2 residual uninstall checks (easy win) ──────┼─► A1 service e2e personas
+A6 hooks/launchd/config/sha256 unit ──────────┤
+A2 residual uninstall checks (post-decision) ─┼─► A1 service e2e-tap + Lume personas
 A1 fixtures for HTTP service ─────────────────┤
-                                              ├─► A3 hooks Lume smoke
+                                              ├─► A3 hooks Lume activation smoke
                                               └─► A4 zap persona
                                                       │
                                                       ▼
@@ -571,6 +699,8 @@ A1 fixtures for HTTP service ─────────────────
                                               C features as shipped
 ```
 
+**Tier 0 is a hard prerequisite.** Do not start Tier A work that mutates host or Lume Homebrew state until config snapshot/restore **and** the exclusive default-prefix strategy (T0.5 / harness §2.5) are reliable.
+
 **Do not** claim hooks/service install are production-ready until **A1 + A2 + A3** pass on Lume.
 
 Security items in [`fable-app-review-2026-07-11.md`](./fable-app-review-2026-07-11.md) should gain adversarial unit tests in parallel (rubyEscape, archive traversal, config perms)—orthogonal but required before unattended automation.
@@ -579,15 +709,27 @@ Security items in [`fable-app-review-2026-07-11.md`](./fable-app-review-2026-07-
 
 ## 11. Acceptance criteria
 
+### 11.0 Tier 0 done when
+
+- [ ] `~/.config/allbrew/` (config + manifests) is snapshotted and restored across e2e/e2e-tap runs, including the "directory did not exist" case.
+- [ ] Test-created disposable taps, installed packages, service agents, and fixture processes are removed even after failed/interrupted tests.
+- [ ] `scripts/test-local-cleanup.sh --dry-run|--restore|--force` exists and works for manual recovery.
+- [ ] Destructive lifecycle tests (services, zap, hooks) are Lume-first; local execution requires explicit opt-in.
+- [ ] Lume Homebrew uses exclusive real `/opt/homebrew` via per-user sparsebundle + mutex (T0.5); no FUSE spoof; no primary custom-prefix E2E path.
+- [ ] Acquire/release/reset of the prefix is documented and verified (detach + lock release on failure; sparsebundle deleted on project reset).
+- [ ] Cask installs in Lume target `$HOME/Applications`; system `/Applications` stays clean across runs.
+
 ### 11.1 Tier A done when
 
-- [ ] At least 3 service personas (npm, pip, go/binary) pass with `brew services` + HTTP + residual uninstall.
+- [ ] Manifest semantics decision documented (persist vs delete); residual helper asserts only valid product behavior.
+- [ ] At least 3 service personas (npm, pip, go/binary) pass: e2e-tap covers stanza + direct-launch; Lume covers full `brew services` lifecycle + HTTP + residual uninstall.
+- [ ] Service tests use dynamically allocated ports and unique per-run formula/tap names.
 - [ ] Shared residual uninstall helper used by e2e + e2e-tap.
 - [ ] Analyzer has a dedicated unit suite with README fixtures.
-- [ ] Hooks smoke passes once on Lume (wrapper or full brew update path).
+- [ ] Hooks smoke passes on Lume: wrapper is sourced, `brew` is invoked through `allbrew_brew`, update-formulas side effect is asserted. Double-`brew update` question resolved.
 - [ ] One zap persona passes.
-- [ ] Ops modules (hooks, launchd, config) have minimal unit coverage.
-- [ ] AGENTS.md “What is not done” / testing section updated to reflect service/lifecycle coverage.
+- [ ] Ops modules have split unit coverage: `brew-hooks` (wrapper content/path), `launchd-service` (update script + plist separately, `plutil -lint` in Lume), `config` (perms/validation), `sha256` (limits/cleanup).
+- [ ] AGENTS.md "What is not done" / testing section updated to reflect service/lifecycle coverage.
 
 ### 11.2 Tier B done when
 
@@ -599,8 +741,13 @@ Security items in [`fable-app-review-2026-07-11.md`](./fable-app-review-2026-07-
 
 ### 11.3 Nightly done when
 
-- [ ] `scripts/e2e-vm-run-tests.sh --user-journeys` (or equivalent) runs ≤10 journeys.
+- [ ] `scripts/e2e-vm-run-tests.sh --user-journeys` (or harness equivalent) runs ≤10 journeys.
 - [ ] Run record includes journey pass/fail.
+- [ ] `journeys.json` machine-readable result file written per run.
+- [ ] Clean-VM precondition enforced (reset or fresh clone before nightly).
+- [ ] Journeys hold exclusive `/opt/homebrew` for the project user; readout records prefix/mount/lock state.
+- [ ] Final residue audit (services, launch agents, taps, manifests, `$HOME/Applications`, disk) recorded in readout.
+- [ ] Retry policy limited to transient network failures; product/service failures never retried.
 - [ ] Documented cadence (nightly on remote Lume host).
 
 ---
@@ -609,9 +756,11 @@ Security items in [`fable-app-review-2026-07-11.md`](./fable-app-review-2026-07-
 
 | Evaluation finding | Work item IDs |
 |--------------------|---------------|
+| Host state mutation without reliable restore | T0, A2 |
+| Multi-user VM vs bottle-required `/opt/homebrew` | T0.5, harness migration §2.5 |
 | `--no-service` everywhere | A1, catalog schema, helpers |
 | No brew services / HTTP | A1, A1 fixtures |
-| Uninstall only exit 0 | A2 |
+| Uninstall only exit 0 | A2 (post manifest-semantics decision) |
 | Hooks/launchd untested | A3, A6 |
 | GUI shallow / zap never run | A4, B optional Gatekeeper |
 | Analyzer untested | A5, B3 |
@@ -635,32 +784,45 @@ From e2e-tap plan — still valid unless explicitly expanded:
 - Linux formula install.
 - Live MAS/Setapp without credentials.
 
-This lifecycle plan **does** expand scope for services, residuals, hooks, zap, and analyzer—because those are product-critical for the “global solution” claim.
+Also out of scope unless product direction changes:
+
+- Concurrent bottle-correct Homebrew for multiple project users on one VM.
+- macFUSE/FSKit (or bindfs) spoofing of `/opt/homebrew`.
+- Primary reliance on `$HOME/.homebrew` / other custom prefixes for Lume lifecycle or bottle pours.
+
+This lifecycle plan **does** expand scope for services, residuals, hooks, zap, analyzer, and **exclusive default-prefix Lume Homebrew**—because those are product-critical for the “global solution” claim.
 
 ---
 
 ## 14. Suggested first PR sequence
 
-1. **PR1 — Residual uninstall helper + wire into e2e-tap/e2e** (A2)  
-   Low risk, immediate signal quality improvement.
+1. **PR0 — Local/Lume state snapshot, restoration, and interrupted-run recovery** (Tier 0.1–0.4)  
+   Hard prerequisite for config/manifest isolation. Without this, every subsequent lifecycle test signal is unreliable.
 
-2. **PR2 — Analyzer unit suite** (A5)  
-   Offline, fast, unblocks correct service auto-detection confidence.
+2. **PR0b — Exclusive `/opt/homebrew` sparsebundle + mutex in Lume harness** (Tier 0.5; harness migration §2.5)  
+   Required before bottle-faithful Lume journeys, services, hooks, and residual PATH/Cellar asserts. Lands primarily in `lume-macos-testing-harness`, then allbrew `test-suite` wiring.
 
-3. **PR3 — Service fixture + e2e-tap service personas** (A1)  
-   Core gap close.
+3. **PR1 — Shared uninstall residual helper** (A2, post-decision)  
+   Asserts only facts that are already valid product behavior. Requires manifest semantics decision first.
 
-4. **PR4 — Catalog schema for service/http + 1–2 real smokes** (A1 real)  
-   Optional; can follow PR3.
+4. **PR2 — Analyzer, hooks, launchd, config, and SHA256 unit seams/tests** (A5 + A6)  
+   Offline, fast, unblocks correct service auto-detection and ops module confidence.
 
-5. **PR5 — Hooks/launchd unit + Lume hooks smoke** (A6 + A3)  
-   Gates automation.
+5. **PR3 — Service-capable fixture + service-stanza tests in e2e-tap** (A1 e2e-tap scope)  
+   Deterministic: stanza inspection + direct-launch smoke. No `brew services`.
 
-6. **PR6 — Zap persona** (A4)
+6. **PR4 — Lume service lifecycle journeys** (A1 Lume scope)  
+   Requires PR0b. Full `brew services` start/status/stop + HTTP + upgrade + uninstall residual under exclusive `/opt/homebrew`. One controllable service, then expand to npm/pip/go-or-binary.
 
-7. **PR7 — Nightly user-journeys runner + readout** (§7)
+7. **PR5 — Hook activation + update lifecycle smoke in Lume** (A3)  
+   Requires PR0b and double-`brew update` question resolved first. Tests actual wrapper sourcing and `allbrew_brew` invocation.
 
-8. **Later — B1–B6, Tier C** as capacity allows.
+8. **PR6 — Zap persona + catalog schema support** (A4 + catalog schema)
+
+9. **PR7 — `--user-journeys` runner, reset, and structured reporting** (§7)  
+   Includes `journeys.json`, clean-VM precondition, exclusive-prefix acquire/release, residue audit, retry policy.
+
+10. **Later — B1–B6, Tier C** as capacity allows.
 
 ---
 
@@ -669,3 +831,5 @@ This lifecycle plan **does** expand scope for services, residuals, hooks, zap, a
 | Date | Change |
 |------|--------|
 | 2026-07-21 | Initial plan from full-suite evaluation (user-lifecycle lens: CLI, GUI, services, global tools, day-2 ops). |
+| 2026-07-21 | Refined after assessment: added Tier 0 isolation prerequisite, Lume-first services, manifest semantics decision gate, hooks activation test, A6 testability split, nightly operational model, revised PR sequence. |
+| 2026-07-21 | Homebrew multi-user isolation: reject macFUSE/FSKit and primary `$HOME/.homebrew`; adopt exclusive `/opt/homebrew` sparsebundle + mutex (T0.5), cask appdir under `$HOME/Applications`, PR0b, nightly/readout/acceptance updates; link harness migration plan. |
