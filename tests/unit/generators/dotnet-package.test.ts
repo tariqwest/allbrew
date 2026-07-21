@@ -1,16 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectDotnetPackagePayload } from "../../../lib/generators/dotnet-package.ts";
 
-vi.mock("../../../lib/sha256.ts", () => ({
-  hashUrl: vi.fn().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
-  downloadAndHash: vi.fn().mockResolvedValue({ sha256: "mocked_sha256_hash" }),
+mock.module("../../../lib/sha256.ts", () => ({
+  hashUrl: mock().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
+  downloadAndHash: mock().mockResolvedValue({ sha256: "mocked_sha256_hash" }),
 }));
 
 describe("collectDotnetPackagePayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("nuget.org") && url.includes("dotnet-serve")) {
         return Promise.resolve({
           ok: true,
@@ -100,9 +100,9 @@ describe("collectDotnetPackagePayload", () => {
 
 describe("collectDotnetPackagePayload — CSharpRepl", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("nuget.org") && url.includes("csharprepl")) {
         return Promise.resolve({
           ok: true,

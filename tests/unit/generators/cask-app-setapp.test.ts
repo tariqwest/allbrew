@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import {
   collectCaskAppSetappPayload,
   parseSetappPage,
@@ -39,8 +39,8 @@ describe("parseSetappPage", () => {
 
 describe("collectCaskAppSetappPayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
-    global.fetch = vi.fn(() =>
+    mock.restore();
+    global.fetch = mock(() =>
       Promise.resolve({
         ok: true,
         text: () => Promise.resolve(BARTENDER_HTML),
@@ -114,7 +114,7 @@ describe("collectCaskAppSetappPayload", () => {
   });
 
   it("throws when page has no app name", async () => {
-    global.fetch = vi.fn(() =>
+    global.fetch = mock(() =>
       Promise.resolve({
         ok: true,
         text: () => Promise.resolve("<html><body></body></html>"),
@@ -126,7 +126,7 @@ describe("collectCaskAppSetappPayload", () => {
   });
 
   it("throws when page fetch fails", async () => {
-    global.fetch = vi.fn(() =>
+    global.fetch = mock(() =>
       Promise.resolve({ ok: false, status: 404 }),
     ) as any;
     await expect(
@@ -137,8 +137,8 @@ describe("collectCaskAppSetappPayload", () => {
 
 describe("setappLatestVersion", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
-    global.fetch = vi.fn(() =>
+    mock.restore();
+    global.fetch = mock(() =>
       Promise.resolve({
         ok: true,
         text: () => Promise.resolve(BARTENDER_HTML),

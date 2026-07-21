@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectNpmPackagePayload } from "../../../lib/generators/npm-package.ts";
 import maildevFixture from "../../fixtures/npm/maildev.json";
 import diracCliFixture from "../../fixtures/npm/dirac-cli.json";
@@ -9,16 +9,16 @@ import vtopFixture from "../../fixtures/npm/vtop.json";
 import samanhappyMcphubFixture from "../../fixtures/npm/samanhappy-mcphub.json";
 import augmentcodeAuggieFixture from "../../fixtures/npm/augmentcode-auggie.json";
 
-vi.mock("../../../lib/sha256.ts", () => ({
-  hashUrl: vi.fn().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
-  downloadAndHash: vi.fn().mockResolvedValue({ sha256: "mocked_sha256_hash" }),
+mock.module("../../../lib/sha256.ts", () => ({
+  hashUrl: mock().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
+  downloadAndHash: mock().mockResolvedValue({ sha256: "mocked_sha256_hash" }),
 }));
 
 describe("collectNpmPackagePayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("registry.npmjs.org/maildev")) {
         return Promise.resolve({
           ok: true,
@@ -154,9 +154,9 @@ describe("collectNpmPackagePayload", () => {
 
 describe("collectNpmPackagePayload — dirac-cli", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("registry.npmjs.org/dirac-cli")) {
         return Promise.resolve({
           ok: true,
@@ -221,9 +221,9 @@ describe("collectNpmPackagePayload — dirac-cli", () => {
 
 describe("collectNpmPackagePayload — cline", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("registry.npmjs.org/cline")) {
         return Promise.resolve({
           ok: true,
@@ -286,9 +286,9 @@ describe("collectNpmPackagePayload — cline", () => {
 
 describe("collectNpmPackagePayload — taskbook", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("registry.npmjs.org/taskbook")) {
         return Promise.resolve({
           ok: true,
@@ -337,9 +337,9 @@ describe("collectNpmPackagePayload — taskbook", () => {
 
 describe("collectNpmPackagePayload — npkill", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("registry.npmjs.org/npkill")) {
         return Promise.resolve({
           ok: true,
@@ -381,9 +381,9 @@ describe("collectNpmPackagePayload — npkill", () => {
 
 describe("collectNpmPackagePayload — vtop", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("registry.npmjs.org/vtop")) {
         return Promise.resolve({
           ok: true,
@@ -432,9 +432,9 @@ describe("collectNpmPackagePayload — vtop", () => {
 
 describe("collectNpmPackagePayload — @samanhappy/mcphub", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("registry.npmjs.org/%40samanhappy%2Fmcphub") || url.includes("registry.npmjs.org/@samanhappy/mcphub")) {
         return Promise.resolve({
           ok: true,
@@ -489,9 +489,9 @@ describe("collectNpmPackagePayload — @samanhappy/mcphub", () => {
 
 describe("collectNpmPackagePayload — @augmentcode/auggie", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("registry.npmjs.org/%40augmentcode%2Fauggie") || url.includes("registry.npmjs.org/@augmentcode/auggie")) {
         return Promise.resolve({
           ok: true,

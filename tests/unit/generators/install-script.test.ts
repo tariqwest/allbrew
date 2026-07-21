@@ -1,16 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectInstallScriptPayload } from "../../../lib/generators/install-script.ts";
 
-vi.mock("../../../lib/sha256.ts", () => ({
-  hashUrl: vi.fn().mockResolvedValue("mocked_sha256"),
-  downloadAndHash: vi
-    .fn()
+mock.module("../../../lib/sha256.ts", () => ({
+  hashUrl: mock().mockResolvedValue("mocked_sha256"),
+  downloadAndHash: mock()
     .mockResolvedValue({ sha256: "script_sha256_mock_value_64chars_pad_abcdef0123456789abcdef" }),
 }));
 
 describe("collectInstallScriptPayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   it("returns payload with correct template identifier", async () => {
@@ -117,7 +116,7 @@ describe("collectInstallScriptPayload", () => {
 
 describe("collectInstallScriptPayload — Qoder", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   it("returns correct template identifier", async () => {
@@ -170,7 +169,7 @@ describe("collectInstallScriptPayload — Qoder", () => {
 
 describe("collectInstallScriptPayload — Cua Driver", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   it("returns correct template identifier", async () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { collectCaskAppSetappPayload } from "../../lib/generators/cask-app-setapp.ts";
 import { renderCask } from "../../lib/template-renderer.ts";
 import { assertValidCask } from "./helpers/validate-ruby.ts";

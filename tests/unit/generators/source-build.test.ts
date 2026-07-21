@@ -1,14 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectSourceBuildPayload } from "../../../lib/generators/source-build.ts";
 
-vi.mock("../../../lib/sha256.ts", () => ({
-  hashUrl: vi.fn().mockResolvedValue("bfs_sha256_mock_64chars_padding_abcdef0123456789abcdef01234567"),
-  downloadAndHash: vi.fn().mockResolvedValue({ sha256: "mocked_sha256" }),
+mock.module("../../../lib/sha256.ts", () => ({
+  hashUrl: mock().mockResolvedValue("bfs_sha256_mock_64chars_padding_abcdef0123456789abcdef01234567"),
+  downloadAndHash: mock().mockResolvedValue({ sha256: "mocked_sha256" }),
 }));
 
 describe("collectSourceBuildPayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const repoInfo = {
@@ -117,7 +117,7 @@ describe("collectSourceBuildPayload", () => {
 
 describe("collectSourceBuildPayload — slides", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const repoInfo = {
@@ -195,7 +195,7 @@ describe("collectSourceBuildPayload — slides", () => {
 
 describe("collectSourceBuildPayload — open-notebook (Python web app, no PyPI, source-build)", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const openNotebookRepoInfo = {
@@ -292,7 +292,7 @@ describe("collectSourceBuildPayload — open-notebook (Python web app, no PyPI, 
 
 describe("collectSourceBuildPayload — Jockey (Tauri, no releases)", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const jockeyRepoInfo = {

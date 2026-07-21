@@ -1,17 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectGoPackagePayload } from "../../../lib/generators/go-package.ts";
 import wakapiFixture from "../../fixtures/github/wakapi.json";
 import processComposeFixture from "../../fixtures/github/process-compose.json";
 import ugmFixture from "../../fixtures/github/ugm.json";
 
-vi.mock("../../../lib/sha256.ts", () => ({
-  hashUrl: vi.fn().mockResolvedValue("go_mocked_sha256_64chars_padding_abcdef0123456789abcdef01234"),
-  downloadAndHash: vi.fn().mockResolvedValue({ sha256: "mocked_sha256" }),
+mock.module("../../../lib/sha256.ts", () => ({
+  hashUrl: mock().mockResolvedValue("go_mocked_sha256_64chars_padding_abcdef0123456789abcdef01234"),
+  downloadAndHash: mock().mockResolvedValue({ sha256: "mocked_sha256" }),
 }));
 
 describe("collectGoPackagePayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const repoInfo = wakapiFixture.repo;
@@ -98,7 +98,7 @@ describe("collectGoPackagePayload", () => {
 
 describe("collectGoPackagePayload — process-compose", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const repoInfo = processComposeFixture.repo;
@@ -153,7 +153,7 @@ describe("collectGoPackagePayload — process-compose", () => {
 
 describe("collectGoPackagePayload — ugm", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const repoInfo = ugmFixture.repo;

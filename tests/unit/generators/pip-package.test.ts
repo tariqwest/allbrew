@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectPipPackagePayload } from "../../../lib/generators/pip-package.ts";
 import marimoFixture from "../../fixtures/pypi/marimo.json";
 import clickFixture from "../../fixtures/pypi/click.json";
@@ -6,16 +6,16 @@ import stuiFixture from "../../fixtures/pypi/s-tui.json";
 import browsrFixture from "../../fixtures/pypi/browsr.json";
 import toolongFixture from "../../fixtures/pypi/toolong.json";
 
-vi.mock("../../../lib/sha256.ts", () => ({
-  hashUrl: vi.fn().mockResolvedValue("mocked_sha256_hash"),
-  downloadAndHash: vi.fn().mockResolvedValue({ sha256: "mocked_sha256_hash" }),
+mock.module("../../../lib/sha256.ts", () => ({
+  hashUrl: mock().mockResolvedValue("mocked_sha256_hash"),
+  downloadAndHash: mock().mockResolvedValue({ sha256: "mocked_sha256_hash" }),
 }));
 
 describe("collectPipPackagePayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("/marimo/")) {
         return Promise.resolve({
           ok: true,
@@ -148,7 +148,7 @@ describe("collectPipPackagePayload", () => {
   });
 
   it("throws when PyPI returns non-OK", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    global.fetch = mock().mockResolvedValue({
       ok: false,
       status: 404,
     }) as any;
@@ -160,9 +160,9 @@ describe("collectPipPackagePayload", () => {
 
 describe("collectPipPackagePayload — s-tui", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("/s-tui/")) {
         return Promise.resolve({
           ok: true,
@@ -222,9 +222,9 @@ describe("collectPipPackagePayload — s-tui", () => {
 
 describe("collectPipPackagePayload — browsr", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("/browsr/")) {
         return Promise.resolve({
           ok: true,
@@ -282,9 +282,9 @@ describe("collectPipPackagePayload — browsr", () => {
 
 describe("collectPipPackagePayload — toolong", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = mock((url: string) => {
       if (url.includes("/toolong/")) {
         return Promise.resolve({
           ok: true,

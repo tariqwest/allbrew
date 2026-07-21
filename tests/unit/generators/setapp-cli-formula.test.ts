@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, spyOn, beforeEach } from "bun:test";
 import * as sha256 from "../../../lib/sha256.ts";
 import { collectSetappCliPayload } from "../../../lib/generators/setapp-cli-formula.ts";
 import { renderFormula } from "../../../lib/template-renderer.ts";
@@ -24,8 +24,8 @@ const release = {
 
 describe("collectSetappCliPayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
-    vi.spyOn(sha256, "downloadAndHash").mockResolvedValue({ sha256: "abc123" });
+    mock.restore();
+    spyOn(sha256, "downloadAndHash").mockResolvedValue({ sha256: "abc123" });
   });
 
   it("uses setapp_cli template", async () => {

@@ -1,25 +1,24 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectCaskAppPayload } from "../../../lib/generators/cask-app.ts";
 
-vi.mock("../../../lib/sha256.ts", () => ({
-  hashUrl: vi.fn().mockResolvedValue("cask_sha256_mock"),
-  downloadAndHash: vi
-    .fn()
+mock.module("../../../lib/sha256.ts", () => ({
+  hashUrl: mock().mockResolvedValue("cask_sha256_mock"),
+  downloadAndHash: mock()
     .mockResolvedValue({ sha256: "cask_sha256_64chars_padding_abcdef0123456789abcdef0123456789ab" }),
-  downloadToTemp: vi.fn().mockResolvedValue({
+  downloadToTemp: mock().mockResolvedValue({
     path: "/tmp/mock.zip",
     sha256: "cask_sha256_64chars_padding_abcdef0123456789abcdef0123456789ab",
-    cleanup: vi.fn(),
+    cleanup: mock(),
   }),
 }));
 
-vi.mock("../../../lib/archive-inspector.ts", () => ({
-  listZipEntries: vi.fn().mockResolvedValue(["Seaquel.app/"]),
+mock.module("../../../lib/archive-inspector.ts", () => ({
+  listZipEntries: mock().mockResolvedValue(["Seaquel.app/"]),
 }));
 
 describe("collectCaskAppPayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   it("returns payload with correct template identifier", async () => {

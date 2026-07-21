@@ -1,25 +1,24 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectCaskAppReleasePayload } from "../../../lib/generators/cask-app-release.ts";
 
-vi.mock("../../../lib/sha256.ts", () => ({
-  hashUrl: vi.fn().mockResolvedValue("cask_sha256_mock"),
-  downloadAndHash: vi
-    .fn()
+mock.module("../../../lib/sha256.ts", () => ({
+  hashUrl: mock().mockResolvedValue("cask_sha256_mock"),
+  downloadAndHash: mock()
     .mockResolvedValue({ sha256: "ghcask_sha256_64chars_pad_abcdef0123456789abcdef0123456789ab" }),
-  downloadToTemp: vi.fn().mockResolvedValue({
+  downloadToTemp: mock().mockResolvedValue({
     path: "/tmp/mock.zip",
     sha256: "ghcask_sha256_64chars_pad_abcdef0123456789abcdef0123456789ab",
-    cleanup: vi.fn(),
+    cleanup: mock(),
   }),
 }));
 
-vi.mock("../../../lib/archive-inspector.ts", () => ({
-  listZipEntries: vi.fn().mockResolvedValue(["TestApp.app/"]),
+mock.module("../../../lib/archive-inspector.ts", () => ({
+  listZipEntries: mock().mockResolvedValue(["TestApp.app/"]),
 }));
 
 describe("collectCaskAppReleasePayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const repoInfo = {
@@ -142,7 +141,7 @@ describe("collectCaskAppReleasePayload", () => {
 
 describe("collectCaskAppReleasePayload — KnowNote (Electron, lowercase DMG)", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const knowNoteRepoInfo = {
@@ -248,7 +247,7 @@ describe("collectCaskAppReleasePayload — KnowNote (Electron, lowercase DMG)", 
 
 describe("collectCaskAppReleasePayload — Codeg (Tauri 2)", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const codegRepoInfo = {
@@ -360,7 +359,7 @@ describe("collectCaskAppReleasePayload — Codeg (Tauri 2)", () => {
 
 describe("collectCaskAppReleasePayload — HarnessKit (Tauri 2, arch-specific DMGs + hk CLI binary)", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const harnessKitRepoInfo = {
@@ -481,7 +480,7 @@ describe("collectCaskAppReleasePayload — HarnessKit (Tauri 2, arch-specific DM
 
 describe("collectCaskAppReleasePayload — MōIcons (arm64-only DMG, MōBrowser runtime)", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const moIconsRepoInfo = {
@@ -600,7 +599,7 @@ describe("collectCaskAppReleasePayload — MōIcons (arm64-only DMG, MōBrowser 
 
 describe("collectCaskAppReleasePayload — Eigent (AI Desktop Agent)", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const eigentRepoInfo = {
@@ -730,7 +729,7 @@ describe("collectCaskAppReleasePayload — Eigent (AI Desktop Agent)", () => {
 
 describe("collectCaskAppReleasePayload — Hermes One (Electron, arm64+x64 DMG, name override)", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const hermesOneRepoInfo = {

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { collectCaskAppPayload } from "../../lib/generators/cask-app.ts";
 import { collectCaskAppReleasePayload } from "../../lib/generators/cask-app-release.ts";
 import { renderCask } from "../../lib/template-renderer.ts";

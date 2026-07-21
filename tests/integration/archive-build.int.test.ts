@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { collectArchiveBuildPayload } from "../../lib/generators/archive-build.ts";
 import { renderFormula } from "../../lib/template-renderer.ts";
 import { hashUrl } from "../../lib/sha256.ts";

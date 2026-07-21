@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectCaskAppMasPayload } from "../../../lib/generators/cask-app-mas.ts";
 
 describe("collectCaskAppMasPayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn(() =>
+    global.fetch = mock(() =>
       Promise.resolve({
         ok: true,
         json: () =>
@@ -106,7 +106,7 @@ describe("collectCaskAppMasPayload", () => {
   });
 
   it("throws when iTunes API returns empty results", async () => {
-    global.fetch = vi.fn(() =>
+    global.fetch = mock(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ results: [] }),
@@ -118,7 +118,7 @@ describe("collectCaskAppMasPayload", () => {
   });
 
   it("throws when iTunes API returns non-OK", async () => {
-    global.fetch = vi.fn(() =>
+    global.fetch = mock(() =>
       Promise.resolve({ ok: false, status: 500 }),
     ) as any;
     await expect(
@@ -129,9 +129,9 @@ describe("collectCaskAppMasPayload", () => {
 
 describe("collectCaskAppMasPayload — Magnet", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
 
-    global.fetch = vi.fn(() =>
+    global.fetch = mock(() =>
       Promise.resolve({
         ok: true,
         json: () =>

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { inspectArchive } from "../../lib/archive-inspector.ts";
 import { collectBinaryDirectPayload } from "../../lib/generators/binary-direct.ts";
 import { renderFormula } from "../../lib/template-renderer.ts";

@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectBinaryDirectPayload } from "../../../lib/generators/binary-direct.ts";
 
 describe("collectBinaryDirectPayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const archiveInfo = {

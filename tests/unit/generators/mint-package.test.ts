@@ -1,14 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectMintPackagePayload } from "../../../lib/generators/mint-package.ts";
 
-vi.mock("../../../lib/sha256.ts", () => ({
-  hashUrl: vi.fn().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
-  downloadAndHash: vi.fn().mockResolvedValue({ sha256: "mocked_sha256_hash" }),
+mock.module("../../../lib/sha256.ts", () => ({
+  hashUrl: mock().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
+  downloadAndHash: mock().mockResolvedValue({ sha256: "mocked_sha256_hash" }),
 }));
 
 describe("collectMintPackagePayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const repoInfo = {
@@ -98,7 +98,7 @@ describe("collectMintPackagePayload", () => {
 
 describe("collectMintPackagePayload — mockolo", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const repoInfo = {

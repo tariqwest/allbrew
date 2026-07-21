@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { buildManifest } from "../../lib/build-manifest.ts";
 import type { GeneratorName } from "../../lib/manifest.ts";
 

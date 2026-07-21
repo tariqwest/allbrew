@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
 import { startFixtureServer, buildEnvForServer, type ServerHandle } from "./server.ts";
 import { createDisposableTap, destroyDisposableTap, type DisposableTap } from "./tap.ts";
 import { backupConfig, restoreConfig, setTestConfig, clearTestManifests } from "./config.ts";

@@ -1,16 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectCargoPackagePayload } from "../../../lib/generators/cargo-package.ts";
 import managarrFixture from "../../fixtures/github/managarr.json";
 import wanderFixture from "../../fixtures/github/wander.json";
 
-vi.mock("../../../lib/sha256.ts", () => ({
-  hashUrl: vi.fn().mockResolvedValue("cargo_mocked_sha256_64chars_padding_abcdef0123456789abcdef0123"),
-  downloadAndHash: vi.fn().mockResolvedValue({ sha256: "mocked_sha256" }),
+mock.module("../../../lib/sha256.ts", () => ({
+  hashUrl: mock().mockResolvedValue("cargo_mocked_sha256_64chars_padding_abcdef0123456789abcdef0123"),
+  downloadAndHash: mock().mockResolvedValue({ sha256: "mocked_sha256" }),
 }));
 
 describe("collectCargoPackagePayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const repoInfo = managarrFixture.repo;
@@ -92,7 +92,7 @@ describe("collectCargoPackagePayload", () => {
 
 describe("collectCargoPackagePayload — wander", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const repoInfo = wanderFixture.repo;

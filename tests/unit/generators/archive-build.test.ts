@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectArchiveBuildPayload } from "../../../lib/generators/archive-build.ts";
 
-vi.mock("../../../lib/analyzer.ts", () => ({
-  detectBuildSystemFromArchive: vi.fn((files) => {
+mock.module("../../../lib/analyzer.ts", () => ({
+  detectBuildSystemFromArchive: mock((files) => {
     if (files.includes("CMakeLists.txt"))
       return { method: "build", system: "cmake" };
     if (files.includes("meson.build"))
@@ -15,7 +15,7 @@ vi.mock("../../../lib/analyzer.ts", () => ({
 
 describe("collectArchiveBuildPayload", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   const archiveInfo = {

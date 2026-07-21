@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { collectMintPackagePayload } from "../../lib/generators/mint-package.ts";
 import { renderFormula } from "../../lib/template-renderer.ts";
 import { assertValidFormula } from "./helpers/validate-ruby.ts";

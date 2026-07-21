@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -17,9 +17,9 @@ describe("updateManagedPackage — cask-app-setapp", () => {
   let tapPath: string;
 
   beforeEach(async () => {
-    vi.restoreAllMocks();
+    mock.restore();
     tapPath = await mkdtemp(join(tmpdir(), "allbrew-tap-"));
-    global.fetch = vi.fn(() =>
+    global.fetch = mock(() =>
       Promise.resolve({
         ok: true,
         text: () => Promise.resolve(BARTENDER_HTML),
