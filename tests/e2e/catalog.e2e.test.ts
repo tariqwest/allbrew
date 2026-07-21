@@ -11,6 +11,12 @@ import {
   captureLocalReadout,
   type LocalStateSnapshot,
 } from "../helpers/local-state.ts";
+import {
+  stopRegisteredServices,
+  killOrphanedFixtures,
+  cleanupCurrentProcessRegistry,
+  purgeOrphanedRegistries,
+} from "../helpers/test-cleanup-registry.ts";
 
 /**
  * Tier 3 — E2E: generate formula → brew install → verify binary runs.
@@ -143,6 +149,24 @@ describe.skipIf(!E2E)("E2E catalog tests", () => {
 
     // Capture readout BEFORE restore so it reflects the post-test state.
     if (stateSnapshot) {
+      // T0.2: stop any service agents started during the run and kill
+      // orphaned fixture processes before capturing the readout.
+      try {
+        const stopped = await stopRegisteredServices();
+        if (stopped.length > 0) {
+          console.log(`[E2E] Stopped ${stopped.length} service(s): ${stopped.join(", ")}`);
+        }
+      } catch (err: any) {
+        console.error(`[E2E] stopRegisteredServices failed: ${err?.message || err}`);
+      }
+      try {
+        const killed = await killOrphanedFixtures();
+        if (killed.length > 0) {
+          console.log(`[E2E] Killed ${killed.length} orphaned fixture process(es): ${killed.join(", ")}`);
+        }
+      } catch (err: any) {
+        console.error(`[E2E] killOrphanedFixtures failed: ${err?.message || err}`);
+      }
       const testLog = process.env.ALLBREW_TEST_LOG || undefined;
       try {
         await captureLocalReadout(stateSnapshot, testLog);
@@ -162,6 +186,12 @@ describe.skipIf(!E2E)("E2E catalog tests", () => {
         console.error(`  Manual recovery: scripts/test-local-cleanup.sh --restore`);
       }
     }
+
+    // T0.2: remove this process's registry file and purge orphaned ones.
+    try {
+      await cleanupCurrentProcessRegistry();
+      await purgeOrphanedRegistries();
+    } catch {}
   });
 
   for (const entry of catalog) {

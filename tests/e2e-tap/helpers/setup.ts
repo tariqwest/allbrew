@@ -5,6 +5,10 @@ import { backupConfig, restoreConfig, setTestConfig, clearTestManifests } from "
 import { mutateFixtureVersion, resetFixtures } from "../fixtures/mutate.ts";
 import { runAllbrew, runBrew, runCommand, commandAvailable, gitCommand } from "./run.ts";
 import {
+  stopRegisteredServices,
+  cleanupCurrentProcessRegistry,
+} from "../../helpers/test-cleanup-registry.ts";
+import {
   FIXTURE_APPS,
   getFixtureApp,
   classifierUrl,
@@ -41,6 +45,14 @@ export async function setupTestContext(): Promise<TestContext> {
 }
 
 export async function teardownTestContext(ctx: TestContext): Promise<void> {
+  // T0.2: stop any service agents started during this test context before
+  // destroying the tap (which would uninstall the formula anyway, but
+  // `brew services stop` also unloads the launchd agent cleanly).
+  try {
+    await stopRegisteredServices();
+  } catch (err: any) {
+    console.error(`[teardown] stopRegisteredServices failed: ${err?.message || err}`);
+  }
   await restoreConfig(ctx.configBackup);
   await clearTestManifests();
   await destroyDisposableTap(ctx.tap);

@@ -18,6 +18,12 @@ import {
   captureLocalReadout,
   type LocalStateSnapshot,
 } from "../tests/helpers/local-state.ts";
+import {
+  stopRegisteredServices,
+  killOrphanedFixtures,
+  cleanupCurrentProcessRegistry,
+  purgeOrphanedRegistries,
+} from "../tests/helpers/test-cleanup-registry.ts";
 
 const SKIP = process.env.ALLBREW_SKIP_GLOBAL_SETUP === "1";
 const TEST_TIMEOUT = "600000";
@@ -81,6 +87,26 @@ async function main(): Promise<number> {
   if (logFd >= 0) closeSync(logFd);
 
   if (snapshot) {
+    // T0.2: stop any service agents still registered by this test process,
+    // kill orphaned fixture servers from dead test processes, then capture
+    // the readout (which reflects post-test, pre-restore state) and restore
+    // the config snapshot.
+    try {
+      const stopped = await stopRegisteredServices();
+      if (stopped.length > 0) {
+        console.log(`[e2e-tap runner] Stopped ${stopped.length} service(s): ${stopped.join(", ")}`);
+      }
+    } catch (err: any) {
+      console.error(`[e2e-tap runner] stopRegisteredServices failed: ${err?.message || err}`);
+    }
+    try {
+      const killed = await killOrphanedFixtures();
+      if (killed.length > 0) {
+        console.log(`[e2e-tap runner] Killed ${killed.length} orphaned fixture process(es): ${killed.join(", ")}`);
+      }
+    } catch (err: any) {
+      console.error(`[e2e-tap runner] killOrphanedFixtures failed: ${err?.message || err}`);
+    }
     try {
       await captureLocalReadout(snapshot, logPath ?? undefined);
       console.log(`[e2e-tap runner] Readout saved to ${snapshot.runDir}/readout.txt`);
@@ -93,6 +119,17 @@ async function main(): Promise<number> {
     } catch (err: any) {
       console.error(`[e2e-tap runner] Restore failed: ${err?.message || err}`);
       console.error(`  Manual recovery: scripts/test-local-cleanup.sh --restore`);
+    }
+    // T0.2: remove this process's registry file on clean exit, and purge
+    // any orphaned registry files left by previously-killed test runs.
+    try {
+      await cleanupCurrentProcessRegistry();
+      const purged = await purgeOrphanedRegistries();
+      if (purged.length > 0) {
+        console.log(`[e2e-tap runner] Purged ${purged.length} orphaned registry file(s)`);
+      }
+    } catch (err: any) {
+      console.error(`[e2e-tap runner] registry cleanup failed: ${err?.message || err}`);
     }
   }
 

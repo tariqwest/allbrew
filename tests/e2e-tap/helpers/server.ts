@@ -2,6 +2,10 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import {
+  registerFixtureProcess,
+  unregisterFixtureProcess,
+} from "../../helpers/test-cleanup-registry.ts";
 
 export type ServerHandle = {
   port: number;
@@ -35,12 +39,21 @@ export async function startFixtureServer(
 
   await waitForHealth(baseUrl);
 
+  // T0.2: register the fixture process so it can be killed if the test
+  // process dies before teardown. Unregistered on clean stop().
+  if (child.pid) {
+    await registerFixtureProcess({ pid: child.pid, port: resolvedPort, label: "fixture-server" });
+  }
+
   return {
     port: resolvedPort,
     baseUrl,
     process: child,
     stop: async () => {
       child.kill("SIGTERM");
+      if (child.pid) {
+        await unregisterFixtureProcess(child.pid).catch(() => {});
+      }
       try {
         await rm(envFile, { force: true });
       } catch {}
