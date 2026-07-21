@@ -18,7 +18,7 @@ export async function createDisposableTap(
   tapName: string = "e2e-tap",
 ): Promise<DisposableTap> {
   const pid = process.pid;
-  const name = `${tapName}-${pid}`;
+  const name = `test/e2e-tap-${pid}`;
 
   const remoteDir = await mkdtemp(join(tmpdir(), `allbrew-tap-remote-`));
   const workDir = await mkdtemp(join(tmpdir(), `allbrew-tap-work-`));

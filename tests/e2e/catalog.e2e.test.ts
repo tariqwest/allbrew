@@ -141,6 +141,10 @@ describe.skipIf(!E2E)("E2E catalog tests", () => {
           : ["bun", "run", "bin/allbrew.ts", ...baseArgs];
 
         const gen = runCommand(allbrewCmd);
+        console.log("[DEBUG] allbrewCmd:", allbrewCmd.join(" "));
+        console.log("[DEBUG] gen.code:", gen.code);
+        console.log("[DEBUG] gen.stdout:", gen.stdout.slice(0, 500));
+        console.log("[DEBUG] gen.stderr:", gen.stderr.slice(0, 500));
         expect(gen.code, `allbrew generation failed:\n${gen.stderr}`).toBe(0);
         expect(
           existsSync(installTarget),
