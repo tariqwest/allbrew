@@ -59,7 +59,7 @@ function buildAppOrPkgBlock(
     return block;
   }
 
-  const app = appName || baseName + ".app";
+  const app = (appName || baseName).replace(/\.app$/i, "") + ".app";
   return `  app "${rubyEscape(app)}"\n`;
 }
 
