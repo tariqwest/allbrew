@@ -5,6 +5,12 @@ import { join } from "node:path";
 import { tmpdir, homedir } from "node:os";
 import { readFileSync } from "node:fs";
 import catalog from "./catalog.json";
+import {
+  snapshotLocalState,
+  restoreLocalState,
+  captureLocalReadout,
+  type LocalStateSnapshot,
+} from "../helpers/local-state.ts";
 
 /**
  * Tier 3 — E2E: generate formula → brew install → verify binary runs.
@@ -86,9 +92,14 @@ function allbrewAvailable(): boolean {
 describe.skipIf(!E2E)("E2E catalog tests", () => {
   let tapDir = "";
   let isTmpTap = false;
+  let stateSnapshot: LocalStateSnapshot | null = null;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     if (!brewAvailable()) throw new Error("brew is not installed or not in PATH");
+
+    // Snapshot ~/.config/allbrew/ so we can restore after the suite.
+    stateSnapshot = await snapshotLocalState();
+    console.log(`[E2E] State snapshot: ${stateSnapshot.runDir}`);
 
     if (DRY_RUN) {
       tapDir = mkdtempSync(join(tmpdir(), "allbrew-e2e-tap-"));
@@ -109,10 +120,47 @@ describe.skipIf(!E2E)("E2E catalog tests", () => {
     }
   });
 
-  afterAll(() => {
+  afterAll(async () => {
+    // Uninstall any catalog apps that are still installed (e.g. a test
+    // failed after install but before its uninstall step).
+    for (const entry of catalog) {
+      if (entry.skip) continue;
+      try {
+        const cask = isCaskGenerator(entry.generator);
+        const flag = cask ? "--cask" : "--formula";
+        spawnSync("brew", ["uninstall", flag, entry.name], {
+          encoding: "utf-8",
+          timeout: 60_000,
+          stdio: "ignore",
+        });
+      } catch {}
+    }
+
     // Only clean up the temp dir; never delete the user's real tap
     if (isTmpTap && tapDir && existsSync(tapDir)) {
       rmSync(tapDir, { recursive: true, force: true });
+    }
+
+    // Capture readout BEFORE restore so it reflects the post-test state.
+    if (stateSnapshot) {
+      const testLog = process.env.ALLBREW_TEST_LOG || undefined;
+      try {
+        await captureLocalReadout(stateSnapshot, testLog);
+        console.log(`[E2E] Readout saved to ${stateSnapshot.runDir}/readout.txt`);
+      } catch (err: any) {
+        console.error(`[E2E] Readout capture failed: ${err?.message || err}`);
+      }
+    }
+
+    // Restore ~/.config/allbrew/ from the snapshot.
+    if (stateSnapshot) {
+      try {
+        await restoreLocalState(stateSnapshot);
+        console.log(`[E2E] Restored state from ${stateSnapshot.runDir}`);
+      } catch (err: any) {
+        console.error(`[E2E] State restore failed: ${err?.message || err}`);
+        console.error(`  Manual recovery: scripts/test-local-cleanup.sh --restore`);
+      }
     }
   });
 

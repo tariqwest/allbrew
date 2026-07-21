@@ -37,6 +37,7 @@ export default defineConfig({
           pool: "forks",
           singleFork: true,
           fileParallelism: false,
+          globalSetup: ["tests/e2e-tap/globalSetup.ts"],
         },
       },
     ],

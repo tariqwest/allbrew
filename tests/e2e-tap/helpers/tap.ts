@@ -53,16 +53,29 @@ export async function createDisposableTap(
 }
 
 export async function destroyDisposableTap(tap: DisposableTap): Promise<void> {
+  // 1. Uninstall any packages still installed from this tap.
   try {
-    const list = runCommand(["bash", "-c", `brew list --full-name | grep '^${tap.tapName}/' || true`], {
-      timeout: 60_000,
-    });
+    const list = runCommand(
+      ["bash", "-c", `brew list --full-name | grep '^${tap.tapName}/' || true`],
+      { timeout: 60_000 },
+    );
     const names = list.stdout.trim().split(/\s+/).filter(Boolean);
     if (names.length > 0) {
-      runCommand(["brew", "uninstall", "--force", ...names], { timeout: 120_000 });
+      const uninstall = runCommand(
+        ["brew", "uninstall", "--force", ...names],
+        { timeout: 120_000 },
+      );
+      if (uninstall.code !== 0) {
+        console.error(
+          `[destroyDisposableTap] uninstall of ${names.join(", ")} failed: ${uninstall.stderr}`,
+        );
+      }
     }
-  } catch {}
+  } catch (err: any) {
+    console.error(`[destroyDisposableTap] listing packages failed: ${err?.message || err}`);
+  }
 
+  // 2. Untap the disposable tap.
   try {
     const result = runCommand(["brew", "untap", "--force", tap.tapName], {
       timeout: 30_000,
@@ -70,13 +83,21 @@ export async function destroyDisposableTap(tap: DisposableTap): Promise<void> {
     if (result.code !== 0) {
       console.error(`[destroyDisposableTap] untap failed: ${result.stderr}`);
     }
-  } catch {}
+  } catch (err: any) {
+    console.error(`[destroyDisposableTap] untap threw: ${err?.message || err}`);
+  }
+
+  // 3. Remove the temp git dirs.
   try {
     await rm(tap.remoteDir, { recursive: true, force: true });
-  } catch {}
+  } catch (err: any) {
+    console.error(`[destroyDisposableTap] rm remoteDir failed: ${err?.message || err}`);
+  }
   try {
     await rm(tap.workDir, { recursive: true, force: true });
-  } catch {}
+  } catch (err: any) {
+    console.error(`[destroyDisposableTap] rm workDir failed: ${err?.message || err}`);
+  }
 }
 
 export function formulaPath(tap: DisposableTap, name: string): string {

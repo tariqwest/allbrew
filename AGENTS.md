@@ -12,6 +12,7 @@
 > - [`allbrew-e2e-lume-vm.md`](./.agents/plans/allbrew-e2e-lume-vm.md) — Lume macOS VM + Cua Driver harness for E2E/real-world testing
 > - [`allbrew-tap-update-e2e.md`](./.agents/plans/allbrew-tap-update-e2e.md) — E2E tap + livecheck update cycle tests with synthetic fixtures
 > - [`allbrew-user-lifecycle-test-plan.md`](./.agents/plans/allbrew-user-lifecycle-test-plan.md) — user-lifecycle test gaps (services, uninstall residuals, hooks, personas, Lume nightly journeys)
+> - [`allbrew-local-test-cleanup-rollback.md`](./.agents/plans/allbrew-local-test-cleanup-rollback.md) — snapshot/restore for local E2E runs so they don't pollute the user's workspace
 
 ## Project overview
 
@@ -57,8 +58,30 @@ Always run `bun run check` and `bun run test` before committing. Integration and
 
 - **Unit tests** (`tests/unit/`): 261 tests, fully mocked, offline-safe. Run with `bun run test`.
 - **Integration tests** (`tests/integration/`): 95 tests hitting live registries (PyPI, npm, crates.io, GitHub tarballs, DMG downloads). Run with `bun run test:int`.
-- **E2E tests** (`tests/e2e/`): 21 catalog-driven tests that generate formulas/casks and attempt real `brew install`. Gated behind `E2E=1` env var. Run with `bun run test:e2e`.
+- **E2E tests** (`tests/e2e/`): 21 catalog-driven tests that generate formulas/casks and attempt real `brew install`. Gated behind `E2E=1` env var. Run with `bun run test:e2e` or `scripts/test-e2e.sh`.
 - **E2E tap tests** (`tests/e2e-tap/`): 39 tests that exercise the full off-machine cycle (generate → commit → push to remote tap → `brew tap`/`brew update`/`brew install <name>` → verify) plus the livecheck-driven update cycle. Uses a synthetic fixture server emulating npm/PyPI/crates.io/Go proxy/RubyGems/NuGet/GitHub APIs with fake artifacts. Gated behind `E2E_TAP=1` env var. Run with `bun run test:e2e-tap` or `scripts/test-e2e-tap.sh`.
+
+### Local E2E cleanup & rollback
+
+Both E2E tiers snapshot `~/.config/allbrew/` before tests and restore it after, so local runs do not pollute the user's real allbrew config or manifests. Snapshots are preserved under `tests/e2e-runs/local/<timestamp>/` (with a `latest` symlink), mirroring the Lume VM run records under `tests/e2e-runs/<timestamp>/`.
+
+Each local run record contains:
+
+| File | Contents |
+|------|----------|
+| `readout.txt` | Post-test system state captured BEFORE restore: macOS info, allbrew config/manifests, Homebrew taps/formulae/casks/Cellar/Caskroom/cache, MAS apps, Setapp, /Applications, tap repo git state, host repo git state, test results summary |
+| `test-output.log` | Captured stdout/stderr from the test run (via `tee` in the wrapper scripts) |
+| `metadata.json` | Machine-readable run metadata (timestamp, run dir, host repo, git SHA/branch) |
+| `snapshot.json` | Snapshot handle (run dir, config backup dir, empty flag) |
+| `config-backup/` | The pre-test `~/.config/allbrew/` contents used for restore |
+
+- **E2E-tap**: snapshot/restore + readout capture is handled by a Vitest `globalSetup` (`tests/e2e-tap/globalSetup.ts`). Per-describe teardown also disposes disposable taps and uninstalls their packages. The wrapper script `scripts/test-e2e-tap.sh` tees output to a temp log and passes its path via `ALLBREW_TEST_LOG` so the readout can include a Test Results Summary.
+- **E2E catalog**: snapshot/restore + readout capture is in `beforeAll`/`afterAll` of `tests/e2e/catalog.e2e.test.ts`. `afterAll` also uninstalls any catalog apps still installed (e.g. a test failed before its uninstall step). The wrapper script `scripts/test-e2e.sh` tees output and passes `ALLBREW_TEST_LOG` the same way.
+- **Manual recovery**: if a test run is killed, run `scripts/test-local-cleanup.sh`:
+  - `--dry-run` (default): show test residue and available snapshots without changing anything.
+  - `--restore`: restore `~/.config/allbrew` from the latest snapshot.
+  - `--force`: restore + untap disposable `test/e2e-tap-*` taps and uninstall their packages.
+- **Debug escape hatch**: `scripts/test-e2e-tap.sh --no-cleanup` disables the globalSetup snapshot/restore for debugging.
 - **Template parity tests** (`scripts/test-templates.ts`): 13 fixture payloads with byte-for-byte Ruby output comparison. Run with `bun run test:templates`.
 
 To run a single test file:

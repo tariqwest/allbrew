@@ -1,7 +1,17 @@
 # Local E2E Test Cleanup & Rollback
 
 ## Goal
-Mirror the Lume VM reset/rollback concept for local runs so that running E2E tests on the user's real macOS filesystem and Homebrew instance does not pollute `~/.config/allbrew/`, custom taps, or installed packages.
+Mirror the Lume VM reset/rollback concept for local runs so that running E2E tests on the user's real macOS filesystem and Homebrew instance does not pollute `~/.config/allbrew/`, custom taps, or installed packages. Also mirror the VM harness's run-record capture (readout.txt, test-output.log, metadata.json) so local runs leave the same inspectable post-test state before rollback.
+
+## Run record contents (mirrors `tests/e2e-runs/<timestamp>/` from the Lume harness)
+
+| File | Contents |
+|------|----------|
+| `readout.txt` | Post-test system state captured BEFORE restore: macOS info, allbrew config/manifests, Homebrew taps/formulae/casks/Cellar/Caskroom/cache, MAS apps, Setapp, /Applications, tap repo git state, host repo git state, test results summary |
+| `test-output.log` | Captured stdout/stderr from the test run (via `tee` in the wrapper scripts) |
+| `metadata.json` | Machine-readable run metadata (timestamp, run dir, host repo, git SHA/branch) |
+| `snapshot.json` | Snapshot handle (run dir, config backup dir, empty flag) |
+| `config-backup/` | The pre-test `~/.config/allbrew/` contents used for restore |
 
 ## Background
 
@@ -25,23 +35,26 @@ Mirror the Lume VM reset/rollback concept for local runs so that running E2E tes
 1. **Create shared local-state helpers** (`tests/helpers/local-state.ts`)
    - `snapshotLocalState()`: copy `~/.config/allbrew/` into a timestamped run record under `tests/e2e-runs/local/<timestamp>/config-backup/`, symlink `tests/e2e-runs/local/latest`.
    - `restoreLocalState(snapshot)`: replace the current `~/.config/allbrew/` directory with the backup.
+   - `captureLocalReadout(snapshot, testLog?)`: capture post-test system state into `readout.txt` + `metadata.json`, mirroring `scripts/e2e-vm-readout.sh`. Copies the test log into the run dir as `test-output.log` and parses a Test Results Summary section. Must be called BEFORE `restoreLocalState()` so the readout reflects post-test, pre-restore state.
    - `getLatestSnapshot()`: read the `latest` symlink for the manual cleanup script.
 
 2. **Fix E2E-tap config backup/restore** (`tests/e2e-tap/helpers/config.ts`)
    - Replace the current broken `backupConfig()`/`restoreConfig()` with calls to the shared snapshot/restore helper.
    - Keep `setTestConfig()` and `clearTestManifests()` behavior.
 
-3. **Add global E2E-tap snapshot/restore** (`tests/e2e-tap/globalSetup.ts`, `vitest.config.ts`)
-   - Add a Vitest `globalSetup` to the `e2e-tap` project that snapshots state once at suite start and restores it at suite end.
+3. **Add global E2E-tap snapshot/restore + readout** (`tests/e2e-tap/globalSetup.ts`, `vitest.config.ts`)
+   - Add a Vitest `globalSetup` to the `e2e-tap` project that snapshots state once at suite start, captures a readout + restores at suite end.
+   - Readout is captured BEFORE restore so it shows any test residue.
+   - Test log path is read from `ALLBREW_TEST_LOG` env var (set by the wrapper script).
    - Existing per-describe `teardownTestContext()` still untaps and disposes its own tap.
 
 4. **Harden E2E-tap tap disposal** (`tests/e2e-tap/helpers/tap.ts`)
    - Make `destroyDisposableTap()` more defensive: uninstall any packages still reported from the tap, then `brew untap --force`, then remove temp git dirs.
    - Add logging on cleanup failures so the user can see residue.
 
-5. **Add E2E catalog snapshot/restore** (`tests/e2e/catalog.e2e.test.ts`)
+5. **Add E2E catalog snapshot/restore + readout** (`tests/e2e/catalog.e2e.test.ts`)
    - Snapshot `~/.config/allbrew/` in `beforeAll`.
-   - In `afterAll`: restore config/manifests, uninstall any catalog apps still installed, and remove the temp tap dir.
+   - In `afterAll`: capture readout (before restore), restore config/manifests, uninstall any catalog apps still installed, and remove the temp tap dir.
 
 6. **Create manual local cleanup script** (`scripts/test-local-cleanup.sh`)
    - `--dry-run`: show current test residue and available snapshots without changing anything.
@@ -50,9 +63,9 @@ Mirror the Lume VM reset/rollback concept for local runs so that running E2E tes
    - Default to `--dry-run` output so it is safe to run accidentally.
 
 7. **Update wrapper scripts & docs**
-   - Update `scripts/test-e2e-tap.sh` to mention that cleanup is automatic and add a `--no-cleanup` debug escape hatch.
-   - Create `scripts/test-e2e.sh` wrapper for the catalog tests.
-   - Update `AGENTS.md` local testing section to describe the snapshot/rollback behavior and the cleanup script.
+   - Update `scripts/test-e2e-tap.sh` to mention that cleanup is automatic, tee test output to a temp log, pass its path via `ALLBREW_TEST_LOG`, and add a `--no-cleanup` debug escape hatch.
+   - Create `scripts/test-e2e.sh` wrapper for the catalog tests (also tees output and passes `ALLBREW_TEST_LOG`).
+   - Update `AGENTS.md` local testing section to describe the snapshot/rollback behavior, run record contents, and the cleanup script.
 
 ## Files to modify
 
@@ -75,7 +88,11 @@ Mirror the Lume VM reset/rollback concept for local runs so that running E2E tes
 
 - `bun run check` passes
 - `bun run test` passes
-- Run `E2E_TAP=1 bun run test:e2e-tap` and verify a run record appears in `tests/e2e-runs/local/<timestamp>/`
+- Run `scripts/test-e2e-tap.sh` and verify a run record appears in `tests/e2e-runs/local/<timestamp>/` containing:
+  - `readout.txt` with all system state sections (System Info, Homebrew state, tap repo git state, test results summary, etc.)
+  - `test-output.log` with the captured stdout/stderr
+  - `metadata.json` with run metadata
+  - `config-backup/` with the pre-test config
 - Verify `~/.config/allbrew/` is restored to its pre-test contents
 - Verify `scripts/test-local-cleanup.sh --dry-run` reports no residue after a successful run
 
