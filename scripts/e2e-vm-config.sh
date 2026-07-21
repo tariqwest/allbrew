@@ -17,13 +17,15 @@ LUME_VM_USER="${LUME_VM_USER:-lume}"
 LUME_VM_PASSWORD="${LUME_VM_PASSWORD:-lume}"
 LUME_VM_SSH_KEY="${LUME_VM_SSH_KEY:-$HOME/.ssh/allbrew_e2e_vm}"
 
-# Optional remote Lume host. When set, all lume commands run over SSH on this
-# host. Leave empty to keep the existing local-only behavior.
-LUME_REMOTE_HOST="${LUME_REMOTE_HOST:-}"
+# Explicit remote Lume host mode. Set to true to run the Lume VM over SSH on a
+# remote Apple Silicon Mac; leave false for local-only operation.
+LUME_REMOTE_ENABLED="${LUME_REMOTE_ENABLED:-false}"
+# Remote host defaults (used only when LUME_REMOTE_ENABLED=true).
+LUME_REMOTE_HOST="${LUME_REMOTE_HOST:-app-user@homeserver.local}"
 # Directory on the remote host where the repo is synced and mounted into the VM.
-LUME_REMOTE_DIR="${LUME_REMOTE_DIR:-}"
+LUME_REMOTE_DIR="${LUME_REMOTE_DIR:-/Users/app-user/Developer/allbrew}"
 # Directory on the remote host where the IPSW is expected or synced to.
-LUME_REMOTE_IPSW_DIR="${LUME_REMOTE_IPSW_DIR:-$HOME/Downloads}"
+LUME_REMOTE_IPSW_DIR="${LUME_REMOTE_IPSW_DIR:-/Users/app-user/Downloads}"
 # Paths excluded when syncing the repo to the remote Lume host.
 LUME_SYNC_EXCLUDES="${LUME_SYNC_EXCLUDES:-.git node_modules .lume .env}"
 
@@ -38,7 +40,7 @@ LUME_RUN_TS="${LUME_RUN_TS:-$(date -u +%Y-%m-%dT%H-%M-%SZ)}"
 LUME_RUN_DIR="$LUME_RUNS_DIR/$LUME_RUN_TS"
 
 is_remote() {
-  [[ -n "${LUME_REMOTE_HOST:-}" ]]
+  [[ "${LUME_REMOTE_ENABLED:-false}" == "true" ]]
 }
 
 # Derive sensible remote defaults when a remote Lume host is configured.

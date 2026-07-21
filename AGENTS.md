@@ -94,15 +94,18 @@ scripts/e2e-vm-teardown.sh --stop
 
 ### Remote Lume host (optional)
 
-You can run the Lume VM on a remote Apple Silicon Mac (`homeserver.local`) while keeping the orchestration scripts and run records on your local machine. Set:
+You can run the Lume VM on a remote Apple Silicon Mac (`homeserver.local`) while keeping the orchestration scripts and run records on your local machine. Enable it with:
 
 ```bash
-export LUME_REMOTE_HOST=app-user@homeserver.local
-export LUME_REMOTE_DIR=/Users/app-user/Developer/allbrew
-export LUME_REMOTE_IPSW_DIR=/Users/app-user/Downloads
+export LUME_REMOTE_ENABLED=true
+# LUME_REMOTE_HOST defaults to app-user@homeserver.local
+# LUME_REMOTE_DIR defaults to /Users/app-user/Developer/allbrew
+# LUME_REMOTE_IPSW_DIR defaults to /Users/app-user/Downloads
 ```
 
 Then use the same commands above. Before each run the harness rsyncs the local repo to `LUME_REMOTE_DIR` on the remote host, because Lume's `--shared-dir` can only mount a directory that lives on the host running the VM. The IPSW is synced once to the remote Downloads folder if it is not already there. The remote host only needs Lume installed and an active macOS user session with Virtualization Framework permissions.
+
+Set `LUME_REMOTE_ENABLED=false` to run Lume locally instead.
 
 ### Run records
 
