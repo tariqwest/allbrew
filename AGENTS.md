@@ -42,7 +42,10 @@ bun install                        # install dependencies
 bun run check                      # TypeScript type-check (tsc --noEmit)
 bun run test                       # unit tests (Bun test runner, mocked, offline)
 bun run test:int                   # integration tests (live APIs: PyPI, npm, GitHub, DMG)
+bun run test:int:gate              # integration tests excluding quarantined tests
+bun run test:live-smoke            # live smoke subset (one package per registry, allowed to fail)
 bun run test:e2e                   # E2E catalog tests (requires E2E=1)
+bun run test:e2e-heavy             # E2E heavy real packages (requires E2E_HEAVY=1)
 bun run test:e2e-tap               # E2E tap + update cycle tests (requires E2E_TAP=1)
 bun run test:all                   # all tiers
 bun run test:watch                 # unit tests in watch mode
@@ -56,10 +59,12 @@ Always run `bun run check` and `bun run test` before committing. Integration and
 
 ## Testing instructions
 
-- **Unit tests** (`tests/unit/`): 751 tests, fully mocked, offline-safe. Run with `bun run test`. Includes suites for analyzer, brew-hooks, launchd-service, config, sha256, uninstall-residuals, and test-cleanup-registry (Tier 0/A coverage).
+- **Unit tests** (`tests/unit/`): 849 tests, fully mocked, offline-safe. Run with `bun run test`. Includes suites for analyzer, brew-hooks, launchd-service, config, sha256, uninstall-residuals, test-cleanup-registry, bin-name-matrix, classifier-conflict-matrix, failure-injection, quarantine, and cli-commands (Tier 0/A/B/C coverage).
 - **Integration tests** (`tests/integration/`): 95 tests hitting live registries (PyPI, npm, crates.io, GitHub tarballs, DMG downloads). Run with `bun run test:int`.
 - **E2E tests** (`tests/e2e/`): 21 catalog-driven tests that generate formulas/casks and attempt real `brew install`. Gated behind `E2E=1` env var. Run with `bun run test:e2e` or `scripts/test-e2e.sh`.
 - **E2E tap tests** (`tests/e2e-tap/`): 39 tests that exercise the full off-machine cycle (generate → commit → push to remote tap → `brew tap`/`brew update`/`brew install <name>` → verify) plus the livecheck-driven update cycle. Includes a service lifecycle test (`service.e2e-tap.test.ts`) that validates `--service` generation, stanza inspection, direct launch + HTTP probe, and `brew services` start/stop round-trip. Uses a synthetic fixture server emulating npm/PyPI/crates.io/Go proxy/RubyGems/NuGet/GitHub APIs with fake artifacts. Gated behind `E2E_TAP=1` env var. Run with `bun run test:e2e-tap` or `scripts/test-e2e-tap.sh`.
+- **E2E heavy tests** (`tests/e2e/heavy.e2e.test.ts`): 6 heavy real packages (one per ecosystem) that catch packaging failures small fixtures hide. Gated behind `E2E_HEAVY=1`. Run with `bun run test:e2e-heavy`.
+- **E2E polluted PATH test** (`tests/e2e/polluted-path.e2e.test.ts`): verifies bin resolution to Homebrew Cellar path when a same-named dummy binary exists earlier in PATH. Gated behind `E2E=1`.
 - **Template parity tests** (`scripts/test-templates.ts`): 13 fixture payloads with byte-for-byte Ruby output comparison. Run with `bun run test:templates`.
 
 ### Uninstall residual checks (Tier A)

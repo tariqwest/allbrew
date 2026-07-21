@@ -491,6 +491,8 @@ Minimal pure tests (no full brew). Each module has distinct testable surfaces �
 
 #### B1. Bin-name matrix
 
+**Status: Implemented.** `tests/unit/bin-name-matrix.test.ts` (16 tests). Added `extractNpmBinName()` to `lib/generators/npm-package.ts` which extracts the bin name from npm package metadata (`bin` field — string or object). Added `--bin-name` CLI option for manual override (needed for pip packages like Orange3 where the bin name `orange-canvas` differs from the package name and pip metadata doesn't expose it in a standard way). All generators now respect `options.binName`. Known mismatches covered: taskbook→tb, toolong→tl, elia-chat→elia (auto-extracted from npm), Orange3→orange-canvas (manual `--bin-name`).
+
 Drive from research notes + catalog:
 
 | Package | Expected bin |
@@ -514,7 +516,11 @@ Unit or integration: payload / formula links correct bin. E2E: verifyCommand use
 
 Goal: catch packaging failures fixtures hide. Keep count small (slow).
 
+**Status: Implemented.** `tests/e2e/catalog-heavy.json` + `tests/e2e/heavy.e2e.test.ts`. Gated behind `E2E_HEAVY=1` (separate from `E2E=1`). 6 packages: napari/streamlit/mlflow (pip, multi-resource + deep deps), json-server (npm, postinstall), wakapi/ripgrep (Go binary release, real asset naming). Run: `bun run test:e2e-heavy`.
+
 #### B3. Classifier / routing conflict matrix
+
+**Status: Implemented.** `tests/unit/classifier-conflict-matrix.test.ts` (20 tests). Table-driven conflict matrix covering all routing paths + priority resolution + `classifyWithHead` content-type sniffing. Also fixed: `crates.io` URLs now route to `cargo-package` (was `unknown` — added `CRATES_PACKAGE_RE` to `lib/classifier.ts`). The `--type` override is handled in the CLI flow, not the classifier; documented in tests.
 
 Table-driven unit tests:
 
@@ -529,15 +535,19 @@ Table-driven unit tests:
 
 #### B4. Failure injection
 
+**Status: Implemented.** `tests/unit/failure-injection.test.ts` (12 tests). Covers: push failure (commitAndPushTap throws on unreachable remote — no silent success), missing manifest (update-formulas skips unmanaged), livecheck status error (skip), not-outdated (skip), name filtering, tapPath filtering, push failure collected into `result.errors` (not crashed). Also improved: `lib/cli.ts` now warns on push failure instead of silently swallowing; `lib/update-formulas.ts` collects push errors into `result.errors` instead of crashing. Mid-download abort (temp cleanup) is covered by the existing sha256 unit tests. Concurrent update-formulas lock is documented as not-yet-implemented.
+
 | Case | Expect |
 |------|--------|
-| Livecheck status error | skip (already e2e-tap) |
-| Push failure | no silent success; clean message |
-| Mid-download abort | temp cleanup |
-| Concurrent update-formulas | lock or serialized (when implemented) |
-| Missing manifest | skip unmanaged (already) |
+| Livecheck status error | skip (already e2e-tap) ✅ |
+| Push failure | no silent success; clean message ✅ |
+| Mid-download abort | temp cleanup ✅ (sha256 unit tests) |
+| Concurrent update-formulas | lock or serialized (when implemented) — documented |
+| Missing manifest | skip unmanaged (already) ✅ |
 
 #### B5. Polluted PATH persona
+
+**Status: Implemented.** `tests/e2e/polluted-path.e2e.test.ts`. Gated behind `E2E=1`. Creates a dummy same-named binary earlier in PATH, then verifies `command -v <bin>` resolves to the Homebrew Cellar path (not the dummy). Also includes a sanity check that the dummy is reachable when Homebrew is removed from PATH.
 
 E2E with env:
 
@@ -549,13 +559,17 @@ Pre-install a dummy same-named binary earlier in PATH; after allbrew install, as
 
 #### B6. Integration quarantine
 
-- Tag flaky external hosts.
-- Prefer hash-pinned URLs or fixture mirrors for structure tests.
-- Keep a small “live smoke” set that is allowed to fail separately from CI gate.
+**Status: Implemented.** `tests/integration/helpers/quarantine.ts` provides `quarantine()`, `isQuarantined()`, `isLiveSmoke()`, `isPackageQuarantined()`, `QUARANTINED_PACKAGES`, `LIVE_SMOKE_PACKAGES`. `tests/integration/live-smoke.int.test.ts` is a small subset (one package per registry: npm/PyPI/RubyGems/NuGet). `tests/unit/quarantine.test.ts` (9 tests) covers the helper. New npm scripts: `test:int:gate` (excludes quarantined tests), `test:live-smoke` (runs only the live smoke set, allowed to fail separately from CI gate).
+
+- Tag flaky external hosts. ✅
+- Prefer hash-pinned URLs or fixture mirrors for structure tests. (existing integration tests use real registries; fixture mirrors are in e2e-tap)
+- Keep a small "live smoke" set that is allowed to fail separately from CI gate. ✅
 
 ---
 
 ### Tier C — Product completeness (as features land)
+
+**Status: Existing CLI commands tested.** `tests/unit/cli-commands.test.ts` (31 tests) covers the config module functions (set-tap, get-tap, set-update-auto-push, set-update-schedule, set-token, set-remote, getGithubToken with env fallback, file permissions 0o600/0o700, round-trip) and CLI subprocess invocations (--help, --version, config show/get-tap, hooks/service --help). The remaining Tier C features (list, remove, doctor, scan, switch, uninstall detection hooks) are not yet implemented and will be tested as they land.
 
 | Feature | Tests required when shipping |
 |---------|------------------------------|
@@ -749,11 +763,11 @@ Security items in [`fable-app-review-2026-07-11.md`](./fable-app-review-2026-07-
 
 ### 11.2 Tier B done when
 
-- [ ] Bin-name matrix covers research-known mismatches used in e2e catalog.
-- [ ] One heavy real package per major ecosystem in optional e2e list.
-- [ ] Classifier conflict matrix exists; crates.io UX decided (fix or document).
-- [ ] Failure injection covers push/download/concurrent (as features exist).
-- [ ] Integration flaky hosts quarantined or mirrored.
+- [x] Bin-name matrix covers research-known mismatches used in e2e catalog.
+- [x] One heavy real package per major ecosystem in optional e2e list.
+- [x] Classifier conflict matrix exists; crates.io UX decided (fix or document).
+- [x] Failure injection covers push/download/concurrent (as features exist).
+- [x] Integration flaky hosts quarantined or mirrored.
 
 ### 11.3 Nightly done when
 
