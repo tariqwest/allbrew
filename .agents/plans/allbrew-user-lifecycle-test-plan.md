@@ -2,7 +2,7 @@
 
 > **Goal:** Close the gap between “allbrew emits valid Homebrew Ruby” and “a macOS user can trust allbrew as their global solution for installing, updating, tracking, and uninstalling CLIs, GUI apps, and long-running service apps (including tools they would otherwise install via `npm -g`, `uv tool`, `pipx`, `cargo install`, etc.).”
 >
-> **Status:** Tier 0 (PR0: T0.1–T0.4) **implemented** in the allbrew repo. T0.5 (PR0b: exclusive `/opt/homebrew` sparsebundle) **implemented** in `lume-macos-testing-harness` (acquire/release/reset lifecycle, profile system, config fixes, tests, docs). Tier A–C plan only. Derived from a full-suite evaluation (unit / integration / E2E catalog / E2E-tap / Lume VM) against real-world user personas.
+> **Status:** Tier 0 (PR0: T0.1–T0.4) **implemented** in the allbrew repo. T0.5 (PR0b: exclusive `/opt/homebrew` sparsebundle) **implemented** in `lume-macos-testing-harness` (acquire/release/reset lifecycle, profile system, config fixes, tests, docs; allbrew `test-suite.ts` wiring + VM acceptance pending). **Tier A–C implemented** in the allbrew repo. Remaining work is the allbrew→harness migration, Lume VM acceptance, and the nightly user-journey profile. Derived from a full-suite evaluation (unit / integration / E2E catalog / E2E-tap / Lume VM) against real-world user personas.
 >
 > **Related plans:**
 > - [`allbrew-tap-update-e2e.md`](./allbrew-tap-update-e2e.md) — fixture server + generate → tap install → livecheck update cycle (**implemented**)
@@ -21,12 +21,14 @@
 
 | Tier | Gate | Strength |
 |------|------|----------|
-| Unit (~600) | always | Generators, templates, classifier, service *string* builders, some updater paths |
-| Integration | live network | Registry/API fetch → payload → Ruby shape (`assertValidFormula`) |
-| E2E catalog (~49) | `E2E=1` | Generate → `brew install` from **file path** → `--version` / `open -a` → uninstall |
-| E2E-tap (~39) | `E2E_TAP=1` | Generate → git push → `brew install <name>` → livecheck → `update-formulas` → upgrade |
+| Unit (849) | always | Generators, templates, classifier, analyzer, brew-hooks, launchd-service, config, sha256, classifier conflict matrix, bin-name matrix, failure injection, cleanup registry, quarantine helper, CLI commands |
+| Integration | live network | Registry/API fetch → payload → Ruby shape (`assertValidFormula`); live-smoke subset (one per registry) |
+| E2E catalog (~49) | `E2E=1` | Generate → `brew install` from **file path** → `--version` / `open -a` → uninstall + residual checks |
+| E2E-tap (~39) | `E2E_TAP=1` | Generate → git push → `brew install <name>` → livecheck → `update-formulas` → upgrade; service stanza + direct launch |
+| E2E heavy (6) | `E2E_HEAVY=1` | Heavy real packages (one per ecosystem) + residual checks |
+| E2E polluted PATH | `E2E=1` | `command -v` resolves to Homebrew Cellar despite same-named dummy earlier in PATH |
 | Templates | always | Byte-for-byte Ruby parity |
-| Lume VM | manual | Isolated macOS + timestamped run records |
+| Lume VM | manual | Isolated macOS + timestamped run records; harness integration in progress |
 
 **Strategy in one line:** strong *compiler* tests for “URL → valid Homebrew Ruby”; incomplete *product* tests for “this Mac’s apps stay installed, updated, running, and removable.”
 
@@ -43,19 +45,19 @@ The suite almost never asserts (2)–(4) beyond “binary prints a version” or
 
 ### 1.3 Structural omissions (summary)
 
-| # | Omission | Evidence |
-|---|----------|----------|
-| 1 | **Services disabled in E2E** | `tests/e2e/catalog.e2e.test.ts` and `tests/e2e-tap/helpers/setup.ts` always pass `--no-service` |
-| 2 | **No `brew services` runtime** | Unit tests only check Ruby text (`tests/unit/service.test.ts`) |
-| 3 | **No HTTP / web UI probes** | Catalog servers (maildev, wakapi, godns) only run `--version` / `-h` |
-| 4 | **Uninstall is cleanup, not a product assertion** | Exit code only; no PATH/Cellar/manifest/`/Applications` residual checks |
-| 5 | **Hooks + launchd untested** | No unit files for `lib/brew-hooks.ts`, `lib/launchd-service.ts` |
-| 6 | **GUI shallow** | `open -a` only; no Gatekeeper, zap execution, helpers, multi-app DMGs |
-| 7 | **MAS / Setapp** | Generation/integration only; e2e-tap explicitly out of scope |
-| 8 | **Research catalog ≫ executable depth** | ~200 research apps vs 49 e2e; no status columns linking rows → pass/fail |
-| 9 | **Core modules without unit suites** | `analyzer`, `archive-inspector`, `config`, `setup`, `github`, `sha256`, `tap-git` (partial) |
-| 10 | **Synthetic fixtures too clean** | Fake bins are shell scripts; miss native deps, Electron, notarization |
-| 11 | **Default CI path is unit-only** | User-facing truth lives behind optional gates |
+| # | Omission | Status | Evidence |
+|---|----------|--------|----------|
+| 1 | **Services disabled in E2E** | ⚠️ Partial | `tests/e2e/catalog.e2e.test.ts` still passes `--no-service` (Lume journeys will cover). `tests/e2e-tap/service.e2e-tap.test.ts` exercises `--service` generation, stanza inspection, direct launch + HTTP probe, and `brew services` start/stop. |
+| 2 | **No `brew services` runtime** | ⚠️ Partial | e2e-tap service test covers start/stop; Lume full lifecycle (start → HTTP → upgrade → stop → no LaunchAgent) pending harness acceptance. |
+| 3 | **No HTTP / web UI probes** | ✅ Fixed | `service.e2e-tap.test.ts` HTTP-probes `fake-service`. Lume probes for real services (maildev, wakapi-class) pending. |
+| 4 | **Uninstall is cleanup, not a product assertion** | ✅ Fixed | `tests/helpers/uninstall-residuals.ts` wired into e2e + e2e-tap: `brew list` absent, bin/Cellar gone, app path absent, manifest persists. |
+| 5 | **Hooks + launchd untested** | ⚠️ Partial | Unit suites for `brew-hooks` (15), `launchd-service` (15) and CLI --help. Lume activation smoke (sourced wrapper + `update-formulas` side effect) pending. |
+| 6 | **GUI shallow** | ⏳ | `open -a` only; Gatekeeper, zap execution, helpers, multi-app DMGs still pending. Cua Driver integration in harness enables future GUI automation. |
+| 7 | **MAS / Setapp** | ⏳ | Generation/integration only; e2e-tap explicitly out of scope. Live install requires credentials + Lume. |
+| 8 | **Research catalog ≫ executable depth** | ⚠️ Partial | ~200 research apps vs 49 e2e. New `tests/e2e/catalog-heavy.json` adds 6 heavy real packages. No automated status column yet. |
+| 9 | **Core modules without unit suites** | ✅ Fixed | `analyzer` (61), `config` (20), `sha256` (11), `brew-hooks` (15), `launchd-service` (15), `test-cleanup-registry` (15), `uninstall-residuals` (11), `classifier-conflict-matrix` (20), `bin-name-matrix` (16), `failure-injection` (12), `quarantine` (9), `cli-commands` (31). `archive-inspector`, `setup`, `github` still light or un-silofed. |
+| 10 | **Synthetic fixtures too clean** | ⚠️ Partial | Heavy E2E uses real packages with native deps / postinstall. Still no Electron/notarized DMG fixture. |
+| 11 | **Default CI path is unit-only** | ⚠️ Partial | Unit + templates + live-smoke gate feasible; full E2E remains optional.
 
 ---
 
@@ -106,9 +108,9 @@ The suite almost never asserts (2)–(4) beyond “binary prints a version” or
 ### 3.4 Unit
 
 - Strong generator and template coverage.
-- Service: string builder only.
-- Classifier: many URL shapes; crates.io still `unknown` while cargo generator exists.
-- Missing unit coverage for orchestration modules listed in §1.3.
+- Service: string builder only (e2e-tap `service.e2e-tap.test.ts` covers direct launch + `brew services` start/stop round-trip).
+- Classifier: many URL shapes; **crates.io now routes to `cargo-package`** (B3 conflict matrix; `tests/unit/classifier-conflict-matrix.test.ts`).
+- Orchestration modules now covered: `analyzer` (61 tests), `brew-hooks` (15), `launchd-service` (15), `config` (20), `sha256` (11), `test-cleanup-registry` (15), `uninstall-residuals` (11), `bin-name-matrix` (16), `classifier-conflict-matrix` (20), `failure-injection` (12), `quarantine` (9), `cli-commands` (31).
 
 ### 3.5 Research master table
 
@@ -621,7 +623,36 @@ A fixed, short list that must pass on the Lume harness (local or remote). **Not*
 | Machine-readable result file | `tests/e2e-runs/<ts>/journeys.json` with per-journey `{name, status, duration, error?}`. Not only human-readable `readout.txt`. |
 | Retry policy | Retry only transient network failures (timeout, DNS, 5xx). Never retry product/service failures — those are real signals. |
 
-### 7.3 What remains optional
+### 7.3 Harness migration — items now unblocked for implementation
+
+T0.5 is implemented in `lume-macos-testing-harness` (`src/lib/homebrew-prefix.ts` with VM-global lock, per-user APFS sparsebundle at `/opt/homebrew`, acquire/release/reset, stale recovery; profile system in `src/lib/hooks.ts` / `src/cli.ts`; wiring in setup/run/reset/readout; 37 self-tests passing). The allbrew side still needs `test-suite.ts` wiring, a VM acceptance run, and the nightly user-journey profile. The following plan items are **no longer blocked** by harness migration and should proceed:
+
+1. **A1 Lume service personas**
+   - Add `user-journeys` profile steps in `test-suite.ts` for at least 3 service stacks (npm/pip/go-binary).
+   - Assert full `brew services` lifecycle: start → HTTP readiness probe → status → upgrade-while-running → stop → uninstall → no LaunchAgent remains.
+   - Use dynamically allocated ports and unique per-run formula/tap names.
+   - Target: `maildev` (npm), `marimo` or `s-tui` (pip), `wakapi` or `godns` (go/binary-release).
+
+2. **A3 Hooks smoke**
+   - In a Lume journey: `allbrew hooks install` → source wrapper in a non-interactive shell → alias `brew` to `allbrew_brew` → run `brew update` → assert `update-formulas` side effect (tap commit or manifest recordedVersion change).
+   - Verify the wrapper no longer has the double-`brew update` bug.
+
+3. **A4 Zap persona**
+   - One Lume journey for a cask with zap stanzas (e.g. `bartender` Setapp or a GitHub cask with `zap trash:`).
+   - Install → `brew uninstall --zap` → assert app path, preferences, and residual files removed.
+
+4. **Tier A residual checks on Lume**
+   - Reuse `tests/helpers/uninstall-residuals.ts` in Lume journeys to assert: `brew list` absent, bin/Cellar gone, app path absent, manifest persists.
+   - Add cask `$HOME/Applications` vs system `/Applications` assertion.
+
+5. **Nightly operational model**
+   - Implement `bun run vm:test --profile user-journeys` (≤10 journeys).
+   - Generate `tests/e2e-runs/<ts>/journeys.json` per harness contract.
+   - Extend harness `readout` with `brew services list`, launch agents, taps, manifests, `$HOME/Applications`, disk usage, Homebrew mount/lock state.
+   - Enforce clean-VM precondition (reset or fresh clone before nightly).
+   - Document retry policy: transient network only.
+
+### 7.4 What remains optional
 
 - Full `E2E=1` catalog (49) — weekly or on-demand.
 - Full e2e-tap (39) — on generator/updater PRs + weekly.
@@ -752,14 +783,14 @@ Security items in [`fable-app-review-2026-07-11.md`](./fable-app-review-2026-07-
 ### 11.1 Tier A done when
 
 - [x] Manifest semantics decision documented (persist vs delete); residual helper asserts only valid product behavior.
-- [ ] At least 3 service personas (npm, pip, go/binary) pass: e2e-tap covers stanza + direct-launch; Lume covers full `brew services` lifecycle + HTTP + residual uninstall.
-- [ ] Service tests use dynamically allocated ports and unique per-run formula/tap names.
+- [ ] At least 3 service personas (npm, pip, go/binary) pass: e2e-tap covers stanza + direct-launch; Lume covers full `brew services` lifecycle + HTTP + residual uninstall. **Unblocked by harness T0.5; implement via `test-suite.ts` `user-journeys` profile.**
+- [ ] Service tests use dynamically allocated ports and unique per-run formula/tap names. **Unblocked; part of A1 Lume implementation.**
 - [x] Shared residual uninstall helper used by e2e + e2e-tap.
 - [x] Analyzer has a dedicated unit suite with README fixtures.
-- [ ] Hooks smoke passes on Lume: wrapper is sourced, `brew` is invoked through `allbrew_brew`, update-formulas side effect is asserted. Double-`brew update` question resolved.
-- [ ] One zap persona passes.
+- [ ] Hooks smoke passes on Lume: wrapper is sourced, `brew` is invoked through `allbrew_brew`, update-formulas side effect is asserted. Double-`brew update` question resolved. **Unblocked by harness T0.5; implement as a Lume journey.**
+- [ ] One zap persona passes. **Unblocked by harness T0.5; implement as a Lume journey.**
 - [x] Ops modules have split unit coverage: `brew-hooks` (wrapper content/path), `launchd-service` (update script + plist separately, `plutil -lint` in Lume), `config` (perms/validation), `sha256` (limits/cleanup).
-- [ ] AGENTS.md "What is not done" / testing section updated to reflect service/lifecycle coverage.
+- [x] AGENTS.md testing section updated to reflect service/lifecycle coverage (residual checks, live-smoke, heavy E2E, polluted PATH, new npm scripts, unit-test counts).
 
 ### 11.2 Tier B done when
 
@@ -866,3 +897,4 @@ This lifecycle plan **does** expand scope for services, residuals, hooks, zap, a
 | 2026-07-21 | Tier 0 (PR0) implemented in allbrew repo: test-cleanup-registry (fixture PID + service agent tracking, orphan kill/stop/purge), wired into e2e-tap server/teardown + e2e catalog afterAll + local runner; `scripts/test-local-cleanup.sh --force` extended to kill orphaned fixtures + stop services + purge registries; `tests/helpers/lifecycle-gate.ts` + `tests/e2e-lume/` scaffold for Lume-first destructive tests (`ALLBREW_LIFECYCLE_LOCAL=1` / `ALLBREW_LUME=1`); 15 unit tests for the registry. T0.5 (PR0b) remains pending in lume-macos-testing-harness. |
 | 2026-07-21 | PR0b (T0.5) implemented in `lume-macos-testing-harness`: `src/lib/homebrew-prefix.ts` (acquire/release/reset with VM-global lock, per-user APFS sparsebundle create/attach/detach at `/opt/homebrew`, ensure default-prefix brew, stale lock/mount recovery, injectable shell runner for tests); profile system (`src/lib/hooks.ts` resolveSteps/profilesNeedHomebrew, `src/cli.ts` `--profile`/`--no-default`, `test-suite.example.ts`); wiring in setup (sparsebundle provisioning + private workspace staging), run (acquire/release around Homebrew-requiring profiles), reset (detach + delete sparsebundle + stale lock cleanup), readout (prefix state section); config fixes (process env overrides `.env`, default `test-suite.ts`, project name from host dir basename, user-local default PATH, Homebrew prefix config fields); 37 tests passing; `.env.example`, `README.md`, `PLAN.md` updated. VM acceptance run pending. |
 | 2026-07-21 | Updated stale script references: §7.2 runner and §11.3 nightly criteria now point to `bun run vm:test --profile user-journeys` (harness migration) instead of `scripts/e2e-vm-run-tests.sh`; §9.4 readout extensions now reference harness `readout` via `test-suite.ts` `readoutSteps` instead of legacy `e2e-vm-readout.sh`. Aligned with [`allbrew-migration.md`](../../../lume-macos-testing-harness/.agents/plans/allbrew-migration.md) which removes those scripts. |
+| 2026-07-21 | Tier A–C implemented in allbrew repo: A1 (e2e-tap service stanza + direct launch), A2 (uninstall residual helper + manifest persistence), A5 (analyzer unit suite), A6 (brew-hooks/launchd-service/config/sha256 unit suites); B1 (bin-name matrix + `extractNpmBinName()` + `--bin-name` CLI option), B2 (heavy real packages E2E list), B3 (classifier conflict matrix + crates.io → cargo-package), B4 (failure injection + improved push-failure handling), B5 (polluted PATH E2E test), B6 (integration quarantine + live-smoke subset); Tier C (existing CLI command tests). Updated §1.1 baseline (849 unit tests, E2E heavy/polluted PATH), §3.4 unit coverage, structural omissions table, and added §7.3 listing items now unblocked by harness T0.5. Unit tests: 849 passing. |
