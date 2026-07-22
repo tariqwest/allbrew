@@ -7,4 +7,5 @@ node_modules/
 *.log
 .env
 tests/e2e-runs/
+test-harness-runs/
 graphify-out/

@@ -75,25 +75,14 @@ Always run `bun run check` and `bun run test` before committing. Integration and
 
 After every successful `brew uninstall` in e2e and e2e-tap, `assertUninstallResiduals()` (from `tests/helpers/uninstall-residuals.ts`) verifies the package is gone from `brew list`, the binary (formulae) or app path (casks) is absent, and the manifest persists (allbrew is the system of record; `deleteManifest` is dead code; `allbrew remove`/doctor/OOB detection in Tier C will handle deletion). The helper does NOT assert `manifestGone` because plain `brew uninstall` has no call path that deletes a manifest.
 
-### E2E execution mode (VM-first)
+### E2E execution mode
 
-The E2E wrappers (`scripts/test-e2e.sh` and `scripts/test-e2e-tap.sh`) default to running inside a Lume macOS VM, falling back to the local filesystem only when no VM is available. Detection priority (`scripts/test-vm-detect.sh`):
-
-1. **Remote Lume VM** — if `LUME_REMOTE_HOST` (default `app-user@homeserver.local`) is reachable via SSH and has `lume` installed. Sets `LUME_REMOTE_ENABLED=true`.
-2. **Local Lume VM** — if the `lume` CLI is installed locally. Sets `LUME_REMOTE_ENABLED=false`.
-3. **Local filesystem** — fallback when neither is available.
-
-In VM mode, the wrapper delegates to `scripts/e2e-vm-run-tests.sh`, which auto-starts (or creates) the VM via `scripts/e2e-vm-setup.sh` if it isn't running, runs the test tier inside the VM, captures a post-test readout, and optionally resets the VM (`--reset` / `--nuclear`). File filtering is not supported in VM mode — the entire tier runs.
-
-In local filesystem mode, the wrapper runs `bun test` directly with snapshot/restore + readout capture (see below). Extra args are passed to `bun test` as file filters.
+- **VM execution** (recommended for clean isolation): use `bun run vm:test:*` (see "E2E VM testing" below). The harness auto-starts the Lume VM, creates a per-project macOS user, acquires an exclusive `/opt/homebrew` sparsebundle for Homebrew-mutating profiles, runs the requested profile, captures a post-test readout, and detaches the prefix in `finally`.
+- **Local filesystem execution**: use `scripts/test-e2e.sh` and `scripts/test-e2e-tap.sh` for local runs with snapshot/restore + readout capture. Extra args are passed to `bun test` as file filters. Direct `bun run test:e2e` / `bun run test:e2e-tap` also work (snapshot/restore is handled by the test runners).
 
 | Flag | Applies to | Effect |
 |------|-----------|--------|
-| `--local` | both | Force local filesystem mode even when a VM is available |
-| `--reset` | VM mode | Reset VM to virgin state after tests |
-| `--nuclear` | VM mode | Nuclear reset (also uninstall Homebrew/Bun/mas) |
-| `--no-readout` | VM mode | Skip post-test readout capture |
-| `--no-cleanup` | local mode (e2e-tap) | Skip `~/.config/allbrew` snapshot/restore |
+| `--no-cleanup` | `test-e2e-tap.sh` | Skip `~/.config/allbrew` snapshot/restore |
 
 ### Local E2E cleanup & rollback
 
@@ -116,7 +105,7 @@ Each local run record contains:
   - `--dry-run` (default): show test residue, available snapshots, and the cleanup registry (fixture PIDs + registered services) without changing anything.
   - `--restore`: restore `~/.config/allbrew` from the latest snapshot.
   - `--force`: restore + untap disposable `test/e2e-tap-*` taps and uninstall their packages + stop registered Homebrew services from dead test processes + kill orphaned fixture processes + purge orphaned registry files.
-- **Debug escape hatch**: `scripts/test-e2e-tap.sh --local --no-cleanup` disables the runner's snapshot/restore for debugging on the local filesystem.
+- **Debug escape hatch**: `scripts/test-e2e-tap.sh --no-cleanup` disables the runner's snapshot/restore for debugging on the local filesystem.
 - **Lume-first lifecycle tests** (Tier 0, T0.4): destructive lifecycle tests (services, zap, hooks — A1/A3/A4) live under `tests/e2e-lume/` and are gated by `tests/helpers/lifecycle-gate.ts`. They run on Lume by default (`ALLBREW_LUME=1`, set by the VM harness); local execution requires explicit opt-in via `ALLBREW_LIFECYCLE_LOCAL=1`. Use the `lifecycleDescribe()` wrapper or `shouldRunLifecycleTests()` check so they skip cleanly otherwise.
 
 To run a single test file:
@@ -135,7 +124,7 @@ bun test tests/unit/ --test-name-pattern "classifies GitHub"
 
 For real-world, isolated testing on a clean macOS install, allbrew consumes the [`lume-macos-testing-harness`](https://github.com/tariqwest/lume-macos-testing-harness) as a sibling `file:` dependency and defines its VM test suite in [`test-suite.ts`](./test-suite.ts) at the repo root. The harness is invoked via the `bun run vm:*` package scripts.
 
-> **Migration status:** the legacy `scripts/e2e-vm-*.sh` orchestration is preserved until the new `vm:*` commands pass a VM acceptance run. Prefer `bun run vm:*` for new work; do not remove the legacy scripts yet. See [`lume-macos-testing-harness/.agents/plans/allbrew-migration.md`](../lume-macos-testing-harness/.agents/plans/allbrew-migration.md) for the full migration plan.
+> **Migration status:** the legacy `scripts/e2e-vm-*.sh` orchestration has been removed after the `acceptance` profile passed a VM run. VM execution is now exclusively through `bun run vm:*`; local filesystem runs use `scripts/test-e2e.sh` / `scripts/test-e2e-tap.sh` or the direct `bun run test:e2e*` scripts. See [`lume-macos-testing-harness/.agents/plans/allbrew-migration.md`](../lume-macos-testing-harness/.agents/plans/allbrew-migration.md) for the full migration plan.
 
 ### Quick reference (`bun run vm:*`)
 
@@ -169,23 +158,17 @@ bun run vm:teardown            # stop or delete the VM (--stop | --delete via vm
 
 The `e2e` and `e2e-tap` profiles are listed in `homebrewProfiles`, so the harness acquires the project user's APFS sparsebundle at `/opt/homebrew` (VM-global mutex) before running them and detaches it in `finally`. Cask installs target `$HOME/Applications` via `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`. Concurrent bottle-correct Homebrew on one VM is not supported; use separate VMs for parallel heavy E2E.
 
-### Legacy shell scripts (preserved)
+### Local filesystem wrappers
+
+For local runs without a VM:
 
 ```bash
-scripts/e2e-vm-setup.sh
-scripts/e2e-vm-run-tests.sh --integration --e2e
-scripts/e2e-vm-run-tests.sh --e2e --reset          # run tests + reset VM afterwards
-scripts/e2e-vm-run-tests.sh --e2e --nuclear         # run tests + full uninstall (Homebrew/Bun/mas)
-scripts/e2e-vm-readout.sh                            # capture post-test state (auto-run after tests)
-scripts/e2e-vm-reset.sh                              # reset VM to virgin state
-scripts/e2e-vm-reset.sh --nuclear                    # reset + uninstall Homebrew/Bun/mas CLI
-scripts/e2e-vm-reset.sh --readout test-output.log    # readout then reset
-scripts/e2e-vm-ssh.sh 'sw_vers && brew --version'
-scripts/e2e-vm-clone.sh allbrew-e2e-clean
-scripts/e2e-vm-teardown.sh --stop
+scripts/test-e2e.sh                               # E2E catalog (local snapshot/restore/readout)
+scripts/test-e2e-tap.sh                           # E2E tap (local snapshot/restore/readout)
+scripts/test-e2e-tap.sh --no-cleanup              # skip ~/.config/allbrew snapshot/restore
 ```
 
-See [`.agents/plans/allbrew-e2e-lume-vm.md`](./.agents/plans/allbrew-e2e-lume-vm.md) for the legacy workflow.
+Direct npm scripts also work: `bun run test:e2e`, `bun run test:e2e-tap`, `bun run test:e2e-heavy`.
 
 ### Remote Lume host (optional)
 
@@ -201,6 +184,10 @@ export LUME_REMOTE_ENABLED=true
 Then use the same `bun run vm:*` commands above. Before each run the harness rsyncs the local repo to `LUME_REMOTE_DIR` on the remote host, because Lume's `--shared-dir` can only mount a directory that lives on the host running the VM. The IPSW is synced once to the remote Downloads folder if it is not already there. The remote host only needs Lume installed and an active macOS user session with Virtualization Framework permissions.
 
 Set `LUME_REMOTE_ENABLED=false` to run Lume locally instead.
+
+### Acceptance verification
+
+The `acceptance` profile (`bun run vm:test --profile acceptance --no-default`) passed a VM run on `allbrew-e2e` with exclusive `/opt/homebrew` (APFS sparsebundle + VM-global lock), installing `npkill` via `brew install`, verifying it with `npkill --version`, uninstalling cleanly, and detaching the prefix. Post-test readout confirmed no residual formulae, casks, launch agents, or `/Applications` leakage. The legacy `scripts/e2e-vm-*.sh` orchestration was removed after this run.
 
 ### Run records
 

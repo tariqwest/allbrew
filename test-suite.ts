@@ -21,8 +21,9 @@
  * before running them and detaches it in `finally`. Cask installs target
  * `$HOME/Applications` via `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`.
  *
- * The legacy `scripts/e2e-vm-*.sh` orchestration is preserved until parity
- * is verified in a VM acceptance run; do not remove it yet.
+ * The legacy `scripts/e2e-vm-*.sh` orchestration was removed after the
+ * `acceptance` profile passed a VM run (T0.5 verified). Use `bun run vm:*`
+ * for VM execution and `scripts/test-e2e*.sh` for local filesystem runs.
  */
 
 import {
@@ -49,6 +50,11 @@ export const {
     { id: "integration", name: "Integration tests", command: "bun run test:int" },
     { id: "e2e", name: "E2E catalog", command: "E2E=1 bun run test:e2e" },
     { id: "e2e-tap", name: "E2E tap + update cycle", command: "E2E_TAP=1 bun run test:e2e-tap" },
+    {
+      id: "e2e-acceptance",
+      name: "E2E T0.5 acceptance",
+      command: "E2E=1 bun test tests/e2e/catalog.e2e.test.ts --test-name-pattern 'npkill' --timeout 300000",
+    },
   ],
 
   profiles: {
@@ -56,11 +62,13 @@ export const {
     integration: ["integration"],
     e2e: ["e2e"],
     "e2e-tap": ["e2e-tap"],
+    // T0.5 acceptance: one fast E2E entry to validate exclusive /opt/homebrew.
+    acceptance: ["e2e-acceptance"],
   },
 
   // These profiles acquire the exclusive /opt/homebrew sparsebundle + mutex.
   // The default and integration profiles do not need Homebrew.
-  homebrewProfiles: ["e2e", "e2e-tap"],
+  homebrewProfiles: ["e2e", "e2e-tap", "acceptance"],
 
   resetSteps: [
     { id: "rm-dist", name: "Remove build artifacts", command: "rm -rf ./dist ./build" },
@@ -81,7 +89,11 @@ export const {
     { id: "brew-cellar", name: "Cellar Contents", command: "ls -la \"$(brew --prefix)/Cellar/\" 2>/dev/null || echo '(empty or missing)'" },
     { id: "brew-caskroom", name: "Caskroom Contents", command: "ls -la \"$(brew --prefix)/Caskroom/\" 2>/dev/null || echo '(empty or missing)'" },
     { id: "brew-cache", name: "Homebrew Cache", command: "du -sh \"$(brew --cache)\" 2>/dev/null || echo '(no cache)'" },
+    { id: "brew-services", name: "Homebrew Services", command: "brew services list 2>/dev/null || echo '(none)'" },
+    { id: "launch-agents", name: "Launch Agents", command: "ls -la ~/Library/LaunchAgents/ 2>/dev/null | grep -E 'allbrew|managed' || echo '(no allbrew/managed agents)'" },
     { id: "user-applications", name: "User Applications", command: "ls -la ~/Applications/ 2>/dev/null | head -50 || echo '(empty)'" },
+    { id: "system-applications", name: "System Applications (cask leakage check)", command: "ls -la /Applications/ 2>/dev/null | grep -E 'allbrew|managed|test' || echo '(no suspicious system apps)'" },
+    { id: "residual-audit", name: "Residual Audit", command: "echo '--- brew list ---'; brew list --full-name -1 2>/dev/null || echo '(none)'; echo '--- residual processes ---'; pgrep -fl 'fake-service|maildev|wakapi|godns' 2>/dev/null || echo '(none)'; echo '--- manifests ---'; ls -la ~/.config/allbrew/packages/ 2>/dev/null || echo '(none)'" },
     { id: "tap-git", name: "Tap Repo Git State", command: "TAP_PATH=$(python3 -c \"import json;print(json.load(open(\\\"$HOME/.config/allbrew/config.json\\\")).get(\\\"tapPath\\\",\\\"\\\"))\" 2>/dev/null || echo ''); if [ -n \"$TAP_PATH\" ] && [ -d \"$TAP_PATH/.git\" ]; then echo \"Tap path: $TAP_PATH\"; git -C \"$TAP_PATH\" log --oneline -5 2>/dev/null; git -C \"$TAP_PATH\" status --short 2>/dev/null; else echo '(no tap repo found)'; fi" },
   ],
 
@@ -109,20 +121,21 @@ export const {
     /**
      * Install allbrew dependencies in the private workspace as the project user.
      *
-     * The lume-macos-testing-harness dependency uses `file:../lume-macos-testing-harness`
-     * which doesn't exist inside the VM. Bun install will fail to resolve it and
-     * remove the pre-staged directory. So we: (1) run bun install (which installs
-     * everything else), (2) re-copy the harness from the shared mount.
+     * The `lume-macos-testing-harness` devDependency uses `file:../lume-macos-testing-harness`,
+     * which doesn't exist inside the VM (the harness runs on the host and only shells
+     * into the VM). Strip it from package.json before `bun install` so the rest of the
+     * devDependencies (typescript, @types/bun) install cleanly. The harness package is
+     * not needed for test execution inside the VM.
      */
     async installProject() {
       await runAsProjectUser(
         [
           "set +e",
+          "python3 -c \"import json; p=json.load(open('package.json')); p.get('devDependencies',{}).pop('lume-macos-testing-harness',None); json.dump(p, open('package.json','w'), indent=2); print('stripped harness from package.json')\"",
           "bun install 2>&1",
           "set -e",
-          "mkdir -p node_modules/lume-macos-testing-harness",
-          'rsync -a "/Volumes/My Shared Files/node_modules/lume-macos-testing-harness/" node_modules/lume-macos-testing-harness/ 2>&1',
-          "test -f node_modules/lume-macos-testing-harness/src/index.ts",
+          "test -d node_modules/@types/bun",
+          "test -d node_modules/typescript",
         ].join("\n"),
         "Install dependencies"
       );
