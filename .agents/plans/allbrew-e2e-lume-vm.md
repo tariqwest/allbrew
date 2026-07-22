@@ -234,22 +234,22 @@ EOF
 launchctl load ~/Library/LaunchAgents/com.trycua.cua-driver.plist
 ```
 
-To enable GUI driving from a host MCP client later, create `scripts/cua-driver-vm-bridge.sh`:
+To enable GUI driving from a host MCP client, use the harness's `cua` subcommand (replaces the former `scripts/cua-driver-vm-bridge.sh`):
 
 ```bash
-#!/bin/bash
-set -euo pipefail
-source "$(dirname "$0")/e2e-vm-config.sh"
-VM_IP="$(vm_ip)"
-exec ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  "${LUME_VM_USER}@${VM_IP}" /Users/lume/.local/bin/cua-driver mcp
+bun run vm:setup                 # creates the project user + provisions Cua Driver prereqs
+./node_modules/.bin/lume-test-harness cua install    # install Cua Driver for the project user
+./node_modules/.bin/lume-test-harness cua status     # check install/running state
+./node_modules/.bin/lume-test-harness cua grant      # request TCC grants (needs interactive GUI session)
 ```
 
-And register it:
+And register the MCP bridge:
 
 ```bash
-claude mcp add --transport stdio cua-driver-vm -- scripts/cua-driver-vm-bridge.sh
+claude mcp add --transport stdio cua-driver-vm -- lume-test-harness cua bridge
 ```
+
+The harness `cua bridge` command connects as the project user (not the VM admin) and supports both local and remote Lume hosts. The legacy `scripts/cua-driver-vm-bridge.sh` has been removed.
 
 > **Note:** The first TCC grant for Accessibility + Screen Recording requires a display boot and manual approval inside the VM. Plan for one interactive `lume run allbrew-e2e` session before using Cua Driver headlessly.
 
@@ -367,7 +367,7 @@ Nuclear mode additionally:
 | VM reset | `scripts/e2e-vm-reset.sh` | Yes |
 | Clone helper | `scripts/e2e-vm-clone.sh` | Yes |
 | Teardown helper | `scripts/e2e-vm-teardown.sh` | Yes |
-| Cua Driver bridge | `scripts/cua-driver-vm-bridge.sh` | Yes |
+| Cua Driver bridge | `lume-test-harness cua bridge` (harness SDK) | Yes |
 | VM disk/config | `~/.lume/` | **No** |
 | IPSW image | `~/Downloads/` | **No** |
 | Host-specific overrides | `.env` | **No** (already gitignored) |

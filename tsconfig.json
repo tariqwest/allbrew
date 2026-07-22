@@ -15,6 +15,7 @@
   "include": [
     "bin/**/*.ts",
     "lib/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "test-suite.ts"
   ]
 }

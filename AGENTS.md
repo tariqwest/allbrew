@@ -13,6 +13,7 @@
 > - [`allbrew-tap-update-e2e.md`](./.agents/plans/allbrew-tap-update-e2e.md) — E2E tap + livecheck update cycle tests with synthetic fixtures
 > - [`allbrew-user-lifecycle-test-plan.md`](./.agents/plans/allbrew-user-lifecycle-test-plan.md) — user-lifecycle test gaps (services, uninstall residuals, hooks, personas, Lume nightly journeys)
 > - [`allbrew-local-test-cleanup-rollback.md`](./.agents/plans/allbrew-local-test-cleanup-rollback.md) — snapshot/restore for local E2E runs so they don't pollute the user's workspace
+> - [`allbrew-agent-skills.md`](./.agents/plans/allbrew-agent-skills.md) — proposed agent skills for orientation, diagnosis, and repair (12 skills across understand/diagnose/fix tiers)
 
 ## Project overview
 
@@ -53,6 +54,9 @@ bun run test:templates             # 13 fixture payloads, byte-for-byte parity c
 bun run test:update-formulas       # update-formulas integration test
 bun run bin/allbrew.ts --help      # verify CLI runs
 DRY_RUN=1 bun run release patch    # preview a release without side effects
+bun run vm:test                    # run the test suite in a Lume macOS VM (see "E2E VM testing")
+bun run vm:test:e2e                # E2E catalog profile (acquires exclusive /opt/homebrew)
+bun run vm:test:e2e-tap            # E2E tap profile (acquires exclusive /opt/homebrew)
 ```
 
 Always run `bun run check` and `bun run test` before committing. Integration and E2E tests hit live APIs and may be slow or flaky — run them separately when validating specific generators.
@@ -129,9 +133,43 @@ bun test tests/unit/ --test-name-pattern "classifies GitHub"
 
 ## E2E VM testing
 
-For real-world, isolated testing on a clean macOS install, use the Lume VM scripts in `scripts/e2e-vm-*.sh`. See [`.agents/plans/allbrew-e2e-lume-vm.md`](./.agents/plans/allbrew-e2e-lume-vm.md) for the full workflow.
+For real-world, isolated testing on a clean macOS install, allbrew consumes the [`lume-macos-testing-harness`](https://github.com/tariqwest/lume-macos-testing-harness) as a sibling `file:` dependency and defines its VM test suite in [`test-suite.ts`](./test-suite.ts) at the repo root. The harness is invoked via the `bun run vm:*` package scripts.
 
-Quick reference:
+> **Migration status:** the legacy `scripts/e2e-vm-*.sh` orchestration is preserved until the new `vm:*` commands pass a VM acceptance run. Prefer `bun run vm:*` for new work; do not remove the legacy scripts yet. See [`lume-macos-testing-harness/.agents/plans/allbrew-migration.md`](../lume-macos-testing-harness/.agents/plans/allbrew-migration.md) for the full migration plan.
+
+### Quick reference (`bun run vm:*`)
+
+```bash
+bun run vm:init                # one-time VM creation per host
+bun run vm:setup               # create project user + provision sparsebundle + install bun + bun install
+bun run vm:test                # default profile (check + unit + templates)
+bun run vm:test:int            # integration profile
+bun run vm:test:e2e            # E2E catalog (acquires exclusive /opt/homebrew)
+bun run vm:test:e2e-tap        # E2E tap + update cycle (acquires exclusive /opt/homebrew)
+bun run vm:test:all            # integration + e2e + e2e-tap
+bun run vm:readout             # capture post-test state
+bun run vm:reset               # detach /opt/homebrew, delete sparsebundle, delete project user
+bun run vm:reset:nuclear       # above + wipe Cellar/Caskroom/Caches
+bun run vm:ssh 'sw_vers'       # run a command inside the VM as the project user
+bun run vm:sync                # rsync repo to remote Lume host
+bun run vm:clone allbrew-clean # clone the VM
+bun run vm:teardown            # stop or delete the VM (--stop | --delete via vm:ssh)
+```
+
+### Profiles and the exclusive Homebrew prefix
+
+`test-suite.ts` declares these profiles via the harness SDK (`defineTestSuite`):
+
+| Profile | Steps | Acquires `/opt/homebrew`? |
+|---------|-------|---------------------------|
+| `default` | check, unit, templates | No |
+| `integration` | integration | No |
+| `e2e` | E2E catalog | Yes |
+| `e2e-tap` | E2E tap + update cycle | Yes |
+
+The `e2e` and `e2e-tap` profiles are listed in `homebrewProfiles`, so the harness acquires the project user's APFS sparsebundle at `/opt/homebrew` (VM-global mutex) before running them and detaches it in `finally`. Cask installs target `$HOME/Applications` via `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`. Concurrent bottle-correct Homebrew on one VM is not supported; use separate VMs for parallel heavy E2E.
+
+### Legacy shell scripts (preserved)
 
 ```bash
 scripts/e2e-vm-setup.sh
@@ -147,6 +185,8 @@ scripts/e2e-vm-clone.sh allbrew-e2e-clean
 scripts/e2e-vm-teardown.sh --stop
 ```
 
+See [`.agents/plans/allbrew-e2e-lume-vm.md`](./.agents/plans/allbrew-e2e-lume-vm.md) for the legacy workflow.
+
 ### Remote Lume host (optional)
 
 You can run the Lume VM on a remote Apple Silicon Mac (`homeserver.local`) while keeping the orchestration scripts and run records on your local machine. Enable it with:
@@ -158,7 +198,7 @@ export LUME_REMOTE_ENABLED=true
 # LUME_REMOTE_IPSW_DIR defaults to /Users/app-user/Downloads
 ```
 
-Then use the same commands above. Before each run the harness rsyncs the local repo to `LUME_REMOTE_DIR` on the remote host, because Lume's `--shared-dir` can only mount a directory that lives on the host running the VM. The IPSW is synced once to the remote Downloads folder if it is not already there. The remote host only needs Lume installed and an active macOS user session with Virtualization Framework permissions.
+Then use the same `bun run vm:*` commands above. Before each run the harness rsyncs the local repo to `LUME_REMOTE_DIR` on the remote host, because Lume's `--shared-dir` can only mount a directory that lives on the host running the VM. The IPSW is synced once to the remote Downloads folder if it is not already there. The remote host only needs Lume installed and an active macOS user session with Virtualization Framework permissions.
 
 Set `LUME_REMOTE_ENABLED=false` to run Lume locally instead.
 

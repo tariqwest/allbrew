@@ -2,7 +2,7 @@
 
 > **Goal:** Close the gap between “allbrew emits valid Homebrew Ruby” and “a macOS user can trust allbrew as their global solution for installing, updating, tracking, and uninstalling CLIs, GUI apps, and long-running service apps (including tools they would otherwise install via `npm -g`, `uv tool`, `pipx`, `cargo install`, etc.).”
 >
-> **Status:** Tier 0 (PR0: T0.1–T0.4) **implemented** in the allbrew repo. T0.5 (PR0b: exclusive `/opt/homebrew` sparsebundle) pending in `lume-macos-testing-harness`. Tier A–C plan only. Derived from a full-suite evaluation (unit / integration / E2E catalog / E2E-tap / Lume VM) against real-world user personas.
+> **Status:** Tier 0 (PR0: T0.1–T0.4) **implemented** in the allbrew repo. T0.5 (PR0b: exclusive `/opt/homebrew` sparsebundle) **implemented** in `lume-macos-testing-harness` (acquire/release/reset lifecycle, profile system, config fixes, tests, docs). Tier A–C plan only. Derived from a full-suite evaluation (unit / integration / E2E catalog / E2E-tap / Lume VM) against real-world user personas.
 >
 > **Related plans:**
 > - [`allbrew-tap-update-e2e.md`](./allbrew-tap-update-e2e.md) — fixture server + generate → tap install → livecheck update cycle (**implemented**)
@@ -604,7 +604,7 @@ A fixed, short list that must pass on the Lume harness (local or remote). **Not*
 
 ### 7.2 Runner
 
-- Extend `scripts/e2e-vm-run-tests.sh` with `--user-journeys` (or `USER_JOURNEYS=1`).
+- Add a `user-journeys` profile to allbrew’s `test-suite.ts` (run via `bun run vm:test --profile user-journeys` after the harness migration; see [`allbrew-migration.md`](../../../lume-macos-testing-harness/.agents/plans/allbrew-migration.md)). The legacy `scripts/e2e-vm-run-tests.sh` will be removed once the harness migration is complete.
 - Record results under `tests/e2e-runs/<ts>/` with explicit journey pass/fail section in `readout.txt`.
 - Failure of any Tier A journey blocks “hooks/service ready” claim in AGENTS status table.
 
@@ -698,7 +698,7 @@ On Lume, formula `verifyPaths` assume the exclusive default prefix session (`/op
 
 ### 9.4 Lume readout extensions
 
-Add to readout (legacy `e2e-vm-readout.sh` or harness `readout`):
+Add to harness `readout` (via allbrew `test-suite.ts` `readoutSteps`; legacy `e2e-vm-readout.sh` will be removed per [`allbrew-migration.md`](../../../lume-macos-testing-harness/.agents/plans/allbrew-migration.md)):
 
 - `brew services list`
 - LaunchAgents mentioning allbrew/managed formulas
@@ -745,9 +745,9 @@ Security items in [`fable-app-review-2026-07-11.md`](./fable-app-review-2026-07-
 - [x] Test-created disposable taps, installed packages, service agents, and fixture processes are removed even after failed/interrupted tests.
 - [x] `scripts/test-local-cleanup.sh --dry-run|--restore|--force` exists and works for manual recovery.
 - [x] Destructive lifecycle tests (services, zap, hooks) are Lume-first; local execution requires explicit opt-in.
-- [ ] Lume Homebrew uses exclusive real `/opt/homebrew` via per-user sparsebundle + mutex (T0.5); no FUSE spoof; no primary custom-prefix E2E path.
-- [ ] Acquire/release/reset of the prefix is documented and verified (detach + lock release on failure; sparsebundle deleted on project reset).
-- [ ] Cask installs in Lume target `$HOME/Applications`; system `/Applications` stays clean across runs.
+- [x] Lume Homebrew uses exclusive real `/opt/homebrew` via per-user sparsebundle + mutex (T0.5); no FUSE spoof; no primary custom-prefix E2E path. *(PR0b implemented in `lume-macos-testing-harness`; VM acceptance pending.)*
+- [x] Acquire/release/reset of the prefix is documented and verified (detach + lock release on failure; sparsebundle deleted on project reset). *(Unit tests pass; VM acceptance pending.)*
+- [ ] Cask installs in Lume target `$HOME/Applications`; system `/Applications` stays clean across runs. *(Requires VM acceptance run.)*
 
 ### 11.1 Tier A done when
 
@@ -771,7 +771,7 @@ Security items in [`fable-app-review-2026-07-11.md`](./fable-app-review-2026-07-
 
 ### 11.3 Nightly done when
 
-- [ ] `scripts/e2e-vm-run-tests.sh --user-journeys` (or harness equivalent) runs ≤10 journeys.
+- [ ] `bun run vm:test --profile user-journeys` (harness migration; see [`allbrew-migration.md`](../../../lume-macos-testing-harness/.agents/plans/allbrew-migration.md)) runs ≤10 journeys. Legacy `scripts/e2e-vm-run-tests.sh` removed.
 - [ ] Run record includes journey pass/fail.
 - [ ] `journeys.json` machine-readable result file written per run.
 - [ ] Clean-VM precondition enforced (reset or fresh clone before nightly).
@@ -829,8 +829,8 @@ This lifecycle plan **does** expand scope for services, residuals, hooks, zap, a
 1. **PR0 — Local/Lume state snapshot, restoration, and interrupted-run recovery** (Tier 0.1–0.4)  
    Hard prerequisite for config/manifest isolation. Without this, every subsequent lifecycle test signal is unreliable.
 
-2. **PR0b — Exclusive `/opt/homebrew` sparsebundle + mutex in Lume harness** (Tier 0.5; harness migration §2.5)  
-   Required before bottle-faithful Lume journeys, services, hooks, and residual PATH/Cellar asserts. Lands primarily in `lume-macos-testing-harness`, then allbrew `test-suite` wiring.
+2. **PR0b — Exclusive `/opt/homebrew` sparsebundle + mutex in Lume harness** (Tier 0.5; harness migration §2.5) — **implemented**  
+   Required before bottle-faithful Lume journeys, services, hooks, and residual PATH/Cellar asserts. Lands primarily in `lume-macos-testing-harness`, then allbrew `test-suite` wiring. Implemented: `src/lib/homebrew-prefix.ts` (acquire/release/reset with lock, sparsebundle create/attach/detach, ensure brew, stale recovery); profile system in `src/lib/hooks.ts` + `src/cli.ts` (`--profile`, `--no-default`); wiring in setup/run/reset/readout; config fixes (`.env` precedence, default `test-suite.ts`, project name from basename, user-local default PATH); 37 tests passing; `.env.example`, `README.md`, `PLAN.md` updated.
 
 3. **PR1 — Shared uninstall residual helper** (A2, post-decision)  
    Asserts only facts that are already valid product behavior. Requires manifest semantics decision first.
@@ -864,3 +864,5 @@ This lifecycle plan **does** expand scope for services, residuals, hooks, zap, a
 | 2026-07-21 | Refined after assessment: added Tier 0 isolation prerequisite, Lume-first services, manifest semantics decision gate, hooks activation test, A6 testability split, nightly operational model, revised PR sequence. |
 | 2026-07-21 | Homebrew multi-user isolation: reject macFUSE/FSKit and primary `$HOME/.homebrew`; adopt exclusive `/opt/homebrew` sparsebundle + mutex (T0.5), cask appdir under `$HOME/Applications`, PR0b, nightly/readout/acceptance updates; link harness migration plan. |
 | 2026-07-21 | Tier 0 (PR0) implemented in allbrew repo: test-cleanup-registry (fixture PID + service agent tracking, orphan kill/stop/purge), wired into e2e-tap server/teardown + e2e catalog afterAll + local runner; `scripts/test-local-cleanup.sh --force` extended to kill orphaned fixtures + stop services + purge registries; `tests/helpers/lifecycle-gate.ts` + `tests/e2e-lume/` scaffold for Lume-first destructive tests (`ALLBREW_LIFECYCLE_LOCAL=1` / `ALLBREW_LUME=1`); 15 unit tests for the registry. T0.5 (PR0b) remains pending in lume-macos-testing-harness. |
+| 2026-07-21 | PR0b (T0.5) implemented in `lume-macos-testing-harness`: `src/lib/homebrew-prefix.ts` (acquire/release/reset with VM-global lock, per-user APFS sparsebundle create/attach/detach at `/opt/homebrew`, ensure default-prefix brew, stale lock/mount recovery, injectable shell runner for tests); profile system (`src/lib/hooks.ts` resolveSteps/profilesNeedHomebrew, `src/cli.ts` `--profile`/`--no-default`, `test-suite.example.ts`); wiring in setup (sparsebundle provisioning + private workspace staging), run (acquire/release around Homebrew-requiring profiles), reset (detach + delete sparsebundle + stale lock cleanup), readout (prefix state section); config fixes (process env overrides `.env`, default `test-suite.ts`, project name from host dir basename, user-local default PATH, Homebrew prefix config fields); 37 tests passing; `.env.example`, `README.md`, `PLAN.md` updated. VM acceptance run pending. |
+| 2026-07-21 | Updated stale script references: §7.2 runner and §11.3 nightly criteria now point to `bun run vm:test --profile user-journeys` (harness migration) instead of `scripts/e2e-vm-run-tests.sh`; §9.4 readout extensions now reference harness `readout` via `test-suite.ts` `readoutSteps` instead of legacy `e2e-vm-readout.sh`. Aligned with [`allbrew-migration.md`](../../../lume-macos-testing-harness/.agents/plans/allbrew-migration.md) which removes those scripts. |

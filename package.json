@@ -28,7 +28,21 @@
     "test:e2e-tap": "E2E_TAP=1 bun run scripts/e2e-tap-local-runner.ts",
     "test:all": "bun test",
     "test:templates": "bun run scripts/test-templates.ts",
-    "test:update-formulas": "bun run scripts/test-update-formulas.ts"
+    "test:update-formulas": "bun run scripts/test-update-formulas.ts",
+    "vm:init": "lume-test-harness init",
+    "vm:setup": "lume-test-harness setup",
+    "vm:test": "lume-test-harness run",
+    "vm:test:int": "lume-test-harness run --profile integration",
+    "vm:test:e2e": "lume-test-harness run --profile e2e",
+    "vm:test:e2e-tap": "lume-test-harness run --profile e2e-tap",
+    "vm:test:all": "lume-test-harness run --profile integration --profile e2e --profile e2e-tap",
+    "vm:readout": "lume-test-harness readout",
+    "vm:reset": "lume-test-harness reset",
+    "vm:reset:nuclear": "lume-test-harness reset --nuclear",
+    "vm:ssh": "lume-test-harness ssh",
+    "vm:sync": "lume-test-harness sync",
+    "vm:clone": "lume-test-harness clone",
+    "vm:teardown": "lume-test-harness teardown"
   },
   "keywords": [
     "homebrew",
@@ -64,6 +78,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "lume-macos-testing-harness": "file:../lume-macos-testing-harness",
     "typescript": "^5.8.0"
   }
 }
