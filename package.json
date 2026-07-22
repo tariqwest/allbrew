@@ -36,6 +36,8 @@
     "vm:test:e2e": "lume-test-harness run --profile e2e",
     "vm:test:e2e-tap": "lume-test-harness run --profile e2e-tap",
     "vm:test:all": "lume-test-harness run --profile integration --profile e2e --profile e2e-tap",
+    "vm:test:user-journeys": "lume-test-harness run --profile user-journeys",
+    "vm:nightly": "lume-test-harness reset --nuclear && lume-test-harness setup && lume-test-harness run --profile user-journeys",
     "vm:readout": "lume-test-harness readout",
     "vm:reset": "lume-test-harness reset",
     "vm:reset:nuclear": "lume-test-harness reset --nuclear",

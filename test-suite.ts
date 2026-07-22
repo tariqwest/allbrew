@@ -14,6 +14,7 @@
  *   bun run vm:test:e2e       # E2E profile (acquires exclusive /opt/homebrew)
  *   bun run vm:test:e2e-tap   # E2E-tap profile (acquires exclusive /opt/homebrew)
  *   bun run vm:test:all       # integration + e2e + e2e-tap
+ *   bun run vm:test --profile user-journeys  # Tier A nightly journeys (A1/A3/A4)
  *   bun run vm:reset          # detach /opt/homebrew, delete sparsebundle, delete project user
  *
  * The `e2e` and `e2e-tap` profiles are listed in `homebrewProfiles`, so the
@@ -31,8 +32,22 @@ import {
   runAsProjectUser,
   lumeSshExec,
   q,
+  runFile,
+  appendReadout,
   type HomebrewSession,
+  type Journey,
 } from "lume-macos-testing-harness";
+import { readFileSync, existsSync } from "node:fs";
+
+const BASE_TIMEOUT = 600_000; // 10 min per journey step
+
+function testCommand(file: string, pattern: string, timeout = BASE_TIMEOUT): string {
+  return `bun test ${file} --test-name-pattern '${pattern}' --timeout ${timeout}`;
+}
+
+function brewCleanup(formulaName: string): string {
+  return `brew services stop ${formulaName} 2>/dev/null || true; brew uninstall --force ${formulaName} 2>/dev/null || true; rm -f ~/Library/LaunchAgents/homebrew.mxcl.${formulaName}.plist`;
+}
 
 export const {
   testSteps,
@@ -42,6 +57,9 @@ export const {
   resetSteps,
   readoutSteps,
   hooks,
+  journeys,
+  journeyProfiles,
+  journeyDefaultProfile,
 } = defineTestSuite({
   steps: [
     { id: "check", name: "Type check", command: "bun run check" },
@@ -55,21 +73,6 @@ export const {
       name: "E2E T0.5 acceptance",
       command: "E2E=1 bun test tests/e2e/catalog.e2e.test.ts --test-name-pattern 'npkill' --timeout 300000",
     },
-    {
-      id: "service-personas",
-      name: "A1 service personas",
-      command: "bun test tests/e2e-lume/service-personas-lume.test.ts --timeout 600000",
-    },
-    {
-      id: "hooks-smoke",
-      name: "A3 hooks smoke",
-      command: "bun test tests/e2e-lume/hooks-smoke-lume.test.ts --timeout 180000",
-    },
-    {
-      id: "zap-persona",
-      name: "A4 zap persona",
-      command: "bun test tests/e2e-lume/zap-persona-lume.test.ts --timeout 600000",
-    },
   ],
 
   profiles: {
@@ -79,14 +82,126 @@ export const {
     "e2e-tap": ["e2e-tap"],
     // T0.5 acceptance: one fast E2E entry to validate exclusive /opt/homebrew.
     acceptance: ["e2e-acceptance"],
-    // Tier A lifecycle journeys (A1, A3, A4). Each is its own step so timeouts
-    // and readout are per-journey; they are run together under --profile user-journeys.
-    "user-journeys": ["service-personas", "hooks-smoke", "zap-persona"],
   },
 
   // These profiles acquire the exclusive /opt/homebrew sparsebundle + mutex.
   // The default and integration profiles do not need Homebrew.
-  homebrewProfiles: ["e2e", "e2e-tap", "acceptance"],
+  homebrewProfiles: ["e2e", "e2e-tap", "acceptance", "user-journeys"],
+
+  // Tier A lifecycle journeys (A1, A3, A4). Each journey runs as its own
+  // per-journey timeout + cleanup block and writes a machine-readable
+  // journeys.json under tests/e2e-runs/<ts>/.
+  journeys: [
+    {
+      id: "a1a-npm-service",
+      name: "A1a npm service lifecycle",
+      tier: "A1",
+      timeoutMs: 600_000,
+      steps: [
+        {
+          name: "npm-maildev persona",
+          command: testCommand(
+            "tests/e2e-lume/service-personas-lume.test.ts",
+            "npm-maildev",
+            600_000
+          ),
+        },
+      ],
+      cleanup: [{ name: "maildev cleanup", command: brewCleanup("maildev") }],
+    },
+    {
+      id: "a1b-pip-service",
+      name: "A1b pip service lifecycle",
+      tier: "A1",
+      timeoutMs: 600_000,
+      steps: [
+        {
+          name: "pip-pypiserver persona",
+          command: testCommand(
+            "tests/e2e-lume/service-personas-lume.test.ts",
+            "pip-pypiserver",
+            600_000
+          ),
+        },
+      ],
+      cleanup: [{ name: "pypiserver cleanup", command: brewCleanup("pypiserver") }],
+    },
+    {
+      id: "a1c-go-service",
+      name: "A1c go service lifecycle",
+      tier: "A1",
+      timeoutMs: 600_000,
+      steps: [
+        {
+          name: "go-gotty persona",
+          command: testCommand(
+            "tests/e2e-lume/service-personas-lume.test.ts",
+            "go-gotty",
+            600_000
+          ),
+        },
+      ],
+      cleanup: [{ name: "gotty cleanup", command: brewCleanup("gotty") }],
+    },
+    {
+      id: "a3-hooks-smoke",
+      name: "A3 hooks smoke",
+      tier: "A3",
+      timeoutMs: 180_000,
+      steps: [
+        {
+          name: "hooks smoke",
+          command: testCommand(
+            "tests/e2e-lume/hooks-smoke-lume.test.ts",
+            "A3 hooks smoke",
+            180_000
+          ),
+        },
+      ],
+      cleanup: [
+        {
+          name: "hooks uninstall",
+          command: "allbrew hooks uninstall 2>/dev/null || true",
+        },
+      ],
+    },
+    {
+      id: "a4-zap-persona",
+      name: "A4 zap persona",
+      tier: "A4",
+      timeoutMs: 600_000,
+      steps: [
+        {
+          name: "zap persona",
+          command: testCommand(
+            "tests/e2e-lume/zap-persona-lume.test.ts",
+            "A4 zap persona",
+            600_000
+          ),
+        },
+      ],
+      cleanup: [
+        {
+          name: "seaquel cleanup",
+          command: "brew uninstall --zap --force seaquel 2>/dev/null || true; rm -rf ~/Applications/Seaquel.app",
+        },
+      ],
+    },
+  ] as Journey[],
+
+  journeyProfiles: {
+    // Nightly user-journey suite. Runs the Tier A lifecycle journeys
+    // sequentially under an exclusive /opt/homebrew session.
+    "user-journeys": [
+      "a1a-npm-service",
+      "a1b-pip-service",
+      "a1c-go-service",
+      "a3-hooks-smoke",
+      "a4-zap-persona",
+    ],
+  },
+
+  journeyDefaultProfile: "user-journeys",
 
   resetSteps: [
     { id: "rm-dist", name: "Remove build artifacts", command: "rm -rf ./dist ./build" },
@@ -113,6 +228,8 @@ export const {
     { id: "system-applications", name: "System Applications (cask leakage check)", command: "ls -la /Applications/ 2>/dev/null | grep -E 'allbrew|managed|test' || echo '(no suspicious system apps)'" },
     { id: "residual-audit", name: "Residual Audit", command: "echo '--- brew list ---'; brew list --full-name -1 2>/dev/null || echo '(none)'; echo '--- residual processes ---'; pgrep -fl 'fake-service|maildev|wakapi|godns' 2>/dev/null || echo '(none)'; echo '--- manifests ---'; ls -la ~/.config/allbrew/packages/ 2>/dev/null || echo '(none)'" },
     { id: "tap-git", name: "Tap Repo Git State", command: "TAP_PATH=$(python3 -c \"import json;print(json.load(open(\\\"$HOME/.config/allbrew/config.json\\\")).get(\\\"tapPath\\\",\\\"\\\"))\" 2>/dev/null || echo ''); if [ -n \"$TAP_PATH\" ] && [ -d \"$TAP_PATH/.git\" ]; then echo \"Tap path: $TAP_PATH\"; git -C \"$TAP_PATH\" log --oneline -5 2>/dev/null; git -C \"$TAP_PATH\" status --short 2>/dev/null; else echo '(no tap repo found)'; fi" },
+    { id: "homebrew-prefix-state", name: "Homebrew Prefix State", command: "echo 'brew --prefix: '$(brew --prefix 2>/dev/null || echo '(none)'); echo '--- mount ---'; mount | grep /opt/homebrew || echo '(not mounted)'; echo '--- lock ---'; ls -ld /var/run/lume-homebrew.lock 2>/dev/null || echo '(no lock)'" },
+    { id: "disk-usage", name: "Disk Usage", command: "df -h /opt/homebrew $HOME 2>/dev/null || df -h /" },
   ],
 
   hooks: {
@@ -161,14 +278,46 @@ export const {
 
     /**
      * Custom readout sections that need direct VM access (not runAsProjectUser).
-     * The harness appends $READOUT_FILE for us; we just write to it.
+     * Append the machine-readable journey summary to the human readout file
+     * so nightly run records contain a per-journey pass/fail/timeout overview.
      */
     async readoutSections() {
-      // MAS and Setapp are intentionally NOT reported here: they cannot be
-      // installed/operated entirely within the project user and would require
-      // global state. The harness already captures /Applications separately.
-      // This hook is reserved for future allbrew-specific readout that needs
-      // admin-level VM access.
+      const readoutFile = runFile("readout.txt");
+      const journeysFile = runFile("journeys.json");
+
+      if (existsSync(journeysFile)) {
+        try {
+          const raw = readFileSync(journeysFile, "utf-8");
+          const parsed = JSON.parse(raw) as {
+            results?: { id: string; name: string; tier?: string; status: string; durationMs: number; error?: string }[];
+            summary?: { total: number; pass: number; fail: number; timeout: number };
+          };
+          const results = parsed.results ?? [];
+          const summary = parsed.summary ?? { total: results.length, pass: 0, fail: 0, timeout: 0 };
+          const lines = [
+            `  Total: ${summary.total}  Pass: ${summary.pass}  Fail: ${summary.fail}  Timeout: ${summary.timeout}`,
+            ...results.map(
+              (r) =>
+                `  ${r.id} (${r.tier ?? "-"}): ${r.status} (${r.durationMs}ms)${
+                  r.error ? ` — ${r.error.split("\n")[0]}` : ""
+                }`
+            ),
+          ].join("\n");
+          appendReadout(readoutFile, "Journey Results", lines);
+        } catch (err) {
+          appendReadout(
+            readoutFile,
+            "Journey Results",
+            `  (could not parse journeys.json: ${
+              err instanceof Error ? err.message : String(err)
+            })`
+          );
+        }
+      } else {
+        appendReadout(readoutFile, "Journey Results", "  (no journeys.json produced)");
+      }
+
+      // Keep these helpers available for future admin-level readout.
       void lumeSshExec;
       void q;
     },

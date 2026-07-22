@@ -135,7 +135,9 @@ bun run vm:test                # default profile (check + unit + templates)
 bun run vm:test:int            # integration profile
 bun run vm:test:e2e            # E2E catalog (acquires exclusive /opt/homebrew)
 bun run vm:test:e2e-tap        # E2E tap + update cycle (acquires exclusive /opt/homebrew)
+bun run vm:test:user-journeys  # Tier A nightly user journeys (A1/A3/A4)
 bun run vm:test:all            # integration + e2e + e2e-tap
+bun run vm:nightly             # reset --nuclear + setup + user-journeys
 bun run vm:readout             # capture post-test state
 bun run vm:reset               # detach /opt/homebrew, delete sparsebundle, delete project user
 bun run vm:reset:nuclear       # above + wipe Cellar/Caskroom/Caches
@@ -149,14 +151,39 @@ bun run vm:teardown            # stop or delete the VM (--stop | --delete via vm
 
 `test-suite.ts` declares these profiles via the harness SDK (`defineTestSuite`):
 
-| Profile | Steps | Acquires `/opt/homebrew`? |
-|---------|-------|---------------------------|
+| Profile | Steps / journeys | Acquires `/opt/homebrew`? |
+|---------|------------------|---------------------------|
 | `default` | check, unit, templates | No |
 | `integration` | integration | No |
 | `e2e` | E2E catalog | Yes |
 | `e2e-tap` | E2E tap + update cycle | Yes |
+| `user-journeys` | A1 service personas (npm/pip/go), A3 hooks smoke, A4 zap persona | Yes |
 
-The `e2e` and `e2e-tap` profiles are listed in `homebrewProfiles`, so the harness acquires the project user's APFS sparsebundle at `/opt/homebrew` (VM-global mutex) before running them and detaches it in `finally`. Cask installs target `$HOME/Applications` via `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`. Concurrent bottle-correct Homebrew on one VM is not supported; use separate VMs for parallel heavy E2E.
+The `e2e`, `e2e-tap`, and `user-journeys` profiles are listed in `homebrewProfiles`, so the harness acquires the project user's APFS sparsebundle at `/opt/homebrew` (VM-global mutex) before running them and detaches it in `finally`. Cask installs target `$HOME/Applications` via `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`. Concurrent bottle-correct Homebrew on one VM is not supported; use separate VMs for parallel heavy E2E.
+
+### Nightly user-journey suite
+
+The `user-journeys` profile runs the Tier A lifecycle journeys from `test-suite.ts` using the harness journey runner. Each journey has its own timeout, runs per-journey cleanup on pass or fail, and produces a machine-readable `tests/e2e-runs/<ts>/journeys.json`.
+
+Run it with a clean VM precondition:
+
+```bash
+bun run vm:nightly    # reset --nuclear + setup + run --profile user-journeys
+```
+
+Or manually:
+
+```bash
+bun run vm:reset:nuclear
+bun run vm:setup
+bun run vm:test --profile user-journeys --no-default
+```
+
+#### Retry policy
+
+- **Retry only transient network failures** (timeout, DNS resolution failure, HTTP 5xx from a registry or GitHub API).
+- **Never retry product/service failures** (wrong `service` command, `brew services start` exit code, missing binary, zap path mismatch, LaunchAgent residue). Those are real signals.
+- If a journey fails, inspect `tests/e2e-runs/<ts>/journeys.json`, `journeys.log`, and `test-output.log` before retrying. A failed run is not automatically retried by the harness.
 
 ### Local filesystem wrappers
 
@@ -195,9 +222,11 @@ Each test run produces a timestamped record under `tests/e2e-runs/<timestamp>/`:
 
 | File | Contents |
 |------|----------|
-| `readout.txt` | Full post-test state: allbrew config/manifests, Homebrew taps/formulae/casks, MAS apps, Setapp, tap repo git state, /Applications, disk usage, test results summary |
+| `readout.txt` | Full post-test state: allbrew config/manifests, Homebrew taps/formulae/casks, MAS apps, Setapp, tap repo git state, /Applications, disk usage, test results summary, journey results |
 | `test-output.log` | Captured stdout/stderr from the test run |
-| `metadata.json` | Machine-readable run metadata (timestamp, VM name, git SHA, branch) |
+| `journeys.json` | Machine-readable per-journey results (when `user-journeys` profile ran) |
+| `journeys.log` | Human-readable journey execution log |
+| `metadata.json` | Machine-readable run metadata (timestamp, VM name, git SHA/branch, profiles, Homebrew session) |
 | `reset.log` | Log of the reset operation (if reset was run) |
 
 A `latest` symlink points to the most recent run. These records persist across resets, providing a full history of what was tested, what passed/failed, and the final system state.
