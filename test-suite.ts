@@ -55,6 +55,21 @@ export const {
       name: "E2E T0.5 acceptance",
       command: "E2E=1 bun test tests/e2e/catalog.e2e.test.ts --test-name-pattern 'npkill' --timeout 300000",
     },
+    {
+      id: "service-personas",
+      name: "A1 service personas",
+      command: "bun test tests/e2e-lume/service-personas-lume.test.ts --timeout 600000",
+    },
+    {
+      id: "hooks-smoke",
+      name: "A3 hooks smoke",
+      command: "bun test tests/e2e-lume/hooks-smoke-lume.test.ts --timeout 180000",
+    },
+    {
+      id: "zap-persona",
+      name: "A4 zap persona",
+      command: "bun test tests/e2e-lume/zap-persona-lume.test.ts --timeout 600000",
+    },
   ],
 
   profiles: {
@@ -64,6 +79,9 @@ export const {
     "e2e-tap": ["e2e-tap"],
     // T0.5 acceptance: one fast E2E entry to validate exclusive /opt/homebrew.
     acceptance: ["e2e-acceptance"],
+    // Tier A lifecycle journeys (A1, A3, A4). Each is its own step so timeouts
+    // and readout are per-journey; they are run together under --profile user-journeys.
+    "user-journeys": ["service-personas", "hooks-smoke", "zap-persona"],
   },
 
   // These profiles acquire the exclusive /opt/homebrew sparsebundle + mutex.

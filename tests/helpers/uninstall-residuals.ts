@@ -40,6 +40,8 @@ export function _setExecFileSyncForTesting(fn: typeof defaultExecFileSync): void
 export type ResidualCheckTarget = {
   name: string;
   kind: "formula" | "cask";
+  /** For formulae: the binary name on PATH. Defaults to `name`. */
+  binName?: string;
   /** For casks: the app name (e.g. "FakeCask"). Defaults to `name`. */
   appName?: string;
   /** Optional env override (for e2e-tap which sets HOMEBREW_* vars). */
@@ -134,10 +136,11 @@ export async function assertUninstallResiduals(
 
   // Check 2: for formulae, binary no longer resolves to Cellar
   if (target.kind === "formula") {
-    details.binResolvesToCellar = binResolvesToCellar(target.name);
+    const binName = target.binName || target.name;
+    details.binResolvesToCellar = binResolvesToCellar(binName);
     if (details.binResolvesToCellar) {
       failures.push(
-        `Binary "${target.name}" still resolves to a Cellar path after uninstall`,
+        `Binary "${binName}" still resolves to a Cellar path after uninstall`,
       );
     }
   }

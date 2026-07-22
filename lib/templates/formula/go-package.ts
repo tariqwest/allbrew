@@ -9,7 +9,7 @@ ${p.licenseLine}${p.urlLines}  head "https://github.com/${p.fullName}.git", bran
 ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "go" => :build
 
   def install
-    system "go", "install", *std_go_args(ldflags: "-s -w")
+    system "go", "build", *std_go_args(ldflags: "-s -w")
   end
 
 ${p.serviceBlock}  test do

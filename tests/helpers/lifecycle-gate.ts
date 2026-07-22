@@ -12,7 +12,8 @@
  *
  * Detection:
  *   - `ALLBREW_LIFECYCLE_LOCAL=1` → force local execution (opt-in).
- *   - `ALLBREW_LUME=1`            → running inside a Lume VM (set by the harness).
+ *   - `ALLBREW_LUME=1`            → running inside a Lume VM (legacy/allbrew-specific).
+ *   - `TH_IN_VM=1`                → running inside a Lume VM (set by lume-macos-testing-harness).
  *   - Otherwise → skip (not Lume, not opted in).
  *
  * Usage with bun:test:
@@ -32,6 +33,7 @@ import { describe } from "bun:test";
 export function shouldRunLifecycleTests(): boolean {
   if (process.env.ALLBREW_LIFECYCLE_LOCAL === "1") return true;
   if (process.env.ALLBREW_LUME === "1") return true;
+  if (process.env.TH_IN_VM === "1") return true;
   return false;
 }
 
@@ -40,7 +42,7 @@ export function lifecycleSkipReason(): string {
   if (shouldRunLifecycleTests()) return "";
   return (
     "Skipping destructive lifecycle tests — not on Lume and ALLBREW_LIFECYCLE_LOCAL!=1. " +
-    "Run on Lume via scripts/e2e-vm-run-tests.sh, or opt in locally with ALLBREW_LIFECYCLE_LOCAL=1."
+    "Run on Lume via bun run vm:test --profile user-journeys, or opt in locally with ALLBREW_LIFECYCLE_LOCAL=1."
   );
 }
 

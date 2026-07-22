@@ -166,7 +166,7 @@ describe("renderFormula", () => {
       livecheck +
       `  depends_on "go" => :build\n\n` +
       `  def install\n` +
-      `    system "go", "install", *std_go_args(ldflags: "-s -w")\n` +
+      `    system "go", "build", *std_go_args(ldflags: "-s -w")\n` +
       `  end\n\n` +
       `  test do\n` +
       `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
