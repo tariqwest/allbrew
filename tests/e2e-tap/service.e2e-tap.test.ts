@@ -96,7 +96,7 @@ describe.skipIf(!E2E_TAP)("service: binary-release with --service", () => {
       const child = spawn(binPath, [String(SERVICE_PORT)], {
         stdio: "ignore",
         detached: true,
-        env: ctx.env,
+        env: { ...process.env, ...ctx.env },
       });
       child.unref();
 
@@ -145,7 +145,7 @@ describe.skipIf(!E2E_TAP)("service: binary-release with --service", () => {
       execFileSync(
         "brew",
         ["services", "start", `${ctx.tap.tapName}/${app.name}`],
-        { encoding: "utf-8", env: ctx.env, timeout: 30_000, stdio: "pipe" },
+        { encoding: "utf-8", env: { ...process.env, ...ctx.env }, timeout: 30_000, stdio: "pipe" },
       );
 
       // Register for cleanup
@@ -180,7 +180,7 @@ describe.skipIf(!E2E_TAP)("service: binary-release with --service", () => {
       execFileSync(
         "brew",
         ["services", "stop", `${ctx.tap.tapName}/${app.name}`],
-        { encoding: "utf-8", env: ctx.env, timeout: 30_000, stdio: "pipe" },
+        { encoding: "utf-8", env: { ...process.env, ...ctx.env }, timeout: 30_000, stdio: "pipe" },
       );
 
       // Unregister from cleanup registry

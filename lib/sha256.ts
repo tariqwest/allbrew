@@ -4,6 +4,7 @@ import { Readable } from "node:stream";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { mkdtemp, rm } from "node:fs/promises";
+import { assertSafeFetchUrl } from "./utils.ts";
 
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 600_000;
 const MAX_DOWNLOAD_BYTES = 2_000_000_000;
@@ -13,6 +14,8 @@ export async function downloadAndHash(
   destPath: string | null = null,
   timeoutMs: number = DEFAULT_DOWNLOAD_TIMEOUT_MS,
 ) {
+  assertSafeFetchUrl(url);
+
   const response = await fetch(url, {
     redirect: "follow",
     headers: { "User-Agent": "allbrew/1.0" },

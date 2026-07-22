@@ -10,6 +10,7 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  assertSafeFetchUrl,
 } from "../../lib/utils.ts";
 
 describe("toFormulaName", () => {
@@ -109,6 +110,28 @@ describe("rubyEscape", () => {
   it("passes through safe strings", () => {
     expect(rubyEscape("hello world")).toBe("hello world");
   });
+
+  it("preserves known-safe Homebrew interpolations (e.g. #{version})", () => {
+    expect(rubyEscape("https://example.com/v#{version}/foo")).toBe(
+      "https://example.com/v#{version}/foo",
+    );
+    expect(rubyEscape("~/Library/Caches/#{name}")).toBe(
+      "~/Library/Caches/#{name}",
+    );
+  });
+
+  it("escapes unknown Ruby interpolation sequences", () => {
+    expect(rubyEscape('desc with #{`rm -rf /`}')).toBe(
+      'desc with \\#{`rm -rf /`}',
+    );
+    expect(rubyEscape("#{foo}")).toBe("\\#{foo}");
+  });
+
+  it("escapes control characters", () => {
+    expect(rubyEscape("line1\nline2\r\nline3\t")).toBe(
+      "line1\\nline2\\r\\nline3\\t",
+    );
+  });
 });
 
 describe("rubyString", () => {
@@ -123,6 +146,28 @@ describe("rubyString", () => {
 
   it("escapes contents", () => {
     expect(rubyString('say "hi"')).toBe('"say \\"hi\\""');
+  });
+});
+
+describe("assertSafeFetchUrl", () => {
+  it("allows plain https URLs", () => {
+    expect(() => assertSafeFetchUrl("https://example.com/foo.tgz")).not.toThrow();
+  });
+
+  it("allows localhost http URLs", () => {
+    expect(() => assertSafeFetchUrl("http://localhost:8080/foo")).not.toThrow();
+  });
+
+  it("rejects non-http(s) protocols", () => {
+    expect(() => assertSafeFetchUrl("file:///etc/passwd")).toThrow(
+      /Unsupported URL protocol/,
+    );
+  });
+
+  it("rejects cloud metadata endpoints", () => {
+    expect(() => assertSafeFetchUrl("http://169.254.169.254/latest/meta-data/")).toThrow(
+      /Blocked cloud metadata URL/,
+    );
   });
 });
 

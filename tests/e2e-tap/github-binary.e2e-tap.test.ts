@@ -35,7 +35,7 @@ describe.skipIf(!E2E_TAP)("github-binary: binary-release", () => {
   });
 
   describe("generate", () => {
-    it("should generate, commit, push, and install from tap", () => {
+    it("should generate, commit, push, and install from tap", async () => {
       const gen = generateFormula(ctx, app);
       expect(gen.code, `allbrew generation failed:\n${gen.stderr}`).toBe(0);
 
@@ -76,7 +76,7 @@ describe.skipIf(!E2E_TAP)("github-binary: binary-release", () => {
   });
 
   describe("update", () => {
-    it("should detect new version via livecheck, regenerate, push, and upgrade", () => {
+    it("should detect new version via livecheck, regenerate, push, and upgrade", async () => {
       if (!canInstallApp(app)) {
         console.log("[skip] update test — toolchain not available");
         return;

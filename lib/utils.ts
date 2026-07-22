@@ -63,14 +63,34 @@ export function rubyString(value) {
   return `"${rubyEscape(value)}"`;
 }
 
+const SAFE_RUBY_INTERPOLATIONS = new Set([
+  "version",
+  "version.to_s",
+  "name",
+  "bin",
+  "buildpath",
+  "prefix",
+  "libexec",
+]);
+
 export function rubyEscape(value) {
-  return String(value ?? "")
+  let s = String(value ?? "")
     .replace(/\\/g, "\\\\")
     .replace(/"/g, '\\"')
-    .replace(/#(?!\{)/g, "\\#")
     .replace(/\n/g, "\\n")
     .replace(/\r/g, "\\r")
     .replace(/\t/g, "\\t");
+
+  // Escape Ruby interpolation sequences, except known-safe Homebrew formula/cask
+  // variables that templates intentionally embed (e.g. #{version}, #{name}).
+  s = s.replace(/#\{([^{}]+)\}/g, (match, expr) => {
+    return SAFE_RUBY_INTERPOLATIONS.has(expr.trim()) ? match : `\\#{${expr}}`;
+  });
+
+  // Escape any remaining standalone '#' so it cannot start an unexpected interpolation.
+  s = s.replace(/#(?!\{)/g, "\\#");
+
+  return s;
 }
 
 export function guessLicenseIdentifier(license) {
@@ -94,6 +114,30 @@ export function guessLicenseIdentifier(license) {
   };
   const key = license.toLowerCase().trim();
   return map[key] || license;
+}
+
+export function assertSafeFetchUrl(urlString: string): void {
+  let url: URL;
+  try {
+    url = new URL(urlString);
+  } catch {
+    throw new Error(`Invalid URL: ${urlString}`);
+  }
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error(`Unsupported URL protocol for fetch: ${url.protocol}`);
+  }
+
+  const host = url.hostname.toLowerCase();
+
+  // Block well-known cloud metadata endpoints (SSRF protection).
+  if (
+    host === "169.254.169.254" ||
+    host === "metadata.google.internal" ||
+    host.endsWith(".metadata.google.internal")
+  ) {
+    throw new Error(`Blocked cloud metadata URL: ${urlString}`);
+  }
 }
 
 export function archPatterns() {

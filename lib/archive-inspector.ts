@@ -6,8 +6,13 @@ import { downloadToTemp } from './sha256.ts';
 
 const execFileAsync = promisify(execFile);
 
-export async function inspectArchive(url) {
-  const download = await downloadToTemp(url);
+const SUPPORTED_ARCHIVE_EXTENSIONS = [
+  '.zip',
+  '.tar.gz', '.tgz', '.tar.bz2', '.tar.xz', '.tar',
+];
+
+export async function inspectArchive(url, downloader = downloadToTemp) {
+  const download = await downloader(url);
   const { path: archivePath, dir: tempDir, sha256, cleanup } = download;
 
   try {
@@ -33,6 +38,20 @@ export async function inspectArchive(url) {
 async function extractArchive(archivePath, destDir) {
   const lower = archivePath.toLowerCase();
 
+  if (!SUPPORTED_ARCHIVE_EXTENSIONS.some(ext => lower.endsWith(ext))) {
+    throw new Error(
+      `Unsupported archive format: ${archivePath}. Supported formats: ${SUPPORTED_ARCHIVE_EXTENSIONS.join(', ')}`,
+    );
+  }
+
+  const entries = await listArchiveEntries(archivePath);
+  const dangerous = entries.filter(isDangerousArchiveEntry);
+  if (dangerous.length > 0) {
+    throw new Error(
+      `Archive contains dangerous paths and will not be extracted: ${dangerous.slice(0, 5).join(', ')}`,
+    );
+  }
+
   await execFileAsync('mkdir', ['-p', destDir]);
 
   if (lower.endsWith('.zip')) {
@@ -45,9 +64,37 @@ async function extractArchive(archivePath, destDir) {
     await execFileAsync('tar', ['xJf', archivePath, '-C', destDir]);
   } else if (lower.endsWith('.tar')) {
     await execFileAsync('tar', ['xf', archivePath, '-C', destDir]);
-  } else {
-    await execFileAsync('tar', ['xf', archivePath, '-C', destDir]);
   }
+}
+
+async function listArchiveEntries(archivePath) {
+  const lower = archivePath.toLowerCase();
+
+  if (lower.endsWith('.zip')) {
+    try {
+      const { stdout } = await execFileAsync('zipinfo', ['-1', archivePath]);
+      return stdout.split('\n').map(line => line.trim()).filter(Boolean);
+    } catch {
+      const { stdout } = await execFileAsync('unzip', ['-l', archivePath]);
+      return stdout
+        .split('\n')
+        .slice(3)
+        .map(line => line.trim().split(/\s+/).slice(3).join(' '))
+        .filter(f => f && !f.startsWith('---'));
+    }
+  }
+
+  const { stdout } = await execFileAsync('tar', ['-tf', archivePath]);
+  return stdout.split('\n').map(line => line.trim()).filter(Boolean);
+}
+
+function isDangerousArchiveEntry(entry) {
+  const normalized = entry.trim();
+  if (!normalized) return true;
+  if (normalized.startsWith('/')) return true;
+  if (/^[A-Za-z]:[\\/]/.test(normalized)) return true;
+  const parts = normalized.split(/[\\/]/);
+  return parts.some(part => part === '..');
 }
 
 async function listFilesRecursive(dir) {

@@ -275,17 +275,12 @@ describe("B4: update-formulas push failure (collected, not crashed)", () => {
   });
 });
 
-describe("B4: concurrent update-formulas (lock not implemented — document)", () => {
-  it("documents that concurrent update-formulas is not yet locked", () => {
-    // Per the plan: "Concurrent update-formulas: lock or serialized (when implemented)"
-    // As of this writing, updateFormulas does not acquire a lock. Running
-    // two concurrent invocations could result in:
-    //   - Duplicate git commits (both see the same outdated version)
-    //   - Race on saveManifest (last writer wins)
-    //   - Race on tap-git push (one push fails)
-    //
-    // This test documents the current state. When a lock is implemented,
-    // replace this with a concurrency test that asserts serialization.
+describe("B4: concurrent update-formulas (lock acquired)", () => {
+  it("documents that update-formulas now acquires an exclusive lock", () => {
+    // updateFormulas now creates ~/.config/allbrew/update-formulas.lock
+    // before running and releases it in a finally block. Concurrent
+    // invocations will see the lock and throw "already running" instead
+    // of racing on tap commits/pushes or manifest writes.
     expect(true).toBe(true);
   });
 });

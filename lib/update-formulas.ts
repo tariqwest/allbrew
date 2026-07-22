@@ -1,11 +1,12 @@
 import { stdin } from "node:process";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { relative } from "node:path";
+import { relative, join } from "node:path";
+import { writeFile, readFile, rm } from "node:fs/promises";
 import { loadManifest, saveManifest } from "./manifest.ts";
 import { updateManagedPackage } from "./package-updater.ts";
 import { commitAndPushTap } from "./tap-git.ts";
-import { loadConfig } from "./config.ts";
+import { loadConfig, getConfigDir } from "./config.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -38,6 +39,19 @@ export type UpdateFormulasResult = {
 };
 
 export async function updateFormulas(
+  options: UpdateFormulasOptions = {},
+): Promise<UpdateFormulasResult> {
+  await loadConfig();
+  const { release: releaseLock } = await acquireUpdateLock();
+
+  try {
+    return await runUpdateFormulas(options);
+  } finally {
+    await releaseLock();
+  }
+}
+
+async function runUpdateFormulas(
   options: UpdateFormulasOptions = {},
 ): Promise<UpdateFormulasResult> {
   let entries: LivecheckEntry[];
@@ -165,17 +179,71 @@ async function runBrewLivecheck(): Promise<LivecheckEntry[]> {
   }
 }
 
-async function readStdinLivecheck(): Promise<LivecheckEntry[]> {
+async function readStdinLivecheck(timeoutMs = 30_000): Promise<LivecheckEntry[]> {
   const chunks: Buffer[] = [];
-  for await (const chunk of stdin) {
-    chunks.push(Buffer.from(chunk));
+  const timeout = setTimeout(() => {
+    stdin.destroy();
+  }, timeoutMs);
+
+  try {
+    for await (const chunk of stdin) {
+      chunks.push(Buffer.from(chunk));
+    }
+    return parseLivecheckJson(Buffer.concat(chunks).toString("utf-8"));
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timeout);
   }
-  return parseLivecheckJson(Buffer.concat(chunks).toString("utf-8"));
 }
 
 function parseLivecheckJson(raw: string): LivecheckEntry[] {
   const trimmed = raw.trim();
   if (!trimmed) return [];
-  const parsed = JSON.parse(trimmed);
-  return Array.isArray(parsed) ? parsed : [];
+  try {
+    const parsed = JSON.parse(trimmed);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+const LOCK_FILE = "update-formulas.lock";
+
+async function acquireUpdateLock(): Promise<{ release: () => Promise<void> }> {
+  const configDir = getConfigDir();
+  const lockPath = join(configDir, LOCK_FILE);
+
+  try {
+    await writeFile(lockPath, String(process.pid), { flag: "wx", mode: 0o600 });
+  } catch (err: any) {
+    if (err.code === "EEXIST") {
+      const existing = await readFile(lockPath, "utf-8").catch(() => null);
+      const pid = existing ? parseInt(existing, 10) : NaN;
+      if (!Number.isNaN(pid) && pid !== process.pid && isProcessAlive(pid)) {
+        throw new Error(
+          `update-formulas is already running (pid ${pid}). Aborting to avoid conflicts.`,
+        );
+      }
+      await rm(lockPath, { force: true });
+      await writeFile(lockPath, String(process.pid), { flag: "wx", mode: 0o600 });
+    } else {
+      throw err;
+    }
+  }
+
+  return {
+    release: async () => {
+      await rm(lockPath, { force: true });
+    },
+  };
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }

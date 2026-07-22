@@ -699,8 +699,20 @@ async function handleGithubRepo(classification, opts) {
         ).start();
         try {
           const parts = brewInfo.installCommand.split(/\s*&&\s*/);
-          for (const cmd of parts) {
-            const args = cmd.trim().split(/\s+/);
+          const segments = parts
+            .map((cmd) => cmd.trim().split(/\s+/).filter(Boolean))
+            .filter((args) => args.length > 0);
+
+          for (const args of segments) {
+            if (args[0] !== "brew") {
+              installSpinner.fail(
+                `Refusing to run non-brew command: ${args[0]}`,
+              );
+              process.exit(1);
+            }
+          }
+
+          for (const args of segments) {
             await execFileAsync(args[0], args.slice(1));
           }
           installSpinner.succeed("Installation complete!");

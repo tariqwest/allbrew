@@ -1,3 +1,5 @@
+import { assertSafeFetchUrl } from "./utils.ts";
+
 const GITHUB_REPO_RE = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/?$/;
 const GITHUB_REPO_TREE_RE = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/(tree|blob)\//;
 
@@ -102,6 +104,8 @@ export function classify(url) {
 export async function classifyWithHead(url) {
   const result = classify(url);
   if (result.type !== 'unknown') return result;
+
+  assertSafeFetchUrl(url);
 
   try {
     const response = await fetch(url, {
