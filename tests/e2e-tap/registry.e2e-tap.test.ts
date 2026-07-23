@@ -19,6 +19,7 @@ import {
   type TestContext,
 } from "./helpers/setup.ts";
 import { formulaPath, remoteHasFile, getWorkHeadSha, getRemoteHeadSha } from "./helpers/tap.ts";
+import { commandAvailable, runBrew } from "./helpers/run.ts";
 import { existsSync } from "node:fs";
 
 describe.skipIf(!E2E_TAP)("npm-package", () => {
@@ -106,7 +107,7 @@ describe.skipIf(!E2E_TAP)("npm-package", () => {
       expect(remoteSha, "Remote should have the latest commit").toBe(workSha);
 
       const brewUpd = brewUpdate(ctx);
-      expect(brewUpd.code).toBe(0);
+      expect(brewUpd.code, `brew update failed:\n${brewUpd.stdout}\n${brewUpd.stderr}`).toBe(0);
 
       const upgrade = upgradeFromTap(ctx, app);
       expect(upgrade.code, `brew upgrade failed:\n${upgrade.stdout}\n${upgrade.stderr}`).toBe(0);
@@ -207,7 +208,7 @@ describe.skipIf(!E2E_TAP)("pip-package", () => {
       expect(remoteSha, "Remote should have the latest commit").toBe(workSha);
 
       const brewUpd = brewUpdate(ctx);
-      expect(brewUpd.code).toBe(0);
+      expect(brewUpd.code, `brew update failed:\n${brewUpd.stdout}\n${brewUpd.stderr}`).toBe(0);
 
       const upgrade = upgradeFromTap(ctx, app);
       expect(upgrade.code, `brew upgrade failed:\n${upgrade.stdout}\n${upgrade.stderr}`).toBe(0);
@@ -308,7 +309,7 @@ describe.skipIf(!E2E_TAP)("cargo-package", () => {
       expect(remoteSha, "Remote should have the latest commit").toBe(workSha);
 
       const brewUpd = brewUpdate(ctx);
-      expect(brewUpd.code).toBe(0);
+      expect(brewUpd.code, `brew update failed:\n${brewUpd.stdout}\n${brewUpd.stderr}`).toBe(0);
 
       const upgrade = upgradeFromTap(ctx, app);
       expect(upgrade.code, `brew upgrade failed:\n${upgrade.stdout}\n${upgrade.stderr}`).toBe(0);
@@ -409,7 +410,7 @@ describe.skipIf(!E2E_TAP)("go-package", () => {
       expect(remoteSha, "Remote should have the latest commit").toBe(workSha);
 
       const brewUpd = brewUpdate(ctx);
-      expect(brewUpd.code).toBe(0);
+      expect(brewUpd.code, `brew update failed:\n${brewUpd.stdout}\n${brewUpd.stderr}`).toBe(0);
 
       const upgrade = upgradeFromTap(ctx, app);
       expect(upgrade.code, `brew upgrade failed:\n${upgrade.stdout}\n${upgrade.stderr}`).toBe(0);
@@ -510,7 +511,7 @@ describe.skipIf(!E2E_TAP)("gem-package", () => {
       expect(remoteSha, "Remote should have the latest commit").toBe(workSha);
 
       const brewUpd = brewUpdate(ctx);
-      expect(brewUpd.code).toBe(0);
+      expect(brewUpd.code, `brew update failed:\n${brewUpd.stdout}\n${brewUpd.stderr}`).toBe(0);
 
       const upgrade = upgradeFromTap(ctx, app);
       expect(upgrade.code, `brew upgrade failed:\n${upgrade.stdout}\n${upgrade.stderr}`).toBe(0);
@@ -531,6 +532,17 @@ describe.skipIf(!E2E_TAP)("dotnet-package", () => {
   const app = getFixtureApp("fake-dotnet");
 
   beforeAll(async () => {
+    // The fake NuGet package is built on-demand by the fixture server. Building
+    // it requires `dotnet` (a real .NET tool nupkg), which is normally only
+    // installed as a dependency of fake-dotnet during `brew install`. Install it
+    // up front so the fixture server can produce a valid nupkg before
+    // allbrew generate fetches it for SHA256.
+    if (!commandAvailable("dotnet")) {
+      const r = runBrew(["install", "dotnet"], { timeout: 900_000 });
+      if (r.code !== 0) {
+        throw new Error(`brew install dotnet failed: ${r.stderr}`);
+      }
+    }
     ctx = await setupTestContext();
   });
 
@@ -611,7 +623,7 @@ describe.skipIf(!E2E_TAP)("dotnet-package", () => {
       expect(remoteSha, "Remote should have the latest commit").toBe(workSha);
 
       const brewUpd = brewUpdate(ctx);
-      expect(brewUpd.code).toBe(0);
+      expect(brewUpd.code, `brew update failed:\n${brewUpd.stdout}\n${brewUpd.stderr}`).toBe(0);
 
       const upgrade = upgradeFromTap(ctx, app);
       expect(upgrade.code, `brew upgrade failed:\n${upgrade.stdout}\n${upgrade.stderr}`).toBe(0);

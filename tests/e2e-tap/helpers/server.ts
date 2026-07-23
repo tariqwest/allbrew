@@ -26,6 +26,7 @@ export async function startFixtureServer(
       ...process.env,
       FIXTURE_PORT: String(port),
       ALLBREW_FIXTURE_PORT_FILE: envFile,
+      PATH: `${process.env.PATH || ""}:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin`,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -103,7 +104,7 @@ export function buildEnvForServer(baseUrl: string): Record<string, string> {
   return {
     GITHUB_API_URL: `${baseUrl}/api`,
     NPM_REGISTRY_URL: `${baseUrl}/npm`,
-    PYPI_URL: `${baseUrl}/pypi`,
+    PYPI_URL: baseUrl,
     CRATES_URL: `${baseUrl}/crates`,
     GO_PROXY_URL: `${baseUrl}/go`,
     RUBYGEMS_URL: `${baseUrl}/gems`,

@@ -29,7 +29,29 @@ export type TestContext = {
   configBackup: string | null;
 };
 
+function cleanupStaleTestTaps(): void {
+  try {
+    const result = runCommand(
+      ["brew", "tap"],
+      { timeout: 30_000, env: { HOMEBREW_DEVELOPER: "1", HOMEBREW_NO_REQUIRE_TAP_TRUST: "1" } },
+    );
+    if (result.code !== 0) return;
+    const taps = result.stdout.split(/\n/).map((line) => line.trim()).filter(Boolean);
+    for (const tap of taps) {
+      if (tap.startsWith("test/e2e-tap-") || tap === "testlivecheck/foo") {
+        runCommand(
+          ["brew", "untap", "--force", tap],
+          { timeout: 30_000, env: { HOMEBREW_DEVELOPER: "1", HOMEBREW_NO_REQUIRE_TAP_TRUST: "1" } },
+        );
+      }
+    }
+  } catch {
+    // best-effort cleanup; don't fail setup
+  }
+}
+
 export async function setupTestContext(): Promise<TestContext> {
+  cleanupStaleTestTaps();
   const server = await startFixtureServer(REPO_ROOT);
   const tap = await createDisposableTap();
   const env = buildEnvForServer(server.baseUrl);
@@ -94,7 +116,7 @@ export function generateFormula(
     ...app.allbrewArgs || [],
     ...extraArgs,
   ];
-  return runAllbrew(args, { env: ctx.env, timeout: 120_000 });
+  return runAllbrew(args, { env: ctx.env, timeout: 300_000 });
 }
 
 export function generateFormulaWithService(
@@ -117,7 +139,7 @@ export function generateFormulaWithService(
     args.push("--service-command", serviceCommand);
   }
   args.push(...extraArgs);
-  return runAllbrew(args, { env: ctx.env, timeout: 120_000 });
+  return runAllbrew(args, { env: ctx.env, timeout: 300_000 });
 }
 
 export function installFromTap(

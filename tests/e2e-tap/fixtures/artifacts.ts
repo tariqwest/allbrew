@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, mkdir, writeFile, rm, readFile, readdir, utimes } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm, readFile, readdir, utimes, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
@@ -115,7 +115,8 @@ export async function buildServiceBinaryTarball(
   const srcDir = await makeTempDir("allbrew-svc-bin-");
   await writeFile(
     join(srcDir, name),
-    `#!/bin/sh\nPORT="\${1:-\${PORT:-8080}}"\npython3 -c 'import http.server,socketserver,sys\nport=int(sys.argv[1])\nclass H(http.server.BaseHTTPRequestHandler):\n def do_GET(self):\n  self.send_response(200)\n  self.end_headers()\n  self.wfile.write(b"ok")\n def log_message(self,*a):pass\nsocketserver.TCPServer(("127.0.0.1",port),H).serve_forever()' "$PORT"\n`,
+    `#!/usr/bin/env python3\nimport http.server, socketserver, sys, signal, os\n\nport = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get("PORT", "8080"))\n\nclass H(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        self.send_response(200)\n        self.end_headers()\n        self.wfile.write(b"ok")\n    def log_message(self, *a):\n        pass\n\nsocketserver.TCPServer.allow_reuse_address = True
+s = socketserver.TCPServer(("127.0.0.1", port), H)\n\ndef stop(*_):\n    os._exit(0)\n\nsignal.signal(signal.SIGTERM, stop)\nsignal.signal(signal.SIGINT, stop)\ns.serve_forever()\n`,
     { mode: 0o755 },
   );
   const filename = `${name}-${version}-${archSuffix}.tar.gz`;
@@ -279,7 +280,7 @@ export async function buildGemFile(
 
   await writeFile(
     join(gemDir, `${gemName}.gemspec`),
-    `Gem::Specification.new do |s|\n  s.name = "${gemName}"\n  s.version = "${version}"\n  s.summary = "Fake gem"\n  s.files = ["lib/${gemName}.rb"]\n  s.executables = ["${gemName}"]\nend\n`,
+    `Gem::Specification.new do |s|\n  s.name = "${gemName}"\n  s.version = "${version}"\n  s.summary = "Fake gem"\n  s.authors = ["Test"]\n  s.email = ["test@example.com"]\n  s.files = ["bin/${gemName}", "lib/${gemName}.rb"]\n  s.bindir = "bin"\n  s.executables = ["${gemName}"]\nend\n`,
   );
 
   await mkdir(join(gemDir, "lib"), { recursive: true });
@@ -310,17 +311,120 @@ export async function buildNupkg(
   packageName: string,
   version: string,
 ): Promise<ArtifactResult> {
+  const dotnetPath = await findDotnet();
+  if (dotnetPath) {
+    return buildNupkgWithDotnet(packageName, version, dotnetPath);
+  }
+
+  // Fallback: a minimal nupkg for generation/sha256 only. dotnet tool install
+  // will not be able to install from this, so the install step will be skipped
+  // on hosts without dotnet (canInstallApp returns false).
   const srcDir = await makeTempDir("allbrew-nuget-");
   const pkgDir = join(srcDir, "package");
   await mkdir(pkgDir, { recursive: true });
 
   await writeFile(
     join(pkgDir, `${packageName}.nuspec`),
-    `<?xml version="1.0"?>\n<package>\n  <metadata>\n    <id>${packageName}</id>\n    <version>${version}</version>\n    <description>Fake NuGet package</description>\n  </metadata>\n</package>\n`,
+    `<?xml version="1.0"?>\n<package>\n  <metadata>\n    <id>${packageName}</id>\n    <version>${version}</version>\n    <description>Fake NuGet package</description>\n    <packageTypes>\n      <packageType name="DotnetTool" />\n    </packageTypes>\n  </metadata>\n</package>\n`,
   );
 
   const filename = `${packageName}.${version}.nupkg`;
   return createZip(pkgDir, filename);
+}
+
+async function findDotnet(): Promise<string | null> {
+  const paths = (process.env.PATH || "").split(":").filter(Boolean);
+  const candidates = [
+    "/opt/homebrew/bin/dotnet",
+    "/usr/local/share/dotnet/dotnet",
+    "/usr/local/bin/dotnet",
+    `${process.env.HOME || ""}/.dotnet/dotnet`,
+    ...paths.map((p) => join(p, "dotnet")),
+  ];
+  for (const candidate of candidates) {
+    try {
+      await stat(candidate);
+      return candidate;
+    } catch {
+      // not found
+    }
+  }
+  return null;
+}
+
+async function buildNupkgWithDotnet(
+  packageName: string,
+  version: string,
+  dotnetPath: string,
+): Promise<ArtifactResult> {
+  const srcDir = await makeTempDir("allbrew-nuget-");
+  const projDir = join(srcDir, "tool");
+  await mkdir(projDir, { recursive: true });
+
+  await writeFile(
+    join(projDir, `${packageName}.csproj`),
+    `<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>${packageName}</ToolCommandName>
+    <PackageId>${packageName}</PackageId>
+    <Version>${version}</Version>
+    <PackageVersion>${version}</PackageVersion>
+  </PropertyGroup>
+</Project>
+`,
+  );
+
+  await writeFile(
+    join(projDir, "Program.cs"),
+    `using System;\nclass Program\n{\n    static void Main(string[] args)\n    {\n        Console.WriteLine("${packageName} ${version}");\n    }\n}\n`,
+  );
+
+  // Ensure `dotnet restore` does not try to reach NuGet.org; the project has no
+  // package references and the SDK/targeting packs are already local.
+  await writeFile(
+    join(srcDir, "NuGet.config"),
+    `<?xml version="1.0" encoding="utf-8"?>\n<configuration>\n  <packageSources>\n    <clear />\n  </packageSources>\n</configuration>\n`,
+  );
+
+  const outDir = join(srcDir, "out");
+  await mkdir(outDir, { recursive: true });
+
+  const dotnetEnv = {
+    ...process.env,
+    DOTNET_CLI_TELEMETRY_OPTOUT: "1",
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1",
+    DOTNET_NOLOGO: "1",
+  };
+
+  await execFileAsync(dotnetPath, [
+    "restore",
+    join(projDir, `${packageName}.csproj`),
+    "--nologo",
+    "--configfile", join(srcDir, "NuGet.config"),
+  ], { cwd: projDir, env: dotnetEnv });
+
+  await execFileAsync(dotnetPath, [
+    "pack",
+    join(projDir, `${packageName}.csproj`),
+    "--nologo",
+    "--no-restore",
+    "-o", outDir,
+    `/p:Version=${version}`,
+    `/p:PackageVersion=${version}`,
+  ], { cwd: projDir, env: dotnetEnv });
+
+  const filename = `${packageName}.${version}.nupkg`;
+  const nupkgPath = join(outDir, filename);
+  const buffer = await readFile(nupkgPath);
+  await rm(srcDir, { recursive: true, force: true });
+  return {
+    buffer,
+    sha256: createHash("sha256").update(buffer).digest("hex"),
+    filename,
+  };
 }
 
 export async function buildDmg(
@@ -344,14 +448,16 @@ export async function buildDmg(
     { mode: 0o755 },
   );
 
-  const dmgPath = join(srcDir, `${appName}-${version}.dmg`);
+  const dmgDir = await makeTempDir("allbrew-dmg-out-");
+  const dmgPath = join(dmgDir, `${appName}-${version}.dmg`);
   await execFileAsync("hdiutil", [
-    "create", "-volname", appName, "-srcfolder", appBundle,
+    "create", "-volname", appName, "-srcfolder", srcDir,
     "-fs", "HFS+", "-format", "UDZO", dmgPath,
   ]);
 
   const buffer = await readFile(dmgPath);
   await rm(srcDir, { recursive: true, force: true });
+  await rm(dmgDir, { recursive: true, force: true });
   return {
     buffer,
     sha256: createHash("sha256").update(buffer).digest("hex"),

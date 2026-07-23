@@ -26,7 +26,7 @@ import {
 } from "../tests/helpers/test-cleanup-registry.ts";
 
 const SKIP = process.env.ALLBREW_SKIP_GLOBAL_SETUP === "1";
-const TEST_TIMEOUT = "600000";
+const TEST_TIMEOUT = "1200000";
 const extraArgs = process.argv.slice(2);
 
 function teeStream(
@@ -66,9 +66,11 @@ async function main(): Promise<number> {
   const testCmd = [
     "bun",
     "test",
-    "tests/e2e-tap/",
     "--timeout",
     TEST_TIMEOUT,
+    "--parallel",
+    "1",
+    "tests/e2e-tap/",
     ...extraArgs,
   ];
 

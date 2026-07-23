@@ -38,6 +38,14 @@ describe.skipIf(!E2E_TAP)("service: binary-release with --service", () => {
   const SERVICE_URL = `http://127.0.0.1:${SERVICE_PORT}`;
 
   beforeAll(async () => {
+    // Kill any lingering fake-service process from a previous interrupted run;
+    // it may still hold SERVICE_PORT and cause the direct-launch / brew services
+    // probes to time out.
+    try {
+      execFileSync("pkill", ["-9", "-f", "fake-service"], { stdio: "ignore" });
+    } catch {
+      // none running
+    }
     ctx = await setupTestContext();
   });
 
@@ -47,7 +55,7 @@ describe.skipIf(!E2E_TAP)("service: binary-release with --service", () => {
 
   describe("generate with --service", () => {
     it("should generate a formula containing a service block", () => {
-      const gen = generateFormulaWithService(ctx, app, app.name);
+      const gen = generateFormulaWithService(ctx, app, `${app.name} ${SERVICE_PORT}`);
       expect(gen.code, `allbrew --service generation failed:\n${gen.stderr}`).toBe(0);
 
       const fpath = formulaPath(ctx.tap, app.name);

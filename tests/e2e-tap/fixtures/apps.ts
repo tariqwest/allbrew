@@ -231,10 +231,17 @@ export function classifierUrl(app: FixtureApp, baseUrl: string): string {
   }
 }
 
+function caskAppDir(): string {
+  const opts = process.env.HOMEBREW_CASK_OPTS || "";
+  const match = opts.match(/--appdir[\s=]+([^\s]+)/);
+  if (match) return match[1].replace(/^~/, process.env.HOME || "~");
+  return "/Applications";
+}
+
 export function verifyCommand(app: FixtureApp): string[] {
   if (isCaskGenerator(app.generator)) {
     const appName = app.appName || app.name;
-    return [`/Applications/${appName}.app/Contents/MacOS/${appName}`, "--version"];
+    return [`${caskAppDir()}/${appName}.app/Contents/MacOS/${appName}`, "--version"];
   }
   return [app.name, "--version"];
 }

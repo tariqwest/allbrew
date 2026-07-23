@@ -486,6 +486,7 @@ async function handleRequest(req: Request, url: URL): Promise<Response> {
 
 const server = Bun.serve({
   port: PORT,
+  idleTimeout: 255,
   fetch: async (req) => {
     const url = new URL(req.url);
     try {
