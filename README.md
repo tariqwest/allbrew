@@ -12,7 +12,7 @@ Make Homebrew the source of truth for all your macOS installs — even when the 
 
 ## Current state
 
-This is an **alpha** (v0.0.1). Core generation works for 17 generator paths and is backed by 868 unit tests, template-parity checks, and a synthetic E2E-tap harness. It is ready for adventurous daily use, but expect rough edges and incomplete management commands.
+This is an **alpha** (v0.0.2). Core generation works for 17 generator paths and is backed by 868 unit tests, template-parity checks, and a synthetic E2E-tap harness. It is ready for adventurous daily use, but expect rough edges and incomplete management commands.
 
 ### What's working
 
@@ -30,11 +30,23 @@ This is an **alpha** (v0.0.1). Core generation works for 17 generator paths and 
 
 ### Distribution status
 
-The Homebrew tap and npm packages are **not published yet**. Install from source for now.
+- **Homebrew tap** ✅ Published: `brew tap tariqwest/allbrew && brew trust tariqwest/allbrew && brew install allbrew` works.
+- **npm / Bun / Deno packages** — not published yet.
+- **Source install** — always available.
 
 ## Install
 
-### From source (recommended for alpha)
+### Homebrew (recommended)
+
+```bash
+brew tap tariqwest/allbrew
+brew trust tariqwest/allbrew
+brew install allbrew
+```
+
+This downloads a release tarball from GitHub and depends on the `bun` formula. Homebrew requires you to trust third-party taps before loading their formulae.
+
+### From source
 
 ```bash
 git clone https://github.com/tariqwest/allbrew.git
@@ -57,15 +69,14 @@ Requires Bun 1.0+ and macOS. Node 18+ works via the `tsx` loader (installed as a
 ### Planned distribution
 
 ```bash
-# Homebrew (not yet available)
-brew tap tariqwest/allbrew
-brew install allbrew
-
 # npm (not yet available)
 npm install -g allbrew
 
 # Bun (not yet available)
 bun install -g allbrew
+
+# Deno (not yet available)
+deno install -g --allow-all npm:allbrew
 ```
 
 ## Setup
@@ -219,11 +230,11 @@ Now `brew update` runs `allbrew update-formulas` afterwards.
 - **DMG-only desktop apps** (Electron / Avalonia) still need generator improvements.
 - **README examples** are not yet validated for every generator path.
 - **TypeScript strict mode** is off and there are still `any` types to remove. See `.agents/plans/fable-app-review-2026-07-11.md`.
-- **No published Homebrew tap / npm package yet.** Source install only for alpha.
+- **No npm / Bun / Deno package yet.** Source or Homebrew install only for alpha.
 
 ## Next todos (rough priority)
 
-1. **Publish distribution:** create `tariqwest/homebrew-allbrew` and run the release script so `brew install allbrew` works.
+1. **Verify cold install:** run `brew tap tariqwest/allbrew && brew trust tariqwest/allbrew && brew install allbrew` in a clean environment (Lume VM or fresh macOS install) and fix any formula issues.
 2. **Fix the dotnet harness:** raise the fixture-server idle timeout or pre-build the fake nupkg, then un-quarantine the suite.
 3. **Add `allbrew info` / `allbrew remove` / `allbrew doctor`:** small management commands that reuse existing manifest infrastructure.
 4. **Uninstall residual verification:** run the residual helper across every generator path.
