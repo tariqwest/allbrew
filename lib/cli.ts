@@ -565,20 +565,36 @@ async function dispatchGithubRepoType(repoInfo, release, opts) {
 
 async function handleGithubRepo(classification, opts) {
   const { owner, repo } = classification;
-  const spinner = ora("Fetching repository info...").start();
+  let repoInfo: any = null;
+  let release: any = null;
+  let releaseSpinner: any = null;
 
-  const repoInfo = await getRepoInfo(owner, repo);
-  spinner.succeed(
-    `Repository: ${chalk.bold(repoInfo.fullName)} - ${repoInfo.description || "No description"}`,
-  );
+  try {
+    const spinner = ora("Fetching repository info...").start();
+    repoInfo = await getRepoInfo(owner, repo);
+    spinner.succeed(
+      `Repository: ${chalk.bold(repoInfo.fullName)} - ${repoInfo.description || "No description"}`,
+    );
 
-  if (repoInfo.license) {
-    console.log(`  License: ${chalk.dim(repoInfo.license)}`);
+    if (repoInfo.license) {
+      console.log(`  License: ${chalk.dim(repoInfo.license)}`);
+    }
+
+    // Step 1: Check releases
+    releaseSpinner = ora("Checking for releases...").start();
+    release = await getLatestRelease(owner, repo);
+    releaseSpinner.stop();
+  } catch (err) {
+    if (opts.type === "go-package") {
+      console.log(
+        chalk.yellow(
+          "Could not reach GitHub API; falling back to Go module proxy for go-package.",
+        ),
+      );
+    } else {
+      throw err;
+    }
   }
-
-  // Step 1: Check releases
-  const releaseSpinner = ora("Checking for releases...").start();
-  const release = await getLatestRelease(owner, repo);
 
   if (opts.type) {
     return await dispatchGithubRepoType(repoInfo, release, opts);

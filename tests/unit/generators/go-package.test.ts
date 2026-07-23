@@ -65,9 +65,24 @@ describe("collectGoPackagePayload", () => {
     expect(payload.fullName).toBe("muety/wakapi");
   });
 
-  it("handles null release (no urlLines)", async () => {
-    const payload = await collectGoPackagePayload(repoInfo, null);
-    expect(payload.urlLines).toBe("");
+  it("falls back to Go module proxy when release is null", async () => {
+    process.env.GO_PROXY_URL = "http://localhost:9999";
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ Version: "v2.12.2" }),
+      } as Response),
+    );
+    try {
+      const payload = await collectGoPackagePayload(repoInfo, null);
+      expect(payload.urlLines).toContain(
+        "/github.com/muety/wakapi/@v/v2.12.2.zip",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete process.env.GO_PROXY_URL;
+    }
   });
 
   it("respects name override", async () => {
@@ -195,9 +210,24 @@ describe("collectGoPackagePayload — ugm", () => {
     expect(payload.fullName).toBe("ariasmn/ugm");
   });
 
-  it("handles null release (no urlLines)", async () => {
-    const payload = await collectGoPackagePayload(repoInfo, null);
-    expect(payload.urlLines).toBe("");
+  it("falls back to Go module proxy when release is null", async () => {
+    process.env.GO_PROXY_URL = "http://localhost:9999";
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ Version: "v1.9.0" }),
+      } as Response),
+    );
+    try {
+      const payload = await collectGoPackagePayload(repoInfo, null);
+      expect(payload.urlLines).toContain(
+        "/github.com/ariasmn/ugm/@v/v1.9.0.zip",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete process.env.GO_PROXY_URL;
+    }
   });
 
   it("generates MIT license line from repo info", async () => {
