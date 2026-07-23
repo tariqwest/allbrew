@@ -1,30 +1,38 @@
 # Allbrew (alpha)
 
-Make Homebrew the source of truth for all your macOS installs, regardless of whether the app is available on Homebrew. Generate Homebrew formulas and casks from arbitrary URLs. Point it at a GitHub repo, a bash install script, a binary archive, a macOS app DMG, a Mac App Store link, or a Setapp app link and it produces the right `.rb` file for your tap.
+Make Homebrew the source of truth for all your macOS installs — even when the app isn't on Homebrew yet. Point `allbrew` at a GitHub repo, a bash install script, a binary archive, a macOS app DMG, a Mac App Store link, or a Setapp link and it generates the right Homebrew formula or cask into your personal tap.
 
-## Current limitations & roadmap
+## What it does
 
-**Implemented today:** URL → formula/cask generation for 17 generator paths, interactive/manual modes, manifest persistence, `allbrew update-formulas`, `allbrew hooks`, `allbrew service`, and a three-tier test suite. See [AGENTS.md](AGENTS.md) for the full architecture and current status.
+- **Generates** `Formula/<name>.rb` or `Casks/<name>.rb` files for your tap from arbitrary URLs.
+- **Manages** generated packages with a persisted manifest so `allbrew list` and `allbrew update-formulas` know what you own.
+- **Updates** your tap by running `brew livecheck` and regenerating the Ruby files when a newer version is found.
+- **Hooks** into `brew update` so your allbrew-managed formulas stay current automatically.
+- **Infers** `service do` blocks when READMEs, archives, or run instructions suggest a background daemon.
 
-**Active/planned features** (detailed plans live in [`.agents/plans/`](.agents/plans/)):
+## Current state
 
-- `allbrew scan` — adopt already-installed non-Homebrew apps into your tap without reinstalling
-- `allbrew switch` — migrate manually installed apps to official Homebrew formulas/casks
-- `allbrew hooks` uninstall detection — clean up stale formulas/casks/manifests when tracked apps are removed outside of Homebrew/allbrew
-- `allbrew info`, `allbrew remove`, `allbrew regenerate`, and `allbrew doctor` — small management commands that fall out of existing infrastructure (`allbrew list` is implemented)
+This is an **alpha** (v0.0.1). Core generation works for 17 generator paths and is backed by 868 unit tests, template-parity checks, and a synthetic E2E-tap harness. It is ready for adventurous daily use, but expect rough edges and incomplete management commands.
 
-**Known rough edges:**
+### What's working
 
-- README examples are not yet validated for every generator path
-- MAS install requires the full App Store URL (app name/id lookup is planned)
-- Uninstall/zap behavior has not been verified across all generator paths
-- DMG-only desktop apps (Electron/Avalonia) still need generator improvements
-- The dotnet/NuGet generator is **experimental** — its end-to-end suite is quarantined pending fixes
-- Type-safety hardening (strict mode) is in progress — see [`.agents/plans/fable-app-review-2026-07-11.md`](.agents/plans/fable-app-review-2026-07-11.md)
+| Feature | Status |
+| ------- | ------ |
+| URL classification and interactive/manual generation | ✅ |
+| 17 generators (formulas + casks; see table below) | ✅ |
+| Manifest persistence and `allbrew list` | ✅ |
+| `allbrew update-formulas` with livecheck JSON | ✅ |
+| `allbrew hooks install` for brew-update integration | ✅ |
+| `allbrew service install` for periodic updates | ✅ |
+| Unit tests (`bun run test`) — 868 tests | ✅ |
+| Template parity (`bun run test:templates`) | ✅ |
+| E2E tap cycle (45/47 passing; dotnet quarantined) | ⚠️ |
+
+### Distribution status
+
+The Homebrew tap and npm packages are **not published yet**. Install from source for now.
 
 ## Install
-
-> **Alpha note:** the Homebrew tap and npm package are not published yet — install **from source** (below) for now. The tap/npm instructions describe the planned distribution channels.
 
 ### From source (recommended for alpha)
 
@@ -35,7 +43,7 @@ bun install
 bun link
 ```
 
-Or, without Bun:
+Or with Node:
 
 ```bash
 git clone https://github.com/tariqwest/allbrew.git
@@ -44,205 +52,183 @@ npm install
 npm link            # uses the JS shim + tsx
 ```
 
-### Homebrew (planned)
+Requires Bun 1.0+ and macOS. Node 18+ works via the `tsx` loader (installed as an optional dependency).
+
+### Planned distribution
 
 ```bash
+# Homebrew (not yet available)
 brew tap tariqwest/allbrew
 brew install allbrew
-```
 
-### Bun (global, planned)
+# npm (not yet available)
+npm install -g allbrew
 
-```bash
+# Bun (not yet available)
 bun install -g allbrew
 ```
 
-### Node (global, planned)
-
-```bash
-npm install -g allbrew
-```
-
-The `allbrew` bin is a small JS shim that registers [`tsx`](https://github.com/privatenumber/tsx) as the ESM loader and then imports the TypeScript entry directly — no build step. `tsx` ships as an `optionalDependency` so it auto-installs with npm. If you installed with `--no-optional`, install tsx yourself (`npm install -g tsx`) or reinstall without that flag.
-
-Requires Node 18+ (global `fetch`, `AbortSignal.timeout`, `Readable.fromWeb`).
-
-### Deno (global, planned)
-
-```bash
-deno install -g npm:allbrew
-```
-
-Deno 2.x runs the TypeScript entry natively via its npm-compat layer. The CLI makes network calls, spawns subprocesses (`git`, `brew`, `mas`), and writes files, so grant permissions:
-
-```bash
-deno install -g --allow-all npm:allbrew
-```
-
-Requires Deno 2.0+ (global `process` and `Buffer` via node-compat).
-
 ## Setup
 
-On first run, allbrew will prompt you for a tap repository path. This is where generated `Formula/` and `Casks/` files are written. You can also set it upfront:
+On first run allbrew prompts for a tap repository path. Set it upfront:
 
 ```bash
 allbrew config set-tap ~/homebrew-mytap
-```
-
-View current configuration:
-
-```bash
+allbrew config set-token ghp_...        # optional, avoids GitHub rate limits
 allbrew config show
 ```
 
-Override the tap path for a single run:
+Override the tap for a single run:
 
 ```bash
 allbrew --tap ~/other-tap https://github.com/BurntSushi/ripgrep
 ```
 
-## Usage
+## Quick start
 
 ```bash
-# Interactive — prompts for a URL
+# Interactive
 allbrew
 
-# Pass a URL directly
+# Generate a formula from a GitHub repo
 allbrew https://github.com/BurntSushi/ripgrep
 
-# With options
+# Generate with overrides
 allbrew https://github.com/sharkdp/bat --name bat --desc "A cat clone with wings"
 
-# Generate a formula that can be managed by brew services
-allbrew https://github.com/example/daemon --service --service-command "daemon --foreground"
-
-# Manual mode — choose the formula type yourself
-allbrew https://github.com/some/repo --manual
-
-# Use a GitHub token to avoid rate limits
-export GITHUB_TOKEN=ghp_...
-allbrew https://github.com/some/private-repo
-
-# List packages managed by allbrew
-allbrew list
-allbrew list --json
-
-# Install hooks so `brew update` also updates your allbrew-managed formulas
-allbrew hooks install
-
-# Install a periodic LaunchAgent that runs update-formulas on a schedule
-allbrew service install
-
-# Update all out-of-date managed formulas/casks from brew livecheck
-allbrew update-formulas
-
-# Set configuration
-allbrew config set-tap ~/homebrew-mytap
-allbrew config set-token ghp_...
-allbrew config set-update-auto-push true
-allbrew config set-update-schedule 6
-allbrew config show
-```
-
-## Supported URL Types
-
-| URL Type                             | What it generates                                                            |
-| ------------------------------------ | ---------------------------------------------------------------------------- |
-| **GitHub repo (existing homebrew)**  | Existing Homebrew instructions found; do not duplicate, run existing formula  |
-| **GitHub repo with binary releases** | Formula using `on_macos`/`on_linux` + `on_arm`/`on_intel` blocks             |
-| **GitHub repo with .app releases**   | Cask with `livecheck`, `app`, and `zap` stanzas                              |
-| **GitHub repo (npm package)**        | Formula with `depends_on "node"`, `std_npm_args`, and npm registry `livecheck` |
-| **GitHub repo (pip package)**        | Formula with `Language::Python::Virtualenv`, transitive `resource` blocks, and PyPI `livecheck` |
-| **GitHub repo (cargo package)**      | Formula with `depends_on "rust"`, `std_cargo_args`, and crates.io `livecheck` |
-| **GitHub repo (go package)**         | Formula with `depends_on "go"`, `std_go_args`, and Go module proxy `livecheck` |
-| **GitHub repo (build from source)**  | Formula with cmake/autotools/make/meson install block                        |
-| **Bash install script**              | Formula that runs the script with `PREFIX` set to the Cellar                 |
-| **Source code archive**              | Formula that extracts and builds using detected build system                 |
-| **Archive with pre-built binary**    | Formula that extracts and does `bin.install`                                 |
-| **Apps/daemons with service hints**  | Formula with a `service do` block for `brew services` when selected/detected |
-| **DMG or ZIP with .app**             | Cask with `app` stanza                                                       |
-| **Mac App Store URL**                | Cask using `mas` to install                                                  |
-| **Setapp app URL**                   | Cask using `setapp-cli` to install (auto-bootstraps `setapp-cli` + `setapp`) |
-
-### GitHub Repos — Homebrew Detection
-
-If the repo's README already mentions `brew install`, allbrew alerts you and offers to run that command directly instead of generating a duplicate formula.
-
-### Package Manager Updates
-
-Package-manager formulas include Homebrew `livecheck` blocks that check the package manager's registry for the latest version:
-
-- npm, pnpm, yarn, and Bun-detected packages check the npm registry.
-- pip, pipx, and uv-detected packages check PyPI.
-- Cargo packages check crates.io.
-- Go packages check the Go module proxy.
-
-### Services and LaunchAgents
-
-For generated formulas, allbrew can add a Homebrew `service do` block so the package works with `brew services start <name>`. It looks for README and archive hints such as `brew services`, `launchctl`, `launchd`, LaunchAgent/LaunchDaemon plist files, daemon commands, and background-service wording. It can also infer services when install docs show a package-manager install, a run command, and a local web/API/dashboard endpoint like `http://localhost:3000`.
-
-Service inference understands common install/run docs for npm, pnpm, yarn, Bun, uv, pip/pipx, Cargo, Go, Deno, and Swift Package Manager. When a hint is detected, allbrew prompts to include a service block and asks for the run command.
-
-You can also force this non-interactively:
-
-```bash
+# Generate a background service formula
 allbrew https://github.com/example/daemon \
   --service \
   --service-command "daemon --foreground"
+
+# Generate a cask from a DMG
+allbrew https://github.com/some/app/releases/download/v1.0/App-1.0.dmg
+
+# See what allbrew is managing
+allbrew list
+
+# Update everything that has a newer version
+allbrew update-formulas
+
+# Keep taps updated through brew update
+allbrew hooks install
 ```
 
-Generated formulas include a stanza like:
+## Supported URL types
 
-```ruby
-service do
-  run [opt_bin/"daemon", "--foreground"]
-  keep_alive true
-end
+| URL / source | Generated file | Notes |
+| ------------ | -------------- | ----- |
+| GitHub repo with binary releases | Formula | `on_macos`/`on_linux` + `on_arm`/`on_intel` blocks |
+| GitHub repo with `.app` releases | Cask | `livecheck`, `app`, `zap` stanzas |
+| GitHub repo (npm / pnpm / yarn / Bun) | Formula | `depends_on "node"` + npm registry `livecheck` |
+| GitHub repo (pip / uv / pipx) | Formula | `Language::Python::Virtualenv` + PyPI `livecheck` |
+| GitHub repo (Cargo / Rust) | Formula | `depends_on "rust"` + crates.io `livecheck` |
+| GitHub repo (Go module) | Formula | `depends_on "go"` + Go module proxy `livecheck` |
+| GitHub repo (Swift Package Manager / mint) | Formula | Swift / mint based source build |
+| GitHub repo (build from source) | Formula | cmake / autotools / make / meson install block |
+| Bash install script | Formula | Runs script with `PREFIX` set to the Cellar |
+| Source archive (tar/zip) | Formula | Detects build system from archive contents |
+| Pre-built binary archive | Formula | Extracts and `bin.install` |
+| DMG / ZIP with `.app` | Cask | `app` stanza |
+| Mac App Store URL | Cask | `mas` install; requires full App Store URL |
+| Setapp app link | Cask | `setapp-cli` install |
+| Ruby gem | Formula | `gem install` based formula |
+| .NET NuGet tool | Formula | **Experimental** — end-to-end suite quarantined |
+
+## Representative scenarios
+
+### 1. Adopt a popular CLI that's missing from Homebrew
+
+```bash
+allbrew https://github.com/jesseduffield/lazygit
 ```
 
-## Options
+allbrew inspects the GitHub releases, picks the macOS tarball, computes SHA256, and writes `Formula/lazygit.rb` into your tap.
 
-| Flag                        | Description                                                           |
-| --------------------------- | --------------------------------------------------------------------- |
-| `-n, --name <name>`         | Override the auto-detected formula/cask name                          |
-| `-d, --desc <text>`         | Override the description                                              |
-| `-t, --token <token>`       | GitHub personal access token (also reads `GITHUB_TOKEN` env var)    |
-| `-m, --manual`              | Skip auto-detection; interactively choose URL type and install strategy |
-| `-v, --verbose`             | Show full error stack traces                                          |
-| `--tap <path>`              | Override the tap repository path for this run                         |
-| `--service`                 | Include a Homebrew `service do` block in generated formulas             |
-| `--no-service`              | Do not include a Homebrew service block                               |
-| `--service-command <cmd>`   | Command to run from the generated service block                       |
-| `--no-service-keep-alive`   | Omit `keep_alive true` from the generated service block               |
+### 2. Install a Node-based tool from its repo
 
-## Configuration
+```bash
+allbrew https://github.com/sindresorhus/email-regex-safe
+```
 
-allbrew stores its config at `~/.config/allbrew/config.json`.
+allbrew detects the npm package, writes a formula using `std_npm_args`, and adds an npm-registry `livecheck` block.
 
-| Command                                      | Description                                            |
-| -------------------------------------------- | ------------------------------------------------------ |
-| `allbrew config set-tap <path>`              | Set the default tap repository path                    |
-| `allbrew config get-tap`                   | Print the current tap path                             |
-| `allbrew config set-token <token>`         | Save a GitHub personal access token                    |
-| `allbrew config set-remote`                | Connect the local tap to a GitHub repo                 |
-| `allbrew config set-update-auto-push <tf>` | Enable/disable auto-push after formula updates         |
-| `allbrew config set-update-schedule <h>`   | Set the launchd update interval in hours               |
-| `allbrew config show`                      | Print the full configuration                           |
+### 3. Turn a bash installer into a formula
 
-## How It Works
+```bash
+allbrew https://fly.io/install.sh --name flyctl
+```
 
-1. **Classify** the URL (GitHub repo, script, archive, DMG, App Store)
-2. **Analyze** the target (GitHub API for releases/README/files, HTTP HEAD for archives)
-3. **Download** artifacts and compute SHA256 checksums
-4. **Generate** the appropriate Ruby `.rb` formula or cask
-5. **Write** it to `Formula/` or `Casks/` inside your configured tap repository
+allbrew wraps the script so `brew install flyctl` runs it with the correct `PREFIX`.
 
-## Security & trust
+### 4. Run a web service with `brew services`
 
-- allbrew **generates** Ruby formula/cask files; it does **not** evaluate them. Homebrew evaluates the generated `.rb` files during `brew install`.
-- Provide URLs only from sources you trust. allbrew downloads the linked artifacts and computes SHA256 checksums, but a malicious upstream could still craft descriptions, archive entries, or install scripts.
-- Your GitHub token is stored in `~/.config/allbrew/config.json` (written with `0600` permissions). Do not commit this file.
-- When a README advertises an existing `brew install` command, allbrew offers to run it for you; review the command before confirming.
+```bash
+allbrew https://github.com/maildev/maildev --service
+```
+
+If allbrew detects a daemon pattern, it prompts for the run command and writes a `service do` block. After `brew install maildev`:
+
+```bash
+brew services start maildev
+```
+
+### 5. Manage a Mac app from a DMG release
+
+```bash
+allbrew https://github.com/rxhanson/Rectangle/releases/download/v0.99/Rectangle0.99.dmg
+```
+
+Generates `Casks/rectangle.rb` with `livecheck` so `allbrew update-formulas` can bump it later.
+
+### 6. Auto-update your tap on `brew update`
+
+```bash
+allbrew hooks install
+```
+
+Then add this to your shell profile (the hook prints the exact line):
+
+```bash
+alias brew=allbrew_brew
+```
+
+Now `brew update` runs `allbrew update-formulas` afterwards.
+
+## Management commands
+
+| Command | Status | Description |
+| ------- | ------ | ----------- |
+| `allbrew list` | ✅ | Show tracked packages |
+| `allbrew list --json` | ✅ | Machine-readable output |
+| `allbrew update-formulas` | ✅ | Regenerate outdated packages |
+| `allbrew hooks install/uninstall` | ✅ | Brew-update integration |
+| `allbrew service install/uninstall` | ✅ | Periodic LaunchAgent |
+| `allbrew config ...` | ✅ | Configuration management |
+| `allbrew info <name>` | 🛠️ planned | Show manifest + generated Ruby |
+| `allbrew remove <name>` | 🛠️ planned | Remove a tracked package |
+| `allbrew doctor` | 🛠️ planned | Detect stale/out-of-sync state |
+| `allbrew scan` | 🛠️ planned | Adopt already-installed apps |
+| `allbrew switch` | 🛠️ planned | Move a manual install to official Homebrew |
+
+## Current gaps & known issues
+
+- **dotnet/NuGet generator is experimental.** Its E2E-tap suite is quarantined behind `E2E_TAP_QUARANTINE=1` pending a fixture-server timeout fix.
+- **MAS requires the full App Store URL.** App name/id lookup is planned.
+- **Uninstall / zap behavior** is not verified across every generator path.
+- **DMG-only desktop apps** (Electron / Avalonia) still need generator improvements.
+- **README examples** are not yet validated for every generator path.
+- **TypeScript strict mode** is off and there are still `any` types to remove. See `.agents/plans/fable-app-review-2026-07-11.md`.
+- **No published Homebrew tap / npm package yet.** Source install only for alpha.
+
+## Next todos (rough priority)
+
+1. **Publish distribution:** create `tariqwest/homebrew-allbrew` and run the release script so `brew install allbrew` works.
+2. **Fix the dotnet harness:** raise the fixture-server idle timeout or pre-build the fake nupkg, then un-quarantine the suite.
+3. **Add `allbrew info` / `allbrew remove` / `allbrew doctor`:** small management commands that reuse existing manifest infrastructure.
+4. **Uninstall residual verification:** run the residual helper across every generator path.
+5. **MAS URL lookup:** accept app names/IDs in addition to full Store URLs.
+6. **Strict mode & type cleanup:** enable `strict: true` in `tsconfig.json` and remove `any` types.
 
 ## Development
 
@@ -250,9 +236,9 @@ allbrew stores its config at `~/.config/allbrew/config.json`.
 bun install
 bun run check              # TypeScript type-check (tsc --noEmit)
 bun run test               # unit tests, mocked/offline
+bun run test:templates     # byte-for-byte Ruby parity checks
 bun run test:int           # integration tests against live APIs
 bun run test:e2e           # E2E catalog tests (requires E2E=1)
-bun run test:templates     # byte-for-byte Ruby parity checks
 bun run bin/allbrew.ts --help
 ```
 
@@ -260,35 +246,27 @@ Always run `bun run check` and `bun run test` before committing. Integration and
 
 ## Release
 
-`allbrew` is released by generating its Homebrew formula in a temporary checkout of the tap repository. Because Bun runs TypeScript directly, the release build step validates the TypeScript project with `tsc --noEmit`, packages the CLI with production dependencies into a release tarball, uploads that tarball to GitHub Releases, writes the formula into the temporary tap checkout, pushes it, and then cleans up the temporary files.
-
-Preview a release without changing files, creating tags, or calling GitHub:
+Preview a release:
 
 ```bash
 DRY_RUN=1 bun run release patch
 ```
 
-Publish a release:
+Publish (requires `GITHUB_TOKEN` and the Homebrew tap repo):
 
 ```bash
 export GITHUB_TOKEN=ghp_...
-bun run release patch    # or: minor, major, 1.2.3
+HOMEBREW_TAP_REPO=tariqwest/homebrew-allbrew bun run release patch
 ```
 
-The release script will:
+See `scripts/release.ts` for the full release flow.
 
-1. Validate the Bun install and TypeScript build.
-2. Build `allbrew-v<version>.tar.gz` with production dependencies and calculate its SHA256.
-3. Bump `package.json` to the requested version.
-4. Commit and tag `v<version>`.
-5. Push the tag, create or update the GitHub release, and upload the tarball.
-6. Generate `Formula/allbrew.rb` with the release asset URL and SHA inside a temporary tap checkout.
-7. Commit and push the formula update to the tap, then delete the temporary checkout.
+## Security & trust
 
-## Requirements
-
-- Bun 1.0+
-- macOS (for cask and archive inspection features)
+- allbrew **generates** Ruby formula/cask files; it does **not** evaluate them. Homebrew evaluates the generated `.rb` files during `brew install`.
+- Provide URLs only from sources you trust. allbrew downloads linked artifacts and computes SHA256 checksums, but a malicious upstream could still craft descriptions, archive entries, or install scripts.
+- Your GitHub token is stored in `~/.config/allbrew/config.json` (written with `0600` permissions). Do not commit this file.
+- When a README advertises an existing `brew install` command, allbrew offers to run it for you; review the command before confirming.
 
 ## License
 
