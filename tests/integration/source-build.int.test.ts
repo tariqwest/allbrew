@@ -193,4 +193,49 @@ describe.concurrent("source-build integration", () => {
     expect(ruby).toContain('depends_on "python@3.13"');
     expect(ruby).toContain('head "https://github.com/lfnovo/open-notebook.git"');
   });
+
+  const libreChatRepoInfo = {
+    name: "LibreChat",
+    fullName: "danny-avila/LibreChat",
+    description: "Enhanced ChatGPT Clone with support for multiple AI providers",
+    homepage: "https://librechat.ai/",
+    htmlUrl: "https://github.com/danny-avila/LibreChat",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const libreChatRelease = {
+    tagName: "v0.8.7",
+    tarballUrl:
+      "https://github.com/danny-avila/LibreChat/archive/refs/tags/v0.8.7.tar.gz",
+  };
+
+  it("LibreChat: downloads the released source archive into a make fallback payload", async () => {
+    const payload = await collectSourceBuildPayload(
+      libreChatRepoInfo,
+      libreChatRelease,
+      { system: "make" },
+    );
+    expect(payload.template).toBe("source_build");
+    expect(payload.name).toBe("librechat");
+    expect(payload.className).toBe("Librechat");
+    expect(payload.urlLines).toContain(
+      "github.com/danny-avila/LibreChat/archive/refs/tags/v0.8.7.tar.gz",
+    );
+    expect(payload.urlLines).toMatch(/sha256 "[a-f0-9]{64}"/);
+    expect(payload.licenseLine).toContain("MIT");
+  });
+
+  it("LibreChat: renders a structurally valid source-build formula", async () => {
+    const payload = await collectSourceBuildPayload(
+      libreChatRepoInfo,
+      libreChatRelease,
+      { system: "make" },
+    );
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Librechat < Formula");
+    expect(ruby).toContain('head "https://github.com/danny-avila/LibreChat.git"');
+    expect(ruby).toContain('system "make", "PREFIX=#{prefix}", "install"');
+  });
 });

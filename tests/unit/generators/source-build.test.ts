@@ -371,3 +371,62 @@ describe("collectSourceBuildPayload — Jockey (Tauri, no releases)", () => {
     expect(payload.defaultBranch).toBe("main");
   });
 });
+
+describe("collectSourceBuildPayload — LibreChat (Node.js workspace monorepo)", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
+  const libreChatRepoInfo = {
+    name: "LibreChat",
+    fullName: "danny-avila/LibreChat",
+    description: "Enhanced ChatGPT Clone with support for multiple AI providers",
+    homepage: "https://librechat.ai/",
+    htmlUrl: "https://github.com/danny-avila/LibreChat",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const libreChatRelease = {
+    tagName: "v0.8.7",
+    tarballUrl:
+      "https://github.com/danny-avila/LibreChat/archive/refs/tags/v0.8.7.tar.gz",
+  };
+
+  it("returns a source-build payload using the make fallback", async () => {
+    const payload = await collectSourceBuildPayload(
+      libreChatRepoInfo,
+      libreChatRelease,
+      { system: "make" },
+    );
+    expect(payload.template).toBe("source_build");
+    expect(payload.name).toBe("librechat");
+    expect(payload.className).toBe("Librechat");
+    expect(payload.isPython).toBe(false);
+  });
+
+  it("preserves release, metadata, and GitHub livecheck fields", async () => {
+    const payload = await collectSourceBuildPayload(
+      libreChatRepoInfo,
+      libreChatRelease,
+      { system: "make" },
+    );
+    expect(payload.desc).toContain("Enhanced ChatGPT Clone");
+    expect(payload.homepage).toBe("https://librechat.ai/");
+    expect(payload.licenseLine).toContain("MIT");
+    expect(payload.urlLines).toContain(
+      "github.com/danny-avila/LibreChat/archive/refs/tags/v0.8.7.tar.gz",
+    );
+    expect(payload.livecheckBlock).toContain("strategy :github_latest");
+  });
+
+  it("uses the default make install body for the custom Node.js build", async () => {
+    const payload = await collectSourceBuildPayload(
+      libreChatRepoInfo,
+      libreChatRelease,
+      { system: "make" },
+    );
+    expect(payload.installBody).toContain('system "make", "PREFIX=#{prefix}", "install"');
+    expect(payload.testBinName).toBe("librechat");
+  });
+});
