@@ -1,6 +1,6 @@
 # allbrew E2E/real-world testing with Lume and Cua Driver — Plan
 
-> **Status:** **Superseded.** The script-based approach described in this plan has been replaced by the [`lume-macos-testing-harness`](../../../lume-macos-testing-harness) integration. allbrew defines its VM test suite in [`test-suite.ts`](../../test-suite.ts) and is invoked via `bun run vm:*` (documented in [`AGENTS.md`](../../AGENTS.md)). The legacy `scripts/e2e-vm-*.sh` files have been removed. This plan is retained for historical context; see [`allbrew-user-lifecycle-test-plan.md`](./allbrew-user-lifecycle-test-plan.md) for current lifecycle testing priorities.
+> **Status:** **Superseded.** The script-based approach described in this plan has been replaced by the [`macos-testing-harness`](../../vendor/macos-testing-harness) integration. allbrew defines its VM test suite in [`test-suite.ts`](../../test-suite.ts) and is invoked via `bun run vm:*` (documented in [`AGENTS.md`](../../AGENTS.md)). The legacy `scripts/e2e-vm-*.sh` files have been removed. This plan is retained for historical context; see [`allbrew-user-lifecycle-test-plan.md`](./allbrew-user-lifecycle-test-plan.md) for current lifecycle testing priorities.
 >
 > **Goal (historical):** Create a reproducible, script-driven macOS VM harness for allbrew E2E and real-world testing. The harness uses **Lume** for local Apple Silicon macOS VMs and optionally **Cua Driver** for future GUI automation. The primary automation path for the test suite is **SSH command execution inside the VM**, which is sufficient for running `allbrew`, `brew install`, and CLI assertions.
 
@@ -240,15 +240,15 @@ To enable GUI driving from a host MCP client, use the harness's `cua` subcommand
 
 ```bash
 bun run vm:setup                 # creates the project user + provisions Cua Driver prereqs
-./node_modules/.bin/lume-test-harness cua install    # install Cua Driver for the project user
-./node_modules/.bin/lume-test-harness cua status     # check install/running state
-./node_modules/.bin/lume-test-harness cua grant      # request TCC grants (needs interactive GUI session)
+./node_modules/.bin/macos-test-harness cua install    # install Cua Driver for the project user
+./node_modules/.bin/macos-test-harness cua status     # check install/running state
+./node_modules/.bin/macos-test-harness cua grant      # request TCC grants (needs interactive GUI session)
 ```
 
 And register the MCP bridge:
 
 ```bash
-claude mcp add --transport stdio cua-driver-vm -- lume-test-harness cua bridge
+claude mcp add --transport stdio cua-driver-vm -- macos-test-harness cua bridge
 ```
 
 The harness `cua bridge` command connects as the project user (not the VM admin) and supports both local and remote Lume hosts. The legacy `scripts/cua-driver-vm-bridge.sh` has been removed.
@@ -369,7 +369,7 @@ Nuclear mode additionally:
 | VM reset | `scripts/e2e-vm-reset.sh` | Yes |
 | Clone helper | `scripts/e2e-vm-clone.sh` | Yes |
 | Teardown helper | `scripts/e2e-vm-teardown.sh` | Yes |
-| Cua Driver bridge | `lume-test-harness cua bridge` (harness SDK) | Yes |
+| Cua Driver bridge | `macos-test-harness cua bridge` (harness SDK) | Yes |
 | VM disk/config | `~/.lume/` | **No** |
 | IPSW image | `~/Downloads/` | **No** |
 | Host-specific overrides | `.env` | **No** (already gitignored) |
