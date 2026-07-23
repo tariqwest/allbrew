@@ -256,21 +256,20 @@ export const {
     /**
      * Install allbrew dependencies in the private workspace as the project user.
      *
-     * The `lume-macos-testing-harness` devDependency uses `file:../lume-macos-testing-harness`,
-     * which doesn't exist inside the VM (the harness runs on the host and only shells
-     * into the VM). Strip it from package.json before `bun install` so the rest of the
-     * devDependencies (typescript, @types/bun) install cleanly. The harness package is
-     * not needed for test execution inside the VM.
+     * The `lume-macos-testing-harness` devDependency now points to a vendored copy
+     * (`file:./vendor/lume-macos-testing-harness`) that is staged into the workspace,
+     * so we install it alongside the other devDependencies. `test-suite.ts` needs it
+     * for type-checking inside the VM.
      */
     async installProject() {
       await runAsProjectUser(
         [
           "set +e",
-          "python3 -c \"import json; p=json.load(open('package.json')); p.get('devDependencies',{}).pop('lume-macos-testing-harness',None); json.dump(p, open('package.json','w'), indent=2); print('stripped harness from package.json')\"",
           "bun install 2>&1",
           "set -e",
           "test -d node_modules/@types/bun",
           "test -d node_modules/typescript",
+          "test -d node_modules/lume-macos-testing-harness",
         ].join("\n"),
         "Install dependencies"
       );

@@ -80,7 +80,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "lume-macos-testing-harness": "file:../lume-macos-testing-harness",
+    "lume-macos-testing-harness": "file:./vendor/lume-macos-testing-harness",
     "typescript": "^5.8.0"
   }
 }

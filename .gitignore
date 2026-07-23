@@ -1,4 +1,5 @@
 node_modules/
+vendor/
 .pnpm-store/
 .cursor/
 .DS_Store
