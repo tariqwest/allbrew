@@ -1,17 +1,32 @@
+import { readFileSync } from 'node:fs';
 import { Octokit } from 'octokit';
+import { getConfigPath } from './config.ts';
 
 let octokit = null;
 
+function getConfigTokenSync(): string | null {
+  try {
+    const config = JSON.parse(readFileSync(getConfigPath(), 'utf-8'));
+    return config.githubToken || null;
+  } catch {
+    return null;
+  }
+}
+
 export function initOctokit(token?: string | null) {
   const baseUrl = process.env.GITHUB_API_URL;
-  const opts: Record<string, unknown> = {};
+  const opts: Record<string, unknown> = {
+    // Disable Octokit's built-in throttling retry. Without a token the rate
+    // limit reset can be far in the future; fail fast instead of hanging.
+    throttle: { enabled: false },
+  };
   if (token) opts.auth = token;
   if (baseUrl) opts.baseUrl = baseUrl;
   octokit = new Octokit(opts);
 }
 
 function getOctokit() {
-  if (!octokit) initOctokit(process.env.GITHUB_TOKEN);
+  if (!octokit) initOctokit(process.env.GITHUB_TOKEN || getConfigTokenSync());
   return octokit;
 }
 
