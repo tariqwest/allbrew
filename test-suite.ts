@@ -256,8 +256,8 @@ export const {
     /**
      * Install allbrew dependencies in the private workspace as the project user.
      *
-     * The `macos-testing-harness` devDependency now points to a vendored copy
-     * (`file:./vendor/macos-testing-harness`) that is staged into the workspace,
+     * The `macos-testing-harness` devDependency is a GitHub dependency
+     * (`github:tariqwest/macos-testing-harness`) that is staged into the workspace,
      * so we install it alongside the other devDependencies. `test-suite.ts` needs it
      * for type-checking inside the VM.
      */

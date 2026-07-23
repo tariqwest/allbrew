@@ -80,7 +80,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "macos-testing-harness": "file:./vendor/macos-testing-harness",
+    "macos-testing-harness": "git+https://github.com/tariqwest/macos-testing-harness.git#0e7eccf",
     "typescript": "^5.8.0"
   }
 }
