@@ -153,17 +153,24 @@ describe("test-cleanup-registry: killOrphanedFixtures", () => {
 });
 
 describe("test-cleanup-registry: stopRegisteredServices", () => {
-  it("clears the services list after stopping (no real brew invoked if empty)", async () => {
-    // Register a fake service. stopRegisteredServices will attempt `brew
-    // services stop` which may fail (brew not installed or formula absent),
-    // but the registry should be cleared regardless.
+  it("clears the services list after stopping (stubbed runner, no real brew)", async () => {
+    // Register a fake service and inject a stub command runner so the unit
+    // test never shells out to real brew/launchctl (which was flaky/slow in
+    // VM runs). Record the invocations to assert the stop sequence.
     await registerService({
       formulaName: "test/e2e-tap-1/fake-noop",
       plistLabel: "homebrew.mxcl.fake-noop",
       tap: "test/e2e-tap-1",
     });
-    const stopped = await stopRegisteredServices();
+    const calls: Array<{ cmd: string; args: string[] }> = [];
+    const stopped = await stopRegisteredServices((cmd, args) => {
+      calls.push({ cmd, args });
+    });
     expect(stopped).toContain("test/e2e-tap-1/fake-noop");
+    expect(calls).toEqual([
+      { cmd: "brew", args: ["services", "stop", "e2e-tap-1/fake-noop"] },
+      { cmd: "launchctl", args: ["unload", "homebrew.mxcl.fake-noop"] },
+    ]);
     const regPath = join(testDir, `registry-${process.pid}.json`);
     const data = JSON.parse(await readFile(regPath, "utf-8")) as RegistryFile;
     expect(data.services).toHaveLength(0);

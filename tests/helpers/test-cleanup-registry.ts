@@ -166,12 +166,21 @@ export async function killOrphanedFixtures(
   return killed;
 }
 
+/** Injectable command runner for unit tests (avoids invoking real brew/launchctl). */
+export type StopCommandRunner = (cmd: string, args: string[], timeoutMs: number) => void;
+
+function defaultStopCommandRunner(cmd: string, args: string[], timeoutMs: number): void {
+  spawnSync(cmd, args, { encoding: "utf-8", timeout: timeoutMs, stdio: "ignore" });
+}
+
 /**
  * Stop all Homebrew service agents registered by THIS test process via
  * `brew services stop` and `launchctl unload`. Used in suite teardown.
  * Returns the service names that were stopped.
  */
-export async function stopRegisteredServices(): Promise<string[]> {
+export async function stopRegisteredServices(
+  runCommand: StopCommandRunner = defaultStopCommandRunner,
+): Promise<string[]> {
   const reg = await readRegistry();
   const stopped: string[] = [];
   for (const svc of reg.services) {
@@ -179,20 +188,12 @@ export async function stopRegisteredServices(): Promise<string[]> {
       ? svc.formulaName.split("/").slice(1).join("/")
       : svc.formulaName;
     try {
-      spawnSync("brew", ["services", "stop", name], {
-        encoding: "utf-8",
-        timeout: 30_000,
-        stdio: "ignore",
-      });
+      runCommand("brew", ["services", "stop", name], 30_000);
     } catch {}
     // Best-effort launchctl unload in case brew services stop did not clear it.
     if (svc.plistLabel) {
       try {
-        spawnSync("launchctl", ["unload", svc.plistLabel], {
-          encoding: "utf-8",
-          timeout: 10_000,
-          stdio: "ignore",
-        });
+        runCommand("launchctl", ["unload", svc.plistLabel], 10_000);
       } catch {}
     }
     stopped.push(svc.formulaName);
