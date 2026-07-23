@@ -4,8 +4,16 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { commitAndPushTap, isGitRepo, hasGitRemote } from "../../lib/tap-git.ts";
 import { updateFormulas } from "../../lib/update-formulas.ts";
-import { saveManifest, type PackageManifest } from "../../lib/manifest.ts";
-import { _setConfigDirForTesting } from "../../lib/config.ts";
+import {
+  saveManifest,
+  type PackageManifest,
+  _setPackagesDirForTesting,
+  _resetPackagesDirForTesting,
+} from "../../lib/manifest.ts";
+import {
+  _setConfigDirForTesting,
+  _resetConfigDirForTesting,
+} from "../../lib/config.ts";
 
 // ─── B4: Failure injection ──────────────────────────────────────────────
 // Tests that failures are handled cleanly:
@@ -17,16 +25,22 @@ import { _setConfigDirForTesting } from "../../lib/config.ts";
 
 let testConfigDir: string;
 let testTapDir: string;
+let testPackagesDir: string;
 
 beforeEach(async () => {
   testConfigDir = await mkdtemp(join(tmpdir(), "allbrew-b4-config-"));
   testTapDir = await mkdtemp(join(tmpdir(), "allbrew-b4-tap-"));
+  testPackagesDir = await mkdtemp(join(tmpdir(), "allbrew-b4-packages-"));
   _setConfigDirForTesting(testConfigDir);
+  _setPackagesDirForTesting(testPackagesDir);
 });
 
 afterEach(async () => {
   await rm(testConfigDir, { recursive: true, force: true }).catch(() => {});
   await rm(testTapDir, { recursive: true, force: true }).catch(() => {});
+  await rm(testPackagesDir, { recursive: true, force: true }).catch(() => {});
+  _resetConfigDirForTesting();
+  _resetPackagesDirForTesting();
 });
 
 function makeManifest(name: string, tapPath: string): PackageManifest {

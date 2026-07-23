@@ -15,6 +15,12 @@ export function _setConfigDirForTesting(dir: string) {
   _configFile = join(dir, 'config.json');
 }
 
+/** @internal Test-only: restore the default config directory. */
+export function _resetConfigDirForTesting() {
+  _configDir = DEFAULT_CONFIG_DIR;
+  _configFile = DEFAULT_CONFIG_FILE;
+}
+
 export type RemoteMode = "local" | "github";
 
 export type AllbrewConfig = {

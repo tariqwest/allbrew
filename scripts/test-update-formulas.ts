@@ -1,13 +1,22 @@
 #!/usr/bin/env bun
 
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   updateFormulas,
   type LivecheckEntry,
 } from "../lib/update-formulas.ts";
-import { saveManifest, deleteManifest } from "../lib/manifest.ts";
+import {
+  saveManifest,
+  deleteManifest,
+  _setPackagesDirForTesting,
+  _resetPackagesDirForTesting,
+} from "../lib/manifest.ts";
+import {
+  _setConfigDirForTesting,
+  _resetConfigDirForTesting,
+} from "../lib/config.ts";
 import type { PackageManifest } from "../lib/manifest.ts";
 
 const TEST_NAMES = [
@@ -62,11 +71,33 @@ function assert(condition: boolean, message: string) {
   }
 }
 
+async function writeTestConfig(configDir: string, tapPath: string) {
+  const config = {
+    tapPath,
+    update: { autoPush: true },
+  };
+  await mkdir(configDir, { recursive: true });
+  await writeFile(
+    join(configDir, "config.json"),
+    JSON.stringify(config, null, 2) + "\n",
+    "utf-8",
+  );
+}
+
 async function main() {
-  const tapPath = await mkdtemp(join(tmpdir(), "allbrew-tap-"));
+  const testDir = await mkdtemp(join(tmpdir(), "allbrew-update-formulas-test-"));
+  const tapPath = join(testDir, "tap");
+  const configDir = join(testDir, "config");
+  const packagesDir = join(testDir, "packages");
+
   let failures = 0;
 
   try {
+    await mkdir(tapPath, { recursive: true });
+    await writeTestConfig(configDir, tapPath);
+    _setConfigDirForTesting(configDir);
+    _setPackagesDirForTesting(packagesDir);
+
     await seedManifest("allbrew-test-managed-a", tapPath);
     await seedManifest("allbrew-test-managed-b", tapPath);
     await seedManifest("allbrew-test-managed-c", tapPath);
@@ -124,7 +155,9 @@ async function main() {
     for (const name of TEST_NAMES) {
       await deleteManifest(name);
     }
-    await rm(tapPath, { recursive: true, force: true });
+    _resetConfigDirForTesting();
+    _resetPackagesDirForTesting();
+    await rm(testDir, { recursive: true, force: true });
   }
 
   if (failures > 0) {

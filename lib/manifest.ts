@@ -34,14 +34,16 @@ export type PackageManifest = {
   recordedAt: string;
 };
 
-const PACKAGES_DIR = join(homedir(), ".config", "allbrew", "packages");
+const DEFAULT_PACKAGES_DIR = join(homedir(), ".config", "allbrew", "packages");
+
+let _packagesDir = DEFAULT_PACKAGES_DIR;
 
 function manifestPath(name: string) {
-  return join(PACKAGES_DIR, `${name}.json`);
+  return join(_packagesDir, `${name}.json`);
 }
 
 export async function saveManifest(manifest: PackageManifest) {
-  await mkdir(PACKAGES_DIR, { recursive: true });
+  await mkdir(_packagesDir, { recursive: true });
   await writeFile(
     manifestPath(manifest.name),
     JSON.stringify(manifest, null, 2) + "\n",
@@ -61,7 +63,7 @@ export async function loadManifest(
 
 export async function listManifests(): Promise<PackageManifest[]> {
   try {
-    const files = await readdir(PACKAGES_DIR);
+    const files = await readdir(_packagesDir);
     const manifests: PackageManifest[] = [];
     for (const file of files) {
       if (!file.endsWith(".json")) continue;
@@ -83,5 +85,15 @@ export async function deleteManifest(name: string) {
 }
 
 export function getPackagesDir() {
-  return PACKAGES_DIR;
+  return _packagesDir;
+}
+
+/** @internal Test-only: override the packages directory. */
+export function _setPackagesDirForTesting(dir: string) {
+  _packagesDir = dir;
+}
+
+/** @internal Test-only: restore the default packages directory. */
+export function _resetPackagesDirForTesting() {
+  _packagesDir = DEFAULT_PACKAGES_DIR;
 }

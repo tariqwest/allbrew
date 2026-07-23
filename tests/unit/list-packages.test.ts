@@ -1,9 +1,30 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import {
   formatPackageList,
   toPackageListRow,
+  listPackages,
 } from "../../lib/list-packages.ts";
+import {
+  saveManifest,
+  _setPackagesDirForTesting,
+  _resetPackagesDirForTesting,
+} from "../../lib/manifest.ts";
 import type { PackageManifest } from "../../lib/manifest.ts";
+
+let testPackagesDir: string;
+
+beforeEach(async () => {
+  testPackagesDir = await mkdtemp(join(tmpdir(), "allbrew-list-pkg-"));
+  _setPackagesDirForTesting(testPackagesDir);
+});
+
+afterEach(async () => {
+  await rm(testPackagesDir, { recursive: true, force: true }).catch(() => {});
+  _resetPackagesDirForTesting();
+});
 
 function manifest(overrides: Partial<PackageManifest> = {}): PackageManifest {
   return {
@@ -70,5 +91,20 @@ describe("list-packages: formatPackageList", () => {
     ]);
     expect(lines[1]).toContain("cask");
     expect(lines[1]).toContain("0.99");
+  });
+});
+
+describe("list-packages: listPackages", () => {
+  it("reads saved manifests from the packages directory", async () => {
+    await saveManifest(manifest({ name: "foo" }));
+    await saveManifest(manifest({ name: "bar", kind: "cask", generator: "cask-app" }));
+    const packages = await listPackages();
+    const names = packages.map((m) => m.name).sort();
+    expect(names).toEqual(["bar", "foo"]);
+  });
+
+  it("returns [] when no manifests exist", async () => {
+    const packages = await listPackages();
+    expect(packages).toEqual([]);
   });
 });

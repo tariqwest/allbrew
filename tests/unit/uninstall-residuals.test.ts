@@ -8,8 +8,16 @@ import {
   _setExecFileSyncForTesting,
   type ResidualCheckTarget,
 } from "../helpers/uninstall-residuals.ts";
-import { _setConfigDirForTesting } from "../../lib/config.ts";
-import { saveManifest, type PackageManifest } from "../../lib/manifest.ts";
+import {
+  _setConfigDirForTesting,
+  _resetConfigDirForTesting,
+} from "../../lib/config.ts";
+import {
+  saveManifest,
+  type PackageManifest,
+  _setPackagesDirForTesting,
+  _resetPackagesDirForTesting,
+} from "../../lib/manifest.ts";
 
 // ─── A2: uninstall residual helper unit tests ───────────────────────────
 // Tests the residual helper logic with an injected execFileSync so no real
@@ -21,15 +29,21 @@ import { saveManifest, type PackageManifest } from "../../lib/manifest.ts";
 //   - non-throwing variant
 
 let testConfigDir: string;
+let testPackagesDir: string;
 
 beforeEach(async () => {
   testConfigDir = await mkdtemp(join(tmpdir(), "allbrew-residual-test-"));
+  testPackagesDir = await mkdtemp(join(tmpdir(), "allbrew-residual-pkg-"));
   _setConfigDirForTesting(testConfigDir);
+  _setPackagesDirForTesting(testPackagesDir);
 });
 
 afterEach(async () => {
   await rm(testConfigDir, { recursive: true, force: true }).catch(() => {});
+  await rm(testPackagesDir, { recursive: true, force: true }).catch(() => {});
   _setExecFileSyncForTesting(undefined as any);
+  _resetConfigDirForTesting();
+  _resetPackagesDirForTesting();
 });
 
 function mockExec(replies: Record<string, (args: string[]) => string>) {
