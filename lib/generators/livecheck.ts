@@ -49,10 +49,20 @@ function jsonRegexLivecheckBlock(url, regex) {
   );
 }
 
-export function githubLatestLivecheckBlock() {
+export function githubLatestLivecheckBlock(fullName?: string, urlSymbol: string = ":head") {
+  const apiBase = process.env.GITHUB_API_URL;
+  if (fullName && apiBase && !apiBase.includes("api.github.com")) {
+    return (
+      `  livecheck do\n` +
+      `    url ${rubyString(`${apiBase}/repos/${fullName}/releases/latest`)}\n` +
+      `    strategy :page_match\n` +
+      `    regex(/"tag_name"\\s*:\\s*"v?([^"\\\\]+)"/i)\n` +
+      `  end\n\n`
+    );
+  }
   return (
     `  livecheck do\n` +
-    `    url :head\n` +
+    `    url ${urlSymbol}\n` +
     `    strategy :github_latest\n` +
     `  end\n\n`
   );

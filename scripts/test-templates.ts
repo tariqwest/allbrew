@@ -107,6 +107,11 @@ function buildGithubReleaseCase(): Case {
     `  zap trash: [\n` +
     `    "~/Library/Application Support/Foo",\n` +
     `  ]\n`;
+  const livecheckBlock =
+    `  livecheck do\n` +
+    `    url :stable\n` +
+    `    strategy :github_latest\n` +
+    `  end\n\n`;
   const payload: CaskPayload = {
     template: "cask_app_release",
     name: "foo",
@@ -117,6 +122,7 @@ function buildGithubReleaseCase(): Case {
     appName: "Foo.app",
     desc: "Foo cask",
     homepage: "https://github.com/x/foo",
+    livecheckBlock,
     zapBlock: zap,
   };
   const expected =
@@ -127,11 +133,8 @@ function buildGithubReleaseCase(): Case {
     `  name "Foo"\n` +
     `  desc "Foo cask"\n` +
     `  homepage "https://github.com/x/foo"\n\n` +
-    `  livecheck do\n` +
-    `    url :url\n` +
-    `    strategy :github_latest\n` +
-    `  end\n\n` +
     `  app "Foo.app"\n\n` +
+    livecheckBlock +
     zap +
     `end\n`;
   return { template: "cask_app_release", kind: "cask", payload, expected };
@@ -155,6 +158,11 @@ function buildBinaryReleaseCase(): Case {
     binName: "foo",
     licenseLine: '  license "MIT"\n',
     platformBlocks,
+    livecheckBlock:
+      `  livecheck do\n` +
+      `    url :stable\n` +
+      `    strategy :github_latest\n` +
+      `  end\n\n`,
     allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",

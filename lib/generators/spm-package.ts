@@ -55,7 +55,7 @@ export async function collectSpmPackagePayload(
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     urlLines,
     binInstallPaths,
-    livecheckBlock: githubLatestLivecheckBlock(),
+    livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(binTarget),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),

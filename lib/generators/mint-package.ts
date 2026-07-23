@@ -50,7 +50,7 @@ export async function collectMintPackagePayload(
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     urlLines,
     binName: rubyEscape(binName),
-    livecheckBlock: githubLatestLivecheckBlock(),
+    livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(binName),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),

@@ -8,6 +8,7 @@ import { downloadToTemp } from "../sha256.ts";
 import { listZipEntries } from "../archive-inspector.ts";
 import type { CaskAppReleasePayload } from "../template-payload.ts";
 import { writeRenderedCask } from "../template-renderer.ts";
+import { githubLatestLivecheckBlock } from "./livecheck.ts";
 
 export async function collectCaskAppReleasePayload(
   repoInfo: any,
@@ -42,6 +43,10 @@ export async function collectCaskAppReleasePayload(
       repoInfo.name.charAt(0).toUpperCase() + repoInfo.name.slice(1) + ".app";
   }
 
+  if (!appName.toLowerCase().endsWith(".app")) {
+    appName += ".app";
+  }
+
   const name = options.name || toCaskToken(repoInfo.name);
   const desc =
     options.desc || repoInfo.description || `Install ${repoInfo.name}`;
@@ -68,6 +73,7 @@ export async function collectCaskAppReleasePayload(
     appName: rubyEscape(appName),
     desc: rubyEscape(desc),
     homepage: rubyEscape(homepage),
+    livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
     zapBlock: buildZapBlock(zapPaths),
   };
 }

@@ -74,6 +74,7 @@ export type BinaryReleasePayload = FormulaCommonFields & {
   binName: string;
   licenseLine: string;
   platformBlocks: string;
+  livecheckBlock: string;
 };
 
 export type SetappCliPayload = Omit<BinaryReleasePayload, "template"> & {
@@ -118,6 +119,7 @@ export type CaskAppReleasePayload = {
   appName: string;
   desc: string;
   homepage: string;
+  livecheckBlock: string;
   zapBlock: string;
 };
 

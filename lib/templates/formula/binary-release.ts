@@ -6,12 +6,7 @@ export default function renderBinaryRelease(p: BinaryReleasePayload): string {
   homepage "${p.homepage}"
 ${p.licenseLine}  version "${p.version}"
 
-${p.platformBlocks}  livecheck do
-    url :stable
-    strategy :github_latest
-  end
-
-${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n\n` : ""}  def install
+${p.platformBlocks}${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n\n` : ""}  def install
     bin.install "${p.binName}"
   end
 

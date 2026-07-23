@@ -12,13 +12,8 @@ export default function renderCaskAppRelease(
   desc "${p.desc}"
   homepage "${p.homepage}"
 
-  livecheck do
-    url :url
-    strategy :github_latest
-  end
-
   app "${p.appName}"
 
-${p.zapBlock}end
+${p.livecheckBlock}${p.zapBlock}end
 `;
 }

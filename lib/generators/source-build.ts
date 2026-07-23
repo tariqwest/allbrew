@@ -57,7 +57,7 @@ export async function collectSourceBuildPayload(
     urlLines,
     dependenciesLines: buildDependenciesLines(system),
     installBody: buildInstallBody(system),
-    livecheckBlock: githubLatestLivecheckBlock(),
+    livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(options.binName || name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),

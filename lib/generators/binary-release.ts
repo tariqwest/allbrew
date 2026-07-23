@@ -10,6 +10,7 @@ import {
   getAllbrewFormulaDependency,
 } from "../utils.ts";
 import { downloadAndHash } from "../sha256.ts";
+import { githubLatestLivecheckBlock } from "./livecheck.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { BinaryReleasePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
@@ -65,6 +66,7 @@ export async function collectBinaryReleasePayload(
     binName: rubyEscape(name),
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     platformBlocks: buildPlatformBlocks(hashes, urlTemplate),
+    livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName, ":stable"),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(options.binName || name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),

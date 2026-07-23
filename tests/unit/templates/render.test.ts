@@ -183,6 +183,11 @@ describe("renderFormula", () => {
       `      sha256 "aa"\n` +
       `    end\n` +
       `  end\n\n`;
+    const livecheckBlock =
+      `  livecheck do\n` +
+      `    url :stable\n` +
+      `    strategy :github_latest\n` +
+      `  end\n\n`;
     const payload: FormulaPayload = {
       template: "binary_release",
       name: "foo",
@@ -193,6 +198,7 @@ describe("renderFormula", () => {
       binName: "foo",
       licenseLine: '  license "MIT"\n',
       platformBlocks,
+      livecheckBlock,
       allbrewDependency: "",
       testBinName: "foo",
       serviceBlock: "",
@@ -408,6 +414,11 @@ describe("renderCask", () => {
       `  zap trash: [\n` +
       `    "~/Library/Application Support/Foo",\n` +
       `  ]\n`;
+    const livecheckBlock =
+      `  livecheck do\n` +
+      `    url :stable\n` +
+      `    strategy :github_latest\n` +
+      `  end\n\n`;
     const payload: CaskPayload = {
       template: "cask_app_release",
       name: "foo",
@@ -418,6 +429,7 @@ describe("renderCask", () => {
       appName: "Foo.app",
       desc: "Foo cask",
       homepage: "https://github.com/x/foo",
+      livecheckBlock,
       zapBlock: zap,
     };
     const expected =
@@ -428,11 +440,8 @@ describe("renderCask", () => {
       `  name "Foo"\n` +
       `  desc "Foo cask"\n` +
       `  homepage "https://github.com/x/foo"\n\n` +
-      `  livecheck do\n` +
-      `    url :url\n` +
-      `    strategy :github_latest\n` +
-      `  end\n\n` +
       `  app "Foo.app"\n\n` +
+      livecheckBlock +
       zap +
       `end\n`;
     expect(renderCask(payload)).toBe(expected);
