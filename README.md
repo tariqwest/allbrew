@@ -11,7 +11,7 @@ Make Homebrew the source of truth for all your macOS installs, regardless of whe
 - `allbrew scan` — adopt already-installed non-Homebrew apps into your tap without reinstalling
 - `allbrew switch` — migrate manually installed apps to official Homebrew formulas/casks
 - `allbrew hooks` uninstall detection — clean up stale formulas/casks/manifests when tracked apps are removed outside of Homebrew/allbrew
-- `allbrew list`, `allbrew info`, `allbrew remove`, `allbrew regenerate`, and `allbrew doctor` — small management commands that fall out of existing infrastructure
+- `allbrew info`, `allbrew remove`, `allbrew regenerate`, and `allbrew doctor` — small management commands that fall out of existing infrastructure (`allbrew list` is implemented)
 
 **Known rough edges:**
 
@@ -19,48 +19,14 @@ Make Homebrew the source of truth for all your macOS installs, regardless of whe
 - MAS install requires the full App Store URL (app name/id lookup is planned)
 - Uninstall/zap behavior has not been verified across all generator paths
 - DMG-only desktop apps (Electron/Avalonia) still need generator improvements
-- Security and type-safety hardening is in progress — see [`.agents/plans/fable-app-review-2026-07-11.md`](.agents/plans/fable-app-review-2026-07-11.md)
+- The dotnet/NuGet generator is **experimental** — its end-to-end suite is quarantined pending fixes
+- Type-safety hardening (strict mode) is in progress — see [`.agents/plans/fable-app-review-2026-07-11.md`](.agents/plans/fable-app-review-2026-07-11.md)
 
 ## Install
 
-### Homebrew
+> **Alpha note:** the Homebrew tap and npm package are not published yet — install **from source** (below) for now. The tap/npm instructions describe the planned distribution channels.
 
-```bash
-brew tap tariqwest/allbrew
-brew install allbrew
-```
-
-### Bun (global)
-
-```bash
-bun install -g allbrew
-```
-
-### Node (global)
-
-```bash
-npm install -g allbrew
-```
-
-The `allbrew` bin is a small JS shim that registers [`tsx`](https://github.com/privatenumber/tsx) as the ESM loader and then imports the TypeScript entry directly — no build step. `tsx` ships as an `optionalDependency` so it auto-installs with npm. If you installed with `--no-optional`, install tsx yourself (`npm install -g tsx`) or reinstall without that flag.
-
-Requires Node 18+ (global `fetch`, `AbortSignal.timeout`, `Readable.fromWeb`).
-
-### Deno (global)
-
-```bash
-deno install -g npm:allbrew
-```
-
-Deno 2.x runs the TypeScript entry natively via its npm-compat layer. The CLI makes network calls, spawns subprocesses (`git`, `brew`, `mas`), and writes files, so grant permissions:
-
-```bash
-deno install -g --allow-all npm:allbrew
-```
-
-Requires Deno 2.0+ (global `process` and `Buffer` via node-compat).
-
-### From source
+### From source (recommended for alpha)
 
 ```bash
 git clone https://github.com/tariqwest/allbrew.git
@@ -77,6 +43,43 @@ cd allbrew
 npm install
 npm link            # uses the JS shim + tsx
 ```
+
+### Homebrew (planned)
+
+```bash
+brew tap tariqwest/allbrew
+brew install allbrew
+```
+
+### Bun (global, planned)
+
+```bash
+bun install -g allbrew
+```
+
+### Node (global, planned)
+
+```bash
+npm install -g allbrew
+```
+
+The `allbrew` bin is a small JS shim that registers [`tsx`](https://github.com/privatenumber/tsx) as the ESM loader and then imports the TypeScript entry directly — no build step. `tsx` ships as an `optionalDependency` so it auto-installs with npm. If you installed with `--no-optional`, install tsx yourself (`npm install -g tsx`) or reinstall without that flag.
+
+Requires Node 18+ (global `fetch`, `AbortSignal.timeout`, `Readable.fromWeb`).
+
+### Deno (global, planned)
+
+```bash
+deno install -g npm:allbrew
+```
+
+Deno 2.x runs the TypeScript entry natively via its npm-compat layer. The CLI makes network calls, spawns subprocesses (`git`, `brew`, `mas`), and writes files, so grant permissions:
+
+```bash
+deno install -g --allow-all npm:allbrew
+```
+
+Requires Deno 2.0+ (global `process` and `Buffer` via node-compat).
 
 ## Setup
 
@@ -119,6 +122,10 @@ allbrew https://github.com/some/repo --manual
 # Use a GitHub token to avoid rate limits
 export GITHUB_TOKEN=ghp_...
 allbrew https://github.com/some/private-repo
+
+# List packages managed by allbrew
+allbrew list
+allbrew list --json
 
 # Install hooks so `brew update` also updates your allbrew-managed formulas
 allbrew hooks install
@@ -234,7 +241,7 @@ allbrew stores its config at `~/.config/allbrew/config.json`.
 
 - allbrew **generates** Ruby formula/cask files; it does **not** evaluate them. Homebrew evaluates the generated `.rb` files during `brew install`.
 - Provide URLs only from sources you trust. allbrew downloads the linked artifacts and computes SHA256 checksums, but a malicious upstream could still craft descriptions, archive entries, or install scripts.
-- Your GitHub token is stored in `~/.config/allbrew/config.json`. Do not commit this file. A hardening pass to restrict file permissions is in progress.
+- Your GitHub token is stored in `~/.config/allbrew/config.json` (written with `0600` permissions). Do not commit this file.
 - When a README advertises an existing `brew install` command, allbrew offers to run it for you; review the command before confirming.
 
 ## Development
