@@ -8,7 +8,9 @@ ${p.licenseLine}${p.urlLines}
 ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "dotnet"
 
   def install
-    system "dotnet", "tool", "install", ${p.packageName}, "--tool-path", "#{bin}", "--version", version.to_s
+    (buildpath/"nupkg").install cached_download
+    system "dotnet", "tool", "install", ${p.packageName}, "--tool-path", "#{bin}", "--version", version.to_s, "--add-source", buildpath/"nupkg"
+    bin.env_script_all_files(libexec, DOTNET_ROOT: Formula["dotnet"].opt_libexec)
   end
 
 ${p.serviceBlock}  test do
