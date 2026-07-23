@@ -136,6 +136,36 @@ configCmd
     await runConfigSetRemote();
   });
 
+program
+  .command("list")
+  .description("List packages managed by allbrew (from saved manifests)")
+  .option("--json", "Output machine-readable JSON")
+  .action(async (opts) => {
+    const chalk = (await import("chalk")).default;
+    const { listPackages, formatPackageList } = await import(
+      "../lib/list-packages.ts"
+    );
+    const manifests = await listPackages();
+    if (opts.json) {
+      console.log(JSON.stringify(manifests, null, 2));
+      return;
+    }
+    const lines = formatPackageList(manifests);
+    if (lines.length === 0) {
+      console.log(
+        chalk.dim(
+          "No managed packages found. Generate one with: allbrew <url>",
+        ),
+      );
+      return;
+    }
+    const [header, ...rows] = lines;
+    console.log(chalk.bold(header));
+    for (const row of rows) console.log(row);
+    console.log();
+    console.log(chalk.dim(`${manifests.length} package(s) tracked in manifests.`));
+  });
+
 const updateFormulasCmd = program
   .command("update-formulas")
   .description(
