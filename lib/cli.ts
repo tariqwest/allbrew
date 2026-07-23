@@ -970,6 +970,11 @@ async function handleDotnetPackage(classification, opts) {
   if (!packageName) {
     throw new Error("NuGet package name required (use --package or a nuget URL)");
   }
+  console.log(
+    chalk.yellow(
+      "Note: the dotnet/NuGet generator is experimental and not yet fully verified end-to-end.",
+    ),
+  );
   return await generateWithConfirmation(
     "dotnet-package",
     { packageName, repoInfo: null },
