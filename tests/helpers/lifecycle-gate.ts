@@ -13,7 +13,7 @@
  * Detection:
  *   - `ALLBREW_LIFECYCLE_LOCAL=1` → force local execution (opt-in).
  *   - `ALLBREW_LUME=1`            → running inside a Lume VM (legacy/allbrew-specific).
- *   - `TH_IN_VM=1`                → running inside a Lume VM (set by lume-macos-testing-harness).
+ *   - `TH_IN_VM=1`                → running inside a Lume VM (set by macos-testing-harness).
  *   - Otherwise → skip (not Lume, not opted in).
  *
  * Usage with bun:test:

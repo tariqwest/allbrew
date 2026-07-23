@@ -1,7 +1,7 @@
 /**
  * allbrew test-suite for the Lume macOS testing harness.
  *
- * This file consumes the harness via its public SDK (`lume-macos-testing-harness`)
+ * This file consumes the harness via its public SDK (`macos-testing-harness`)
  * and defines the test steps, profiles, lifecycle hooks, and readout sections
  * that the harness runs inside the per-project macOS VM user.
  *
@@ -36,7 +36,7 @@ import {
   appendReadout,
   type HomebrewSession,
   type Journey,
-} from "lume-macos-testing-harness";
+} from "macos-testing-harness";
 import { readFileSync, existsSync } from "node:fs";
 
 const BASE_TIMEOUT = 600_000; // 10 min per journey step
@@ -256,8 +256,8 @@ export const {
     /**
      * Install allbrew dependencies in the private workspace as the project user.
      *
-     * The `lume-macos-testing-harness` devDependency now points to a vendored copy
-     * (`file:./vendor/lume-macos-testing-harness`) that is staged into the workspace,
+     * The `macos-testing-harness` devDependency now points to a vendored copy
+     * (`file:./vendor/macos-testing-harness`) that is staged into the workspace,
      * so we install it alongside the other devDependencies. `test-suite.ts` needs it
      * for type-checking inside the VM.
      */
@@ -269,7 +269,7 @@ export const {
           "set -e",
           "test -d node_modules/@types/bun",
           "test -d node_modules/typescript",
-          "test -d node_modules/lume-macos-testing-harness",
+          "test -d node_modules/macos-testing-harness",
         ].join("\n"),
         "Install dependencies"
       );

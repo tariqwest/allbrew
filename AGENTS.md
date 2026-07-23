@@ -122,9 +122,9 @@ bun test tests/unit/ --test-name-pattern "classifies GitHub"
 
 ## E2E VM testing
 
-For real-world, isolated testing on a clean macOS install, allbrew consumes the [`lume-macos-testing-harness`](https://github.com/tariqwest/lume-macos-testing-harness) as a sibling `file:` dependency and defines its VM test suite in [`test-suite.ts`](./test-suite.ts) at the repo root. The harness is invoked via the `bun run vm:*` package scripts.
+For real-world, isolated testing on a clean macOS install, allbrew consumes the [`macos-testing-harness`](https://github.com/tariqwest/macos-testing-harness) as a vendored `file:` dependency and defines its VM test suite in [`test-suite.ts`](./test-suite.ts) at the repo root. The harness is invoked via the `bun run vm:*` package scripts.
 
-> **Migration status:** the legacy `scripts/e2e-vm-*.sh` orchestration has been removed after the `acceptance` profile passed a VM run. VM execution is now exclusively through `bun run vm:*`; local filesystem runs use `scripts/test-e2e.sh` / `scripts/test-e2e-tap.sh` or the direct `bun run test:e2e*` scripts. See [`lume-macos-testing-harness/.agents/plans/allbrew-migration.md`](../lume-macos-testing-harness/.agents/plans/allbrew-migration.md) for the full migration plan.
+> **Migration status:** the legacy `scripts/e2e-vm-*.sh` orchestration has been removed after the `acceptance` profile passed a VM run. VM execution is now exclusively through `bun run vm:*`; local filesystem runs use `scripts/test-e2e.sh` / `scripts/test-e2e-tap.sh` or the direct `bun run test:e2e*` scripts. See [`vendor/macos-testing-harness/.agents/plans/allbrew-migration.md`](./vendor/macos-testing-harness/.agents/plans/allbrew-migration.md) for the full migration plan.
 
 ### Quick reference (`bun run vm:*`)
 

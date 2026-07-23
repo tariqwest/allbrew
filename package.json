@@ -29,22 +29,22 @@
     "test:all": "bun test",
     "test:templates": "bun run scripts/test-templates.ts",
     "test:update-formulas": "bun run scripts/test-update-formulas.ts",
-    "vm:init": "lume-test-harness init",
-    "vm:setup": "lume-test-harness setup",
-    "vm:test": "lume-test-harness run",
-    "vm:test:int": "lume-test-harness run --profile integration",
-    "vm:test:e2e": "lume-test-harness run --profile e2e",
-    "vm:test:e2e-tap": "lume-test-harness run --profile e2e-tap",
-    "vm:test:all": "lume-test-harness run --profile integration --profile e2e --profile e2e-tap",
-    "vm:test:user-journeys": "lume-test-harness run --profile user-journeys",
-    "vm:nightly": "lume-test-harness reset --nuclear && lume-test-harness setup && lume-test-harness run --profile user-journeys",
-    "vm:readout": "lume-test-harness readout",
-    "vm:reset": "lume-test-harness reset",
-    "vm:reset:nuclear": "lume-test-harness reset --nuclear",
-    "vm:ssh": "lume-test-harness ssh",
-    "vm:sync": "lume-test-harness sync",
-    "vm:clone": "lume-test-harness clone",
-    "vm:teardown": "lume-test-harness teardown"
+    "vm:init": "macos-test-harness init",
+    "vm:setup": "macos-test-harness setup",
+    "vm:test": "macos-test-harness run",
+    "vm:test:int": "macos-test-harness run --profile integration",
+    "vm:test:e2e": "macos-test-harness run --profile e2e",
+    "vm:test:e2e-tap": "macos-test-harness run --profile e2e-tap",
+    "vm:test:all": "macos-test-harness run --profile integration --profile e2e --profile e2e-tap",
+    "vm:test:user-journeys": "macos-test-harness run --profile user-journeys",
+    "vm:nightly": "macos-test-harness reset --nuclear && macos-test-harness setup && macos-test-harness run --profile user-journeys",
+    "vm:readout": "macos-test-harness readout",
+    "vm:reset": "macos-test-harness reset",
+    "vm:reset:nuclear": "macos-test-harness reset --nuclear",
+    "vm:ssh": "macos-test-harness ssh",
+    "vm:sync": "macos-test-harness sync",
+    "vm:clone": "macos-test-harness clone",
+    "vm:teardown": "macos-test-harness teardown"
   },
   "keywords": [
     "homebrew",
@@ -80,7 +80,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "lume-macos-testing-harness": "file:./vendor/lume-macos-testing-harness",
+    "macos-testing-harness": "file:./vendor/macos-testing-harness",
     "typescript": "^5.8.0"
   }
 }
