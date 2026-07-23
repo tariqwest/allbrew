@@ -34,7 +34,7 @@
 | Output | Homebrew **Ruby** `.rb` files (generated as strings, not evaluated) |
 | Config | `~/.config/allbrew/config.json` |
 | Manifests | `~/.config/allbrew/packages/*.json` |
-| Distribution | `brew tap tariqwest/allbrew`, `bun install -g`, `npm install -g`, `deno install -g npm:allbrew`, or release tarball |
+| Distribution | `brew tap tariqwest/tap`, `bun install -g`, `npm install -g`, `deno install -g npm:allbrew`, or release tarball |
 
 ## Build and test commands
 
@@ -328,12 +328,12 @@ When a formula/cask is generated, allbrew saves a **PackageManifest** JSON to `~
 
 ### Formula dependency injection
 
-Every generated **formula** gets `depends_on "tariqwest/allbrew/allbrew"` so the tap stays linked to allbrew. Casks are not injected.
+When `ALLBREW_FORMULA_DEPENDENCY` is set (or defaults are enabled), generated formulae get `depends_on "tariqwest/tap/allbrew"` so the tap stays linked to allbrew. Casks are not injected.
 
 ## Project structure
 
 ```
-homebrew-allbrew/
+allbrew/
   bin/allbrew.ts              # CLI entry point
   lib/
     cli.ts                    # Orchestration: classify, route, prompt, generate, save manifest

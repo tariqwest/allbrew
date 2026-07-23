@@ -30,7 +30,7 @@ This is an **alpha** (v0.0.2). Core generation works for 17 generator paths and 
 
 ### Distribution status
 
-- **Homebrew tap** ✅ Published: `brew tap tariqwest/allbrew && brew trust tariqwest/allbrew && brew install allbrew` works.
+- **Homebrew tap** ✅ Published: `brew tap tariqwest/tap && brew trust tariqwest/tap && brew install allbrew` works.
 - **npm / Bun / Deno packages** — not published yet.
 - **Source install** — always available.
 
@@ -39,8 +39,8 @@ This is an **alpha** (v0.0.2). Core generation works for 17 generator paths and 
 ### Homebrew (recommended)
 
 ```bash
-brew tap tariqwest/allbrew
-brew trust tariqwest/allbrew
+brew tap tariqwest/tap
+brew trust tariqwest/tap
 brew install allbrew
 ```
 
@@ -234,7 +234,7 @@ Now `brew update` runs `allbrew update-formulas` afterwards.
 
 ## Next todos (rough priority)
 
-1. **Verify cold install:** run `brew tap tariqwest/allbrew && brew trust tariqwest/allbrew && brew install allbrew` in a clean environment (Lume VM or fresh macOS install) and fix any formula issues.
+1. **Verify cold install:** run `brew tap tariqwest/tap && brew trust tariqwest/tap && brew install allbrew` in a clean environment (Lume VM or fresh macOS install) and fix any formula issues.
 2. **Fix the dotnet harness:** raise the fixture-server idle timeout or pre-build the fake nupkg, then un-quarantine the suite.
 3. **Add `allbrew info` / `allbrew remove` / `allbrew doctor`:** small management commands that reuse existing manifest infrastructure.
 4. **Uninstall residual verification:** run the residual helper across every generator path.
@@ -267,7 +267,7 @@ Publish (requires `GITHUB_TOKEN` and the Homebrew tap repo):
 
 ```bash
 export GITHUB_TOKEN=ghp_...
-HOMEBREW_TAP_REPO=tariqwest/homebrew-allbrew bun run release patch
+bun run release patch
 ```
 
 See `scripts/release.ts` for the full release flow.

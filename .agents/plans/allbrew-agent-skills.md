@@ -153,7 +153,7 @@ Each fix skill is a diagnostic + repair workflow for one failure domain. They ar
 - **Name collisions with homebrew-core** (F16): check `brew info --json <name>` before writing, suggest prefixed name.
 - **Silent overwrite of existing `.rb`** (F17): prompt in interactive mode.
 - **Setup partial-failure** (F22 — orphaned GitHub repo, unusable tap): order remote creation last, fail hard on tap errors.
-- **Template output validation:** license stanza correctness (A5 — hardcoded `license "MIT"`), livecheck block, `depends_on "tariqwest/allbrew/allbrew"` injection, `service do` block shape. Render via the pure renderer and audit before writing.
+- **Template output validation:** license stanza correctness (A5 — hardcoded `license "MIT"`), livecheck block, `depends_on "tariqwest/tap/allbrew"` injection (controlled by `ALLBREW_FORMULA_DEPENDENCY`), `service do` block shape. Render via the pure renderer and audit before writing.
 
 **Grounding:** `lib/classifier.ts`, `lib/generators/*.ts`, `lib/analyzer.ts`, `lib/archive-inspector.ts`, `lib/sha256.ts`, `lib/setup.ts`, `lib/utils.ts`, `lib/template-renderer.ts`, `lib/templates/`, S1 (output side), F8-F12, F16-F17, F20-F22, A5.
 
