@@ -183,7 +183,7 @@ function generateFormula(version: string, sha256: string) {
     libexec.install Dir["*"]
 
     (libexec/"allbrew").install libexec/"scripts"/"update-managed.sh"
-    (libexec/"allbrew").chmod 0755, "update-managed.sh"
+    chmod 0755, libexec/"allbrew"/"update-managed.sh"
 
     (etc/"allbrew-brew-wrap").write <<~EOS
       # allbrew brew update hook
