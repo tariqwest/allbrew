@@ -3,6 +3,7 @@ import { collectCaskAppPayload } from "../../lib/generators/cask-app.ts";
 import { collectCaskAppReleasePayload } from "../../lib/generators/cask-app-release.ts";
 import { renderCask } from "../../lib/template-renderer.ts";
 import { assertValidCask } from "./helpers/validate-ruby.ts";
+import mcpsmFixture from "../fixtures/github/mcpsm.json";
 
 /**
  * Tier 2 — Integration: downloads real DMG/ZIP assets, validates SHA + cask Ruby.
@@ -708,6 +709,39 @@ describe.concurrent("cask-app-release integration", () => {
     expect(ruby).toContain('cask "hermes-one" do');
     expect(ruby).toContain("strategy :github_latest");
     expect(ruby).toContain("https://hermesone.org");
+    expect(ruby).toContain("zap trash:");
+  }, 60000);
+
+  const mcpsmRepoInfo = mcpsmFixture.repo;
+  const mcpsmRelease = mcpsmFixture.release;
+
+  it("MCPSM: payload from Rust .app.zip release is well-formed", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      mcpsmRepoInfo,
+      mcpsmRelease,
+      { name: "mcpsm" },
+    );
+    expect(payload.template).toBe("cask_app_release");
+    expect(payload.name).toBe("mcpsm");
+    expect(payload.version).toBe("1.1.3");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.url).toContain("#{version}");
+    expect(payload.url).toContain(".zip");
+    expect(payload.url).not.toContain(".dmg");
+    expect(payload.appName).toBe("MCPSM.app");
+  }, 60000);
+
+  it("MCPSM: generates structurally valid Ruby cask", async () => {
+    const payload = await collectCaskAppReleasePayload(
+      mcpsmRepoInfo,
+      mcpsmRelease,
+      { name: "mcpsm" },
+    );
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "mcpsm" do');
+    expect(ruby).toContain("strategy :github_latest");
+    expect(ruby).toContain('app "MCPSM.app"');
     expect(ruby).toContain("zap trash:");
   }, 60000);
 });
