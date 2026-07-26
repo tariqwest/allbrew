@@ -8,6 +8,7 @@ import npkillFixture from "../../fixtures/npm/npkill.json";
 import vtopFixture from "../../fixtures/npm/vtop.json";
 import samanhappyMcphubFixture from "../../fixtures/npm/samanhappy-mcphub.json";
 import augmentcodeAuggieFixture from "../../fixtures/npm/augmentcode-auggie.json";
+import smitheryCliFixture from "../../fixtures/npm/smithery-cli.json";
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
@@ -550,6 +551,85 @@ describe("collectNpmPackagePayload — @augmentcode/auggie", () => {
 
   it("includes empty service block by default", async () => {
     const payload = await collectNpmPackagePayload("@augmentcode/auggie");
+    expect(payload.serviceBlock).toBe("");
+  });
+});
+
+describe("collectNpmPackagePayload — @smithery/cli", () => {
+  beforeEach(() => {
+    mock.restore();
+
+    global.fetch = mock((url: string) => {
+      if (url.includes("registry.npmjs.org/%40smithery%2Fcli") || url.includes("registry.npmjs.org/@smithery/cli")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(smitheryCliFixture),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+      });
+    }) as any;
+  });
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli");
+    expect(payload.template).toBe("npm_package");
+  });
+
+  it("derives name and className from scoped package", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli");
+    expect(payload.name).toBe("smithery-cli");
+    expect(payload.className).toBe("SmitheryCli");
+  });
+
+  it("uses npm description", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli");
+    expect(payload.desc).toContain("Model Context Protocol");
+  });
+
+  it("uses npm homepage", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli");
+    expect(payload.homepage).toBe("https://smithery.ai/");
+  });
+
+  it("uses tarball URL from latest version", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli");
+    expect(payload.url).toBe(
+      "https://registry.npmjs.org/@smithery/cli/-/cli-4.11.1.tgz",
+    );
+  });
+
+  it("extracts bin name that differs from package last segment", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli");
+    expect(payload.testBinName).toBe("smithery");
+  });
+
+  it("generates npm registry livecheck block for scoped package", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli");
+    expect(payload.livecheckBlock).toContain(
+      "registry.npmjs.org/%40smithery%2Fcli/latest",
+    );
+  });
+
+  it("falls back to repoInfo license when npm omits license", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli", {
+      license: "AGPL-3.0",
+    });
+    expect(payload.licenseLine).toContain("AGPL-3.0");
+  });
+
+  it("respects name override to match Homebrew token", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli", null, {
+      name: "smithery",
+    });
+    expect(payload.name).toBe("smithery");
+    expect(payload.className).toBe("Smithery");
+  });
+
+  it("includes empty service block by default", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli");
     expect(payload.serviceBlock).toBe("");
   });
 });

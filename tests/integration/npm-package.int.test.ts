@@ -163,6 +163,25 @@ describe.concurrent("npm-package integration", () => {
     expect(ruby).toContain("bin.install_symlink");
   });
 
+  it("@smithery/cli: payload fields are well-formed (scoped pkg, MCP/ skill CLI)", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli");
+    expect(payload.template).toBe("npm_package");
+    expect(payload.name).toBe("smithery-cli");
+    expect(payload.url).toMatch(/^https:\/\/registry\.npmjs\.org\/@smithery\/cli\/\-\/cli-.+\.tgz/);
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.livecheckBlock).toContain("registry.npmjs.org/%40smithery%2Fcli/latest");
+  });
+
+  it("@smithery/cli: generates structurally valid Ruby formula", async () => {
+    const payload = await collectNpmPackagePayload("@smithery/cli");
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class SmitheryCli < Formula");
+    expect(ruby).toContain('depends_on "node"');
+    expect(ruby).toContain('system "npm", "install"');
+    expect(ruby).toContain("bin.install_symlink");
+  });
+
   it("nonexistent-pkg-xyz: throws on missing package", async () => {
     await expect(
       collectNpmPackagePayload("nonexistent-allbrew-test-xyz-999"),
