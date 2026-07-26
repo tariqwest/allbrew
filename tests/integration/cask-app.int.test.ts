@@ -310,6 +310,35 @@ describe.concurrent("cask-app integration", () => {
     expect(ruby).toContain('app "IconChamp.app"');
     expect(ruby).toContain("https://www.macenhance.com/iconchamp");
   }, 120000);
+
+  it("ego lite DMG: CDN download, no version in URL, payload is well-formed", async () => {
+    const url =
+      "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "ego-lite",
+      appName: "ego lite.app",
+      homepage: "https://lite.ego.app",
+    });
+    expect(payload.template).toBe("cask_app");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.versionLine).toBe("");
+    expect(payload.url).toContain("cdn.ego.app");
+  }, 120000);
+
+  it("ego lite DMG: generates structurally valid Ruby cask with spaced app name", async () => {
+    const url =
+      "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg";
+    const payload = await collectCaskAppPayload(url, {
+      name: "ego-lite",
+      appName: "ego lite.app",
+      homepage: "https://lite.ego.app",
+    });
+    const ruby = renderCask(payload);
+    assertValidCask(ruby);
+    expect(ruby).toContain('cask "ego-lite" do');
+    expect(ruby).toContain('app "ego lite.app"');
+    expect(ruby).toContain("https://lite.ego.app");
+  }, 120000);
 });
 
 describe.concurrent("cask-app-release integration", () => {

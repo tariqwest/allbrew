@@ -473,4 +473,62 @@ describe("collectCaskAppPayload", () => {
     expect(payload.sha256).toBeTruthy();
     expect(payload.sha256.length).toBeGreaterThan(0);
   });
+
+  it("ego lite DMG: no version in CDN URL produces empty versionLine", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
+      { name: "ego-lite", appName: "ego lite.app", homepage: "https://lite.ego.app" },
+    );
+    expect(payload.versionLine).toBe("");
+  });
+
+  it("ego lite DMG: template is cask_app", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
+      { name: "ego-lite", appName: "ego lite.app", homepage: "https://lite.ego.app" },
+    );
+    expect(payload.template).toBe("cask_app");
+  });
+
+  it("ego lite DMG: respects name override (kebab-case brand token)", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
+      { name: "ego-lite", appName: "ego lite.app", homepage: "https://lite.ego.app" },
+    );
+    // Filename `egolite.dmg` would derive "egolite" by default; brand token is "ego-lite"
+    expect(payload.name).toBe("ego-lite");
+  });
+
+  it("ego lite DMG: respects appName override with space in appOrPkgBlock", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
+      { name: "ego-lite", appName: "ego lite.app", homepage: "https://lite.ego.app" },
+    );
+    expect(payload.appOrPkgBlock).toContain("ego lite.app");
+  });
+
+  it("ego lite DMG: respects homepage override", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
+      { name: "ego-lite", appName: "ego lite.app", homepage: "https://lite.ego.app" },
+    );
+    expect(payload.homepageLine).toContain("https://lite.ego.app");
+  });
+
+  it("ego lite DMG: includes SHA256", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
+      { name: "ego-lite", appName: "ego lite.app", homepage: "https://lite.ego.app" },
+    );
+    expect(payload.sha256).toBeTruthy();
+    expect(payload.sha256.length).toBeGreaterThan(0);
+  });
+
+  it("ego lite DMG: generates livecheck block", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
+      { name: "ego-lite", appName: "ego lite.app", homepage: "https://lite.ego.app" },
+    );
+    expect(payload.livecheckBlock).toContain("livecheck do");
+  });
 });
