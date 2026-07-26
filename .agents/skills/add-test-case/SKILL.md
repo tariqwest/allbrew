@@ -115,19 +115,21 @@ If the app is interesting to exercise end-to-end or demonstrates an edge case:
 - Include the `allbrew` invocation and the verification command.
 - Call out any notable edge case (deprecated formula, bin name mismatch, arm64-only, unsigned app, etc.).
 
-## 7. Optionally add an E2E catalog entry
+## 7. Add an E2E catalog entry
 
-Only if the user explicitly asks for E2E coverage or says "add to the E2E catalog":
+Always add a corresponding entry to `tests/e2e/catalog.json` as part of flowing the test case through the suite:
 
-- Edit `tests/e2e/catalog.json` and append a JSON object with:
+- Append a JSON object with:
   - `name`: the Homebrew formula/cask name (kebab-case).
   - `url`: the URL the user provided or the canonical source URL.
   - `generator`: the chosen generator name.
   - `allbrewArgs`: extra CLI arguments needed for disambiguation, such as `--name`, `--app-name`, `--homepage`, `--desc`, or `--no-service`.
   - `expectedBin`: the CLI binary name, or `null` for casks.
   - `verifyCommand`: an array of strings used to verify the installation.
-  - `skip`: `false` unless the user explicitly asks to skip.
+  - `skip`: `true` by default. Only set it to `false` when the user explicitly asks to run the E2E installation (e.g., "and run it end-to-end" or "add as an active E2E test").
   - `notes`: a concise description of the app and why it is an interesting test case.
+
+The default `skip: true` keeps the catalog comprehensive without forcing every new test case to pass a live `brew install`.
 
 ## 8. Verify
 
@@ -142,4 +144,4 @@ Ensure all tests pass before finishing.
 
 ## 9. Summarize
 
-Report the files changed and the generator chosen. Do not run the E2E tier unless explicitly requested.
+Report the files changed and the generator chosen, including the new `tests/e2e/catalog.json` entry. Do not run the E2E tier unless the user explicitly asked for `skip: false`.
