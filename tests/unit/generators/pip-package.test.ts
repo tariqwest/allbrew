@@ -1,5 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectPipPackagePayload } from "../../../lib/generators/pip-package.ts";
+import { collectPipPackagePayload, selectBestDistribution } from "../../../lib/generators/pip-package.ts";
 import marimoFixture from "../../fixtures/pypi/marimo.json";
 import clickFixture from "../../fixtures/pypi/click.json";
 import stuiFixture from "../../fixtures/pypi/s-tui.json";
@@ -84,11 +84,11 @@ describe("collectPipPackagePayload", () => {
     expect(payload.homepage).toBe("https://github.com/marimo-team/marimo");
   });
 
-  it("selects sdist URL and SHA256", async () => {
+  it("prefers wheel URL and SHA256 over sdist", async () => {
     const payload = await collectPipPackagePayload("marimo");
-    expect(payload.url).toContain("marimo-0.13.0.tar.gz");
+    expect(payload.url).toContain("marimo-0.13.0-py3-none-any.whl");
     expect(payload.sha256).toBe(
-      "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
     );
   });
 
@@ -105,6 +105,7 @@ describe("collectPipPackagePayload", () => {
   it("resolves transitive dependencies as resources", async () => {
     const payload = await collectPipPackagePayload("marimo");
     expect(payload.resourcesBlock).toContain('resource "click"');
+    // click fixture is sdist-only
     expect(payload.resourcesBlock).toContain("click-8.1.7.tar.gz");
   });
 
@@ -201,11 +202,11 @@ describe("collectPipPackagePayload — s-tui", () => {
     expect(payload.homepage).toBe("https://github.com/amanusk/s-tui");
   });
 
-  it("selects sdist URL and SHA256", async () => {
+  it("prefers wheel URL and SHA256 over sdist", async () => {
     const payload = await collectPipPackagePayload("s-tui");
-    expect(payload.url).toContain("s-tui-1.1.6.tar.gz");
+    expect(payload.url).toContain("s_tui-1.1.6-py3-none-any.whl");
     expect(payload.sha256).toBe(
-      "e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2",
+      "f2e3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9b0a1f2e3",
     );
   });
 
@@ -337,5 +338,96 @@ describe("collectPipPackagePayload — toolong", () => {
   it("generates PyPI livecheck block", async () => {
     const payload = await collectPipPackagePayload("toolong");
     expect(payload.livecheckBlock).toContain("pypi.org/pypi/toolong/json");
+  });
+});
+
+
+describe("selectBestDistribution", () => {
+  const pureWheel = {
+    packagetype: "bdist_wheel",
+    python_version: "py3",
+    filename: "pkg-1.0.0-py3-none-any.whl",
+    url: "https://files.pythonhosted.org/packages/xx/pkg-1.0.0-py3-none-any.whl",
+    digests: { sha256: "aa".repeat(32) },
+  };
+  const sdist = {
+    packagetype: "sdist",
+    python_version: "source",
+    filename: "pkg-1.0.0.tar.gz",
+    url: "https://files.pythonhosted.org/packages/xx/pkg-1.0.0.tar.gz",
+    digests: { sha256: "bb".repeat(32) },
+  };
+  const arm64Wheel = {
+    packagetype: "bdist_wheel",
+    python_version: "cp313",
+    filename: "pkg-1.0.0-cp313-cp313-macosx_11_0_arm64.whl",
+    url: "https://files.pythonhosted.org/packages/xx/pkg-1.0.0-cp313-cp313-macosx_11_0_arm64.whl",
+    digests: { sha256: "cc".repeat(32) },
+  };
+  const x64Wheel = {
+    packagetype: "bdist_wheel",
+    python_version: "cp313",
+    filename: "pkg-1.0.0-cp313-cp313-macosx_10_9_x86_64.whl",
+    url: "https://files.pythonhosted.org/packages/xx/pkg-1.0.0-cp313-cp313-macosx_10_9_x86_64.whl",
+    digests: { sha256: "dd".repeat(32) },
+  };
+  const abi3Arm = {
+    packagetype: "bdist_wheel",
+    python_version: "cp310",
+    filename: "pkg-1.0.0-cp310-abi3-macosx_11_0_arm64.whl",
+    url: "https://files.pythonhosted.org/packages/xx/pkg-1.0.0-cp310-abi3-macosx_11_0_arm64.whl",
+    digests: { sha256: "ee".repeat(32) },
+  };
+  const winWheel = {
+    packagetype: "bdist_wheel",
+    python_version: "cp313",
+    filename: "pkg-1.0.0-cp313-cp313-win_amd64.whl",
+    url: "https://files.pythonhosted.org/packages/xx/pkg-1.0.0-cp313-cp313-win_amd64.whl",
+    digests: { sha256: "ff".repeat(32) },
+  };
+
+  it("prefers pure-python wheel over sdist", () => {
+    const dist = selectBestDistribution([sdist, pureWheel], { macArch: "arm64" });
+    expect(dist?.kind).toBe("wheel");
+    expect(dist?.filename).toContain("py3-none-any.whl");
+  });
+
+  it("falls back to sdist when no compatible wheel", () => {
+    const dist = selectBestDistribution([sdist, winWheel], { macArch: "arm64" });
+    expect(dist?.kind).toBe("sdist");
+    expect(dist?.filename).toContain(".tar.gz");
+  });
+
+  it("selects host-arch platform wheel when pure wheel is missing", () => {
+    const dist = selectBestDistribution([sdist, x64Wheel, arm64Wheel], {
+      macArch: "arm64",
+    });
+    expect(dist?.kind).toBe("wheel");
+    expect(dist?.filename).toContain("arm64.whl");
+  });
+
+  it("accepts abi3 platform wheels for the host arch", () => {
+    const dist = selectBestDistribution([sdist, abi3Arm], { macArch: "arm64" });
+    expect(dist?.kind).toBe("wheel");
+    expect(dist?.filename).toContain("abi3");
+  });
+
+  it("prefers pure wheel over platform wheel", () => {
+    const dist = selectBestDistribution([arm64Wheel, pureWheel, sdist], {
+      macArch: "arm64",
+    });
+    expect(dist?.filename).toContain("py3-none-any.whl");
+  });
+
+  it("can force sdist with preferWheel: false", () => {
+    const dist = selectBestDistribution([pureWheel, sdist], {
+      preferWheel: false,
+      macArch: "arm64",
+    });
+    expect(dist?.kind).toBe("sdist");
+  });
+
+  it("returns null when urls empty", () => {
+    expect(selectBestDistribution([])).toBeNull();
   });
 });

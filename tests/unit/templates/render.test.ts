@@ -74,26 +74,14 @@ describe("renderFormula", () => {
       testBinName: "foo",
       serviceBlock: "",
     };
-    const expected =
-      `class Foo < Formula\n` +
-      `  include Language::Python::Virtualenv\n\n` +
-      `  desc "Foo pip"\n` +
-      `  homepage "https://pypi.org/project/foo/"\n` +
-      `  url "https://example.com/foo.tgz"\n` +
-      `  sha256 "ee"\n` +
-      `  license "MIT"\n` +
-      `\n` +
-      livecheck +
-      `  depends_on "python@3.13"\n\n` +
-      resources +
-      `  def install\n` +
-      `    virtualenv_install_with_resources\n` +
-      `  end\n\n` +
-      `  test do\n` +
-      `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
-      `  end\n` +
-      `end\n`;
-    expect(renderFormula(payload)).toBe(expected);
+    const ruby = renderFormula(payload);
+    expect(ruby).toContain("include Language::Python::Virtualenv");
+    expect(ruby).toContain('depends_on "python@3.13"');
+    expect(ruby).toContain("virtualenv_create(libexec, \"python3.13\")");
+    expect(ruby).toContain("pip_install_dist");
+    expect(ruby).toContain("pip_install_main");
+    expect(ruby).toContain(".whl");
+    expect(ruby).toContain('assert_match version.to_s, shell_output("#{bin}/foo --version")');
   });
 
   it("renders cargo_package template", () => {

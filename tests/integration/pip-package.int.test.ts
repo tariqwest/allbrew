@@ -13,7 +13,11 @@ describe.concurrent("pip-package integration", () => {
     const payload = await collectPipPackagePayload("marimo");
     expect(payload.template).toBe("pip_package");
     expect(payload.name).toBe("marimo");
-    expect(payload.url).toMatch(/^https:\/\/files\.pythonhosted\.org\/.+\.tar\.gz/);
+    expect(payload.url).toMatch(
+      /^https:\/\/files\.pythonhosted\.org\/.+\.(whl|tar\.gz)$/,
+    );
+    // marimo publishes a pure-python wheel — prefer it over sdist
+    expect(payload.url).toMatch(/\.whl$/);
     expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(payload.homepage).toBeTruthy();
     expect(payload.livecheckBlock).toContain("pypi.org/pypi/marimo/json");
@@ -26,7 +30,8 @@ describe.concurrent("pip-package integration", () => {
     assertValidFormula(ruby);
     expect(ruby).toContain("include Language::Python::Virtualenv");
     expect(ruby).toContain('depends_on "python@3.13"');
-    expect(ruby).toContain("virtualenv_install_with_resources");
+    expect(ruby).toContain("virtualenv_create(libexec, \"python3.13\")");
+    expect(ruby).toContain("pip_install_main");
   });
 
   it("marimo: has transitive resource blocks", async () => {
