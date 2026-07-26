@@ -14,6 +14,7 @@ mock.module("../../../lib/sha256.ts", () => ({
 
 mock.module("../../../lib/archive-inspector.ts", () => ({
   listZipEntries: mock().mockResolvedValue(["Seaquel.app/"]),
+  listDmgAppNames: mock().mockResolvedValue([]),
 }));
 
 describe("collectCaskAppPayload", () => {

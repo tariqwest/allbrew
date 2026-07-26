@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { readdir, readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { downloadToTemp } from './sha256.ts';
@@ -201,5 +202,81 @@ export async function listZipEntries(zipPath) {
       .filter(f => f && !f.startsWith('---'));
   } catch {
     return [];
+  }
+}
+
+/**
+ * Mount a DMG read-only and return top-level .app bundle names found inside.
+ * Falls back to empty array on any failure so callers can use filename heuristics.
+ */
+export async function listDmgAppNames(dmgPath: string): Promise<string[]> {
+  const mountRoot = join(
+    tmpdir(),
+    `allbrew-dmg-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  );
+  await execFileAsync('mkdir', ['-p', mountRoot]);
+
+  let attached = false;
+  try {
+    await execFileAsync('hdiutil', [
+      'attach',
+      dmgPath,
+      '-readonly',
+      '-nobrowse',
+      '-noverify',
+      '-noautoopen',
+      '-mountpoint',
+      mountRoot,
+    ], { timeout: 120_000 });
+    attached = true;
+
+    const entries = await readdir(mountRoot, { withFileTypes: true });
+    const apps: string[] = [];
+    for (const entry of entries) {
+      if (!entry.name.toLowerCase().endsWith('.app')) continue;
+      // Prefer directory bundles; some DMGs expose .app as a mount entry with isDirectory true.
+      if (entry.isDirectory() || entry.isFile() || entry.isSymbolicLink()) {
+        apps.push(entry.name);
+      }
+    }
+
+    // Nested apps (rare): look one level deeper if nothing at top level.
+    if (apps.length === 0) {
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        if (entry.name.startsWith('.')) continue;
+        try {
+          const nested = await readdir(join(mountRoot, entry.name), { withFileTypes: true });
+          for (const child of nested) {
+            if (child.name.toLowerCase().endsWith('.app') && child.isDirectory()) {
+              apps.push(child.name);
+            }
+          }
+        } catch {
+          // ignore unreadable nested dirs
+        }
+      }
+    }
+
+    return apps;
+  } catch {
+    return [];
+  } finally {
+    if (attached) {
+      try {
+        await execFileAsync('hdiutil', ['detach', mountRoot, '-force'], { timeout: 60_000 });
+      } catch {
+        try {
+          await execFileAsync('hdiutil', ['detach', mountRoot], { timeout: 30_000 });
+        } catch {
+          // best-effort unmount
+        }
+      }
+    }
+    try {
+      await rm(mountRoot, { recursive: true, force: true });
+    } catch {
+      // ignore
+    }
   }
 }

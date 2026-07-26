@@ -1,6 +1,6 @@
 import { toCaskToken, rubyEscape } from "../utils.ts";
 import { downloadToTemp } from "../sha256.ts";
-import { listZipEntries } from "../archive-inspector.ts";
+import { listDmgAppNames, listZipEntries } from "../archive-inspector.ts";
 import type { CaskAppPayload } from "../template-payload.ts";
 import { writeRenderedCask } from "../template-renderer.ts";
 import { urlVersionLivecheckBlock } from "./livecheck.ts";
@@ -68,13 +68,33 @@ export async function generateCaskApp(url: string, options: any = {}) {
   return writeRenderedCask(payload, options.tapPath);
 }
 
-async function detectAppName(url: string, zipPath?: string) {
+async function detectAppName(url: string, localPath?: string) {
   const lower = url.toLowerCase();
+
+  if (lower.endsWith(".dmg")) {
+    try {
+      if (localPath) {
+        const apps = await listDmgAppNames(localPath);
+        if (apps.length > 0) return apps[0];
+      } else {
+        const { downloadToTemp } = await import("../sha256.ts");
+        const { path, cleanup } = await downloadToTemp(url);
+        try {
+          const apps = await listDmgAppNames(path);
+          if (apps.length > 0) return apps[0];
+        } finally {
+          await cleanup();
+        }
+      }
+    } catch {
+      // fall through to filename heuristic
+    }
+  }
 
   if (lower.endsWith(".zip")) {
     try {
-      if (zipPath) {
-        const entries = await listZipEntries(zipPath);
+      if (localPath) {
+        const entries = await listZipEntries(localPath);
         const appEntry = entries.find((e) => /\.app\/?$/i.test(e));
         if (appEntry) {
           return appEntry.replace(/\/$/, "").split("/").pop();

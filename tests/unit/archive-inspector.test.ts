@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { inspectArchive, listZipEntries } from "../../lib/archive-inspector.ts";
+import { inspectArchive, listDmgAppNames, listZipEntries } from "../../lib/archive-inspector.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -83,4 +83,33 @@ describe("listZipEntries", () => {
     const entries = await listZipEntries(archivePath);
     expect(entries).toContain("TestApp.app/Contents/Info.plist");
   });
+});
+
+describe("listDmgAppNames", () => {
+  it("returns empty array for a non-existent path", async () => {
+    const apps = await listDmgAppNames(join(tempDir, "missing.dmg"));
+    expect(apps).toEqual([]);
+  });
+
+  it("reads .app bundle name from a real DMG", async () => {
+    const srcDir = join(tempDir, "dmg-src");
+    const appDir = join(srcDir, "MCP Router.app", "Contents");
+    await execFileAsync("mkdir", ["-p", appDir]);
+    await writeFile(join(appDir, "Info.plist"), "<?xml version=\"1.0\"?>\n");
+    const dmgPath = join(tempDir, "MCP-Router.dmg");
+    await execFileAsync("hdiutil", [
+      "create",
+      "-volname",
+      "MCP Router",
+      "-srcfolder",
+      srcDir,
+      "-ov",
+      "-format",
+      "UDRO",
+      dmgPath,
+    ]);
+
+    const apps = await listDmgAppNames(dmgPath);
+    expect(apps).toContain("MCP Router.app");
+  }, 30_000);
 });

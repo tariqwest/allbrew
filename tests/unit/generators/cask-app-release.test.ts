@@ -1,5 +1,6 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectCaskAppReleasePayload } from "../../../lib/generators/cask-app-release.ts";
+import mcpsmFixture from "../../fixtures/github/mcpsm.json";
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("cask_sha256_mock"),
@@ -14,11 +15,21 @@ mock.module("../../../lib/sha256.ts", () => ({
 
 mock.module("../../../lib/archive-inspector.ts", () => ({
   listZipEntries: mock().mockResolvedValue(["TestApp.app/"]),
+  listDmgAppNames: mock().mockResolvedValue([]),
 }));
+
+
+function mockArchiveInspector(opts: { zip?: string[]; dmg?: string[] } = {}) {
+  mock.module("../../../lib/archive-inspector.ts", () => ({
+    listZipEntries: mock().mockResolvedValue(opts.zip ?? ["TestApp.app/"]),
+    listDmgAppNames: mock().mockResolvedValue(opts.dmg ?? []),
+  }));
+}
 
 describe("collectCaskAppReleasePayload", () => {
   beforeEach(() => {
     mock.restore();
+    mockArchiveInspector();
   });
 
   const repoInfo = {
@@ -69,10 +80,35 @@ describe("collectCaskAppReleasePayload", () => {
     expect(payload.url).toContain("#{version}");
   });
 
-  it("detects app name from DMG filename", async () => {
+  it("falls back to app name from DMG filename when mount yields nothing", async () => {
     const payload = await collectCaskAppReleasePayload(repoInfo, release);
     expect(payload.appName).toContain("Seaquel");
     expect(payload.appName).toContain(".app");
+  });
+
+  it("prefers app name from mounted DMG over filename heuristic", async () => {
+    mockArchiveInspector({ zip: [], dmg: ["MCP Router.app"] });
+    const mcpRelease = {
+      tagName: "v0.6.3",
+      assets: [
+        {
+          name: "MCP-Router.dmg",
+          url: "https://github.com/mcp-router/mcp-router/releases/download/v0.6.3/MCP-Router.dmg",
+        },
+      ],
+    };
+    const payload = await collectCaskAppReleasePayload(
+      {
+        name: "mcp-router",
+        fullName: "mcp-router/mcp-router",
+        description: "MCP manager",
+        homepage: "https://mcp-router.net",
+        htmlUrl: "https://github.com/mcp-router/mcp-router",
+      },
+      mcpRelease,
+    );
+    expect(payload.appName).toBe("MCP Router.app");
+    expect(payload.displayName).toBe("MCP Router");
   });
 
   it("uses repo description", async () => {
@@ -142,6 +178,7 @@ describe("collectCaskAppReleasePayload", () => {
 describe("collectCaskAppReleasePayload — KnowNote (Electron, lowercase DMG)", () => {
   beforeEach(() => {
     mock.restore();
+    mockArchiveInspector();
   });
 
   const knowNoteRepoInfo = {
@@ -248,6 +285,7 @@ describe("collectCaskAppReleasePayload — KnowNote (Electron, lowercase DMG)", 
 describe("collectCaskAppReleasePayload — Codeg (Tauri 2)", () => {
   beforeEach(() => {
     mock.restore();
+    mockArchiveInspector();
   });
 
   const codegRepoInfo = {
@@ -360,6 +398,7 @@ describe("collectCaskAppReleasePayload — Codeg (Tauri 2)", () => {
 describe("collectCaskAppReleasePayload — HarnessKit (Tauri 2, arch-specific DMGs + hk CLI binary)", () => {
   beforeEach(() => {
     mock.restore();
+    mockArchiveInspector();
   });
 
   const harnessKitRepoInfo = {
@@ -481,6 +520,7 @@ describe("collectCaskAppReleasePayload — HarnessKit (Tauri 2, arch-specific DM
 describe("collectCaskAppReleasePayload — MōIcons (arm64-only DMG, MōBrowser runtime)", () => {
   beforeEach(() => {
     mock.restore();
+    mockArchiveInspector();
   });
 
   const moIconsRepoInfo = {
@@ -552,7 +592,7 @@ describe("collectCaskAppReleasePayload — MōIcons (arm64-only DMG, MōBrowser 
     expect(payload.url).toContain("#{version}");
   });
 
-  it("detects app name from DMG filename", async () => {
+  it("falls back to app name from DMG filename when mount yields nothing", async () => {
     const payload = await collectCaskAppReleasePayload(
       moIconsRepoInfo,
       moIconsRelease,
@@ -600,6 +640,7 @@ describe("collectCaskAppReleasePayload — MōIcons (arm64-only DMG, MōBrowser 
 describe("collectCaskAppReleasePayload — Eigent (AI Desktop Agent)", () => {
   beforeEach(() => {
     mock.restore();
+    mockArchiveInspector();
   });
 
   const eigentRepoInfo = {
@@ -730,6 +771,7 @@ describe("collectCaskAppReleasePayload — Eigent (AI Desktop Agent)", () => {
 describe("collectCaskAppReleasePayload — Hermes One (Electron, arm64+x64 DMG, name override)", () => {
   beforeEach(() => {
     mock.restore();
+    mockArchiveInspector();
   });
 
   const hermesOneRepoInfo = {
@@ -827,7 +869,7 @@ describe("collectCaskAppReleasePayload — Hermes One (Electron, arm64+x64 DMG, 
     expect(payload.url).toContain("#{version}");
   });
 
-  it("detects app name from DMG filename", async () => {
+  it("falls back to app name from DMG filename when mount yields nothing", async () => {
     const payload = await collectCaskAppReleasePayload(
       hermesOneRepoInfo,
       hermesOneRelease,
@@ -880,6 +922,75 @@ describe("collectCaskAppReleasePayload — Hermes One (Electron, arm64+x64 DMG, 
       hermesOneRelease,
       { name: "hermes-one" },
     );
+    expect(payload.sha256).toBeTruthy();
+  });
+});
+
+describe("collectCaskAppReleasePayload — MCPSM (Rust .app.zip only)", () => {
+  beforeEach(() => {
+    mock.restore();
+    mockArchiveInspector({ zip: ["MCPSM.app/"] });
+  });
+
+  const repoInfo = mcpsmFixture.repo;
+  const release = mcpsmFixture.release;
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectCaskAppReleasePayload(repoInfo, release);
+    expect(payload.template).toBe("cask_app_release");
+  });
+
+  it("derives cask token from repo name by default", async () => {
+    const payload = await collectCaskAppReleasePayload(repoInfo, release);
+    expect(payload.name).toBe("mcp-server-manager");
+  });
+
+  it("respects name override to short product token", async () => {
+    const payload = await collectCaskAppReleasePayload(repoInfo, release, {
+      name: "mcpsm",
+    });
+    expect(payload.name).toBe("mcpsm");
+  });
+
+  it("extracts version from tag", async () => {
+    const payload = await collectCaskAppReleasePayload(repoInfo, release);
+    expect(payload.version).toBe("1.1.3");
+  });
+
+  it("selects MCPSM.app.zip when no DMG is present", async () => {
+    const payload = await collectCaskAppReleasePayload(repoInfo, release);
+    expect(payload.url).toContain(".zip");
+    expect(payload.url).not.toContain(".dmg");
+    expect(payload.url).toContain("MCPSM");
+    expect(payload.url).toContain("#{version}");
+  });
+
+  it("detects app name from zip entries", async () => {
+    const payload = await collectCaskAppReleasePayload(repoInfo, release);
+    expect(payload.appName).toBe("MCPSM.app");
+    expect(payload.displayName).toBe("MCPSM");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectCaskAppReleasePayload(repoInfo, release);
+    expect(payload.desc).toContain("Model Context Protocol");
+  });
+
+  it("uses repo htmlUrl as homepage when homepage is null", async () => {
+    const payload = await collectCaskAppReleasePayload(repoInfo, release);
+    expect(payload.homepage).toBe(
+      "https://github.com/antruongnguyen/mcp-server-manager",
+    );
+  });
+
+  it("generates zap block", async () => {
+    const payload = await collectCaskAppReleasePayload(repoInfo, release);
+    expect(payload.zapBlock).toContain("zap trash:");
+    expect(payload.zapBlock).toContain("Library/Application Support");
+  });
+
+  it("includes SHA256", async () => {
+    const payload = await collectCaskAppReleasePayload(repoInfo, release);
     expect(payload.sha256).toBeTruthy();
   });
 });

@@ -5,7 +5,7 @@ import {
   isAppAsset,
 } from "../utils.ts";
 import { downloadToTemp } from "../sha256.ts";
-import { listZipEntries } from "../archive-inspector.ts";
+import { listDmgAppNames, listZipEntries } from "../archive-inspector.ts";
 import type { CaskAppReleasePayload } from "../template-payload.ts";
 import { writeRenderedCask } from "../template-renderer.ts";
 import { githubLatestLivecheckBlock } from "./livecheck.ts";
@@ -59,8 +59,8 @@ export async function collectCaskAppReleasePayload(
 
   const zapPaths = [
     `~/Library/Application Support/${displayName}`,
-    `~/Library/Caches/#{name}`,
-    `~/Library/Preferences/#{name}.plist`,
+    `~/Library/Caches/${displayName}`,
+    `~/Library/Preferences/${displayName}.plist`,
   ];
 
   return {
@@ -100,10 +100,28 @@ export async function generateCaskAppRelease(
   return writeRenderedCask(payload, options.tapPath);
 }
 
-async function detectAppNameFromAsset(asset: any, zipPath?: string) {
+async function detectAppNameFromAsset(asset: any, localPath?: string) {
   const lower = asset.name.toLowerCase();
 
   if (lower.endsWith(".dmg")) {
+    try {
+      if (localPath) {
+        const apps = await listDmgAppNames(localPath);
+        if (apps.length > 0) return apps[0];
+      } else {
+        const { downloadToTemp } = await import("../sha256.ts");
+        const { path, cleanup } = await downloadToTemp(asset.url, asset.name);
+        try {
+          const apps = await listDmgAppNames(path);
+          if (apps.length > 0) return apps[0];
+        } finally {
+          await cleanup();
+        }
+      }
+    } catch {
+      // fall through to filename heuristic
+    }
+
     const base = asset.name
       .replace(/\.(dmg)$/i, "")
       .replace(/[-_](?:aarch64|arm64|x64|amd64|universal)$/i, "")
@@ -114,8 +132,8 @@ async function detectAppNameFromAsset(asset: any, zipPath?: string) {
 
   if (lower.endsWith(".zip")) {
     try {
-      if (zipPath) {
-        const entries = await listZipEntries(zipPath);
+      if (localPath) {
+        const entries = await listZipEntries(localPath);
         const appEntry = entries.find((e) => /\.app\/?$/i.test(e.trim()));
         if (appEntry) {
           return appEntry.trim().replace(/\/$/, "").split("/").pop();
