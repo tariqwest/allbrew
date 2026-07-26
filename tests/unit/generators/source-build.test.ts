@@ -430,3 +430,93 @@ describe("collectSourceBuildPayload — LibreChat (Node.js workspace monorepo)",
     expect(payload.testBinName).toBe("librechat");
   });
 });
+
+describe("collectSourceBuildPayload — trae-agent (Python CLI, no PyPI, no releases)", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
+  const traeAgentRepoInfo = {
+    name: "trae-agent",
+    fullName: "bytedance/trae-agent",
+    description: "Trae Agent is an LLM-based agent for general purpose software engineering tasks",
+    homepage: "https://www.trae.ai/",
+    htmlUrl: "https://github.com/bytedance/trae-agent",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  it("returns correct template identifier", async () => {
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      null,
+      { system: "python" },
+    );
+    expect(payload.template).toBe("source_build");
+  });
+
+  it("derives name and className from repo name", async () => {
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      null,
+      { system: "python" },
+    );
+    expect(payload.name).toBe("trae-agent");
+    expect(payload.className).toBe("TraeAgent");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      null,
+      { system: "python" },
+    );
+    expect(payload.desc).toContain("LLM-based agent");
+  });
+
+  it("uses homepage from repo info", async () => {
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      null,
+      { system: "python" },
+    );
+    expect(payload.homepage).toBe("https://www.trae.ai/");
+  });
+
+  it("generates empty urlLines for HEAD-only repo (no releases)", async () => {
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      null,
+      { system: "python" },
+    );
+    expect(payload.urlLines).toBe("");
+  });
+
+  it("marks payload as Python (isPython true)", async () => {
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      null,
+      { system: "python" },
+    );
+    expect(payload.isPython).toBe(true);
+  });
+
+  it("includes MIT license line", async () => {
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      null,
+      { system: "python" },
+    );
+    expect(payload.licenseLine).toContain("MIT");
+  });
+
+  it("generates head stanza fields", async () => {
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      null,
+      { system: "python" },
+    );
+    expect(payload.fullName).toBe("bytedance/trae-agent");
+    expect(payload.defaultBranch).toBe("main");
+  });
+});

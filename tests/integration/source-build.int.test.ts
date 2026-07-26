@@ -238,4 +238,45 @@ describe.concurrent("source-build integration", () => {
     expect(ruby).toContain('head "https://github.com/danny-avila/LibreChat.git"');
     expect(ruby).toContain('system "make", "PREFIX=#{prefix}", "install"');
   });
+
+  const traeAgentRepoInfo = {
+    name: "trae-agent",
+    fullName: "bytedance/trae-agent",
+    description: "Trae Agent is an LLM-based agent for general purpose software engineering tasks",
+    homepage: "https://www.trae.ai/",
+    htmlUrl: "https://github.com/bytedance/trae-agent",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  it("trae-agent: generates Python pip install payload (no PyPI, no releases)", async () => {
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      null,
+      { system: "python" },
+    );
+    expect(payload.template).toBe("source_build");
+    expect(payload.name).toBe("trae-agent");
+    expect(payload.className).toBe("TraeAgent");
+    expect(payload.isPython).toBe(true);
+    expect(payload.urlLines).toBe("");
+    expect(payload.licenseLine).toContain("MIT");
+    expect(payload.allbrewDependency).toBe("");
+  });
+
+  it("trae-agent: generates structurally valid Ruby formula with virtualenv", async () => {
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      null,
+      { system: "python" },
+    );
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class TraeAgent < Formula");
+    expect(ruby).toContain("include Language::Python::Virtualenv");
+    expect(ruby).toContain('depends_on "python@3.13"');
+    expect(ruby).toContain('head "https://github.com/bytedance/trae-agent.git"');
+    expect(ruby).toContain('virtualenv_create(libexec, "python3.13")');
+    expect(ruby).toContain('system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."');
+  });
 });
