@@ -301,9 +301,11 @@
 | MōIcons | TypeScript | React / MōBrowser | | github.com/mo-browser-apps/icons | | | | | | | | | | | | | yes | | MoIcons-1.0.3-arm64.dmg | yes | yes | | AI macOS app icon generator; arm64-only DMG; signed + notarized; MIT; v1.0.3; 703 stars; not in HB |
 | Eigent | | | | eigent-ai/eigent | cask | | | | | | | | | | | | yes | | Eigent-1.0.1-arm64.dmg | | yes | | Desktop AI agent, 14.5k stars, Apache-2.0, already in HB as cask, cask-app-release generator |
 | Hermes One | TypeScript | Electron | hermesone.org | github.com/fathah/hermes-desktop | | | | | | | | | | | | | yes | | hermes-desktop-0.7.3-arm64.dmg | yes | | | Hermes Agent desktop GUI; MIT; v0.7.3; 13.4k stars; not in HB; electron-builder; arm64+x64 DMG; name override needed (repo name hermes-desktop collides with dodo-reach/hermes-desktop); cask-app-release |
+| ego lite | | | lite.ego.app | github.com/citrolabs/ego-lite | | | | | | | | | | | | | yes | | egolite.dmg | | yes (2) | | AI agent browser (Chromium); repo MIT, browser binary is separate free download (closed-source); v1.2.5; 4.3k stars; CDN DMG at cdn.ego.app with no version in URL (arm64 + x64); GitHub releases only host the ego-browser skill zip, not the DMG; not in HB; cask-app generator |
 | harnesskit | Rust/TypeScript | Tauri 2 / React | | github.com/RealZST/HarnessKit | | | | | | | | | | | | | yes | | HarnessKit_1.6.5_aarch64.dmg | yes | yes (14) | | AI coding agent extension manager; Tauri 2 desktop + standalone hk CLI binary; arch-specific DMGs (aarch64 + x64); hk CLI binary also on releases; install.sh available; Apache-2.0; 352 stars; v1.6.5; not in HB; cask-app-release generator |
 | ShellGPT | Python | | | github.com/TheR1D/shell_gpt | | | | pypi.org/project/shell-gpt | | | | | | | | | | | | | | | CLI productivity tool for AI LLMs; `pip install shell-gpt`; bin `sgpt`; 31 releases; v1.5.1; 12.1k stars; MIT; not in HB |
 | open-notebook | Python | FastAPI/Next.js | open-notebook.ai | github.com/lfnovo/open-notebook | | | | | | | | | | | | | | yes | | yes | tags only | | open-source NotebookLM alternative; Docker primary; pip-installable from source (pyproject.toml); PyPI name taken by unrelated NIST project; no prebuilt binaries; generator: source-build; 34.7k stars; MIT; v1.10.0 |
+| trae-agent | Python | | www.trae.ai | github.com/bytedance/trae-agent | | | | | | | | | | | | yes | | | | yes | none | | LLM-based agent for software engineering; cmd `trae-cli`; bin `trae-cli`; uv sync setup (pyproject.toml); no PyPI package; no GitHub releases; Python 3.12+; MIT; 11.9k stars; not in HB; source-build |
 | Cline | TypeScript | | cline.bot | github.com/cline/cline | cline (formula) | | | | npmjs.com/package/cline | | | | | | | | | | | | | | autonomous coding agent CLI; npm i -g cline; Homebrew formula deprecated (2027-05-18); monorepo (apps/cli); 293 releases; v3.0.29; 63.9k stars; Apache-2.0 |
 | command-code | Node | | commandcode.ai | github.com/CommandCodeAI/command-code | | | | npmjs.com/package/command-code | | | | | | | | yes | | | | yes | none | | AI coding agent; cmd `cmd`; bin `cmd` != package name; UNLICENSED; 310 npm versions; 3.5k stars; no GitHub releases |
 | auggie | Node | | | github.com/augmentcode/auggie | | | | npmjs.com/package/@augmentcode/auggie | | | | | | | | yes | | | | yes | | | AI agentic coding CLI; scoped pkg @augmentcode/auggie; bin auggie (augment.mjs); non-SPDX license; homepage augmentcode.com; 251 stars; v0.32.0; not in HB; npm-package generator |
@@ -314,7 +316,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -341,13 +343,11 @@
 | # script-install (closed-source AI IDE; installer at qoder.com/install) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://qoder.com/install --manual               # → script-install | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install qoder && qoder --version | | | | | | | | | | | | | | | | | | | | | | | |
-# cask-app (direct .dmg / .zip / .pkg download)
-allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual  # → cask-app
-brew install --cask seaquel && open -a Seaquel
-
-# fallback path (in-HB app, pull from release binaries instead of brew)
-allbrew https://github.com/YS-L/csvlens --manual        # → binary-release / source-build
-
+| # cask-app (direct .dmg / .zip / .pkg download) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual  # → cask-app | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install --cask seaquel && open -a Seaquel | | | | | | | | | | | | | | | | | | | | | | | |
+| # fallback path (in-HB app, pull from release binaries instead of brew) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/YS-L/csvlens --manual        # → binary-release / source-build | | | | | | | | | | | | | | | | | | | | | | | |
 # source-build (autotools; in-HB Perl app)
 allbrew https://github.com/ddclient/ddclient --manual   # → source-build
 brew install ddclient && ddclient --version
@@ -355,6 +355,10 @@ brew install ddclient && ddclient --version
 # source-build (Python pip install from GitHub; no PyPI; no releases)
 allbrew https://github.com/authsec-ai/authsec-bridge --manual  # → source-build
 brew install authsec-bridge && sb --help
+
+# source-build (Python CLI from GitHub; no PyPI; no releases; uv/pyproject.toml; bin name trae-cli)
+allbrew https://github.com/bytedance/trae-agent --manual  # → source-build
+brew install trae-agent && trae-cli --help
 
 # source-build (Tauri desktop app; no releases, no registry; HEAD-only)
 allbrew https://github.com/recailai/jockey --manual  # → source-build (make fallback)
@@ -399,6 +403,13 @@ brew install --cask proxyman && open -a Proxyman
 # Developer CDN DMG (no version in URL; closed-source; also on MAS)
 allbrew https://desktop-app.poecdn.net/downloads/Poe.dmg --manual
 brew install --cask poe && open -a Poe
+
+# Developer CDN DMG (no version in URL; closed-source AI agent browser; arm64 + x64 variants)
+# Edge case: filename `egolite.dmg` has no separator → default cask token would be "egolite",
+# but the brand token is "ego-lite"; app bundle name has a space ("ego lite.app").
+allbrew https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg --manual \
+  --name ego-lite --app-name "ego lite.app" --homepage https://lite.ego.app
+brew install --cask ego-lite && open -a "ego lite"
 
 # Developer site .zip (version in filename; closed-source; also on MAS)
 allbrew https://pilotmoon.com/downloads/PopClip-2025.9.2.zip --manual
