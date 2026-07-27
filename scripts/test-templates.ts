@@ -350,7 +350,36 @@ function buildPipPackageCase(): Case {
     `  depends_on "python@3.13"\n\n` +
     resources +
     `  def install\n` +
-    `    virtualenv_install_with_resources\n` +
+    `    venv = virtualenv_create(libexec, "python3.13")\n` +
+    `    resources.each { |r| pip_install_dist(venv, r) }\n` +
+    `    pip_install_main(venv)\n` +
+    `  end\n\n` +
+    `  def pip_install_dist(venv, dist)\n` +
+    `    url = dist.url.to_s\n` +
+    `    if url.include?(".whl")\n` +
+    `      dist.fetch unless dist.downloaded?\n` +
+    `      path = URI(url).path.to_s\n` +
+    `      basename = File.basename(path.empty? ? url : path)\n` +
+    `      whl = buildpath/basename\n` +
+    `      rm_f whl\n` +
+    `      ln_sf dist.cached_download, whl\n` +
+    `      venv.pip_install whl\n` +
+    `    else\n` +
+    `      venv.pip_install dist\n` +
+    `    end\n` +
+    `  end\n\n` +
+    `  def pip_install_main(venv)\n` +
+    `    url = stable.url.to_s\n` +
+    `    if url.include?(".whl")\n` +
+    `      path = URI(url).path.to_s\n` +
+    `      basename = File.basename(path.empty? ? url : path)\n` +
+    `      whl = buildpath/basename\n` +
+    `      rm_f whl\n` +
+    `      ln_sf cached_download, whl\n` +
+    `      venv.pip_install_and_link whl\n` +
+    `    else\n` +
+    `      venv.pip_install_and_link buildpath\n` +
+    `    end\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
