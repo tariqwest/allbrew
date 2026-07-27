@@ -69,4 +69,4 @@ TEST_LOG="$(mktemp -t allbrew-e2e-log)"
 trap 'rm -f "$TEST_LOG"' EXIT
 export ALLBREW_TEST_LOG="$TEST_LOG"
 
-E2E=1 bun test tests/e2e/ --timeout 300000 "${BUNTEST_ARGS[@]}" 2>&1 | tee "$TEST_LOG"
+E2E=1 bun test tests/e2e/ --timeout 300000 ${BUNTEST_ARGS[@]+"${BUNTEST_ARGS[@]}"} 2>&1 | tee "$TEST_LOG"
