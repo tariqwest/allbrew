@@ -41,8 +41,10 @@ import { readFileSync, existsSync } from "node:fs";
 
 const BASE_TIMEOUT = 600_000; // 10 min per journey step
 const BUN_PATH = `export PATH="$HOME/.bun/bin:$PATH"`;
-const GH_TOKEN = process.env.GITHUB_TOKEN ?? "";
-const GH_EXPORT = GH_TOKEN ? `export GITHUB_TOKEN=${JSON.stringify(GH_TOKEN)}` : "";
+const GH_TOKEN = process.env.TH_GITHUB_TOKEN ?? "";
+const GH_EXPORT = GH_TOKEN
+  ? `export GITHUB_TOKEN=${JSON.stringify(GH_TOKEN)} && export TH_GITHUB_TOKEN=${JSON.stringify(GH_TOKEN)}`
+  : "";
 const VM_ENV = [BUN_PATH, GH_EXPORT].filter(Boolean).join(" && ");
 
 function testCommand(file: string, pattern: string, timeout = BASE_TIMEOUT): string {
