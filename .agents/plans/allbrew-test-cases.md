@@ -1,14 +1,12 @@
 # Allbrew Test Cases
-
-> Originally extracted from [allbrew-test-cases-deep-research-2026-06.md](./allbrew-test-cases-deep-research-2026-06.md).
-> That document contains the full research narrative, per-ecosystem tables, and generator-coverage analysis.
-> This file is the single consolidated table of every app including many not in the original research document.
-> The /add-test-case skill can be used to add new test cases to this file.
-
-## Data Provenance & Normalization Notes
-- Blank cell = not applicable or not found. `in_*` columns include the identifier or URL where known.
 | app | lang/runtime | framework | in_dev_website | in_github | in_homebrew | in_setapp | in_mas | in_npm | in_pip | in_cargo | in_go_mod | in_ruby_gem | in_swiftpm | in_mint | in_dotnet | is_tui_app | is_gui_app | is_webui_app | is_cask_dist | has_source_dist | has_prebuilt_bin_dist | has_script_install | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| > Originally extracted from [allbrew-test-cases-deep-research-2026-06.md](./allbrew-test-cases-deep-research-2026-06.md). | | | | | | | | | | | | | | | | | | | | | | | |
+| > That document contains the full research narrative, per-ecosystem tables, and generator-coverage analysis. | | | | | | | | | | | | | | | | | | | | | | | |
+| > This file is the single consolidated table of every app including many not in the original research document. | | | | | | | | | | | | | | | | | | | | | | | |
+| > The /add-test-case skill can be used to add new test cases to this file. | | | | | | | | | | | | | | | | | | | | | | | |
+| ## Data Provenance & Normalization Notes | | | | | | | | | | | | | | | | | | | | | | | |
+| - Blank cell = not applicable or not found. `in_*` columns include the identifier or URL where known. | | | | | | | | | | | | | | | | | | | | | | | |
 | ## Table Column Reference | | | | | | | | | | | | | | | | | | | | | | | |
 | - `app` — canonical short name used as the Homebrew formula/cask token (kebab-case) | | | | | | | | | | | | | | | | | | | | | | | |
 | - `lang/runtime` — primary language or runtime (Python, Node, Rust, Go, Swift, Ruby, .NET, TypeScript, etc.) | | | | | | | | | | | | | | | | | | | | | | | |
@@ -316,7 +314,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -348,14 +346,12 @@
 | brew install --cask seaquel && open -a Seaquel | | | | | | | | | | | | | | | | | | | | | | | |
 | # fallback path (in-HB app, pull from release binaries instead of brew) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://github.com/YS-L/csvlens --manual        # → binary-release / source-build | | | | | | | | | | | | | | | | | | | | | | | |
-# source-build (autotools; in-HB Perl app)
-allbrew https://github.com/ddclient/ddclient --manual   # → source-build
-brew install ddclient && ddclient --version
-
-# source-build (Python pip install from GitHub; no PyPI; no releases)
-allbrew https://github.com/authsec-ai/authsec-bridge --manual  # → source-build
-brew install authsec-bridge && sb --help
-
+| # source-build (autotools; in-HB Perl app) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/ddclient/ddclient --manual   # → source-build | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install ddclient && ddclient --version | | | | | | | | | | | | | | | | | | | | | | | |
+| # source-build (Python pip install from GitHub; no PyPI; no releases) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/authsec-ai/authsec-bridge --manual  # → source-build | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install authsec-bridge && sb --help | | | | | | | | | | | | | | | | | | | | | | | |
 # source-build (Python CLI from GitHub; no PyPI; no releases; uv/pyproject.toml; bin name trae-cli)
 allbrew https://github.com/bytedance/trae-agent --manual  # → source-build
 brew install trae-agent && trae-cli --help
