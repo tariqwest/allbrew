@@ -1,0 +1,25 @@
+{
+  "name": "@officecli/officecli",
+  "description": "OfficeCLI — CLI for reading and writing Office documents (.docx, .xlsx, .pptx) via a document DOM API. The native binary is fetched on install for your platform.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/iOfficeAI/OfficeCLI",
+  "dist-tags": {
+    "latest": "1.0.142"
+  },
+  "versions": {
+    "1.0.142": {
+      "name": "@officecli/officecli",
+      "version": "1.0.142",
+      "description": "OfficeCLI — CLI for reading and writing Office documents (.docx, .xlsx, .pptx) via a document DOM API. The native binary is fetched on install for your platform.",
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/iOfficeAI/OfficeCLI",
+      "bin": {
+        "officecli": "officecli.js"
+      },
+      "dist": {
+        "tarball": "https://registry.npmjs.org/@officecli/officecli/-/officecli-1.0.142.tgz",
+        "shasum": "918eb70143b82e3bb87921389203b759b59db5a7"
+      }
+    }
+  }
+}

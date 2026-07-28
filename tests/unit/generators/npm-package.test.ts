@@ -9,6 +9,7 @@ import vtopFixture from "../../fixtures/npm/vtop.json";
 import samanhappyMcphubFixture from "../../fixtures/npm/samanhappy-mcphub.json";
 import augmentcodeAuggieFixture from "../../fixtures/npm/augmentcode-auggie.json";
 import smitheryCliFixture from "../../fixtures/npm/smithery-cli.json";
+import officecliFixture from "../../fixtures/npm/officecli.json";
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
@@ -630,6 +631,96 @@ describe("collectNpmPackagePayload — @smithery/cli", () => {
 
   it("includes empty service block by default", async () => {
     const payload = await collectNpmPackagePayload("@smithery/cli");
+    expect(payload.serviceBlock).toBe("");
+  });
+});
+
+describe("collectNpmPackagePayload — @officecli/officecli", () => {
+  beforeEach(() => {
+    mock.restore();
+
+    global.fetch = mock((url: string) => {
+      if (
+        url.includes("registry.npmjs.org/@officecli/officecli") ||
+        url.includes("registry.npmjs.org/%40officecli%2Fofficecli")
+      ) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(officecliFixture),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+      });
+    }) as any;
+  });
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectNpmPackagePayload("@officecli/officecli", null, {
+      name: "officecli",
+    });
+    expect(payload.template).toBe("npm_package");
+  });
+
+  it("extracts name from override", async () => {
+    const payload = await collectNpmPackagePayload("@officecli/officecli", null, {
+      name: "officecli",
+    });
+    expect(payload.name).toBe("officecli");
+    expect(payload.className).toBe("Officecli");
+  });
+
+  it("uses npm description", async () => {
+    const payload = await collectNpmPackagePayload("@officecli/officecli", null, {
+      name: "officecli",
+    });
+    expect(payload.desc).toContain("Office documents");
+  });
+
+  it("uses npm homepage", async () => {
+    const payload = await collectNpmPackagePayload("@officecli/officecli", null, {
+      name: "officecli",
+    });
+    expect(payload.homepage).toBe("https://github.com/iOfficeAI/OfficeCLI");
+  });
+
+  it("uses tarball URL from latest version", async () => {
+    const payload = await collectNpmPackagePayload("@officecli/officecli", null, {
+      name: "officecli",
+    });
+    expect(payload.url).toBe(
+      "https://registry.npmjs.org/@officecli/officecli/-/officecli-1.0.142.tgz",
+    );
+  });
+
+  it("extracts bin name from scoped package", async () => {
+    const payload = await collectNpmPackagePayload("@officecli/officecli", null, {
+      name: "officecli",
+    });
+    expect(payload.testBinName).toBe("officecli");
+  });
+
+  it("generates license line from npm data", async () => {
+    const payload = await collectNpmPackagePayload("@officecli/officecli", null, {
+      name: "officecli",
+    });
+    expect(payload.licenseLine).toContain("Apache-2.0");
+  });
+
+  it("generates npm registry livecheck block for scoped package", async () => {
+    const payload = await collectNpmPackagePayload("@officecli/officecli", null, {
+      name: "officecli",
+    });
+    expect(payload.livecheckBlock).toContain(
+      "registry.npmjs.org/%40officecli%2Fofficecli/latest",
+    );
+  });
+
+  it("includes empty service block by default", async () => {
+    const payload = await collectNpmPackagePayload("@officecli/officecli", null, {
+      name: "officecli",
+    });
     expect(payload.serviceBlock).toBe("");
   });
 });

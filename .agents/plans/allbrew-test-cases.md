@@ -152,6 +152,7 @@
 | tes3edit | Rust | egui | | github.com/rfuzzo/tes3edit | | | | | | | | | | | | | yes | | | yes | yes | | Morrowind plugin editor; Tier B binary/cask path |
 | SydneyQt | Go | Wails | | github.com/juzeon/SydneyQt | | | | | | | | | | | | | yes | | | yes | yes | | Bing/Copilot desktop client; Tier B binary/cask path |
 | LottieViewConvert | .NET | Avalonia | | github.com/SwaggyMacro/LottieViewConvert | | | | | | | | | | | | | yes | | | yes | yes | | TGS/Lottie converter; Tier B binary/cask path |
+| officecli | .NET | | officecli.ai | github.com/iOfficeAI/OfficeCLI | officecli (formula) | | | npmjs.com/package/@officecli/officecli | | | | | | | | yes | | | | yes | yes (8) | yes | Self-contained .NET Office doc CLI; also installable via npm; cmd officecli; Apache-2.0; v1.0.142; 22.6k stars; in HB; npm-package |
 | Popcorn Time | Node | Electron/NW.js | | github.com/popcorn-official/popcorn-desktop | | | | | | | | | | | | | yes | | | yes | yes | | media streamer; NW.js (not Tauri); Tier B binary/cask path |
 | dev-manager-desktop | Node | Tauri | | github.com/webosbrew/dev-manager-desktop | | | | | | | | | | | | | yes | | | yes | yes | | webOS homebrew manager; Tier B binary/cask path |
 | gogs | Go | | | github.com/gogs/gogs | gogs (cask) | | | | | | | github.com/gogs/gogs | | | | | | | | yes | yes (14) | | |

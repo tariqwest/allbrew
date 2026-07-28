@@ -182,6 +182,33 @@ describe.concurrent("npm-package integration", () => {
     expect(ruby).toContain("bin.install_symlink");
   });
 
+  it("@officecli/officecli: payload fields are well-formed (scoped pkg, .NET binary wrapper)", async () => {
+    const payload = await collectNpmPackagePayload("@officecli/officecli", null, {
+      name: "officecli",
+    });
+    expect(payload.template).toBe("npm_package");
+    expect(payload.name).toBe("officecli");
+    expect(payload.url).toMatch(
+      /^https:\/\/registry\.npmjs\.org\/@officecli\/officecli\/-\/officecli-.+\.tgz/,
+    );
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.livecheckBlock).toContain(
+      "registry.npmjs.org/%40officecli%2Fofficecli/latest",
+    );
+  });
+
+  it("@officecli/officecli: generates structurally valid Ruby formula", async () => {
+    const payload = await collectNpmPackagePayload("@officecli/officecli", null, {
+      name: "officecli",
+    });
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Officecli < Formula");
+    expect(ruby).toContain('depends_on "node"');
+    expect(ruby).toContain('system "npm", "install"');
+    expect(ruby).toContain("bin.install_symlink");
+  });
+
   it("nonexistent-pkg-xyz: throws on missing package", async () => {
     await expect(
       collectNpmPackagePayload("nonexistent-allbrew-test-xyz-999"),
