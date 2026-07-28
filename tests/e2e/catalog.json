@@ -4760,11 +4760,13 @@
   },
   {
     "name": "ego-lite",
-    "url": "https://github.com/citrolabs/ego-lite",
-    "generator": "cask-app-release",
+    "url": "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
+    "generator": "cask-app",
     "allbrewArgs": [
-      "--name",
-      "ego-lite"
+      "--app-name",
+      "ego lite.app",
+      "--homepage",
+      "https://lite.ego.app"
     ],
     "expectedBin": null,
     "verifyCommand": [
