@@ -167,10 +167,19 @@ describe.concurrent("pip-package integration", () => {
     expect(payload.className).toBe("ShellGpt");
     expect(payload.testBinName).toBe("sgpt");
     expect(ruby).toContain("class ShellGpt < Formula");
+    expect(ruby).toContain("preserve_rpath");
+    expect(ruby).toContain("include-system-site-packages = false");
+    expect(payload.resourcesBlock).toContain('resource "click"');
     expect(payload.url).toMatch(/shell_gpt-[\d.]+-py3-none-any\.whl$/);
     expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(payload.licenseLine).toContain("MIT");
     expect(payload.livecheckBlock).toContain("pypi.org/pypi/shell-gpt/json");
+  });
+
+  it("shell-gpt: defaults bin name to sgpt without override", async () => {
+    const payload = await collectPipPackagePayload("shell-gpt");
+    expect(payload.testBinName).toBe("sgpt");
+    expect(payload.resourcesBlock).toMatch(/resource "click"/);
   });
 
   it("nonexistent-package-xyz: throws on 404", async () => {

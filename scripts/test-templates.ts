@@ -348,9 +348,30 @@ function buildPipPackageCase(): Case {
     `\n` +
     livecheck +
     `  depends_on "python@3.13"\n\n` +
+    `  # Native wheels (jiter, pydantic-core, …) ship dylib IDs like\n` +
+    `  # @rpath/foo.so. Homebrew's fix_dynamic_linkage expands those to long\n` +
+    `  # Cellar paths that do not fit the Mach-O header. Preserve @rpath IDs.\n` +
+    `  preserve_rpath\n\n` +
     resources +
     `  def install\n` +
     `    venv = virtualenv_create(libexec, "python3.13")\n` +
+    `    # Homebrew python@3.13 venvs may inherit system site-packages. Isolate so\n` +
+    `    # formula resources cannot resolve against /opt/homebrew/lib/python*.\n` +
+    `    pyvenv_cfg = libexec/"pyvenv.cfg"\n` +
+    `    if pyvenv_cfg.exist?\n` +
+    `      lines = pyvenv_cfg.read.lines\n` +
+    `      replaced = false\n` +
+    `      lines.map! do |line|\n` +
+    `        if line.start_with?("include-system-site-packages")\n` +
+    `          replaced = true\n` +
+    `          "include-system-site-packages = false\\n"\n` +
+    `        else\n` +
+    `          line\n` +
+    `        end\n` +
+    `      end\n` +
+    `      lines << "include-system-site-packages = false\\n" unless replaced\n` +
+    `      pyvenv_cfg.atomic_write(lines.join)\n` +
+    `    end\n` +
     `    resources.each { |r| pip_install_dist(venv, r) }\n` +
     `    pip_install_main(venv)\n` +
     `  end\n\n` +

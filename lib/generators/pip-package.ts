@@ -15,6 +15,21 @@ import { writeRenderedFormula } from "../template-renderer.ts";
 /** Python version used by the pip formula template (`depends_on "python@3.13"`). */
 export const PIP_FORMULA_PYTHON = { major: 3, minor: 13 } as const;
 
+/**
+ * Runtime deps that packages import but omit from requires_dist.
+ * shell-gpt imports click directly; typer>=0.26 vendors click and no longer
+ * declares it, so transitive resolution never pulls it in.
+ */
+export const UNDECLARED_RUNTIME_DEPS: Record<string, string[]> = {
+  "shell-gpt": ["click"],
+};
+
+/** Console-script names that differ from the PyPI/distribution name. */
+export const KNOWN_BIN_NAMES: Record<string, string> = {
+  "shell-gpt": "sgpt",
+  graphifyy: "graphify",
+};
+
 type PypiUrl = {
   packagetype?: string;
   python_version?: string;
@@ -24,7 +39,39 @@ type PypiUrl = {
   digests?: { sha256?: string };
 };
 
-type SelectedDist = { url: string; sha256: string; filename: string; kind: "wheel" | "sdist" };
+type PypiPackageJson = {
+  info: {
+    name?: string;
+    version?: string;
+    summary?: string;
+    home_page?: string | null;
+    project_url?: string | null;
+    license?: string | null;
+    requires_dist?: string[] | null;
+  };
+  urls?: PypiUrl[];
+  releases?: Record<string, PypiUrl[]>;
+};
+
+type SelectedDist = {
+  url: string;
+  sha256: string;
+  filename: string;
+  kind: "wheel" | "sdist";
+  version?: string;
+};
+
+type ResolvedResource = {
+  name: string;
+  url: string;
+  sha256: string;
+  version?: string;
+};
+
+export type VersionConstraint = {
+  raw: string;
+  clauses: Array<{ op: string; version: string }>;
+};
 
 export async function collectPipPackagePayload(
   packageName: string,
@@ -42,6 +89,8 @@ export async function collectPipPackagePayload(
     );
 
   const deps = await resolveTransitiveDeps(packageName, new Set());
+  const undeclared = await resolveUndeclaredDeps(packageName, deps);
+  const allDeps = dedupeResources([...deps, ...undeclared]);
 
   const name = options.name || toFormulaName(packageName);
   const className = toClassName(name);
@@ -51,6 +100,7 @@ export async function collectPipPackagePayload(
     repoInfo?.description ||
     `Install ${packageName}`;
   const homepage =
+    options.homepage ||
     pypiData.info.home_page ||
     pypiData.info.project_url ||
     repoInfo?.homepage ||
@@ -58,6 +108,11 @@ export async function collectPipPackagePayload(
   const license = guessLicenseIdentifier(
     pypiData.info.license || repoInfo?.license,
   );
+
+  const testBinName =
+    options.binName ||
+    KNOWN_BIN_NAMES[normalizePackageName(packageName)] ||
+    name;
 
   return {
     template: "pip_package",
@@ -69,16 +124,14 @@ export async function collectPipPackagePayload(
     sha256: rubyEscape(dist.sha256),
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     livecheckBlock: pypiLivecheckBlock(packageName),
-    resourcesBlock: buildResourcesBlock(deps),
+    resourcesBlock: buildResourcesBlock(allDeps),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    testBinName: rubyEscape(options.binName || name),
+    testBinName: rubyEscape(testBinName),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
 }
 
-function buildResourcesBlock(
-  deps: Array<{ name: string; url: string; sha256: string }>,
-) {
+function buildResourcesBlock(deps: ResolvedResource[]) {
   if (deps.length === 0) return "";
 
   let block = "";
@@ -104,28 +157,314 @@ export async function generatePipPackage(
   return writeRenderedFormula(payload, options.tapPath);
 }
 
-async function fetchPypiData(packageName: string) {
+export function normalizePackageName(name: string): string {
+  return name.trim().toLowerCase().replace(/[-_.]+/g, "-");
+}
+
+/** Parse a single requires_dist entry into name + optional version + marker. */
+export function parseRequiresDistEntry(req: string): {
+  name: string;
+  extras: string[];
+  constraint: VersionConstraint;
+  marker: string | null;
+} | null {
+  const trimmed = req.trim();
+  if (!trimmed) return null;
+
+  const [mainPart, ...markerParts] = trimmed.split(";");
+  const marker = markerParts.length ? markerParts.join(";").trim() : null;
+
+  const m = mainPart
+    .trim()
+    .match(/^([A-Za-z0-9][A-Za-z0-9._-]*)\s*(?:\[([^\]]*)\])?\s*(.*)$/);
+  if (!m) return null;
+
+  const name = m[1];
+  const extras = (m[2] || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const rawConstraint = (m[3] || "").trim();
+  return {
+    name,
+    extras,
+    constraint: parseVersionConstraint(rawConstraint),
+    marker,
+  };
+}
+
+export function parseVersionConstraint(raw: string): VersionConstraint {
+  const cleaned = raw.replace(/\(([^)]+)\)/g, "$1").trim();
+  if (!cleaned) return { raw: "", clauses: [] };
+
+  const clauses: Array<{ op: string; version: string }> = [];
+  for (const part of cleaned.split(",")) {
+    const c = part.trim();
+    if (!c) continue;
+    const m = c.match(/^(===|==|!=|~=|<=|>=|<|>)\s*(.+)$/);
+    if (m) {
+      clauses.push({ op: m[1], version: m[2].trim() });
+    }
+  }
+  return { raw: cleaned, clauses };
+}
+
+/**
+ * Evaluate a subset of PEP 508 environment markers for the formula target
+ * (CPython 3.13 on the host OS/arch). Extras are never selected.
+ */
+export function isRequirementApplicable(
+  marker: string | null,
+  env: {
+    sysPlatform?: string;
+    platformSystem?: string;
+    pythonVersion?: string;
+    extra?: string | null;
+  } = {},
+): boolean {
+  if (!marker || !marker.trim()) return true;
+
+  // Never install extras-only deps into the formula.
+  if (/\bextra\s*==/.test(marker)) return false;
+
+  const sysPlatform =
+    env.sysPlatform ??
+    (process.platform === "darwin"
+      ? "darwin"
+      : process.platform === "win32"
+        ? "win32"
+        : "linux");
+  const platformSystem =
+    env.platformSystem ??
+    (process.platform === "darwin"
+      ? "Darwin"
+      : process.platform === "win32"
+        ? "Windows"
+        : "Linux");
+  const pythonVersion =
+    env.pythonVersion ??
+    `${PIP_FORMULA_PYTHON.major}.${PIP_FORMULA_PYTHON.minor}`;
+
+  let expr = marker;
+  expr = expr.replace(/\bextra\b/g, JSON.stringify(env.extra ?? ""));
+  expr = expr.replace(/\bsys_platform\b/g, JSON.stringify(sysPlatform));
+  expr = expr.replace(/\bplatform_system\b/g, JSON.stringify(platformSystem));
+  expr = expr.replace(/\bpython_version\b/g, JSON.stringify(pythonVersion));
+
+  // Unsupported markers: keep the dep (fail open) rather than drop runtime needs.
+  if (
+    /\b(platform_machine|platform_python_implementation|python_full_version|os_name|implementation_name|implementation_version)\b/.test(
+      expr,
+    )
+  ) {
+    return true;
+  }
+
+  return evalMarkerExpression(expr);
+}
+
+function evalMarkerExpression(expr: string): boolean {
+  const normalized = expr.replace(/\s+/g, " ").trim();
+  if (!normalized) return true;
+
+  const orParts = splitTopLevel(normalized, " or ");
+  if (orParts.length > 1) {
+    return orParts.some((p) => evalMarkerExpression(p));
+  }
+  const andParts = splitTopLevel(normalized, " and ");
+  if (andParts.length > 1) {
+    return andParts.every((p) => evalMarkerExpression(p));
+  }
+
+  let part = normalized.trim();
+  if (part.startsWith("(") && part.endsWith(")")) {
+    return evalMarkerExpression(part.slice(1, -1));
+  }
+  if (part.startsWith("not ")) {
+    return !evalMarkerExpression(part.slice(4));
+  }
+
+  const m = part.match(/^(.*?)(?:\s*)(===|==|!=|<=|>=|<|>)(?:\s*)(.*)$/);
+  if (!m) return true;
+  const left = unquote(m[1].trim());
+  const op = m[2];
+  const right = unquote(m[3].trim());
+  return compareMarkerValues(left, op, right);
+}
+
+function splitTopLevel(expr: string, sep: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < expr.length; i++) {
+    const ch = expr[i];
+    if (ch === "(") depth++;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    else if (depth === 0 && expr.startsWith(sep, i)) {
+      parts.push(expr.slice(start, i));
+      i += sep.length - 1;
+      start = i + 1;
+    }
+  }
+  parts.push(expr.slice(start));
+  return parts.map((p) => p.trim()).filter(Boolean);
+}
+
+function unquote(s: string): string {
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    return s.slice(1, -1);
+  }
+  return s;
+}
+
+function compareMarkerValues(left: string, op: string, right: string): boolean {
+  if (/^\d+(\.\d+)*$/.test(left) && /^\d+(\.\d+)*$/.test(right)) {
+    const cmp = compareVersions(left, right);
+    switch (op) {
+      case "==":
+      case "===":
+        return cmp === 0;
+      case "!=":
+        return cmp !== 0;
+      case "<":
+        return cmp < 0;
+      case "<=":
+        return cmp <= 0;
+      case ">":
+        return cmp > 0;
+      case ">=":
+        return cmp >= 0;
+    }
+  }
+  switch (op) {
+    case "==":
+    case "===":
+      return left === right;
+    case "!=":
+      return left !== right;
+    case "<":
+      return left < right;
+    case "<=":
+      return left <= right;
+    case ">":
+      return left > right;
+    case ">=":
+      return left >= right;
+    default:
+      return true;
+  }
+}
+
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map((x) => parseInt(x, 10) || 0);
+  const pb = b.split(".").map((x) => parseInt(x, 10) || 0);
+  const n = Math.max(pa.length, pb.length);
+  for (let i = 0; i < n; i++) {
+    const da = pa[i] ?? 0;
+    const db = pb[i] ?? 0;
+    if (da < db) return -1;
+    if (da > db) return 1;
+  }
+  return 0;
+}
+
+export function versionSatisfies(
+  version: string,
+  constraint: VersionConstraint,
+): boolean {
+  if (!constraint.clauses.length) return true;
+  const v = version.split("+")[0].split("!")[0];
+
+  for (const { op, version: rawTarget } of constraint.clauses) {
+    const target = rawTarget.split("+")[0].replace(/\.\*$/, "");
+    const cmp = compareVersions(
+      normalizeVersionForCompare(v),
+      normalizeVersionForCompare(target),
+    );
+    let ok = false;
+    switch (op) {
+      case "==":
+      case "===":
+        if (rawTarget.endsWith(".*")) {
+          ok = v === target || v.startsWith(target + ".");
+        } else {
+          ok = cmp === 0 || v === target;
+        }
+        break;
+      case "!=":
+        ok = cmp !== 0 && v !== target;
+        break;
+      case ">=":
+        ok = cmp >= 0;
+        break;
+      case "<=":
+        ok = cmp <= 0;
+        break;
+      case ">":
+        ok = cmp > 0;
+        break;
+      case "<":
+        ok = cmp < 0;
+        break;
+      case "~=": {
+        const parts = target.split(".");
+        if (parts.length < 2) {
+          ok = cmp >= 0;
+          break;
+        }
+        const prefix = parts.slice(0, -1).join(".");
+        ok = cmp >= 0 && (v === prefix || v.startsWith(prefix + "."));
+        break;
+      }
+      default:
+        ok = true;
+    }
+    if (!ok) return false;
+  }
+  return true;
+}
+
+function normalizeVersionForCompare(v: string): string {
+  return v
+    .replace(/((?:a|b|rc|dev|post)\d*)$/i, (m, _g, offset) =>
+      offset > 0 ? "" : m,
+    )
+    .replace(/\.$/, "");
+}
+
+async function fetchPypiData(
+  packageName: string,
+  version?: string,
+): Promise<PypiPackageJson> {
   const pypiBase = process.env.PYPI_URL || "https://pypi.org";
-  const response = await fetch(
-    `${pypiBase}/pypi/${encodeURIComponent(packageName)}/json`,
-    {
-      headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" },
-    },
-  );
+  const path = version
+    ? `/pypi/${encodeURIComponent(packageName)}/${encodeURIComponent(version)}/json`
+    : `/pypi/${encodeURIComponent(packageName)}/json`;
+  const response = await fetch(`${pypiBase}${path}`, {
+    headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" },
+  });
   if (!response.ok)
     throw new Error(
-      `PyPI lookup failed for ${packageName}: ${response.status}`,
+      `PyPI lookup failed for ${packageName}${version ? `@${version}` : ""}: ${response.status}`,
     );
   return response.json();
 }
 
-function toSelectedDist(url: PypiUrl, kind: "wheel" | "sdist"): SelectedDist | null {
+function toSelectedDist(
+  url: PypiUrl,
+  kind: "wheel" | "sdist",
+  version?: string,
+): SelectedDist | null {
   if (!url?.url || !url?.digests?.sha256) return null;
   return {
     url: url.url,
     sha256: url.digests.sha256,
     filename: url.filename || url.url.split("/").pop() || "",
     kind,
+    version,
   };
 }
 
@@ -141,7 +480,6 @@ function parseWheelTags(filename: string): {
   abiTags: string[];
   platformTags: string[];
 } | null {
-  // {distribution}-{version}(-{build})?-{python}-{abi}-{platform}.whl
   if (!filename.toLowerCase().endsWith(".whl")) return null;
   const stem = filename.slice(0, -4);
   const parts = stem.split("-");
@@ -157,7 +495,6 @@ function pythonTagCompatible(
   py = PIP_FORMULA_PYTHON,
 ): { ok: boolean; pure: boolean; score: number } {
   const t = tag.toLowerCase();
-  // pure-python tags: py3, py3.x, py2.py3
   if (t === "py2.py3" || t === "py3" || /^py3(\.\d+)?$/.test(t)) {
     return { ok: true, pure: true, score: 100 };
   }
@@ -177,7 +514,6 @@ function abiTagCompatible(tag: string, py = PIP_FORMULA_PYTHON): boolean {
   const t = tag.toLowerCase();
   if (t === "none") return true;
   if (t === "abi3") return true;
-  // cp313, cp313t, etc.
   const m = t.match(/^cp(\d)(\d+)t?$/);
   if (!m) return false;
   return Number(m[1]) === py.major && Number(m[2]) === py.minor;
@@ -200,7 +536,6 @@ function platformTagCompatible(
     }
   }
 
-  // Linux hosts (rare for allbrew, but keep a basic path)
   if (process.platform === "linux") {
     if (macArch === "arm64" && /manylinux.*_aarch64|musllinux.*_aarch64/.test(t)) {
       return { ok: true, score: 80 };
@@ -217,14 +552,6 @@ function isPurePythonWheel(filename: string): boolean {
   return /[.-]py3[^-]*-none-any\.whl$/i.test(filename);
 }
 
-/**
- * Score a wheel for the pip formula.
- *
- * Homebrew's stock `virtualenv_install_with_resources` only special-cases pure
- * `py3-none-any` wheels. Our generated install block also installs host-arch
- * platform wheels by feeding pip the `.whl` file path directly (see template),
- * so platform / abi3 wheels are valid when they match python@3.13 + host arch.
- */
 function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
   if (url.yanked) return -1;
   if (url.packagetype && url.packagetype !== "bdist_wheel") return -1;
@@ -232,7 +559,6 @@ function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
   const tags = parseWheelTags(filename);
   if (!tags) return -1;
 
-  // Free-threaded builds are not the formula target.
   if (
     tags.pythonTags.some((t) => /t$/i.test(t)) ||
     tags.abiTags.some((t) => /t$/i.test(t))
@@ -247,11 +573,9 @@ function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
     });
     if (!hasPy3) return -1;
     const exactPy3 = tags.pythonTags.some((t) => t.toLowerCase() === "py3");
-    // Prefer pure wheels over platform wheels (portable formulas).
     return exactPy3 ? 300 : 290;
   }
 
-  // Platform / abi3 wheels for python@3.13 + host arch.
   let bestPy = { ok: false, pure: false, score: 0 };
   for (const pt of tags.pythonTags) {
     const r = pythonTagCompatible(pt);
@@ -296,16 +620,25 @@ function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
  */
 export function selectBestDistribution(
   urls: PypiUrl[],
-  options: { preferWheel?: boolean; macArch?: "arm64" | "x86_64" | null } = {},
+  options: {
+    preferWheel?: boolean;
+    macArch?: "arm64" | "x86_64" | null;
+    version?: string;
+  } = {},
 ): SelectedDist | null {
   const preferWheel = options.preferWheel !== false;
   const macArch = options.macArch === undefined ? hostMacArch() : options.macArch;
-  const candidates = (urls || []).filter((u) => u && !u.yanked && u.url && u.digests?.sha256);
+  const candidates = (urls || []).filter(
+    (u) => u && !u.yanked && u.url && u.digests?.sha256,
+  );
 
   if (preferWheel) {
     let best: { score: number; url: PypiUrl } | null = null;
     for (const u of candidates) {
-      if (u.packagetype !== "bdist_wheel" && !String(u.filename || "").endsWith(".whl")) {
+      if (
+        u.packagetype !== "bdist_wheel" &&
+        !String(u.filename || "").endsWith(".whl")
+      ) {
         continue;
       }
       const score = scoreWheel(u, macArch);
@@ -313,66 +646,157 @@ export function selectBestDistribution(
       if (!best || score > best.score) best = { score, url: u };
     }
     if (best) {
-      const selected = toSelectedDist(best.url, "wheel");
+      const selected = toSelectedDist(best.url, "wheel", options.version);
       if (selected) return selected;
     }
   }
 
   const sdist =
     candidates.find((u) => u.packagetype === "sdist") ||
-    candidates.find((u) => /\.(tar\.gz|tgz|zip)$/i.test(u.filename || u.url || "")) ||
+    candidates.find((u) =>
+      /\.(tar\.gz|tgz|zip)$/i.test(u.filename || u.url || ""),
+    ) ||
     null;
-  if (sdist) return toSelectedDist(sdist, "sdist");
+  if (sdist) return toSelectedDist(sdist, "sdist", options.version);
 
-  // Last resort: first URL with digests.
   if (candidates[0]) {
     const kind =
       candidates[0].packagetype === "bdist_wheel" ||
       String(candidates[0].filename || "").endsWith(".whl")
         ? "wheel"
         : "sdist";
-    return toSelectedDist(candidates[0], kind);
+    return toSelectedDist(candidates[0], kind, options.version);
   }
   return null;
+}
+
+/**
+ * Pick a release version that satisfies the constraint.
+ * Prefers the newest non-yanked version with a usable distribution.
+ */
+export function pickVersionFromReleases(
+  releases: Record<string, PypiUrl[]> | undefined,
+  constraint: VersionConstraint,
+  latestVersion?: string,
+): string | null {
+  if (latestVersion && versionSatisfies(latestVersion, constraint)) {
+    if (!releases || !releases[latestVersion]) return latestVersion;
+    const files = releases[latestVersion] || [];
+    if (files.some((u) => u && !u.yanked && u.url && u.digests?.sha256)) {
+      return latestVersion;
+    }
+  }
+
+  if (!releases) {
+    return latestVersion && versionSatisfies(latestVersion, constraint)
+      ? latestVersion
+      : null;
+  }
+
+  const versions = Object.keys(releases)
+    .filter((v) => versionSatisfies(v, constraint))
+    .filter((v) =>
+      (releases[v] || []).some(
+        (u) => u && !u.yanked && u.url && u.digests?.sha256,
+      ),
+    )
+    .sort((a, b) => compareVersions(b, a));
+
+  return versions[0] || null;
+}
+
+function exactPinVersion(constraint: VersionConstraint): string | null {
+  if (constraint.clauses.length !== 1) return null;
+  const c = constraint.clauses[0];
+  if ((c.op === "==" || c.op === "===") && !c.version.includes("*")) {
+    return c.version;
+  }
+  return null;
+}
+
+async function selectDistForDependency(
+  depName: string,
+  constraint: VersionConstraint,
+): Promise<SelectedDist | null> {
+  const pin = exactPinVersion(constraint);
+  if (pin) {
+    try {
+      const pinned = await fetchPypiData(depName, pin);
+      const dist = selectBestDistribution(pinned.urls || [], { version: pin });
+      if (dist) return { ...dist, version: pin };
+    } catch {
+      // fall through
+    }
+  }
+
+  const latest = await fetchPypiData(depName);
+  const latestVersion = latest.info.version;
+  if (latestVersion && versionSatisfies(latestVersion, constraint)) {
+    const dist = selectBestDistribution(latest.urls || [], {
+      version: latestVersion,
+    });
+    if (dist) return { ...dist, version: latestVersion };
+  }
+
+  const chosen = pickVersionFromReleases(
+    latest.releases,
+    constraint,
+    latestVersion,
+  );
+  if (!chosen) return null;
+  if (chosen === latestVersion) {
+    return selectBestDistribution(latest.urls || [], { version: chosen });
+  }
+
+  try {
+    const pinned = await fetchPypiData(depName, chosen);
+    return selectBestDistribution(pinned.urls || [], { version: chosen });
+  } catch {
+    const files = latest.releases?.[chosen] || [];
+    return selectBestDistribution(files, { version: chosen });
+  }
 }
 
 async function resolveTransitiveDeps(
   packageName: string,
   visited: Set<string>,
-  maxDepth = 3,
+  maxDepth = 5,
   depth = 0,
-): Promise<Array<{ name: string; url: string; sha256: string }>> {
-  if (depth >= maxDepth || visited.has(packageName.toLowerCase())) return [];
-  visited.add(packageName.toLowerCase());
+): Promise<ResolvedResource[]> {
+  const key = normalizePackageName(packageName);
+  if (depth >= maxDepth || visited.has(key)) return [];
+  visited.add(key);
 
-  const resources: Array<{ name: string; url: string; sha256: string }> = [];
+  const resources: ResolvedResource[] = [];
 
   try {
     const pypiData = await fetchPypiData(packageName);
     const requires = pypiData.info.requires_dist || [];
 
     for (const req of requires) {
-      const match = req.match(/^([a-zA-Z0-9_.-]+)/);
-      if (!match) continue;
+      const parsed = parseRequiresDistEntry(req);
+      if (!parsed) continue;
+      if (!isRequirementApplicable(parsed.marker)) continue;
 
-      if (/extra\s*==/.test(req)) continue;
-
-      const depName = match[1];
-      if (visited.has(depName.toLowerCase())) continue;
+      const depKey = normalizePackageName(parsed.name);
+      if (visited.has(depKey)) continue;
 
       try {
-        const depData = await fetchPypiData(depName);
-        const dist = selectBestDistribution(depData.urls || []);
+        const dist = await selectDistForDependency(
+          parsed.name,
+          parsed.constraint,
+        );
         if (dist) {
           resources.push({
-            name: depName,
+            name: parsed.name,
             url: dist.url,
             sha256: dist.sha256,
+            version: dist.version,
           });
         }
 
         const transitive = await resolveTransitiveDeps(
-          depName,
+          parsed.name,
           visited,
           maxDepth,
           depth + 1,
@@ -387,4 +811,60 @@ async function resolveTransitiveDeps(
   }
 
   return resources;
+}
+
+async function resolveUndeclaredDeps(
+  packageName: string,
+  already: ResolvedResource[],
+): Promise<ResolvedResource[]> {
+  const extras =
+    UNDECLARED_RUNTIME_DEPS[normalizePackageName(packageName)] || [];
+  if (!extras.length) return [];
+
+  const have = new Set(already.map((r) => normalizePackageName(r.name)));
+  const out: ResolvedResource[] = [];
+  for (const depName of extras) {
+    const key = normalizePackageName(depName);
+    if (have.has(key)) continue;
+    try {
+      const data = await fetchPypiData(depName);
+      const dist = selectBestDistribution(data.urls || [], {
+        version: data.info.version,
+      });
+      if (!dist) continue;
+      out.push({
+        name: depName,
+        url: dist.url,
+        sha256: dist.sha256,
+        version: dist.version || data.info.version,
+      });
+      have.add(key);
+
+      const nested = await resolveTransitiveDeps(
+        depName,
+        new Set([normalizePackageName(packageName), ...have]),
+      );
+      for (const n of nested) {
+        const nk = normalizePackageName(n.name);
+        if (have.has(nk)) continue;
+        out.push(n);
+        have.add(nk);
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return out;
+}
+
+function dedupeResources(resources: ResolvedResource[]): ResolvedResource[] {
+  const seen = new Set<string>();
+  const out: ResolvedResource[] = [];
+  for (const r of resources) {
+    const key = normalizePackageName(r.name);
+    if (seen.has(key)) continue;
+    out.push(r);
+    seen.add(key);
+  }
+  return out;
 }

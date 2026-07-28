@@ -1,5 +1,15 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectPipPackagePayload, selectBestDistribution } from "../../../lib/generators/pip-package.ts";
+import {
+  collectPipPackagePayload,
+  selectBestDistribution,
+  parseRequiresDistEntry,
+  isRequirementApplicable,
+  versionSatisfies,
+  parseVersionConstraint,
+  compareVersions,
+  normalizePackageName,
+  KNOWN_BIN_NAMES,
+} from "../../../lib/generators/pip-package.ts";
 import marimoFixture from "../../fixtures/pypi/marimo.json";
 import clickFixture from "../../fixtures/pypi/click.json";
 import stuiFixture from "../../fixtures/pypi/s-tui.json";
@@ -423,6 +433,16 @@ describe("collectPipPackagePayload — shell-gpt", () => {
     });
     expect(payload.testBinName).toBe("sgpt");
   });
+
+  it("includes undeclared click runtime dependency as a resource", async () => {
+    const payload = await collectPipPackagePayload("shell-gpt");
+    expect(payload.resourcesBlock).toContain('resource "click"');
+  });
+
+  it("defaults test binary to sgpt without explicit binName", async () => {
+    const payload = await collectPipPackagePayload("shell-gpt");
+    expect(payload.testBinName).toBe("sgpt");
+  });
 });
 
 
@@ -515,3 +535,75 @@ describe("selectBestDistribution", () => {
     expect(selectBestDistribution([])).toBeNull();
   });
 });
+
+describe("pip requirement parsing helpers", () => {
+  it("normalizes package names per PEP 503", () => {
+    expect(normalizePackageName("PyYAML")).toBe("pyyaml");
+    expect(normalizePackageName("typing_extensions")).toBe("typing-extensions");
+    expect(normalizePackageName("shell.gpt")).toBe("shell-gpt");
+  });
+
+  it("parses requires_dist with extras, versions, and markers", () => {
+    const parsed = parseRequiresDistEntry(
+      'requests[security]>=2.0,<3.0; python_version >= "3.10"',
+    );
+    expect(parsed?.name).toBe("requests");
+    expect(parsed?.extras).toEqual(["security"]);
+    expect(parsed?.constraint.clauses.map((c) => c.op)).toEqual([">=", "<"]);
+    expect(parsed?.marker).toContain("python_version");
+  });
+
+  it("skips extras-only requirements", () => {
+    expect(isRequirementApplicable('extra == "dev"')).toBe(false);
+    expect(isRequirementApplicable('extra == "litellm"')).toBe(false);
+  });
+
+  it("evaluates platform markers for the host", () => {
+    expect(
+      isRequirementApplicable('sys_platform == "win32"', {
+        sysPlatform: "darwin",
+      }),
+    ).toBe(false);
+    expect(
+      isRequirementApplicable('sys_platform == "darwin"', {
+        sysPlatform: "darwin",
+      }),
+    ).toBe(true);
+    expect(
+      isRequirementApplicable('platform_system == "Windows"', {
+        platformSystem: "Darwin",
+      }),
+    ).toBe(false);
+  });
+
+  it("checks PEP 440-ish version constraints", () => {
+    const c = parseVersionConstraint(">=1.8.0,<2.0.0");
+    expect(versionSatisfies("1.9.0", c)).toBe(true);
+    expect(versionSatisfies("2.0.0", c)).toBe(false);
+    expect(versionSatisfies("1.7.9", c)).toBe(false);
+
+    const pin = parseVersionConstraint("==1.83.4");
+    expect(versionSatisfies("1.83.4", pin)).toBe(true);
+    expect(versionSatisfies("1.83.5", pin)).toBe(false);
+
+    // ~=1.4 => >=1.4, ==1.* (1.5 is allowed); ~=1.4.0 => >=1.4.0, ==1.4.*
+    const approx = parseVersionConstraint("~=1.4");
+    expect(versionSatisfies("1.4.2", approx)).toBe(true);
+    expect(versionSatisfies("1.5.0", approx)).toBe(true);
+    expect(versionSatisfies("2.0.0", approx)).toBe(false);
+    const approxPatch = parseVersionConstraint("~=1.4.0");
+    expect(versionSatisfies("1.4.2", approxPatch)).toBe(true);
+    expect(versionSatisfies("1.5.0", approxPatch)).toBe(false);
+  });
+
+  it("compares dotted versions", () => {
+    expect(compareVersions("1.2.3", "1.2.10")).toBeLessThan(0);
+    expect(compareVersions("2.0.0", "1.9.9")).toBeGreaterThan(0);
+    expect(compareVersions("1.0.0", "1.0.0")).toBe(0);
+  });
+
+  it("knows shell-gpt binary alias", () => {
+    expect(KNOWN_BIN_NAMES["shell-gpt"]).toBe("sgpt");
+  });
+});
+

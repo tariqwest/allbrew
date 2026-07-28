@@ -78,6 +78,8 @@ describe("renderFormula", () => {
     expect(ruby).toContain("include Language::Python::Virtualenv");
     expect(ruby).toContain('depends_on "python@3.13"');
     expect(ruby).toContain("virtualenv_create(libexec, \"python3.13\")");
+    expect(ruby).toContain("preserve_rpath");
+    expect(ruby).toContain("include-system-site-packages = false");
     expect(ruby).toContain("pip_install_dist");
     expect(ruby).toContain("pip_install_main");
     expect(ruby).toContain(".whl");
