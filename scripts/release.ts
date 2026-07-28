@@ -185,7 +185,7 @@ function generateFormula(version: string, sha256: string) {
     (libexec/"allbrew").install libexec/"scripts"/"update-managed.sh"
     chmod 0755, libexec/"allbrew"/"update-managed.sh"
 
-    (etc/"allbrew-brew-wrap").write <<~EOS
+    (buildpath/"allbrew-brew-wrap").write <<~EOS
       # allbrew brew update hook
       # Source from your shell profile:
       #   source "$(brew --prefix)/etc/allbrew-brew-wrap"
@@ -203,6 +203,9 @@ function generateFormula(version: string, sha256: string) {
       # Opt in by aliasing brew:
       # alias brew=allbrew_brew
     EOS
+    # etc.install refuses to overwrite existing conf files on upgrade.
+    rm_f etc/"allbrew-brew-wrap"
+    etc.install "allbrew-brew-wrap"
 
     (bin/"allbrew").write <<~EOS
       #!/bin/bash
