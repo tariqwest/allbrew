@@ -150,6 +150,29 @@ describe.concurrent("pip-package integration", () => {
     expect(payload.name).toBe("flower");
   });
 
+  it("shell-gpt: generates valid formula with bin-name override", async () => {
+    const repoInfo = {
+      name: "shell_gpt",
+      fullName: "TheR1D/shell_gpt",
+      description: "A command-line productivity tool powered by AI large language models.",
+      homepage: "https://github.com/TheR1D/shell_gpt",
+      license: "MIT",
+    };
+    const payload = await collectPipPackagePayload("shell-gpt", repoInfo, {
+      binName: "sgpt",
+    });
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(payload.name).toBe("shell-gpt");
+    expect(payload.className).toBe("ShellGpt");
+    expect(payload.testBinName).toBe("sgpt");
+    expect(ruby).toContain("class ShellGpt < Formula");
+    expect(payload.url).toMatch(/shell_gpt-[\d.]+-py3-none-any\.whl$/);
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.licenseLine).toContain("MIT");
+    expect(payload.livecheckBlock).toContain("pypi.org/pypi/shell-gpt/json");
+  });
+
   it("nonexistent-package-xyz: throws on 404", async () => {
     await expect(
       collectPipPackagePayload("nonexistent-allbrew-test-xyz-999"),

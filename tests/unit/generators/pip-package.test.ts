@@ -5,6 +5,7 @@ import clickFixture from "../../fixtures/pypi/click.json";
 import stuiFixture from "../../fixtures/pypi/s-tui.json";
 import browsrFixture from "../../fixtures/pypi/browsr.json";
 import toolongFixture from "../../fixtures/pypi/toolong.json";
+import shellGptFixture from "../../fixtures/pypi/shell-gpt.json";
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("mocked_sha256_hash"),
@@ -338,6 +339,89 @@ describe("collectPipPackagePayload — toolong", () => {
   it("generates PyPI livecheck block", async () => {
     const payload = await collectPipPackagePayload("toolong");
     expect(payload.livecheckBlock).toContain("pypi.org/pypi/toolong/json");
+  });
+});
+
+describe("collectPipPackagePayload — shell-gpt", () => {
+  const repoInfo = {
+    name: "shell_gpt",
+    fullName: "TheR1D/shell_gpt",
+    description: "A command-line productivity tool powered by AI large language models.",
+    homepage: "https://github.com/TheR1D/shell_gpt",
+    license: "MIT",
+  };
+
+  beforeEach(() => {
+    mock.restore();
+
+    global.fetch = mock((url: string) => {
+      if (url.includes("/shell-gpt/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(shellGptFixture),
+        });
+      }
+      if (url.includes("/click/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(clickFixture),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            info: { name: "unknown", version: "1.0.0", summary: "Unknown", requires_dist: [] },
+            urls: [],
+          }),
+      });
+    }) as any;
+  });
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectPipPackagePayload("shell-gpt");
+    expect(payload.template).toBe("pip_package");
+  });
+
+  it("derives name and className from package name", async () => {
+    const payload = await collectPipPackagePayload("shell-gpt");
+    expect(payload.name).toBe("shell-gpt");
+    expect(payload.className).toBe("ShellGpt");
+  });
+
+  it("uses PyPI summary as description", async () => {
+    const payload = await collectPipPackagePayload("shell-gpt");
+    expect(payload.desc).toContain("command-line productivity tool");
+  });
+
+  it("uses PyPI project URL as homepage when home_page is absent", async () => {
+    const payload = await collectPipPackagePayload("shell-gpt");
+    expect(payload.homepage).toBe("https://pypi.org/project/shell-gpt/");
+  });
+
+  it("prefers pure wheel URL and SHA256", async () => {
+    const payload = await collectPipPackagePayload("shell-gpt");
+    expect(payload.url).toContain("shell_gpt-1.5.1-py3-none-any.whl");
+    expect(payload.sha256).toBe(
+      "f7bf429e289d878e8094adf9826dec1d28f3c69438a0d85446bc043e4f052b83",
+    );
+  });
+
+  it("falls back to repoInfo for license when PyPI license is absent", async () => {
+    const payload = await collectPipPackagePayload("shell-gpt", repoInfo);
+    expect(payload.licenseLine).toContain("MIT");
+  });
+
+  it("generates PyPI livecheck block", async () => {
+    const payload = await collectPipPackagePayload("shell-gpt");
+    expect(payload.livecheckBlock).toContain("pypi.org/pypi/shell-gpt/json");
+  });
+
+  it("uses --bin-name override for the sgpt executable", async () => {
+    const payload = await collectPipPackagePayload("shell-gpt", null, {
+      binName: "sgpt",
+    });
+    expect(payload.testBinName).toBe("sgpt");
   });
 });
 
