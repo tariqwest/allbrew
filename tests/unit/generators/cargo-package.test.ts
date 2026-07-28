@@ -2,6 +2,7 @@ import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { collectCargoPackagePayload } from "../../../lib/generators/cargo-package.ts";
 import managarrFixture from "../../fixtures/github/managarr.json";
 import wanderFixture from "../../fixtures/github/wander.json";
+import aichatFixture from "../../fixtures/github/aichat.json";
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("cargo_mocked_sha256_64chars_padding_abcdef0123456789abcdef0123"),
@@ -140,5 +141,68 @@ describe("collectCargoPackagePayload — wander", () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
     expect(payload.defaultBranch).toBe("main");
     expect(payload.fullName).toBe("robinovitch61/wander");
+  });
+});
+
+describe("collectCargoPackagePayload — aichat", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
+  const repoInfo = aichatFixture.repo;
+  const release = aichatFixture.release;
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.template).toBe("cargo_package");
+  });
+
+  it("derives name and class from repo name", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.name).toBe("aichat");
+    expect(payload.className).toBe("Aichat");
+  });
+
+  it("uses repo description", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.desc).toContain("LLM");
+  });
+
+  it("uses repo homepage", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.homepage).toContain("github.com/sigoden/aichat");
+  });
+
+  it("generates source archive URL from release tag", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.urlLines).toContain(
+      "https://github.com/sigoden/aichat/archive/refs/tags/v0.30.0.tar.gz",
+    );
+  });
+
+  it("computes SHA256 for source archive", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.urlLines).toContain("sha256");
+  });
+
+  it("includes Apache-2.0 license line", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.licenseLine).toContain("Apache-2.0");
+  });
+
+  it("generates crates.io livecheck block", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.livecheckBlock).toContain("crates.io/api/v1/crates/aichat");
+  });
+
+  it("includes head reference to default branch", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.defaultBranch).toBe("main");
+    expect(payload.fullName).toBe("sigoden/aichat");
+  });
+
+  it("includes empty service block by default", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.serviceBlock).toBe("");
   });
 });

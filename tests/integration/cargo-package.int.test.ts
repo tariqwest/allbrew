@@ -216,4 +216,47 @@ describe.concurrent("cargo-package integration", () => {
     });
     expect(payload.livecheckBlock).toContain("wander-tui");
   });
+
+  const aichatRepoInfo = {
+    name: "aichat",
+    fullName: "sigoden/aichat",
+    description: "All-in-one LLM CLI tool",
+    homepage: "https://github.com/sigoden/aichat",
+    htmlUrl: "https://github.com/sigoden/aichat",
+    license: "Apache-2.0",
+    defaultBranch: "main",
+  };
+
+  it("aichat: payload fields are well-formed (head-only)", async () => {
+    const payload = await collectCargoPackagePayload(aichatRepoInfo, null);
+    expect(payload.template).toBe("cargo_package");
+    expect(payload.name).toBe("aichat");
+    expect(payload.urlLines).toBe("");
+    expect(payload.livecheckBlock).toContain("crates.io/api/v1/crates/aichat");
+    expect(payload.fullName).toBe("sigoden/aichat");
+    expect(payload.defaultBranch).toBe("main");
+    expect(payload.licenseLine).toContain("Apache-2.0");
+  });
+
+  it("aichat: generates structurally valid Ruby formula (head-only)", async () => {
+    const payload = await collectCargoPackagePayload(aichatRepoInfo, null);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Aichat < Formula");
+    expect(ruby).toContain('depends_on "rust" => :build');
+    expect(ruby).toContain('system "cargo", "install"');
+    expect(ruby).toContain('head "https://github.com/sigoden/aichat.git"');
+  });
+
+  it("aichat: with release v0.30.0, downloads real tarball and computes SHA256", async () => {
+    const release = { tagName: "v0.30.0" };
+    const payload = await collectCargoPackagePayload(aichatRepoInfo, release);
+    expect(payload.urlLines).toContain(
+      "https://github.com/sigoden/aichat/archive/refs/tags/v0.30.0.tar.gz",
+    );
+    expect(payload.urlLines).toMatch(/sha256 "[a-f0-9]{64}"/);
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class Aichat < Formula");
+  });
 });

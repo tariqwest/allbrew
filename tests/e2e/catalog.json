@@ -4925,5 +4925,21 @@
     ],
     "skip": true,
     "notes": "Self-contained .NET Office doc CLI distributed via npm; also has direct GitHub release binaries and install.sh; Apache-2.0; v1.0.142; 22.6k stars; in HB; npm-package generator"
+  },
+  {
+    "name": "aichat",
+    "url": "https://github.com/sigoden/aichat",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "aichat"
+    ],
+    "expectedBin": "aichat",
+    "verifyCommand": [
+      "aichat",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "All-in-one AI chat CLI \u2014 Rust crates.io package preferred over prebuilt GitHub release archives; also in Homebrew as formula; cargo-package generator"
   }
 ]

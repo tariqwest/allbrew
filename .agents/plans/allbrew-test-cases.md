@@ -311,6 +311,7 @@
 | smithery-cli | Node | | smithery.ai | github.com/smithery-ai/cli | smithery-cli (formula) | | | npmjs.com/package/@smithery/cli | | | | | | | | yes | | | | yes | | | MCP server/skill manager CLI; bin smithery; scoped pkg @smithery/cli normalizes to smithery-cli; repo also publishes unscoped smithery v1.2.0; v4.11.1; 805 stars; AGPL-3.0-or-later; in HB as smithery-cli; npm-package |
 | LibreChat | TypeScript | React / Node.js | librechat.ai | github.com/danny-avila/LibreChat | | | | | | | | | | | | | | yes | | yes | tags only | | Self-hosted multi-provider AI chat; Docker primary; npm workspaces monorepo (not npm-published); no release assets; v0.8.7 pre-release; MIT; 41.2k stars; not in HB; source-build (make fallback; requires custom Node/Docker build) |
 | cua-driver | Rust | | cua.ai/cua-driver | github.com/trycua/cua | | | | | | | | | | | | | yes | | | yes | yes | https://cua.ai/driver/install.sh | Background computer-use driver; installs CuaDriver.app + cua-driver CLI via install script; monorepo libs/cua-driver; latest stable v0.9.1; pre-release v0.10.0; 20.4k stars; MIT; not in HB; install-script generator |
+| aichat | Rust | | | github.com/sigoden/aichat | aichat (formula) | | | | | crates.io/crates/aichat | | | | | | yes | | | | yes | yes (10) | | All-in-one AI chat CLI; v0.30.0; 10.3k stars; MIT OR Apache-2.0; in HB; also on crates.io; cargo-package generator (prefer crates.io over prebuilt GitHub release archives) |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
@@ -331,6 +332,9 @@
 | # cargo (crates.io or GitHub) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://crates.io/crates/managarr --manual      # → cargo-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install managarr && managarr | | | | | | | | | | | | | | | | | | | | | | | |
+| # cargo-package (GitHub repo with crates.io package; prefer cargo over binary-release) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/sigoden/aichat --manual      # → cargo-package | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install aichat && aichat --version | | | | | | | | | | | | | | | | | | | | | | | |
 | # go (GitHub repo; embedded-frontend web app = best stress) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://github.com/muety/wakapi --manual        # → go-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install wakapi && wakapi | | | | | | | | | | | | | | | | | | | | | | | |
