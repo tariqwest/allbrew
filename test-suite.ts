@@ -8,7 +8,7 @@
  * Usage (from the allbrew repo root):
  *
  *   bun run vm:init           # one-time VM creation per host
- *   bun run vm:setup          # create project user + provision sparsebundle + install bun
+ *   bun run vm:setup          # create project user + sparsebundle + Xcode CLT + bun
  *   bun run vm:test           # default profile (check + unit)
  *   bun run vm:test:int       # integration profile
  *   bun run vm:test:e2e       # E2E profile (acquires exclusive /opt/homebrew)
@@ -31,7 +31,6 @@ import {
   defineTestSuite,
   runAsProjectUser,
   lumeSshExec,
-  q,
   runFile,
   appendReadout,
   type HomebrewSession,
@@ -238,14 +237,59 @@ export const {
 
   hooks: {
     /**
-     * Install language runtimes as the VM admin (lume).
+     * Install system prerequisites and language runtimes.
+     *
+     * Xcode Command Line Tools are installed system-wide (admin/sudo) so git,
+     * clang, make, and other build tools exist before Homebrew or Bun work.
+     * Fresh Lume Tahoe VMs do not ship with CLT.
      *
      * Homebrew is NOT installed here — the harness provisions a default-prefix
      * Homebrew inside the project user's sparsebundle during acquireHomebrewPrefix
-     * (only for Homebrew-requiring profiles). This hook only installs Bun, which
-     * allbrew needs for every profile.
+     * (only for Homebrew-requiring profiles). Bun is installed user-local for
+     * every profile.
      */
     async setupRuntime() {
+      // Xcode Command Line Tools (system-wide; required by git/clang/Homebrew).
+      const cltCheck = await lumeSshExec(
+        "xcode-select -p >/dev/null 2>&1",
+        { nothrow: true }
+      );
+      if (cltCheck.exitCode !== 0) {
+        // Headless CLT install via softwareupdate (no GUI xcode-select --install).
+        const cltInstall = [
+          "set -euo pipefail",
+          "sudo touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress",
+          // softwareupdate -l prints lines like: * Label: Command Line Tools for Xcode-16.x
+          "CLT_LABEL=$(softwareupdate -l 2>/dev/null | awk -F': ' '/Command Line Tools/ && /Label:/{print $2}' | tail -1)",
+          'if [ -z "$CLT_LABEL" ]; then',
+          "  CLT_LABEL=$(softwareupdate -l 2>/dev/null | grep -i 'Command Line Tools' | sed -E 's/^[[:space:]]*\\*[[:space:]]*//; s/^Label:[[:space:]]*//' | tail -1)",
+          "fi",
+          'if [ -z "$CLT_LABEL" ]; then',
+          "  sudo rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress",
+          "  echo 'ERROR: could not find Command Line Tools package via softwareupdate' >&2",
+          "  exit 1",
+          "fi",
+          'echo "Installing: $CLT_LABEL"',
+          'sudo softwareupdate -i "$CLT_LABEL" --verbose',
+          "sudo rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress",
+          "if ! xcode-select -p >/dev/null 2>&1; then",
+          "  sudo xcode-select --switch /Library/Developer/CommandLineTools",
+          "fi",
+          "xcode-select -p",
+          "clang --version | head -1 || true",
+          "git --version || true",
+        ].join("\n");
+        const cltResult = await lumeSshExec(cltInstall, {
+          // CLT download + install is slow on a fresh VM.
+          timeout: 1_800_000,
+        });
+        if (cltResult.exitCode !== 0) {
+          throw new Error(
+            `Failed to install Xcode Command Line Tools:\n${cltResult.stderr}\n${cltResult.stdout}`
+          );
+        }
+      }
+
       // Bun (user-local install under ~/.bun).
       try {
         await runAsProjectUser("[[ -d ~/.bun/bin ]]", "Check bun");
@@ -320,10 +364,6 @@ export const {
       } else {
         appendReadout(readoutFile, "Journey Results", "  (no journeys.json produced)");
       }
-
-      // Keep these helpers available for future admin-level readout.
-      void lumeSshExec;
-      void q;
     },
 
     /**

@@ -130,7 +130,7 @@ For real-world, isolated testing on a clean macOS install, allbrew consumes the 
 
 ```bash
 bun run vm:init                # one-time VM creation per host
-bun run vm:setup               # create project user + provision sparsebundle + install bun + bun install
+bun run vm:setup               # create project user + sparsebundle + Xcode CLT + bun + bun install
 bun run vm:test                # default profile (check + unit + templates)
 bun run vm:test:int            # integration profile
 bun run vm:test:e2e            # E2E catalog (acquires exclusive /opt/homebrew)
