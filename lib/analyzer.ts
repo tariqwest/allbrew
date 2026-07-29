@@ -12,12 +12,16 @@ const YARN_GLOBAL_ADD_RE =
 const BUN_INSTALL_RE =
   /(?:^|[`\n])\s*(?:\$\s*)?bun[ \t]+(?:install|add)[ \t]+(?:-g[ \t]+|--global[ \t]+)?([^\s;|&\n`]+)/i;
 const NPX_RE = /(?:^|[`\n])\s*(?:\$\s*)?npx[ \t]+([^\s;|&\n`]+)/i;
+const PIP_FLAGS =
+  "(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n]*)?)*";
 const PIP_INSTALL_RE =
-  /(?:^|[`\n])\s*(?:\$\s*)?pip[3]?[ \t]+install[ \t]+([^\s;|&\n`]+)/i;
+  /(?:^|[`\n])\s*(?:\$\s*)?pip[3]?[ \t]+install(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
 const PIPX_INSTALL_RE =
-  /(?:^|[`\n])\s*(?:\$\s*)?pipx[ \t]+install[ \t]+([^\s;|&\n`]+)/i;
+  /(?:^|[`\n])\s*(?:\$\s*)?pipx[ \t]+install(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
 const UV_TOOL_INSTALL_RE =
-  /(?:^|[`\n])\s*(?:\$\s*)?uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)[ \t]+([^\s;|&\n`]+)/i;
+  /(?:^|[`\n])\s*(?:\$\s*)?uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
+const UVX_RE =
+  /(?:^|[`\n])\s*(?:\$\s*)?uvx(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
 const DENO_INSTALL_RE =
   /(?:^|[`\n])\s*(?:\$\s*)?deno[ \t]+install\b[^\n`]*(?:\s(?:--name|-n)[ =]([^\s;|&\n`]+)|\s([\w./:@-]+))(?:[^\n`]*)/i;
 const SWIFT_RUN_RE =
@@ -47,7 +51,7 @@ const WEB_SERVICE_CONTEXT_RE =
 const NON_RUN_COMMAND_RE =
   /^(?:brew|launchctl|sudo|systemctl|make|curl|wget|git|docker|podman|export|cp|mkdir|cd|echo|cat)\b/i;
 const INSTALL_COMMAND_RE =
-  /^(?:(?:npm|pnpm|yarn|bun)[ \t]+(?:install|i|add)\b|yarn[ \t]+global[ \t]+add\b|(?:pip|pip3|pipx)[ \t]+install\b|uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)\b|cargo[ \t]+install\b|go[ \t]+install\b|deno[ \t]+install\b|swift[ \t]+package\b.*\binstall\b)/i;
+  /^(?:(?:npm|pnpm|yarn|bun)[ \t]+(?:install|i|add)\b|yarn[ \t]+global[ \t]+add\b|(?:pip|pip3|pipx)[ \t]+install\b|uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)\b|uvx\b|cargo[ \t]+install\b|go[ \t]+install\b|deno[ \t]+install\b|swift[ \t]+package\b.*\binstall\b)/i;
 const STATUS_LINE_RE =
   /^(?:api|dashboard|endpoint|listening|server|ui|web\s*ui)\s+(?:at|on|is|available|running)\b/i;
 
@@ -117,13 +121,28 @@ export function detectInstallMethod(readmeText) {
   if (match) return { method: "npm", package: match[1] };
 
   match = readmeText.match(PIP_INSTALL_RE);
-  if (match) return { method: "pip", package: match[1] };
+  if (match) {
+    const pkg = cleanPipPackageSpec(match[1]);
+    if (pkg) return { method: "pip", package: pkg };
+  }
 
   match = readmeText.match(PIPX_INSTALL_RE);
-  if (match) return { method: "pip", package: match[1] };
+  if (match) {
+    const pkg = cleanPipPackageSpec(match[1]);
+    if (pkg) return { method: "pip", package: pkg };
+  }
 
   match = readmeText.match(UV_TOOL_INSTALL_RE);
-  if (match) return { method: "pip", package: match[1] };
+  if (match) {
+    const pkg = cleanPipPackageSpec(match[1]);
+    if (pkg) return { method: "pip", package: pkg };
+  }
+
+  match = readmeText.match(UVX_RE);
+  if (match) {
+    const pkg = cleanPipPackageSpec(match[1]);
+    if (pkg) return { method: "pip", package: pkg };
+  }
 
   match = readmeText.match(CARGO_INSTALL_RE);
   if (match) return { method: "cargo", package: match[1] };
@@ -258,11 +277,13 @@ function findPackageRunCommand(readmeText, packageName) {
   if (!packageName) return null;
 
   const escapedName = escapeRegExp(packageName);
+  const pipNameSuffix = "(?:@[^\\s;|&\\n\\[]+)?(?:\\[[^\\]]*\\])?";
   const installThenRunPatterns = [
     `(?:npm|pnpm|bun)[ \\t]+(?:install|add|i)[ \\t]+(?:-g[ \\t]+|--global[ \\t]+)?${escapedName}`,
     `yarn[ \\t]+global[ \\t]+add[ \\t]+${escapedName}`,
-    `(?:pip|pip3|pipx)[ \\t]+install[ \\t]+${escapedName}`,
-    `uv[ \\t]+(?:tool[ \\t]+install|pip[ \\t]+install)[ \\t]+${escapedName}`,
+    `(?:pip|pip3|pipx)[ \\t]+install${PIP_FLAGS}[ \\t]+${escapedName}${pipNameSuffix}`,
+    `uv[ \\t]+(?:tool[ \\t]+install|pip[ \\t]+install)${PIP_FLAGS}[ \\t]+${escapedName}${pipNameSuffix}`,
+    `uvx${PIP_FLAGS}[ \\t]+${escapedName}${pipNameSuffix}`,
     `cargo[ \\t]+install[ \\t]+(?:--locked[ \\t]+|--force[ \\t]+)?${escapedName}`,
     `deno[ \\t]+install\\b[^\\n]*(?:--name|-n)[ =]${escapedName}`,
     `swift[ \\t]+package\\b[^\\n]*\\binstall\\b[^\\n]*${escapedName}`,
@@ -330,6 +351,27 @@ function packageNameFromSpecifier(specifier) {
     .replace(/#.*$/, "");
 
   return cleaned.split("/").filter(Boolean).at(-1) || null;
+}
+
+function cleanPipPackageSpec(specifier) {
+  if (!specifier) return null;
+
+  let cleaned = String(specifier)
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+
+  if (!cleaned || cleaned.startsWith("-") || cleaned === ".") return null;
+
+  if (/^(?:git\+|hg\+|svn\+|bzr\+|https?:|file:)/i.test(cleaned)) return null;
+
+  cleaned = cleaned.replace(/@[^/@\[]+$/, "");
+  cleaned = cleaned.replace(/\[[^\]]*\]$/, "");
+  cleaned = cleaned.replace(/(?:===|==|!=|~=|>=|<=|>|<).*$/, "");
+
+  cleaned = cleaned.trim();
+  if (!cleaned || cleaned.startsWith("-")) return null;
+
+  return cleaned;
 }
 
 function escapeRegExp(value) {

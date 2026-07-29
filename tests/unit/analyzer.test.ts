@@ -109,6 +109,58 @@ describe("detectInstallMethod", () => {
     expect(result).toEqual({ method: "pip", package: "marimo" });
   });
 
+  it("detects uv tool install -U and skips the upgrade flag", () => {
+    const result = detectInstallMethod(
+      "```bash\nuv tool install -U fast-agent-mcp\n```",
+    );
+    expect(result).toEqual({ method: "pip", package: "fast-agent-mcp" });
+  });
+
+  it("detects uv tool install --upgrade", () => {
+    const result = detectInstallMethod(
+      "```bash\nuv tool install --upgrade graphifyy\n```",
+    );
+    expect(result).toEqual({ method: "pip", package: "graphifyy" });
+  });
+
+  it("detects uv tool install with @latest pin", () => {
+    const result = detectInstallMethod(
+      "```bash\nuv tool install -U fast-agent-mcp@latest\n```",
+    );
+    expect(result).toEqual({ method: "pip", package: "fast-agent-mcp" });
+  });
+
+  it("detects uv pip install as pip", () => {
+    const result = detectInstallMethod(
+      "```bash\nuv pip install fast-agent-mcp\n```",
+    );
+    expect(result).toEqual({ method: "pip", package: "fast-agent-mcp" });
+  });
+
+  it("detects uvx package as pip", () => {
+    const result = detectInstallMethod("```bash\nuvx fast-agent-mcp\n```");
+    expect(result).toEqual({ method: "pip", package: "fast-agent-mcp" });
+  });
+
+  it("detects uvx package@latest with trailing flags as pip", () => {
+    const result = detectInstallMethod(
+      "```bash\nuvx fast-agent-mcp@latest -x\n```",
+    );
+    expect(result).toEqual({ method: "pip", package: "fast-agent-mcp" });
+  });
+
+  it("detects pip install -U and skips the upgrade flag", () => {
+    const result = detectInstallMethod("```bash\npip install -U s-tui\n```");
+    expect(result).toEqual({ method: "pip", package: "s-tui" });
+  });
+
+  it("strips PEP 508 extras from pip package specs", () => {
+    const result = detectInstallMethod(
+      "```bash\npip install toolong[extra]\n```",
+    );
+    expect(result).toEqual({ method: "pip", package: "toolong" });
+  });
+
   it("detects cargo install", () => {
     const result = detectInstallMethod("```bash\ncargo install ripgrep\n```");
     expect(result).toEqual({ method: "cargo", package: "ripgrep" });
