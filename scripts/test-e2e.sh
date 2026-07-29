@@ -68,5 +68,8 @@ echo ""
 TEST_LOG="$(mktemp -t allbrew-e2e-log)"
 trap 'rm -f "$TEST_LOG"' EXIT
 export ALLBREW_TEST_LOG="$TEST_LOG"
+# Also write machine-readable per-entry results next to the temp log's sibling
+# when the suite finishes (and incrementally during the run).
+export ALLBREW_E2E_RESULTS="${ALLBREW_E2E_RESULTS:-$REPO_ROOT/tests/e2e-runs/e2e-results-latest.json}"
 
 E2E=1 bun test tests/e2e/ --timeout 300000 ${BUNTEST_ARGS[@]+"${BUNTEST_ARGS[@]}"} 2>&1 | tee "$TEST_LOG"

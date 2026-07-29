@@ -69,12 +69,18 @@ export const {
     { id: "unit", name: "Unit tests", command: `${VM_ENV} && bun run test` },
     { id: "templates", name: "Template parity", command: `${VM_ENV} && bun run test:templates` },
     { id: "integration", name: "Integration tests", command: `${VM_ENV} && bun run test:int` },
-    { id: "e2e", name: "E2E catalog", command: `${VM_ENV} && E2E=1 bun run test:e2e` },
+    {
+      id: "e2e",
+      name: "E2E catalog",
+      // ALLBREW_E2E_RESULTS writes incremental per-entry status for readout/CI.
+      // Live [E2E] lines stream to the host via the harness step stream path.
+      command: `${VM_ENV} && ALLBREW_E2E_RESULTS="$PWD/tests/e2e-runs/e2e-results-latest.json" E2E=1 bun run test:e2e`,
+    },
     { id: "e2e-tap", name: "E2E tap + update cycle", command: `${VM_ENV} && E2E_TAP=1 bun run test:e2e-tap` },
     {
       id: "e2e-acceptance",
       name: "E2E T0.5 acceptance",
-      command: `${VM_ENV} && E2E=1 bun test tests/e2e/catalog.e2e.test.ts --test-name-pattern 'npkill' --timeout 300000`,
+      command: `${VM_ENV} && ALLBREW_E2E_RESULTS="$PWD/tests/e2e-runs/e2e-results-latest.json" E2E=1 bun test tests/e2e/catalog.e2e.test.ts --test-name-pattern 'npkill' --timeout 300000`,
     },
   ],
 
@@ -215,6 +221,7 @@ export const {
   // exclusive Homebrew prefix state; these sections add allbrew-specific
   // detail ported from the legacy scripts/e2e-vm-readout.sh.
   readoutSteps: [
+    { id: "e2e-results", name: "E2E Catalog Results", command: "cat tests/e2e-runs/e2e-results-latest.json 2>/dev/null || echo '(no e2e-results-latest.json)'" },
     { id: "allbrew-version", name: "allbrew Version", command: `${VM_ENV} && bun run bin/allbrew.ts --version 2>/dev/null || echo '(allbrew not runnable)'` },
     { id: "allbrew-config", name: "allbrew Config", command: "cat ~/.config/allbrew/config.json 2>/dev/null || echo '(no config file)'" },
     { id: "allbrew-manifests", name: "allbrew Manifests", command: "ls -la ~/.config/allbrew/packages/ 2>/dev/null && echo '---' && for f in ~/.config/allbrew/packages/*.json; do echo \"=== $(basename \"$f\") ===\"; cat \"$f\"; echo; done 2>/dev/null || echo '(no manifests)'" },

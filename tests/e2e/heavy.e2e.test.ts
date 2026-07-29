@@ -16,6 +16,7 @@ import {
   purgeOrphanedRegistries,
 } from "../helpers/test-cleanup-registry.ts";
 import { assertUninstallResiduals } from "../helpers/uninstall-residuals.ts";
+import { E2EProgress, runPhase, type E2EPhase } from "./helpers/progress.ts";
 
 /**
  * B2: Heavy real packages — one per major ecosystem.
@@ -43,11 +44,27 @@ interface CatalogEntry {
   notes: string;
 }
 
+const ACTIVE = (heavyCatalog as CatalogEntry[]).filter((e) => !e.skip);
+const SKIPPED = (heavyCatalog as CatalogEntry[]).length - ACTIVE.length;
+
 let snapshot: LocalStateSnapshot | null = null;
 let tapDir: string;
+let progress: E2EProgress | null = null;
+
+function phaseOf(err: unknown): E2EPhase | undefined {
+  if (err && typeof err === "object" && "e2ePhase" in err) {
+    return (err as { e2ePhase?: E2EPhase }).e2ePhase;
+  }
+  return undefined;
+}
 
 beforeAll(() => {
   if (!E2E_HEAVY) return;
+  progress = new E2EProgress({
+    suite: "heavy",
+    active: ACTIVE.length,
+    skipped: SKIPPED,
+  });
   tapDir = mkdtempSync(join(tmpdir(), "allbrew-heavy-tap-"));
   mkdirSync(join(tapDir, "Formula"), { recursive: true });
   mkdirSync(join(tapDir, "Casks"), { recursive: true });
@@ -63,6 +80,7 @@ afterAll(() => {
   cleanupCurrentProcessRegistry();
   purgeOrphanedRegistries();
   if (tapDir) rmSync(tapDir, { recursive: true, force: true });
+  progress?.finish();
 });
 
 function runCommand(cmd: string[]): { code: number; stdout: string; stderr: string } {
@@ -79,59 +97,96 @@ function runCommand(cmd: string[]): { code: number; stdout: string; stderr: stri
 }
 
 describe.skipIf(!E2E_HEAVY)("B2: heavy real packages (one per ecosystem)", () => {
-  for (const entry of heavyCatalog as CatalogEntry[]) {
-    if (entry.skip) continue;
-
+  let entryIndex = 0;
+  for (const entry of ACTIVE) {
+    entryIndex += 1;
+    const index = entryIndex;
     const cask = entry.generator.startsWith("cask");
     const formulaFlag = cask ? "--cask" : "--formula";
 
     it(
       `${entry.name} (${entry.generator}): generate → install → verify → uninstall`,
       async () => {
-        const formulaPath = cask
-          ? join(tapDir, "Casks", `${entry.name}.rb`)
-          : join(tapDir, "Formula", `${entry.name}.rb`);
+        const p = progress!;
+        const startedAtMs = Date.now();
+        p.begin(index, entry.name, entry.generator);
+        try {
+          const formulaPath = cask
+            ? join(tapDir, "Casks", `${entry.name}.rb`)
+            : join(tapDir, "Formula", `${entry.name}.rb`);
 
-        // Step 1: Generate
-        const tapArgs = DRY_RUN ? ["--tap", tapDir] : [];
-        const typeArgs = entry.generator ? ["--type", entry.generator] : [];
-        const baseArgs = [
-          entry.url,
-          "--name",
-          entry.name,
-          ...typeArgs,
-          ...tapArgs,
-          ...entry.allbrewArgs,
-          "--no-service",
-        ];
-        const gen = runCommand(["bun", "run", "bin/allbrew.ts", ...baseArgs]);
-        expect(gen.code, `allbrew generate failed:\n${gen.stderr}`).toBe(0);
-        expect(existsSync(formulaPath), `formula not written to ${formulaPath}`).toBe(true);
+          await runPhase(p, index, entry.name, "generate", () => {
+            const tapArgs = DRY_RUN ? ["--tap", tapDir] : [];
+            const typeArgs = entry.generator ? ["--type", entry.generator] : [];
+            const baseArgs = [
+              entry.url,
+              "--name",
+              entry.name,
+              ...typeArgs,
+              ...tapArgs,
+              ...entry.allbrewArgs,
+              "--no-service",
+            ];
+            const gen = runCommand(["bun", "run", "bin/allbrew.ts", ...baseArgs]);
+            expect(gen.code, `allbrew generate failed:\n${gen.stderr}`).toBe(0);
+            expect(existsSync(formulaPath), `formula not written to ${formulaPath}`).toBe(true);
+          });
 
-        // Step 2: Install
-        const install = runCommand(["brew", "install", formulaFlag, entry.name]);
-        expect(install.code, `brew install failed:\n${install.stderr}`).toBe(0);
+          await runPhase(p, index, entry.name, "install", () => {
+            const install = runCommand(["brew", "install", formulaFlag, entry.name]);
+            expect(install.code, `brew install failed:\n${install.stderr}`).toBe(0);
+          });
 
-        // Step 3: Verify
-        if (entry.verifyCommand.length > 0) {
-          const verify = runCommand(entry.verifyCommand);
-          expect(
-            verify.code,
-            `verify command ${entry.verifyCommand.join(" ")} failed:\n${verify.stderr}`,
-          ).toBe(0);
+          if (entry.verifyCommand.length > 0) {
+            await runPhase(p, index, entry.name, "verify", () => {
+              const verify = runCommand(entry.verifyCommand);
+              expect(
+                verify.code,
+                `verify command ${entry.verifyCommand.join(" ")} failed:\n${verify.stderr}`,
+              ).toBe(0);
+            });
+          }
+
+          await runPhase(p, index, entry.name, "uninstall", () => {
+            const uninstall = runCommand(["brew", "uninstall", formulaFlag, entry.name]);
+            expect(uninstall.code, `brew uninstall failed:\n${uninstall.stderr}`).toBe(0);
+          });
+
+          await runPhase(p, index, entry.name, "residuals", async () => {
+            const residuals = await assertUninstallResiduals({
+              name: entry.name,
+              kind: cask ? "cask" : "formula",
+              appName: cask ? entry.name : undefined,
+            });
+            expect(
+              residuals.passed,
+              `residual checks failed:\n${residuals.failures.join("\n")}`,
+            ).toBe(true);
+          });
+
+          p.end({
+            name: entry.name,
+            generator: entry.generator,
+            index,
+            total: ACTIVE.length,
+            status: "pass",
+            durationMs: Date.now() - startedAtMs,
+            startedAtMs,
+          });
+        } catch (err) {
+          p.end({
+            name: entry.name,
+            generator: entry.generator,
+            index,
+            total: ACTIVE.length,
+            status: "fail",
+            durationMs: Date.now() - startedAtMs,
+            failedPhase: phaseOf(err),
+            error: err instanceof Error ? err.message : String(err),
+            startedAtMs,
+          });
+          throw err;
         }
-
-        // Step 4: Uninstall
-        const uninstall = runCommand(["brew", "uninstall", formulaFlag, entry.name]);
-        expect(uninstall.code, `brew uninstall failed:\n${uninstall.stderr}`).toBe(0);
-
-        // Step 5: Residual checks (A2)
-        const residuals = await assertUninstallResiduals({
-          name: entry.name,
-          kind: cask ? "cask" : "formula",
-          appName: cask ? entry.name : undefined,
-        });
-        expect(residuals.passed, `residual checks failed:\n${residuals.failures.join("\n")}`).toBe(true);
       },
       TIMEOUT_MS,
     );

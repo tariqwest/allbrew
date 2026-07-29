@@ -133,7 +133,7 @@ bun run vm:init                # one-time VM creation per host
 bun run vm:setup               # create project user + sparsebundle + Xcode CLT + bun + bun install
 bun run vm:test                # default profile (check + unit + templates)
 bun run vm:test:int            # integration profile
-bun run vm:test:e2e            # E2E catalog (acquires exclusive /opt/homebrew)
+bun run vm:test:e2e            # E2E catalog (streams [E2E] per-entry progress; exclusive /opt/homebrew)
 bun run vm:test:e2e-tap        # E2E tap + update cycle (acquires exclusive /opt/homebrew)
 bun run vm:test:user-journeys  # Tier A nightly user journeys (A1/A3/A4)
 bun run vm:test:all            # integration + e2e + e2e-tap

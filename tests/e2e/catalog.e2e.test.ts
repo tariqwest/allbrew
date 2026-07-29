@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { execSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, existsSync, mkdirSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir, homedir } from "node:os";
-import { readFileSync } from "node:fs";
 import catalog from "./catalog.json";
 import {
   snapshotLocalState,
@@ -18,6 +17,11 @@ import {
   purgeOrphanedRegistries,
 } from "../helpers/test-cleanup-registry.ts";
 import { assertUninstallResiduals } from "../helpers/uninstall-residuals.ts";
+import {
+  E2EProgress,
+  runPhase,
+  type E2EPhase,
+} from "./helpers/progress.ts";
 
 /**
  * Tier 3 — E2E: generate formula → brew install → verify binary runs.
@@ -37,12 +41,19 @@ import { assertUninstallResiduals } from "../helpers/uninstall-residuals.ts";
  *   2. Runs `brew install --formula|--cask <file>` to install
  *   3. Runs `verifyCommand` and asserts exit code 0
  *   4. Runs `brew uninstall` to clean up
+ *
+ * Progress: emits structured `[E2E] [i/N] …` lines per entry/phase and writes
+ * incremental `e2e-results.json` when ALLBREW_TEST_LOG / ALLBREW_E2E_RESULTS is set.
  */
 
 const E2E = !!process.env.E2E;
 // DRY_RUN defaults to true; set DRY_RUN=false to use the real configured tap
 const DRY_RUN = process.env.DRY_RUN !== "false";
 const TIMEOUT_MS = 300_000; // 5 min per entry
+const VERBOSE = process.env.E2E_VERBOSE === "1";
+
+const ACTIVE_ENTRIES = catalog.filter((e) => !e.skip);
+const SKIPPED_COUNT = catalog.length - ACTIVE_ENTRIES.length;
 
 /** Read tapPath from ~/.config/allbrew/config.json, or null if not configured. */
 function readConfiguredTapPath(): string | null {
@@ -57,10 +68,18 @@ function readConfiguredTapPath(): string | null {
 }
 
 function isCaskGenerator(generator: string): boolean {
-  return generator === "cask-app" || generator === "cask-app-release" || generator === "cask-app-mas" || generator === "cask-app-setapp";
+  return (
+    generator === "cask-app" ||
+    generator === "cask-app-release" ||
+    generator === "cask-app-mas" ||
+    generator === "cask-app-setapp"
+  );
 }
 
-function runCommand(args: string[], opts: { cwd?: string } = {}): { code: number; stdout: string; stderr: string } {
+function runCommand(
+  args: string[],
+  opts: { cwd?: string } = {},
+): { code: number; stdout: string; stderr: string } {
   const result = spawnSync(args[0], args.slice(1), {
     encoding: "utf-8",
     cwd: opts.cwd,
@@ -96,13 +115,27 @@ function allbrewAvailable(): boolean {
   }
 }
 
+function phaseOf(err: unknown): E2EPhase | undefined {
+  if (err && typeof err === "object" && "e2ePhase" in err) {
+    return (err as { e2ePhase?: E2EPhase }).e2ePhase;
+  }
+  return undefined;
+}
+
 describe.skipIf(!E2E)("E2E catalog tests", () => {
   let tapDir = "";
   let isTmpTap = false;
   let stateSnapshot: LocalStateSnapshot | null = null;
+  let progress: E2EProgress | null = null;
 
   beforeAll(async () => {
     if (!brewAvailable()) throw new Error("brew is not installed or not in PATH");
+
+    progress = new E2EProgress({
+      suite: "catalog",
+      active: ACTIVE_ENTRIES.length,
+      skipped: SKIPPED_COUNT,
+    });
 
     // Snapshot ~/.config/allbrew/ so we can restore after the suite.
     stateSnapshot = await snapshotLocalState();
@@ -163,7 +196,9 @@ describe.skipIf(!E2E)("E2E catalog tests", () => {
       try {
         const killed = await killOrphanedFixtures();
         if (killed.length > 0) {
-          console.log(`[E2E] Killed ${killed.length} orphaned fixture process(es): ${killed.join(", ")}`);
+          console.log(
+            `[E2E] Killed ${killed.length} orphaned fixture process(es): ${killed.join(", ")}`,
+          );
         }
       } catch (err: any) {
         console.error(`[E2E] killOrphanedFixtures failed: ${err?.message || err}`);
@@ -193,82 +228,130 @@ describe.skipIf(!E2E)("E2E catalog tests", () => {
       await cleanupCurrentProcessRegistry();
       await purgeOrphanedRegistries();
     } catch {}
+
+    progress?.finish();
   });
 
-  for (const entry of catalog) {
-    if (entry.skip) continue;
-
+  let entryIndex = 0;
+  for (const entry of ACTIVE_ENTRIES) {
+    entryIndex += 1;
+    const index = entryIndex;
     const cask = isCaskGenerator(entry.generator);
     const formulaFlag = cask ? "--cask" : "--formula";
 
     it(
       `${entry.name} (${entry.generator}): generate → install → verify`,
       async () => {
-        const installTarget = cask
-          ? join(tapDir, "Casks", `${entry.name}.rb`)
-          : join(tapDir, "Formula", `${entry.name}.rb`);
+        const p = progress!;
+        const startedAtMs = Date.now();
+        p.begin(index, entry.name, entry.generator);
 
-        // Step 1: Generate
-        // DRY_RUN=true: pass --tap explicitly so allbrew writes to the temp dir
-        // DRY_RUN=false: omit --tap so allbrew uses its configured tap (and may push)
-        const tapArgs = DRY_RUN ? ["--tap", tapDir] : [];
-        const typeArgs = entry.generator ? ["--type", entry.generator] : [];
-        const descArgs = entry.notes ? ["--desc", entry.notes] : [];
-        const baseArgs = [entry.url, "--name", entry.name, ...typeArgs, ...descArgs, "--no-service", ...tapArgs, ...entry.allbrewArgs];
-        const allbrewCmd = allbrewAvailable()
-          ? ["allbrew", ...baseArgs]
-          : ["bun", "run", "bin/allbrew.ts", ...baseArgs];
+        try {
+          const installTarget = cask
+            ? join(tapDir, "Casks", `${entry.name}.rb`)
+            : join(tapDir, "Formula", `${entry.name}.rb`);
 
-        const gen = runCommand(allbrewCmd);
-        console.log("[DEBUG] allbrewCmd:", allbrewCmd.join(" "));
-        console.log("[DEBUG] gen.code:", gen.code);
-        console.log("[DEBUG] gen.stdout:", gen.stdout.slice(0, 500));
-        console.log("[DEBUG] gen.stderr:", gen.stderr.slice(0, 500));
-        expect(gen.code, `allbrew generation failed:\n${gen.stderr}`).toBe(0);
-        expect(
-          existsSync(installTarget),
-          `Formula file not found: ${installTarget}`,
-        ).toBe(true);
+          // Step 1: Generate
+          // DRY_RUN=true: pass --tap explicitly so allbrew writes to the temp dir
+          // DRY_RUN=false: omit --tap so allbrew uses its configured tap (and may push)
+          const tapArgs = DRY_RUN ? ["--tap", tapDir] : [];
+          const typeArgs = entry.generator ? ["--type", entry.generator] : [];
+          const descArgs = entry.notes ? ["--desc", entry.notes] : [];
+          const baseArgs = [
+            entry.url,
+            "--name",
+            entry.name,
+            ...typeArgs,
+            ...descArgs,
+            "--no-service",
+            ...tapArgs,
+            ...entry.allbrewArgs,
+          ];
+          const allbrewCmd = allbrewAvailable()
+            ? ["allbrew", ...baseArgs]
+            : ["bun", "run", "bin/allbrew.ts", ...baseArgs];
 
-        // Step 2: Install
-        const install = runCommand([
-          "brew", "install", formulaFlag, installTarget,
-        ]);
-        expect(
-          install.code,
-          `brew install failed:\n${install.stdout}\n${install.stderr}`,
-        ).toBe(0);
+          await runPhase(p, index, entry.name, "generate", () => {
+            const gen = runCommand(allbrewCmd);
+            if (VERBOSE || gen.code !== 0) {
+              console.log(`[E2E] generate cmd: ${allbrewCmd.join(" ")}`);
+              console.log(`[E2E] generate code=${gen.code}`);
+              if (gen.stdout) console.log(`[E2E] generate stdout: ${gen.stdout.slice(0, 500)}`);
+              if (gen.stderr) console.log(`[E2E] generate stderr: ${gen.stderr.slice(0, 500)}`);
+            }
+            expect(gen.code, `allbrew generation failed:\n${gen.stderr}`).toBe(0);
+            expect(
+              existsSync(installTarget),
+              `Formula file not found: ${installTarget}`,
+            ).toBe(true);
+          });
 
-        // Step 3: Verify binary/app runs
-        if (entry.verifyCommand.length > 0) {
-          const verify = runCommand(entry.verifyCommand);
-          expect(
-            verify.code,
-            `verify command ${entry.verifyCommand.join(" ")} failed:\n${verify.stderr}`,
-          ).toBe(0);
+          // Step 2: Install
+          await runPhase(p, index, entry.name, "install", () => {
+            const install = runCommand(["brew", "install", formulaFlag, installTarget]);
+            expect(
+              install.code,
+              `brew install failed:\n${install.stdout}\n${install.stderr}`,
+            ).toBe(0);
+          });
+
+          // Step 3: Verify binary/app runs
+          if (entry.verifyCommand.length > 0) {
+            await runPhase(p, index, entry.name, "verify", () => {
+              const verify = runCommand(entry.verifyCommand);
+              expect(
+                verify.code,
+                `verify command ${entry.verifyCommand.join(" ")} failed:\n${verify.stderr}`,
+              ).toBe(0);
+            });
+          }
+
+          // Step 4: Uninstall
+          await runPhase(p, index, entry.name, "uninstall", () => {
+            const uninstall = runCommand(["brew", "uninstall", formulaFlag, entry.name]);
+            expect(
+              uninstall.code,
+              `brew uninstall failed:\n${uninstall.stderr}`,
+            ).toBe(0);
+          });
+
+          // A2: assert uninstall residuals (manifest persists per product decision)
+          await runPhase(p, index, entry.name, "residuals", async () => {
+            const residuals = await assertUninstallResiduals({
+              name: entry.name,
+              kind: cask ? "cask" : "formula",
+              appName: cask ? entry.name : undefined,
+            });
+            expect(
+              residuals.passed,
+              `residual checks failed:\n${residuals.failures.join("\n")}`,
+            ).toBe(true);
+          });
+
+          p.end({
+            name: entry.name,
+            generator: entry.generator,
+            index,
+            total: ACTIVE_ENTRIES.length,
+            status: "pass",
+            durationMs: Date.now() - startedAtMs,
+            startedAtMs,
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          p.end({
+            name: entry.name,
+            generator: entry.generator,
+            index,
+            total: ACTIVE_ENTRIES.length,
+            status: "fail",
+            durationMs: Date.now() - startedAtMs,
+            failedPhase: phaseOf(err),
+            error: message,
+            startedAtMs,
+          });
+          throw err;
         }
-
-        // Step 4: Uninstall
-        const uninstall = runCommand([
-          "brew", "uninstall", formulaFlag, entry.name,
-        ]);
-        expect(
-          uninstall.code,
-          `brew uninstall failed:\n${uninstall.stderr}`,
-        ).toBe(0);
-
-        // A2: assert uninstall residuals (manifest persists per product decision)
-        // e2e catalog tests generate via allbrew, so manifests should exist.
-        // skipManifestCheck is false — we assert the manifest persists.
-        const residuals = await assertUninstallResiduals({
-          name: entry.name,
-          kind: cask ? "cask" : "formula",
-          appName: cask ? entry.name : undefined,
-        });
-        expect(
-          residuals.passed,
-          `residual checks failed:\n${residuals.failures.join("\n")}`,
-        ).toBe(true);
       },
       TIMEOUT_MS,
     );

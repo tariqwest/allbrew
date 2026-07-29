@@ -14,7 +14,7 @@
       },
       "devDependencies": {
         "@types/bun": "latest",
-        "macos-testing-harness": "git+https://github.com/tariqwest/macos-testing-harness.git#0e7eccf",
+        "macos-testing-harness": "git+https://github.com/tariqwest/macos-testing-harness.git#20b619d",
         "typescript": "^5.8.0",
       },
       "optionalDependencies": {
@@ -253,7 +253,7 @@
 
     "log-symbols": ["log-symbols@6.0.0", "", { "dependencies": { "chalk": "^5.3.0", "is-unicode-supported": "^1.3.0" } }, "sha512-i24m8rpwhmPIS4zscNzK6MSEhk0DUWa/8iYQWxhffV8jkI4Phvs3F+quL5xvS0gdQR0FyTCMMH33Y78dDTzzIw=="],
 
-    "macos-testing-harness": ["macos-testing-harness@github:tariqwest/macos-testing-harness#0e7eccf", { "dependencies": { "zx": "^8.8.5" }, "bin": { "macos-test-harness": "bin/macos-test-harness" } }, "tariqwest-macos-testing-harness-0e7eccf", "sha512-m2qUIzeq/iJiNKGXtHNQnc5BYHHyCUrCdF1s097PvtkjtKEO/rL1LmgaoJx7qEHQ91LuWK54eP6N0gTHjwCzHg=="],
+    "macos-testing-harness": ["macos-testing-harness@github:tariqwest/macos-testing-harness#20b619d", { "dependencies": { "zx": "^8.8.5" }, "bin": { "macos-test-harness": "bin/macos-test-harness" } }, "tariqwest-macos-testing-harness-20b619d", "sha512-SkumWpJ4uUoO6ZqxBQKZ/JV4UGV/MHirOKo0s5dmoYgweWH2pL7ZNICtPKJh/Oi9InKGtm2Yq8Uh2p8dIvOZZg=="],
 
     "md-spreadsheet-parser": ["md-spreadsheet-parser@1.4.3", "", { "dependencies": { "@bytecodealliance/preview2-shim": "^0.17.0", "execa": "^9.6.1", "shelljs": "^0.10.0" } }, "sha512-Q7Wyehv2NPCLbHrctEzDAqtiT4pGESHopwdAQAruESOrCpJkXn9BAQXVb4z39nfpKYvEu7AH2E+Ltdd95V+L6Q=="],
 
