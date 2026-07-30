@@ -156,6 +156,7 @@ function buildBinaryReleaseCase(): Case {
     homepage: "https://example.com",
     version: "1.2.3",
     binName: "foo",
+    installBody: 'bin.install "foo"',
     licenseLine: '  license "MIT"\n',
     platformBlocks,
     livecheckBlock:

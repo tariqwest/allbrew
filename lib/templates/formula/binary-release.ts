@@ -7,7 +7,7 @@ export default function renderBinaryRelease(p: BinaryReleasePayload): string {
 ${p.licenseLine}  version "${p.version}"
 
 ${p.platformBlocks}${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n\n` : ""}  def install
-    bin.install "${p.binName}"
+    ${p.installBody}
   end
 
 ${p.serviceBlock}  test do

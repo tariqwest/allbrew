@@ -4,6 +4,7 @@ import {
   extractVersionFromTag,
   matchAssetToArch,
   isBinaryAsset,
+  isBareBinaryAsset,
   rubyString,
   rubyEscape,
   guessLicenseIdentifier,
@@ -16,6 +17,56 @@ import type { BinaryReleasePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
 type ArchHash = { url: string; sha256: string; name: string };
+
+/**
+ * Homebrew stages a bare binary URL as a file named after the asset basename.
+ * Archives unpack and typically expose a binary named like the formula.
+ * Prefer options.binName, else a common prefix from bare asset names, else formula name.
+ */
+export function resolveBinaryReleaseBinName(
+  formulaName: string,
+  assetNames: string[],
+  options: { binName?: string } = {},
+): string {
+  if (options.binName) return options.binName;
+
+  const bare = assetNames.filter((n) => isBareBinaryAsset(n));
+  if (bare.length === 0) return formulaName;
+
+  // Prefer common prefix before first arch/platform token.
+  const stripped = bare.map((n) =>
+    n
+      .replace(/\.exe$/i, "")
+      .replace(
+        /[-_.]?(darwin|macos|linux|windows|win32|apple)[-_.]?(arm64|aarch64|amd64|x86_64|x64|universal)?$/i,
+        "",
+      )
+      .replace(/[-_.]+$/g, ""),
+  );
+  if (stripped.every((s) => s && s === stripped[0])) return stripped[0];
+
+  return formulaName;
+}
+
+export function buildBinaryReleaseInstallBody(
+  binName: string,
+  assetNames: string[],
+): string {
+  const bare = assetNames.filter((n) => isBareBinaryAsset(n));
+  if (bare.length === 0) {
+    return `bin.install ${rubyString(binName)}`;
+  }
+
+  // Each platform URL is a single bare binary; rename asset basename → binName.
+  // Use Dir[] so the staged filename (asset basename) is discovered without
+  // hardcoding every arch-specific name into the formula.
+  return [
+    `bin_path = Dir["*"].find { |f| File.file?(f) && File.executable?(f) }`,
+    `bin_path ||= Dir["*"].find { |f| File.file?(f) && !f.end_with?(".txt", ".sha256", ".sig", ".asc") }`,
+    `odie "No binary found in download" unless bin_path`,
+    `bin.install bin_path => ${rubyString(binName)}`,
+  ].join("\n    ");
+}
 
 export async function collectBinaryReleasePayload(
   repoInfo: any,
@@ -53,6 +104,9 @@ export async function collectBinaryReleasePayload(
     hashes[arch] = { url: asset.url, sha256, name: asset.name };
   }
 
+  const assetNames = Object.values(hashes).map((h) => h.name);
+  const binName = resolveBinaryReleaseBinName(name, assetNames, options);
+
   const urlTemplate = (url: string) =>
     url.replace(version, "#{version}").replace(release.tagName, "v#{version}");
 
@@ -63,12 +117,13 @@ export async function collectBinaryReleasePayload(
     desc: rubyEscape(desc),
     homepage: rubyEscape(homepage),
     version: rubyEscape(version),
-    binName: rubyEscape(name),
+    binName: rubyEscape(binName),
+    installBody: buildBinaryReleaseInstallBody(binName, assetNames),
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     platformBlocks: buildPlatformBlocks(hashes, urlTemplate),
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName, ":stable"),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    testBinName: rubyEscape(options.binName || name),
+    testBinName: rubyEscape(binName),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
 }

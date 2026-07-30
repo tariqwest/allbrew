@@ -66,3 +66,62 @@ describe.concurrent("binary-release integration", () => {
     expect(payload.platformBlocks).toContain("#{version}");
   });
 });
+
+const csctfRepoInfo = {
+  name: "chat_shared_conversation_to_file",
+  fullName: "Dicklesworthstone/chat_shared_conversation_to_file",
+  description: "CLI tool that converts public share links into Markdown and HTML",
+  homepage: "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file",
+  htmlUrl: "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file",
+  license: null,
+  defaultBranch: "main",
+};
+
+const csctfRelease = {
+  tagName: "v0.4.5",
+  assets: [
+    {
+      name: "csctf-macos-arm64",
+      url: "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file/releases/download/v0.4.5/csctf-macos-arm64",
+    },
+    {
+      name: "csctf-macos-x64",
+      url: "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file/releases/download/v0.4.5/csctf-macos-x64",
+    },
+    {
+      name: "csctf-linux-arm64",
+      url: "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file/releases/download/v0.4.5/csctf-linux-arm64",
+    },
+    {
+      name: "csctf-linux-x64",
+      url: "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file/releases/download/v0.4.5/csctf-linux-x64",
+    },
+  ],
+};
+
+describe.concurrent("binary-release bare binaries integration", () => {
+  it("csctf: detects bare assets and renames bin to csctf", async () => {
+    const payload = await collectBinaryReleasePayload(
+      csctfRepoInfo,
+      csctfRelease,
+      { name: "chat-shared-conversation-to-file" },
+    );
+    expect(payload.template).toBe("binary_release");
+    expect(payload.binName).toBe("csctf");
+    expect(payload.installBody).toContain('bin.install bin_path => "csctf"');
+    expect(payload.platformBlocks).toContain("on_macos do");
+    expect(payload.platformBlocks).toContain("#{version}");
+  }, 120_000);
+
+  it("csctf: generates structurally valid Ruby formula", async () => {
+    const payload = await collectBinaryReleasePayload(
+      csctfRepoInfo,
+      csctfRelease,
+      { name: "chat-shared-conversation-to-file", binName: "csctf" },
+    );
+    const ruby = renderFormula(payload);
+    assertValidFormula(ruby);
+    expect(ruby).toContain("class ChatSharedConversationToFile < Formula");
+    expect(ruby).toContain('bin.install bin_path => "csctf"');
+  }, 120_000);
+});

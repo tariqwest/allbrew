@@ -251,12 +251,26 @@ describe("isBinaryAsset", () => {
     expect(isBinaryAsset("foo-darwin-arm64.tgz")).toBe(true);
   });
 
+  it("matches bare platform-tagged binaries (e.g. Bun compile releases)", () => {
+    expect(isBinaryAsset("csctf-macos-arm64")).toBe(true);
+    expect(isBinaryAsset("csctf-macos-x64")).toBe(true);
+    expect(isBinaryAsset("csctf-linux-arm64")).toBe(true);
+    expect(isBinaryAsset("csctf-linux-x64")).toBe(true);
+    // Windows assets are ignored by Homebrew arch matching (no formula target).
+    expect(isBinaryAsset("csctf-windows-x64.exe")).toBe(false);
+    expect(matchAssetToArch("csctf-macos-arm64")).toBe("macosArm");
+    expect(matchAssetToArch("csctf-macos-x64")).toBe("macosIntel");
+  });
+
   it("rejects app assets", () => {
     expect(isBinaryAsset("Foo-macos.zip")).toBe(false);
     expect(isBinaryAsset("Foo.dmg")).toBe(false);
   });
 
-  it("rejects non-archive files", () => {
+  it("rejects checksum/docs and untagged binaries", () => {
     expect(isBinaryAsset("foo.exe")).toBe(false);
+    expect(isBinaryAsset("csctf-macos-arm64.sha256")).toBe(false);
+    expect(isBinaryAsset("sha256.txt")).toBe(false);
+    expect(isBinaryAsset("README.md")).toBe(false);
   });
 });

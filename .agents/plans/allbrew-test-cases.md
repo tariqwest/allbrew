@@ -316,7 +316,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -357,10 +357,10 @@
 | # source-build (Python pip install from GitHub; no PyPI; no releases) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://github.com/authsec-ai/authsec-bridge --manual  # → source-build | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install authsec-bridge && sb --help | | | | | | | | | | | | | | | | | | | | | | | |
-# source-build (Python CLI from GitHub; no PyPI; no releases; uv/pyproject.toml; bin name trae-cli)
-allbrew https://github.com/bytedance/trae-agent --manual  # → source-build
-brew install trae-agent && trae-cli --help
-
+| # source-build (Python CLI from GitHub; no PyPI; no releases; uv/pyproject.toml; bin name trae-cli) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/bytedance/trae-agent --manual  # → source-build | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install trae-agent && trae-cli --help | | | | | | | | | | | | | | | | | | | | | | | |
+| chat-shared-conversation-to-file | bun/typescript | cli | | https://github.com/Dicklesworthstone/chat_shared_conversation_to_file | no | | | | | | | | | | | | | | | yes | yes (5: csctf-macos-arm64/x64, linux-arm64/x64, windows-x64.exe) | yes | Bun-compiled bare release binaries (no archive ext). bin=csctf. binary-release. v0.4.5 not in HB. Playwright for scrape. |
 # source-build (Tauri desktop app; no releases, no registry; HEAD-only)
 allbrew https://github.com/recailai/jockey --manual  # → source-build (make fallback)
 

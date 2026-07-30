@@ -60,9 +60,10 @@ describe("collectBinaryReleasePayload", () => {
     expect(payload.licenseLine).toContain("MIT");
   });
 
-  it("sets binName from formula name", async () => {
+  it("sets binName from formula name for archive assets", async () => {
     const payload = await collectBinaryReleasePayload(repoInfo, release);
     expect(payload.binName).toBe("wakapi");
+    expect(payload.installBody).toBe('bin.install "wakapi"');
   });
 
   it("respects name override", async () => {
@@ -83,5 +84,80 @@ describe("collectBinaryReleasePayload", () => {
   it("includes empty service block by default", async () => {
     const payload = await collectBinaryReleasePayload(repoInfo, release);
     expect(payload.serviceBlock).toBe("");
+  });
+
+  it("detects bare platform binaries and renames install to shared bin name", async () => {
+    const bareRelease = {
+      tagName: "v0.4.5",
+      assets: [
+        {
+          name: "csctf-macos-arm64",
+          url: "https://example.com/csctf-macos-arm64",
+        },
+        {
+          name: "csctf-macos-x64",
+          url: "https://example.com/csctf-macos-x64",
+        },
+        {
+          name: "csctf-linux-arm64",
+          url: "https://example.com/csctf-linux-arm64",
+        },
+        {
+          name: "csctf-linux-x64",
+          url: "https://example.com/csctf-linux-x64",
+        },
+        {
+          name: "csctf-macos-arm64.sha256",
+          url: "https://example.com/csctf-macos-arm64.sha256",
+        },
+        { name: "sha256.txt", url: "https://example.com/sha256.txt" },
+      ],
+    };
+    const bareRepo = {
+      name: "chat_shared_conversation_to_file",
+      fullName: "Dicklesworthstone/chat_shared_conversation_to_file",
+      description: "CLI share-link converter",
+      homepage: "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file",
+      htmlUrl: "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file",
+      license: null,
+      defaultBranch: "main",
+    };
+    const payload = await collectBinaryReleasePayload(bareRepo, bareRelease, {
+      name: "chat-shared-conversation-to-file",
+    });
+    expect(payload.template).toBe("binary_release");
+    expect(payload.binName).toBe("csctf");
+    expect(payload.testBinName).toBe("csctf");
+    expect(payload.platformBlocks).toContain("on_macos do");
+    expect(payload.platformBlocks).toContain("on_linux do");
+    expect(payload.installBody).toContain('bin.install bin_path => "csctf"');
+    expect(payload.installBody).toContain("Dir[\"*\"]");
+  });
+
+  it("respects binName override for bare binaries", async () => {
+    const bareRelease = {
+      tagName: "v0.4.5",
+      assets: [
+        {
+          name: "csctf-macos-arm64",
+          url: "https://example.com/csctf-macos-arm64",
+        },
+      ],
+    };
+    const bareRepo = {
+      name: "chat_shared_conversation_to_file",
+      fullName: "Dicklesworthstone/chat_shared_conversation_to_file",
+      description: "CLI",
+      homepage: "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file",
+      htmlUrl: "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file",
+      license: null,
+      defaultBranch: "main",
+    };
+    const payload = await collectBinaryReleasePayload(bareRepo, bareRelease, {
+      name: "chat-shared-conversation-to-file",
+      binName: "chatctl",
+    });
+    expect(payload.binName).toBe("chatctl");
+    expect(payload.installBody).toContain('bin.install bin_path => "chatctl"');
   });
 });

@@ -13,7 +13,7 @@ ${p.platformBlocks}  livecheck do
 
 ${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n\n` : ""}  def install
     ensure_setapp!
-    bin.install "${p.binName}"
+    ${p.installBody}
   end
 
   def ensure_setapp!

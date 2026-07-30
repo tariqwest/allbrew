@@ -198,10 +198,54 @@ export function isAppAsset(assetName) {
   );
 }
 
-export function isBinaryAsset(assetName) {
+const ARCHIVE_BINARY_EXTS = [".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".zip"];
+const BARE_BINARY_SKIP_SUFFIXES = [
+  ".sha256",
+  ".sha256sum",
+  ".sig",
+  ".asc",
+  ".pem",
+  ".sbom",
+  ".json",
+  ".txt",
+  ".md",
+  ".yml",
+  ".yaml",
+  ".dmg",
+  ".pkg",
+  ".deb",
+  ".rpm",
+  ".appimage",
+  ".msi",
+  ".app",
+];
+const BARE_BINARY_SKIP_NAMES = new Set([
+  "sha256.txt",
+  "sha256sums.txt",
+  "checksums.txt",
+  "checksums",
+  "checksums.txt.asc",
+]);
+
+export function isArchiveBinaryAsset(assetName) {
   const lower = assetName.toLowerCase();
-  const archiveExts = [".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".zip"];
   return (
-    archiveExts.some((ext) => lower.endsWith(ext)) && !isAppAsset(assetName)
+    ARCHIVE_BINARY_EXTS.some((ext) => lower.endsWith(ext)) &&
+    !isAppAsset(assetName)
   );
+}
+
+/** Extensionless (or .exe) platform-tagged release binaries, e.g. csctf-macos-arm64. */
+export function isBareBinaryAsset(assetName) {
+  const lower = assetName.toLowerCase();
+  if (!assetName || BARE_BINARY_SKIP_NAMES.has(lower)) return false;
+  if (isAppAsset(assetName) || isArchiveBinaryAsset(assetName)) return false;
+  if (BARE_BINARY_SKIP_SUFFIXES.some((s) => lower.endsWith(s))) return false;
+  // Windows .exe with arch tags is a bare binary; other dotted names are not.
+  if (lower.includes(".") && !lower.endsWith(".exe")) return false;
+  return matchAssetToArch(assetName) != null;
+}
+
+export function isBinaryAsset(assetName) {
+  return isArchiveBinaryAsset(assetName) || isBareBinaryAsset(assetName);
 }

@@ -1425,12 +1425,14 @@ function isFormulaGenerator(generatorName: string) {
   ].includes(generatorName);
 }
 
+function isInteractiveTty() {
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY);
+}
+
 async function collectServiceOptions(params: any, opts: any, formulaName: any) {
   if (opts.service === false) return { service: false };
-
   if (opts.service || opts.serviceCommand) {
-    const command =
-      opts.serviceCommand || params.serviceConfig?.command || formulaName;
+    const command = opts.serviceCommand || params.serviceConfig?.command || formulaName;
     return {
       serviceConfig: {
         ...params.serviceConfig,
@@ -1438,6 +1440,19 @@ async function collectServiceOptions(params: any, opts: any, formulaName: any) {
         keepAlive: opts.serviceKeepAlive !== false,
       },
     };
+  }
+
+  // Non-interactive runs (monitored installs, pipes): auto-detect only — never prompt.
+  if (!isInteractiveTty()) {
+    if (params.serviceConfig?.command) {
+      return {
+        serviceConfig: {
+          ...params.serviceConfig,
+          keepAlive: params.serviceConfig.keepAlive !== false,
+        },
+      };
+    }
+    return { service: false };
   }
 
   const detected = params.serviceConfig || null;

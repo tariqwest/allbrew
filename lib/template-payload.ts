@@ -72,6 +72,8 @@ export type BinaryReleasePayload = FormulaCommonFields & {
   template: "binary_release";
   version: string;
   binName: string;
+  /** Full body of `def install` (e.g. bin.install or bare-binary rename). */
+  installBody: string;
   licenseLine: string;
   platformBlocks: string;
   livecheckBlock: string;
