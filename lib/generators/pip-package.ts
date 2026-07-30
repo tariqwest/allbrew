@@ -81,6 +81,7 @@ export async function collectPipPackagePayload(
   const pypiData = await fetchPypiData(packageName);
   const dist = selectBestDistribution(pypiData.urls || [], {
     preferWheel: options.preferWheel !== false,
+    version: pypiData.info.version,
   });
 
   if (!dist)
@@ -88,7 +89,15 @@ export async function collectPipPackagePayload(
       `No suitable wheel or source distribution found for ${packageName} on PyPI`,
     );
 
-  const deps = await resolveTransitiveDeps(packageName, new Set());
+  // Walk requires_dist from the same release we install (not always latest).
+  const rootVersion = dist.version || pypiData.info.version;
+  const deps = await resolveTransitiveDeps(
+    packageName,
+    new Set(),
+    5,
+    0,
+    rootVersion,
+  );
   const undeclared = await resolveUndeclaredDeps(packageName, deps);
   const allDeps = dedupeResources([...deps, ...undeclared]);
 
@@ -762,6 +771,13 @@ async function resolveTransitiveDeps(
   visited: Set<string>,
   maxDepth = 5,
   depth = 0,
+  /**
+   * Version of `packageName` whose requires_dist should be walked.
+   * Must match the wheel/sdist selected for this package — using latest
+   * metadata while pinning an older resource causes missing runtime deps
+   * (e.g. mcp 1.28.1 needs httpx-sse; mcp 2.x needs httpx2 instead).
+   */
+  packageVersion?: string,
 ): Promise<ResolvedResource[]> {
   const key = normalizePackageName(packageName);
   if (depth >= maxDepth || visited.has(key)) return [];
@@ -770,7 +786,17 @@ async function resolveTransitiveDeps(
   const resources: ResolvedResource[] = [];
 
   try {
-    const pypiData = await fetchPypiData(packageName);
+    // Prefer the selected pin's metadata so transitive deps match the installed wheel.
+    let pypiData: PypiPackageJson;
+    if (packageVersion) {
+      try {
+        pypiData = await fetchPypiData(packageName, packageVersion);
+      } catch {
+        pypiData = await fetchPypiData(packageName);
+      }
+    } else {
+      pypiData = await fetchPypiData(packageName);
+    }
     const requires = pypiData.info.requires_dist || [];
 
     for (const req of requires) {
@@ -800,6 +826,7 @@ async function resolveTransitiveDeps(
           visited,
           maxDepth,
           depth + 1,
+          dist?.version,
         );
         resources.push(...transitive);
       } catch {

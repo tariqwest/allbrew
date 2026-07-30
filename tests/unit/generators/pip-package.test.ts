@@ -607,3 +607,176 @@ describe("pip requirement parsing helpers", () => {
   });
 });
 
+describe("collectPipPackagePayload — pinned dep version skew", () => {
+  beforeEach(() => {
+    mock.restore();
+
+    const rootPkg = {
+      info: {
+        name: "root-pkg",
+        version: "1.0.0",
+        summary: "Root package pinning an older mcp",
+        home_page: "https://example.com/root-pkg",
+        license: "MIT",
+        // Pin matches installed wheel; latest mcp has different deps.
+        requires_dist: ["mcp==1.28.1"],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "root_pkg-1.0.0-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/root_pkg-1.0.0-py3-none-any.whl",
+          digests: { sha256: "aa".repeat(32) },
+        },
+      ],
+    };
+
+    const mcpLatest = {
+      info: {
+        name: "mcp",
+        version: "2.0.0",
+        summary: "Latest mcp",
+        requires_dist: ["httpx2>=2.5.0"],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "mcp-2.0.0-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/mcp-2.0.0-py3-none-any.whl",
+          digests: { sha256: "bb".repeat(32) },
+        },
+      ],
+      releases: {
+        "2.0.0": [
+          {
+            packagetype: "bdist_wheel",
+            python_version: "py3",
+            filename: "mcp-2.0.0-py3-none-any.whl",
+            url: "https://files.pythonhosted.org/packages/xx/mcp-2.0.0-py3-none-any.whl",
+            digests: { sha256: "bb".repeat(32) },
+          },
+        ],
+        "1.28.1": [
+          {
+            packagetype: "bdist_wheel",
+            python_version: "py3",
+            filename: "mcp-1.28.1-py3-none-any.whl",
+            url: "https://files.pythonhosted.org/packages/xx/mcp-1.28.1-py3-none-any.whl",
+            digests: { sha256: "cc".repeat(32) },
+          },
+        ],
+      },
+    };
+
+    const mcpPinned = {
+      info: {
+        name: "mcp",
+        version: "1.28.1",
+        summary: "Pinned mcp",
+        requires_dist: ["httpx-sse>=0.4", "httpx>=0.27.1,<1.0.0"],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "mcp-1.28.1-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/mcp-1.28.1-py3-none-any.whl",
+          digests: { sha256: "cc".repeat(32) },
+        },
+      ],
+    };
+
+    const httpxSse = {
+      info: {
+        name: "httpx-sse",
+        version: "0.4.3",
+        summary: "SSE support for httpx",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "httpx_sse-0.4.3-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/httpx_sse-0.4.3-py3-none-any.whl",
+          digests: { sha256: "dd".repeat(32) },
+        },
+      ],
+    };
+
+    const httpx = {
+      info: {
+        name: "httpx",
+        version: "0.28.1",
+        summary: "httpx",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "httpx-0.28.1-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/httpx-0.28.1-py3-none-any.whl",
+          digests: { sha256: "ee".repeat(32) },
+        },
+      ],
+    };
+
+    const httpx2 = {
+      info: {
+        name: "httpx2",
+        version: "2.9.1",
+        summary: "httpx2 (mcp 2.x only)",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "httpx2-2.9.1-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/httpx2-2.9.1-py3-none-any.whl",
+          digests: { sha256: "ff".repeat(32) },
+        },
+      ],
+    };
+
+    global.fetch = mock((url: string) => {
+      const u = String(url);
+      let body: unknown;
+      if (u.includes("/root-pkg/")) body = rootPkg;
+      else if (u.includes("/mcp/1.28.1/")) body = mcpPinned;
+      else if (u.includes("/mcp/")) body = mcpLatest;
+      else if (u.includes("/httpx-sse/")) body = httpxSse;
+      else if (u.includes("/httpx2/")) body = httpx2;
+      else if (u.includes("/httpx/")) body = httpx;
+      else {
+        body = {
+          info: {
+            name: "unknown",
+            version: "1.0.0",
+            summary: "Unknown",
+            requires_dist: [],
+          },
+          urls: [],
+        };
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(body),
+      });
+    }) as any;
+  });
+
+  it("walks requires_dist of the pinned dep version, not latest", async () => {
+    const payload = await collectPipPackagePayload("root-pkg");
+    expect(payload.resourcesBlock).toContain('resource "mcp"');
+    expect(payload.resourcesBlock).toContain("mcp-1.28.1-py3-none-any.whl");
+    // mcp 1.28.1 needs httpx-sse; latest mcp 2.x would pull httpx2 instead.
+    expect(payload.resourcesBlock).toContain('resource "httpx-sse"');
+    expect(payload.resourcesBlock).toContain("httpx_sse-0.4.3-py3-none-any.whl");
+    expect(payload.resourcesBlock).not.toContain('resource "httpx2"');
+  });
+});
+
