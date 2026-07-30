@@ -748,8 +748,14 @@ async function handleGithubRepo(classification, opts) {
     );
 
     if (method) {
+      const detail =
+        method.package ||
+        method.url ||
+        method.script ||
+        method.system ||
+        "";
       console.log(
-        `  Detected install method: ${chalk.cyan(method.method)}${method.package ? ` (${method.package})` : ""}`,
+        `  Detected install method: ${chalk.cyan(method.method)}${detail ? ` (${detail})` : ""}`,
       );
     }
 
@@ -814,6 +820,28 @@ async function handleGithubRepo(classification, opts) {
             },
             opts,
           );
+        case "script": {
+          const scriptUrl = resolveScriptInstallUrl(
+            method,
+            repoInfo,
+            owner,
+            repo,
+          );
+          if (scriptUrl) {
+            console.log(`  Using install script: ${chalk.cyan(scriptUrl)}`);
+            return await generateWithConfirmation(
+              "install-script",
+              { url: scriptUrl, repoInfo },
+              opts,
+            );
+          }
+          console.log(
+            chalk.dim(
+              "  Script install hint found but no resolvable URL; continuing with repository analysis",
+            ),
+          );
+          break;
+        }
         case "deno":
         case "swift":
           console.log(
@@ -851,6 +879,23 @@ async function handleGithubRepo(classification, opts) {
     );
 
     switch (buildSystem.method) {
+      case "script": {
+        const scriptUrl = resolveScriptInstallUrl(
+          buildSystem,
+          repoInfo,
+          owner,
+          repo,
+        );
+        if (scriptUrl) {
+          console.log(`  Using install script: ${chalk.cyan(scriptUrl)}`);
+          return await generateWithConfirmation(
+            "install-script",
+            { url: scriptUrl, repoInfo },
+            opts,
+          );
+        }
+        break;
+      }
       case "npm": {
         const pkgJson = await getFileContent(owner, repo, "package.json");
         let packageName = repoInfo.name;
@@ -1442,6 +1487,30 @@ function parseCargoPackageName(cargoToml: string | null) {
   }
 
   return null;
+}
+
+/**
+ * Turn a README/repo script install hint into an absolute script URL for the
+ * install-script generator. Absolute URLs pass through; relative paths like
+ * install.sh become raw.githubusercontent.com URLs on the default branch.
+ */
+function resolveScriptInstallUrl(
+  method: { url?: string; script?: string },
+  repoInfo: any,
+  owner: string,
+  repo: string,
+): string | null {
+  if (method?.url && /^https?:\/\//i.test(method.url)) {
+    return method.url;
+  }
+  const scriptPath = (method?.script || "")
+    .replace(/^\.\//, "")
+    .replace(/^\/+/, "");
+  if (!scriptPath) return null;
+  // Reject path traversal
+  if (scriptPath.includes("..")) return null;
+  const branch = repoInfo?.defaultBranch || "main";
+  return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${scriptPath}`;
 }
 
 function guessName(generatorName: any, params: any) {

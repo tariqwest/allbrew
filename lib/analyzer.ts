@@ -31,6 +31,20 @@ const CARGO_INSTALL_RE =
 const GO_INSTALL_RE =
   /(?:^|[`\n])\s*(?:\$\s*)?go[ \t]+install[ \t]+([\w./-]+@[\w.]+)/i;
 
+// curl|bash / wget|sh install one-liners and direct .sh/.bash install URLs
+const CURL_PIPE_SHELL_RE =
+  /(?:curl|wget)\b[^\n`]*?(https?:\/\/[^\s;|&"'`\)\]]+)[^\n`]*?\|[ \t]*(?:sudo[ \t]+)?(?:bash|sh)\b/i;
+const SHELL_PROCESS_SUBST_RE =
+  /(?:bash|sh)\s+<\(\s*(?:curl|wget)\b[^\n`]*?(https?:\/\/[^\s;|&"'`\)\]]+)/i;
+const SHELL_C_CURL_RE =
+  /(?:bash|sh)\s+-c\s+["']\s*\$\(\s*(?:curl|wget)\b[^\n`"']*?(https?:\/\/[^\s;|&"'`\)\]]+)/i;
+const MARKDOWN_SCRIPT_LINK_RE =
+  /\[[^\]]*\]\((https?:\/\/[^\s)]+\.(?:sh|bash)(?:\?[^\s)]*)?)\)/i;
+const BARE_SCRIPT_URL_RE =
+  /(?:^|[`\n(\s])((?:https?:\/\/)[^\s;|&"'`\)\]]+\.(?:sh|bash)(?:\?[^\s;|&"'`\)\]]*)?)/i;
+const RELATIVE_INSTALL_SCRIPT_RE =
+  /(?:^|[`\n])\s*(?:\$\s*)?(?:bash|sh)\s+(\.?\/?[\w./-]*(?:install|setup)\.(?:sh|bash))\b/i;
+
 const BUILD_PATTERNS = [
   { pattern: /cmake\s+/i, system: "cmake" },
   { pattern: /\.\/configure/i, system: "autotools" },
@@ -100,7 +114,15 @@ export function detectBrewInstall(readmeText) {
   };
 }
 
-export function detectInstallMethod(readmeText) {
+export type InstallMethodHint = {
+  method: string;
+  package?: string | null;
+  system?: string;
+  url?: string;
+  script?: string;
+};
+
+export function detectInstallMethod(readmeText): InstallMethodHint | null {
   if (!readmeText) return null;
 
   let match;
@@ -175,6 +197,9 @@ export function detectInstallMethod(readmeText) {
   match = readmeText.match(SWIFT_RUN_RE);
   if (match) return { method: "swift", package: match[1] || null };
 
+  const script = detectScriptInstall(readmeText);
+  if (script) return script;
+
   for (const { pattern, system } of BUILD_PATTERNS) {
     if (pattern.test(readmeText)) {
       return { method: "build", system };
@@ -182,6 +207,70 @@ export function detectInstallMethod(readmeText) {
   }
 
   return null;
+}
+
+/**
+ * Detect bash/curl install-script instructions in README text.
+ * Returns absolute script URL when present, or a relative script path
+ * (e.g. ./install.sh) for the caller to resolve against a GitHub repo.
+ */
+export function detectScriptInstall(readmeText): InstallMethodHint | null {
+  if (!readmeText) return null;
+
+  let match = readmeText.match(CURL_PIPE_SHELL_RE);
+  if (match?.[1]) {
+    const url = cleanScriptUrl(match[1]);
+    if (url) return { method: "script", url };
+  }
+
+  match = readmeText.match(SHELL_PROCESS_SUBST_RE);
+  if (match?.[1]) {
+    const url = cleanScriptUrl(match[1]);
+    if (url) return { method: "script", url };
+  }
+
+  match = readmeText.match(SHELL_C_CURL_RE);
+  if (match?.[1]) {
+    const url = cleanScriptUrl(match[1]);
+    if (url) return { method: "script", url };
+  }
+
+  match = readmeText.match(MARKDOWN_SCRIPT_LINK_RE);
+  if (match?.[1]) {
+    const url = cleanScriptUrl(match[1]);
+    if (url) return { method: "script", url };
+  }
+
+  match = readmeText.match(BARE_SCRIPT_URL_RE);
+  if (match?.[1]) {
+    const url = cleanScriptUrl(match[1]);
+    if (url) return { method: "script", url };
+  }
+
+  match = readmeText.match(RELATIVE_INSTALL_SCRIPT_RE);
+  if (match?.[1]) {
+    const script = match[1].replace(/^\.\//, "");
+    if (script) return { method: "script", script };
+  }
+
+  return null;
+}
+
+function cleanScriptUrl(raw) {
+  if (!raw) return null;
+  let url = String(raw).trim();
+  // Strip common trailing punctuation from markdown/prose
+  url = url.replace(/[),.;]+$/g, "");
+  // Drop shell-quoting leftovers
+  url = url.replace(/^['"]|['"]$/g, "");
+  if (!/^https?:\/\//i.test(url)) return null;
+  try {
+    // Validate URL shape
+    new URL(url);
+  } catch {
+    return null;
+  }
+  return url;
 }
 
 export function detectServiceConfig(readmeText, packageName = "") {
@@ -440,8 +529,20 @@ export function detectServiceConfigFromFiles(fileNames, packageName = "") {
   return { command: packageName, keepAlive: true, confidence: "medium" };
 }
 
-export function detectBuildSystemFromFiles(fileNames) {
+export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null {
   const names = new Set(fileNames.map((f) => f.toLowerCase()));
+
+  // Prefer explicit root install/setup scripts when present (curl|bash style).
+  for (const candidate of [
+    "install.sh",
+    "setup.sh",
+    "install.bash",
+    "setup.bash",
+  ]) {
+    if (names.has(candidate)) {
+      return { method: "script", script: candidate };
+    }
+  }
 
   if (names.has("go.mod")) return { method: "go" };
   if (names.has("cargo.toml")) return { method: "cargo" };

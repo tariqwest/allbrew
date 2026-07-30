@@ -192,6 +192,78 @@ it("detects npx as npm", () => {
     expect(result).toEqual({ method: "go", package: "github.com/foo/bar@v1.2.3" });
   });
 
+  it("detects curl | bash install one-liner as script", () => {
+    const result = detectInstallMethod(
+      "```bash\ncurl -fsSL https://starship.rs/install.sh | bash\n```",
+    );
+    expect(result).toEqual({
+      method: "script",
+      url: "https://starship.rs/install.sh",
+    });
+  });
+
+  it("detects wget | sh install one-liner as script", () => {
+    const result = detectInstallMethod(
+      "```\nwget -qO- https://get.docker.com | sh\n```",
+    );
+    expect(result).toEqual({
+      method: "script",
+      url: "https://get.docker.com",
+    });
+  });
+
+  it("detects bash process-substitution curl install", () => {
+    const result = detectInstallMethod(
+      "```bash\nbash <(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\n```",
+    );
+    expect(result).toEqual({
+      method: "script",
+      url: "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh",
+    });
+  });
+
+  it("detects bare .sh URL in README as script", () => {
+    const result = detectInstallMethod(
+      "Download the installer: https://example.com/setup.sh",
+    );
+    expect(result).toEqual({
+      method: "script",
+      url: "https://example.com/setup.sh",
+    });
+  });
+
+  it("detects markdown link to .sh as script", () => {
+    const result = detectInstallMethod(
+      "See the [install script](https://cua.ai/driver/install.sh).",
+    );
+    expect(result).toEqual({
+      method: "script",
+      url: "https://cua.ai/driver/install.sh",
+    });
+  });
+
+  it("detects relative bash ./install.sh as script path", () => {
+    const result = detectInstallMethod("```bash\nbash ./install.sh\n```");
+    expect(result).toEqual({ method: "script", script: "install.sh" });
+  });
+
+  it("prefers package-manager install over curl|bash when both present", () => {
+    const result = detectInstallMethod(
+      "```bash\npip install foo\ncurl -fsSL https://example.com/install.sh | bash\n```",
+    );
+    expect(result).toEqual({ method: "pip", package: "foo" });
+  });
+
+  it("prefers curl|bash script over make install build hint", () => {
+    const result = detectInstallMethod(
+      "```bash\ncurl -fsSL https://example.com/install.sh | bash\nmake install\n```",
+    );
+    expect(result).toEqual({
+      method: "script",
+      url: "https://example.com/install.sh",
+    });
+  });
+
   it("detects deno install with --name", () => {
     const result = detectInstallMethod("```bash\ndeno install --name=foo npm:bar\n```");
     expect(result).toEqual({ method: "deno", package: "bar" });
@@ -331,6 +403,19 @@ describe("detectBuildSystemFromFiles", () => {
 
   it("detects package.json", () => {
     expect(detectBuildSystemFromFiles(["package.json", "index.js"])).toEqual({ method: "npm" });
+  });
+
+  it("detects root install.sh as script before other build files", () => {
+    expect(
+      detectBuildSystemFromFiles(["install.sh", "Makefile", "README.md"]),
+    ).toEqual({ method: "script", script: "install.sh" });
+  });
+
+  it("detects root setup.sh as script", () => {
+    expect(detectBuildSystemFromFiles(["setup.sh"])).toEqual({
+      method: "script",
+      script: "setup.sh",
+    });
   });
 
   it("detects setup.py", () => {

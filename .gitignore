@@ -9,3 +9,6 @@ node_modules/
 tests/e2e-runs/
 test-harness-runs/
 graphify-out/
+
+# Dogfood monitored allbrew install run records (local flat-file DB)
+tests/monitored-install-runs/
