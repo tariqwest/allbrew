@@ -1,0 +1,3914 @@
+{
+  "version": 1,
+  "description": "Independent agent judgments for classifier validation. Keys are absolute URLs. expected_type follows classifier strategy types only (not generators). Populate via scripts/classifier-validate.ts --write-agent-judgments or a manual agent pass.",
+  "updated_at": "2026-07-29T16:05:29.169Z",
+  "judgments": {
+    "https://github.com/juftin/browsr": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "juftin",
+        "repo": "browsr"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/browsr/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "browsr"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/darrenburns/elia": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "darrenburns",
+        "repo": "elia"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/elia-chat/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "elia-chat"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Textualize/toolong": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Textualize",
+        "repo": "toolong"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/toolong/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "toolong"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/wustho/baca": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "wustho",
+        "repo": "baca"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/baca/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "baca"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/darrenburns/kupo": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "darrenburns",
+        "repo": "kupo"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/kupo/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "kupo"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/egekaya1/GitSimulator": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "egekaya1",
+        "repo": "GitSimulator"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/gitsimulator/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "gitsimulator"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/amanusk/s-tui": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "amanusk",
+        "repo": "s-tui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/s-tui/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "s-tui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/xgi/castero": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "xgi",
+        "repo": "castero"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/castero/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "castero"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/inducer/pudb": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "inducer",
+        "repo": "pudb"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/pudb/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "pudb"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Textualize/frogmouth": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Textualize",
+        "repo": "frogmouth"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/frogmouth/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "frogmouth"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/joouha/euporie": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "joouha",
+        "repo": "euporie"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/euporie/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "euporie"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/lxgr-linux/pokete": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "lxgr-linux",
+        "repo": "pokete"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/pokete/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "pokete"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/marimo-team/marimo": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "marimo-team",
+        "repo": "marimo"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/marimo/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "marimo"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/mlflow/mlflow": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "mlflow",
+        "repo": "mlflow"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/mlflow/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "mlflow"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/aimhubio/aim": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "aimhubio",
+        "repo": "aim"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/aim/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "aim"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/HumanSignal/label-studio": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "HumanSignal",
+        "repo": "label-studio"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/label-studio/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "label-studio"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Chainlit/chainlit": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Chainlit",
+        "repo": "chainlit"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/chainlit/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "chainlit"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/fossasia/visdom": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "fossasia",
+        "repo": "visdom"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/visdom/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "visdom"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/streamlit/streamlit": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "streamlit",
+        "repo": "streamlit"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/streamlit/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "streamlit"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/mher/flower": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "mher",
+        "repo": "flower"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/flower/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "flower"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/gradio-app/gradio": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "gradio-app",
+        "repo": "gradio"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/gradio/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "gradio"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/napari/napari": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "napari",
+        "repo": "napari"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/napari/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "napari"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/biolab/orange3": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "biolab",
+        "repo": "orange3"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/Orange3/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "Orange3"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/bleachbit/bleachbit": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "bleachbit",
+        "repo": "bleachbit"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/BleachBit/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "BleachBit"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/vzhd1701/gridplayer": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "vzhd1701",
+        "repo": "gridplayer"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/GridPlayer/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "GridPlayer"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/CadQuery/CQ-editor": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "CadQuery",
+        "repo": "CQ-editor"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/CQ-editor/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "CQ-editor"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/tlecomte/friture": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "tlecomte",
+        "repo": "friture"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/friture/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "friture"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/eric-ide/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "eric-ide"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/rbreu/beeref": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "rbreu",
+        "repo": "beeref"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/beeref/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "beeref"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Augus1999/pyPDFeditor-GUI": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Augus1999",
+        "repo": "pyPDFeditor-GUI"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/PyPDFEditor-GUI/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "PyPDFEditor-GUI"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/CATIA-Systems/FMPy": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "CATIA-Systems",
+        "repo": "FMPy"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/FMPy/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "FMPy"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/hanjinliu/tabulous": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "hanjinliu",
+        "repo": "tabulous"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/tabulous/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "tabulous"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/SteveDoyle2/pyNastran": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "SteveDoyle2",
+        "repo": "pyNastran"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/pyNastran/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "pyNastran"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/yjg30737/pyqt-openai": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "yjg30737",
+        "repo": "pyqt-openai"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/pyqt-openai/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "pyqt-openai"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/mprib/caliscope": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "mprib",
+        "repo": "caliscope"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/caliscope/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "caliscope"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/pry/pry": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "pry",
+        "repo": "pry"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://rubygems.org/gems/pry": {
+      "expected_type": "gem-package",
+      "expected_fields": {
+        "gemName": "pry"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/taskjuggler/TaskJuggler": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "taskjuggler",
+        "repo": "TaskJuggler"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://rubygems.org/gems/taskjuggler": {
+      "expected_type": "gem-package",
+      "expected_fields": {
+        "gemName": "taskjuggler"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/pivotal/LicenseFinder": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "pivotal",
+        "repo": "LicenseFinder"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://rubygems.org/gems/license_finder": {
+      "expected_type": "gem-package",
+      "expected_fields": {
+        "gemName": "license_finder"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Smashing/smashing": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Smashing",
+        "repo": "smashing"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://rubygems.org/gems/smashing": {
+      "expected_type": "gem-package",
+      "expected_fields": {
+        "gemName": "smashing"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/geminabox/geminabox": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "geminabox",
+        "repo": "geminabox"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://rubygems.org/gems/geminabox": {
+      "expected_type": "gem-package",
+      "expected_fields": {
+        "gemName": "geminabox"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/kojix2/rubio-radio": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "kojix2",
+        "repo": "rubio-radio"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://rubygems.org/gems/rubio-radio": {
+      "expected_type": "gem-package",
+      "expected_fields": {
+        "gemName": "rubio-radio"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/jakebruemmer/adamantite": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "jakebruemmer",
+        "repo": "adamantite"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://rubygems.org/gems/adamantite": {
+      "expected_type": "gem-package",
+      "expected_fields": {
+        "gemName": "adamantite"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/kojix2/htsgrid": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "kojix2",
+        "repo": "htsgrid"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://rubygems.org/gems/htsgrid": {
+      "expected_type": "gem-package",
+      "expected_fields": {
+        "gemName": "htsgrid"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/klaussinani/taskbook": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "klaussinani",
+        "repo": "taskbook"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/taskbook": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "taskbook"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/MrRio/vtop": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "MrRio",
+        "repo": "vtop"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/vtop": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "vtop"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/dylang/npm-check": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "dylang",
+        "repo": "npm-check"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/npm-check": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "npm-check"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/zaldih/npkill": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "zaldih",
+        "repo": "npkill"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/npkill": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "npkill"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/twiddler/deputui": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "twiddler",
+        "repo": "deputui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/deputui": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "deputui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/starmorph/forage-cli": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "starmorph",
+        "repo": "forage-cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/forage-cli": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "forage-cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://dirac.run": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/dirac-run/dirac": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "dirac-run",
+        "repo": "dirac"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/dirac-cli": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "dirac-cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://cline.bot": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/cline/cline": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "cline",
+        "repo": "cline"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/cline": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "cline"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/maildev/maildev": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "maildev",
+        "repo": "maildev"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/maildev": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "maildev"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/verdaccio/verdaccio": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "verdaccio",
+        "repo": "verdaccio"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/verdaccio": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "verdaccio"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/typicode/json-server": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "typicode",
+        "repo": "json-server"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/json-server": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "json-server"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/butlerx/wetty": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "butlerx",
+        "repo": "wetty"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/wetty": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "wetty"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/BrowserSync/browser-sync": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "BrowserSync",
+        "repo": "browser-sync"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/browser-sync": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "browser-sync"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Unitech/pm2": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Unitech",
+        "repo": "pm2"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/pm2": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "pm2"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://mcphub.app": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/samanhappy/mcphub": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "samanhappy",
+        "repo": "mcphub"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/@samanhappy/mcphub": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "@samanhappy/mcphub"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/markserv/markserv": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "markserv",
+        "repo": "markserv"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/markserv": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "markserv"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/docsifyjs/docsify-cli": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "docsifyjs",
+        "repo": "docsify-cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/docsify-cli": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "docsify-cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/TiddlyWiki/TiddlyWiki5": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "TiddlyWiki",
+        "repo": "TiddlyWiki5"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/tiddlywiki": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "tiddlywiki"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/clinicjs/node-clinic": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "clinicjs",
+        "repo": "node-clinic"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/clinic": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "clinic"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/nativefier/nativefier": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "nativefier",
+        "repo": "nativefier"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/nativefier": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "nativefier"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/bigmacfive/appbun": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "bigmacfive",
+        "repo": "appbun"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/appbun": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "appbun"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/hehehai/buke": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "hehehai",
+        "repo": "buke"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/@hehehai/buke": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "@hehehai/buke"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/dustinblackman/oatmeal": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "dustinblackman",
+        "repo": "oatmeal"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/oatmeal": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "oatmeal"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Dark-Alex-17/managarr": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Dark-Alex-17",
+        "repo": "managarr"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/managarr": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "managarr"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/josueBarretogit/manga-tui": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "josueBarretogit",
+        "repo": "manga-tui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/manga-tui": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "manga-tui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Xithrius/twitch-tui": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Xithrius",
+        "repo": "twitch-tui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/twitch-tui": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "twitch-tui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/tarkah/tickrs": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "tarkah",
+        "repo": "tickrs"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/tickrs": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "tickrs"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/akiomik/nostui": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "akiomik",
+        "repo": "nostui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/nostui": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "nostui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/TaKO8Ki/gobang": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "TaKO8Ki",
+        "repo": "gobang"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/lusingander/ddv": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "lusingander",
+        "repo": "ddv"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/wojciech-zurek/rrtop": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "wojciech-zurek",
+        "repo": "rrtop"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/FedericoBruzzone/tgt": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "FedericoBruzzone",
+        "repo": "tgt"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/woelper/oculante": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "woelper",
+        "repo": "oculante"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/oculante": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "oculante"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/ArturKovacs/emulsion": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "ArturKovacs",
+        "repo": "emulsion"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/emulsion": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "emulsion"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/qarmin/czkawka": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "qarmin",
+        "repo": "czkawka"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/krokiet": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "krokiet"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/rerun-io/rerun": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "rerun-io",
+        "repo": "rerun"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/rerun-cli": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "rerun-cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/houqp/kiorg": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "houqp",
+        "repo": "kiorg"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/hicder/agy-acp": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "hicder",
+        "repo": "agy-acp"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/F1bonacc1/process-compose": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "F1bonacc1",
+        "repo": "process-compose"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/robinovitch61/wander": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "robinovitch61",
+        "repo": "wander"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Owloops/updo": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Owloops",
+        "repo": "updo"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/mrusme/planor": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "mrusme",
+        "repo": "planor"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/jessfraz/tdash": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "jessfraz",
+        "repo": "tdash"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/hashicorp/damon": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "hashicorp",
+        "repo": "damon"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/rasjonell/dashbrew": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "rasjonell",
+        "repo": "dashbrew"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/muety/wakapi": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "muety",
+        "repo": "wakapi"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/sorenisanerd/gotty": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "sorenisanerd",
+        "repo": "gotty"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/arp242/goatcounter": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "arp242",
+        "repo": "goatcounter"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Forceu/Gokapi": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Forceu",
+        "repo": "Gokapi"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/TimothyYe/godns": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "TimothyYe",
+        "repo": "godns"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/mtlynch/picoshare": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "mtlynch",
+        "repo": "picoshare"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/dweymouth/supersonic": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "dweymouth",
+        "repo": "supersonic"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Jacalz/rymdport": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Jacalz",
+        "repo": "rymdport"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/lucor/paw": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "lucor",
+        "repo": "paw"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/janpfeifer/goshot": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "janpfeifer",
+        "repo": "goshot"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/creamlike1024/EasyLPAC": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "creamlike1024",
+        "repo": "EasyLPAC"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/jesseduffield/horcrux-ui": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "jesseduffield",
+        "repo": "horcrux-ui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/magicnight/Mac-MLX": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "magicnight",
+        "repo": "Mac-MLX"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/danterobles/doedit": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "danterobles",
+        "repo": "doedit"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/scriptingosx/utiluti": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "scriptingosx",
+        "repo": "utiluti"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/swiftyfinch/Rugby": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "swiftyfinch",
+        "repo": "Rugby"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/appdecostudio/SwiftPolyglot": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "appdecostudio",
+        "repo": "SwiftPolyglot"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/rnwood/smtp4dev": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "rnwood",
+        "repo": "smtp4dev"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.nuget.org/packages/Rnwood.Smtp4dev": {
+      "expected_type": "dotnet-package",
+      "expected_fields": {
+        "packageName": "Rnwood.Smtp4dev"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/natemcmaster/dotnet-serve": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "natemcmaster",
+        "repo": "dotnet-serve"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.nuget.org/packages/dotnet-serve": {
+      "expected_type": "dotnet-package",
+      "expected_fields": {
+        "packageName": "dotnet-serve"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/dotnet/dotnet-monitor": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "dotnet",
+        "repo": "dotnet-monitor"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.nuget.org/packages/dotnet-monitor": {
+      "expected_type": "dotnet-package",
+      "expected_fields": {
+        "packageName": "dotnet-monitor"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/waf/CSharpRepl": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "waf",
+        "repo": "CSharpRepl"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.nuget.org/packages/CSharpRepl": {
+      "expected_type": "dotnet-package",
+      "expected_fields": {
+        "packageName": "CSharpRepl"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/dotnet/diagnostics": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "dotnet",
+        "repo": "diagnostics"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.nuget.org/packages/dotnet-counters": {
+      "expected_type": "dotnet-package",
+      "expected_fields": {
+        "packageName": "dotnet-counters"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/icsharpcode/ILSpy": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "icsharpcode",
+        "repo": "ILSpy"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.nuget.org/packages/ilspycmd": {
+      "expected_type": "dotnet-package",
+      "expected_fields": {
+        "packageName": "ilspycmd"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/SteamRE/DepotDownloader": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "SteamRE",
+        "repo": "DepotDownloader"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.nuget.org/packages/DepotDownloader": {
+      "expected_type": "dotnet-package",
+      "expected_fields": {
+        "packageName": "DepotDownloader"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/wizardsardine/liana": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "wizardsardine",
+        "repo": "liana"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/ClayAmore/ER-Save-Editor": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "ClayAmore",
+        "repo": "ER-Save-Editor"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/rfuzzo/tes3edit": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "rfuzzo",
+        "repo": "tes3edit"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/juzeon/SydneyQt": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "juzeon",
+        "repo": "SydneyQt"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/SwaggyMacro/LottieViewConvert": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "SwaggyMacro",
+        "repo": "LottieViewConvert"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://officecli.ai": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/iOfficeAI/OfficeCLI": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "iOfficeAI",
+        "repo": "OfficeCLI"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/@officecli/officecli": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "@officecli/officecli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/popcorn-official/popcorn-desktop": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "popcorn-official",
+        "repo": "popcorn-desktop"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/webosbrew/dev-manager-desktop": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "webosbrew",
+        "repo": "dev-manager-desktop"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/gogs/gogs": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "gogs",
+        "repo": "gogs"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/raphamorim/rio": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "raphamorim",
+        "repo": "rio"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/pyzo/pyzo": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "pyzo",
+        "repo": "pyzo"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/sedwards2009/extraterm": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "sedwards2009",
+        "repo": "extraterm"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/extraterm": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "extraterm"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/go-shiori/shiori": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "go-shiori",
+        "repo": "shiori"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/veusz/veusz": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "veusz",
+        "repo": "veusz"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/frescobaldi/frescobaldi": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "frescobaldi",
+        "repo": "frescobaldi"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/persepolisdm/persepolis": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "persepolisdm",
+        "repo": "persepolis"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/olivierkes/manuskript": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "olivierkes",
+        "repo": "manuskript"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/rogchap/wombat": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "rogchap",
+        "repo": "wombat"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/borgbase/vorta": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "borgbase",
+        "repo": "vorta"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://electrum.org": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/spesmilo/electrum": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "spesmilo",
+        "repo": "electrum"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/tw93/Pake": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "tw93",
+        "repo": "Pake"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/charmbracelet/pop": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "charmbracelet",
+        "repo": "pop"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/charmbracelet/wishlist": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "charmbracelet",
+        "repo": "wishlist"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/SpatiumPortae/portal": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "SpatiumPortae",
+        "repo": "portal"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/GyulyVGC/sniffnet": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "GyulyVGC",
+        "repo": "sniffnet"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/jwt-rs/jwt-ui": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "jwt-rs",
+        "repo": "jwt-ui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/kdash-rs/kdash": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "kdash-rs",
+        "repo": "kdash"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/alexpasmantier/television": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "alexpasmantier",
+        "repo": "television"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/achristmascarl/rainfrog": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "achristmascarl",
+        "repo": "rainfrog"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/YS-L/csvlens": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "YS-L",
+        "repo": "csvlens"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/bgreenwell/doxx": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "bgreenwell",
+        "repo": "doxx"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/alexballas/go2tv": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "alexballas",
+        "repo": "go2tv"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/veeso/termscp": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "veeso",
+        "repo": "termscp"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/dnote/dnote": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "dnote",
+        "repo": "dnote"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/henriklovhaug/md-tui": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "henriklovhaug",
+        "repo": "md-tui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/shshemi/tabiew": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "shshemi",
+        "repo": "tabiew"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/leg100/pug": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "leg100",
+        "repo": "pug"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/yassinebridi/serpl": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "yassinebridi",
+        "repo": "serpl"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/lusingander/stu": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "lusingander",
+        "repo": "stu"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/MAIF/yozefu": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "MAIF",
+        "repo": "yozefu"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/altsem/gitu": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "altsem",
+        "repo": "gitu"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/nicotine-plus/nicotine-plus": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "nicotine-plus",
+        "repo": "nicotine-plus"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/thomasschafer/scooter": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "thomasschafer",
+        "repo": "scooter"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/maaslalani/slides": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "maaslalani",
+        "repo": "slides"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/sayanarijit/xplr": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "sayanarijit",
+        "repo": "xplr"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Lifailon/lazyjournal": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Lifailon",
+        "repo": "lazyjournal"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/uber/mockolo": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "uber",
+        "repo": "mockolo"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/fioncat/otree": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "fioncat",
+        "repo": "otree"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/aome510/spotify-player": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "aome510",
+        "repo": "spotify-player"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/quantumsheep/sshs": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "quantumsheep",
+        "repo": "sshs"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/mono0926/LicensePlist": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "mono0926",
+        "repo": "LicensePlist"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/comictagger/comictagger": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "comictagger",
+        "repo": "comictagger"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/gotify/cli": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "gotify",
+        "repo": "cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/kiliankoe/swift-outdated": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "kiliankoe",
+        "repo": "swift-outdated"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/pythops/tenere": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "pythops",
+        "repo": "tenere"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/imsnif/diskonaut": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "imsnif",
+        "repo": "diskonaut"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/kraanzu/dooit": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "kraanzu",
+        "repo": "dooit"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/orhun/gpg-tui": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "orhun",
+        "repo": "gpg-tui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/IBDecodable/IBLinter": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "IBDecodable",
+        "repo": "IBLinter"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/sarub0b0/kubetui": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "sarub0b0",
+        "repo": "kubetui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/tddworks/asc-cli": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "tddworks",
+        "repo": "asc-cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/FlineDev/BartyCrouch": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "FlineDev",
+        "repo": "BartyCrouch"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/czkawka_cli": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "czkawka_cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/aksakalli/gtop": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "aksakalli",
+        "repo": "gtop"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/gtop": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "gtop"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/whyisdifficult/jiratui": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "whyisdifficult",
+        "repo": "jiratui"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/kamiyaa/joshuto": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "kamiyaa",
+        "repo": "joshuto"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Cretezy/lazyjj": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Cretezy",
+        "repo": "lazyjj"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/sj26/mailcatcher": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "sj26",
+        "repo": "mailcatcher"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://rubygems.org/gems/mailcatcher": {
+      "expected_type": "gem-package",
+      "expected_fields": {
+        "gemName": "mailcatcher"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/rastapasta/mapscii": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "rastapasta",
+        "repo": "mapscii"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/mapscii": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "mapscii"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/bloomberg/memray": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "bloomberg",
+        "repo": "memray"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/PabloLec/recoverpy": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "PabloLec",
+        "repo": "recoverpy"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/webpro/reveal-md": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "webpro",
+        "repo": "reveal-md"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/reveal-md": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "reveal-md"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/MarcoEidinger/SwiftPlantUML": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "MarcoEidinger",
+        "repo": "SwiftPlantUML"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/sugyan/tuisky": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "sugyan",
+        "repo": "tuisky"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://seaquel.app": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/webstonehq/seaquel": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "webstonehq",
+        "repo": "seaquel"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://apiark.dev": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/berbicanes/apiark": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "berbicanes",
+        "repo": "apiark"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://rightright.me/products": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://avelio.tech/unfatten": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://ollama.com/download": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/ollama/ollama": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "ollama",
+        "repo": "ollama"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://ollama.com/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://proxyman.io": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://setapp.com/apps/proxyman": {
+      "expected_type": "setapp-app",
+      "expected_fields": {
+        "slug": "proxyman"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://docker.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://get.docker.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://zoom.us": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://trae.ai": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://otty.sh": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://paste.app": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://setapp.com/apps/paste": {
+      "expected_type": "setapp-app",
+      "expected_fields": {
+        "slug": "paste"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://apps.apple.com/app/id967805235": {
+      "expected_type": "mac-app-store",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://devmate.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://hermesapp.io": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://terax.app": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://tenten.co": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://setapp.com/download": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://raycast.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://apps.apple.com/app/id441258766": {
+      "expected_type": "mac-app-store",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://apps.apple.com/app/id1287239339": {
+      "expected_type": "mac-app-store",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://bear.app": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://apps.apple.com/app/id1016366447": {
+      "expected_type": "mac-app-store",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://perplexity.ai/personal-computer": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://postman.com/downloads": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://discord.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://titanium-software.fr/en/onyx.html": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://obdev.at/products/littlesnitch": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pictogramapp.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://macenhance.com/iconchamp.html": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://tokenbar.site/get-started": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://mac.monk-mode.lifestyle": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://metricsync.download": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/utmapp/UTM": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "utmapp",
+        "repo": "UTM"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/balena-io/etcher": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "balena-io",
+        "repo": "etcher"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/localsend/localsend": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "localsend",
+        "repo": "localsend"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/iina/iina": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "iina",
+        "repo": "iina"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/transmission/transmission": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "transmission",
+        "repo": "transmission"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://tailscale.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/tailscale/tailscale": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "tailscale",
+        "repo": "tailscale"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://apps.apple.com/app/id1475387142": {
+      "expected_type": "mac-app-store",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://tailscale.com/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Vesperino/MerMarkEditor": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Vesperino",
+        "repo": "MerMarkEditor"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Oct4Pie/archify": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Oct4Pie",
+        "repo": "archify"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/mvmalyi/macos-app-thinner": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "mvmalyi",
+        "repo": "macos-app-thinner"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/Homebrew/brew": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "Homebrew",
+        "repo": "brew"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/rust-lang/rustup": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "rust-lang",
+        "repo": "rustup"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://sh.rustup.rs": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/oven-sh/bun": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "oven-sh",
+        "repo": "bun"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://bun.sh/install": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/denoland/deno": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "denoland",
+        "repo": "deno"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://deno.land/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/astral-sh/uv": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "astral-sh",
+        "repo": "uv"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://astral.sh/uv/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/volta-cli/volta": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "volta-cli",
+        "repo": "volta"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://get.volta.sh": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/starship/starship": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "starship",
+        "repo": "starship"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://starship.rs/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/jetify-com/devbox": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "jetify-com",
+        "repo": "devbox"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://get.jetify.com/devbox": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/jdx/mise": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "jdx",
+        "repo": "mise"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://mise.run": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/python-poetry/poetry": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "python-poetry",
+        "repo": "poetry"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://install.python-poetry.org": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/ohmyzsh/ohmyzsh": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "ohmyzsh",
+        "repo": "ohmyzsh"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/nvm-sh/nvm": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "nvm-sh",
+        "repo": "nvm"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/atuinsh/atuin": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "atuinsh",
+        "repo": "atuin"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://setup.atuin.sh": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/prefix-dev/pixi": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "prefix-dev",
+        "repo": "pixi"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pixi.sh/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/pnpm/pnpm": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "pnpm",
+        "repo": "pnpm"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/pnpm": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "pnpm"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://get.pnpm.io/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/superfly/flyctl": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "superfly",
+        "repo": "flyctl"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://fly.io/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/railwayapp/cli": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "railwayapp",
+        "repo": "cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/@railway/cli": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "@railway/cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://raw.githubusercontent.com/railwayapp/cli/master/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/NixOS/nix": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "NixOS",
+        "repo": "nix"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://nixos.org/nix/install": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/sdkman/sdkman-cli": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "sdkman",
+        "repo": "sdkman-cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://get.sdkman.io": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/schollz/croc": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "schollz",
+        "repo": "croc"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://getcroc.schollz.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/zellij-org/zellij": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "zellij-org",
+        "repo": "zellij"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://zellij.dev/launch": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://downloads.poolside.ai/pool/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/poolsideai/pool": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "poolsideai",
+        "repo": "pool"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/ddclient/ddclient": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "ddclient",
+        "repo": "ddclient"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/asheshgoplani/agent-deck": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "asheshgoplani",
+        "repo": "agent-deck"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://raw.githubusercontent.com/asheshgoplani/agent-deck/main/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/ariasmn/ugm": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "ariasmn",
+        "repo": "ugm"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://poe.com/pages/get-poe": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://apps.apple.com/app/id1640745955": {
+      "expected_type": "mac-app-store",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://popclip.app": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://setapp.com/apps/popclip": {
+      "expected_type": "setapp-app",
+      "expected_fields": {
+        "slug": "popclip"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://macbartender.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://setapp.com/apps/bartender": {
+      "expected_type": "setapp-app",
+      "expected_fields": {
+        "slug": "bartender"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://cleanshot.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://setapp.com/apps/cleanshot": {
+      "expected_type": "setapp-app",
+      "expected_fields": {
+        "slug": "cleanshot"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://fadel.io/missioncontrolplus": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/ronyfadel/MissionControlPlusReleases": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "ronyfadel",
+        "repo": "MissionControlPlusReleases"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://setapp.com/apps/mission-control-plus": {
+      "expected_type": "setapp-app",
+      "expected_fields": {
+        "slug": "mission-control-plus"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/dodo-reach/hermes-desktop": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "dodo-reach",
+        "repo": "hermes-desktop"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://thetoolswebsite.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/DylanWain/veronum-desktop": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "DylanWain",
+        "repo": "veronum-desktop"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/xintaofei/codeg": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "xintaofei",
+        "repo": "codeg"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/MrSibe/KnowNote": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "MrSibe",
+        "repo": "KnowNote"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://qoder.com": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/recailai/jockey": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "recailai",
+        "repo": "jockey"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/authsec-ai/authsec-bridge": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "authsec-ai",
+        "repo": "authsec-bridge"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/mo-browser-apps/icons": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "mo-browser-apps",
+        "repo": "icons"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://hermesone.org": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/fathah/hermes-desktop": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "fathah",
+        "repo": "hermes-desktop"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://lite.ego.app": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/citrolabs/ego-lite": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "citrolabs",
+        "repo": "ego-lite"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/RealZST/HarnessKit": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "RealZST",
+        "repo": "HarnessKit"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/TheR1D/shell_gpt": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "TheR1D",
+        "repo": "shell_gpt"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://pypi.org/project/shell-gpt/": {
+      "expected_type": "pip-package",
+      "expected_fields": {
+        "packageName": "shell-gpt"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://open-notebook.ai": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/lfnovo/open-notebook": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "lfnovo",
+        "repo": "open-notebook"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.trae.ai": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/bytedance/trae-agent": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "bytedance",
+        "repo": "trae-agent"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://commandcode.ai": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/CommandCodeAI/command-code": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "CommandCodeAI",
+        "repo": "command-code"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/command-code": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "command-code"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/augmentcode/auggie": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "augmentcode",
+        "repo": "auggie"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/@augmentcode/auggie": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "@augmentcode/auggie"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://smithery.ai": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/smithery-ai/cli": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "smithery-ai",
+        "repo": "cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://www.npmjs.com/package/@smithery/cli": {
+      "expected_type": "npm-package",
+      "expected_fields": {
+        "packageName": "@smithery/cli"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://librechat.ai": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/danny-avila/LibreChat": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "danny-avila",
+        "repo": "LibreChat"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://cua.ai/cua-driver": {
+      "expected_type": "unknown",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/trycua/cua": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "trycua",
+        "repo": "cua"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://cua.ai/driver/install.sh": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/sigoden/aichat": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "sigoden",
+        "repo": "aichat"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/aichat": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "aichat"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg": {
+      "expected_type": "cask-dmg",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://ollama.com/download/Ollama-darwin.zip": {
+      "expected_type": "archive",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://proxyman.io/release/osx/Proxyman_latest.dmg": {
+      "expected_type": "cask-dmg",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install": {
+      "expected_type": "bash-script",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://raw.githubusercontent.com/someone/repo/main/dist/release.tar.gz": {
+      "expected_type": "archive",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://zoom.us/client/latest/Zoom.pkg": {
+      "expected_type": "archive",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://apps.apple.com/us/app/bear/id1091189122?mt=12": {
+      "expected_type": "mac-app-store",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://crates.io/crates/ripgrep": {
+      "expected_type": "cargo-package",
+      "expected_fields": {
+        "crateName": "ripgrep"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/muety/wakapi/tree/master/src": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "muety",
+        "repo": "wakapi"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/robinovitch61/wander.git": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "robinovitch61",
+        "repo": "wander"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://example.com/release.tgz": {
+      "expected_type": "archive",
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    },
+    "https://github.com/eigent-ai/eigent": {
+      "expected_type": "github-repo",
+      "expected_fields": {
+        "owner": "eigent-ai",
+        "repo": "eigent"
+      },
+      "confidence": "medium",
+      "rationale": "Bootstrapped from rule oracle — replace with independent agent judgment",
+      "source": "rule-oracle-bootstrap"
+    }
+  }
+}

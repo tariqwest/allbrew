@@ -43,13 +43,15 @@ describe("B6: live smoke — one package per registry", () => {
   });
 
   describe("RubyGems registry", () => {
-    it("pry: payload + Ruby are well-formed", async () => {
+it("pry: payload + Ruby are well-formed", async () => {
       const payload = await collectGemPackagePayload("pry");
       expect(payload.template).toBe("gem_package");
       expect(payload.name).toBe("pry");
-      expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
+      // Gem payloads embed the checksum in urlLines (no top-level sha256 field).
+      expect(payload.urlLines).toMatch(/sha256 "[a-f0-9]{64}"/);
       const ruby = renderFormula(payload);
       assertValidFormula(ruby);
+      expect(ruby).toContain("sha256");
     });
   });
 

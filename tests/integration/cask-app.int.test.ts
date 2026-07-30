@@ -3,6 +3,7 @@ import { collectCaskAppPayload } from "../../lib/generators/cask-app.ts";
 import { collectCaskAppReleasePayload } from "../../lib/generators/cask-app-release.ts";
 import { renderCask } from "../../lib/template-renderer.ts";
 import { assertValidCask } from "./helpers/validate-ruby.ts";
+import { quarantine } from "./helpers/quarantine.ts";
 import mcpsmFixture from "../fixtures/github/mcpsm.json";
 
 /**
@@ -11,7 +12,7 @@ import mcpsmFixture from "../fixtures/github/mcpsm.json";
  */
 
 describe.concurrent("cask-app integration", () => {
-  it("Seaquel DMG: payload is well-formed", async () => {
+it("Seaquel DMG: payload is well-formed", async () => {
     const url =
       "https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg";
     const payload = await collectCaskAppPayload(url, {
@@ -23,7 +24,7 @@ describe.concurrent("cask-app integration", () => {
     expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(payload.versionLine).toContain("2026.4.8");
     expect(payload.url).toContain("Seaquel");
-  });
+  }, 120000);
 
   it("Seaquel DMG: generates structurally valid Ruby cask", async () => {
     const url =
@@ -37,7 +38,7 @@ describe.concurrent("cask-app integration", () => {
     assertValidCask(ruby);
     expect(ruby).toContain('cask "seaquel" do');
     expect(ruby).toContain('app "Seaquel.app"');
-  });
+  }, 120000);
 
   it("ApiArk DMG: payload is well-formed", async () => {
     const url =
@@ -66,7 +67,7 @@ describe.concurrent("cask-app integration", () => {
     expect(ruby).toContain('app "ApiArk.app"');
   });
 
-  it("UTM /latest/ redirect: version is null, payload is well-formed", async () => {
+it("UTM /latest/ redirect: version is null, payload is well-formed", async () => {
     const url = "https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg";
     const payload = await collectCaskAppPayload(url, {
       name: "utm",
@@ -76,7 +77,7 @@ describe.concurrent("cask-app integration", () => {
     expect(payload.template).toBe("cask_app");
     expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(payload.versionLine).toBe("");
-  }, 60000);
+  }, 180000);
 
   it("LocalSend DMG: version extracted from filename", async () => {
     const url =
@@ -92,7 +93,7 @@ describe.concurrent("cask-app integration", () => {
     assertValidCask(ruby);
   });
 
-  it("Ollama ZIP: .zip containing .app produces valid cask", async () => {
+it("Ollama ZIP: .zip containing .app produces valid cask", async () => {
     const url = "https://ollama.com/download/Ollama-darwin.zip";
     const payload = await collectCaskAppPayload(url, {
       name: "ollama-test",
@@ -105,11 +106,13 @@ describe.concurrent("cask-app integration", () => {
     assertValidCask(ruby);
     expect(ruby).toContain('cask "ollama-test" do');
     expect(ruby).toContain('app "Ollama.app"');
-  }, 60000);
+  }, 180000);
 
-  it("balenaEtcher /latest/ redirect: arch in filename, no version", async () => {
+  // balena renamed assets from balenaEtcher-darwin-arm64.dmg (no version) to
+  // balenaEtcher-<ver>-arm64.dmg. Pin a known-good release asset (~157MB).
+  it("balenaEtcher arm64 DMG: versioned arch asset, payload is well-formed", async () => {
     const url =
-      "https://github.com/balena-io/etcher/releases/latest/download/balenaEtcher-darwin-arm64.dmg";
+      "https://github.com/balena-io/etcher/releases/download/v2.1.6/balenaEtcher-2.1.6-arm64.dmg";
     const payload = await collectCaskAppPayload(url, {
       name: "balenaetcher",
       appName: "balenaEtcher.app",
@@ -117,10 +120,10 @@ describe.concurrent("cask-app integration", () => {
     });
     expect(payload.template).toBe("cask_app");
     expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
-    expect(payload.versionLine).toBe("");
+    expect(payload.versionLine).toContain("2.1.6");
     const ruby = renderCask(payload);
     assertValidCask(ruby);
-  }, 60000);
+  }, 180000);
 
   it("Otty DMG: payload is well-formed (developer-site download)", async () => {
     const url = "https://downloads.otty.sh/macos/Otty.dmg";
@@ -149,8 +152,8 @@ describe.concurrent("cask-app integration", () => {
     expect(ruby).toContain("https://otty.sh");
   }, 60000);
 
-  it("Postman: version in CDN URL, payload is well-formed", async () => {
-    const url = "https://dl.pstmn.io/download/version/12.16.4/osx_arm64";
+it("Postman: version in CDN URL, payload is well-formed", async () => {
+    const url = "https://dl.pstmn.io/download/version/12.21.1/osx_arm64";
     const payload = await collectCaskAppPayload(url, {
       name: "postman",
       appName: "Postman.app",
@@ -158,12 +161,12 @@ describe.concurrent("cask-app integration", () => {
     });
     expect(payload.template).toBe("cask_app");
     expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
-    expect(payload.versionLine).toContain("12.16.4");
+    expect(payload.versionLine).toContain("12.21.1");
     expect(payload.url).toContain("dl.pstmn.io");
-  }, 120000);
+  }, 180000);
 
   it("Postman: generates structurally valid Ruby cask", async () => {
-    const url = "https://dl.pstmn.io/download/version/12.16.4/osx_arm64";
+    const url = "https://dl.pstmn.io/download/version/12.21.1/osx_arm64";
     const payload = await collectCaskAppPayload(url, {
       name: "postman",
       appName: "Postman.app",
@@ -174,7 +177,7 @@ describe.concurrent("cask-app integration", () => {
     expect(ruby).toContain('cask "postman" do');
     expect(ruby).toContain('app "Postman.app"');
     expect(ruby).toContain("https://www.postman.com");
-  }, 120000);
+  }, 180000);
 
   it("Discord DMG: version in CDN URL, payload is well-formed", async () => {
     const url = "https://dl.discordapp.net/apps/osx/0.0.385/Discord.dmg";
@@ -341,7 +344,10 @@ describe.concurrent("cask-app integration", () => {
   }, 120000);
 });
 
-describe.concurrent("cask-app-release integration", () => {
+// Serial: these tests each download full multi-10–100MB release assets for SHA256.
+// Running them concurrently under the shared 30–120s suite timeout was the main
+// source of CDN "timeout" flakes on slower links / busy CI VMs.
+describe("cask-app-release integration", () => {
   const seaquelRepoInfo = {
     name: "seaquel",
     fullName: "webstonehq/seaquel",
@@ -365,7 +371,7 @@ describe.concurrent("cask-app-release integration", () => {
     ],
   };
 
-  it("Seaquel: payload from release is well-formed", async () => {
+it("Seaquel: payload from release is well-formed", async () => {
     const payload = await collectCaskAppReleasePayload(
       seaquelRepoInfo,
       seaquelRelease,
@@ -376,7 +382,7 @@ describe.concurrent("cask-app-release integration", () => {
     expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(payload.url).toContain("#{version}");
     expect(payload.appName).toContain(".app");
-  });
+  }, 120000);
 
   it("Seaquel: generates structurally valid Ruby cask", async () => {
     const payload = await collectCaskAppReleasePayload(
@@ -388,7 +394,7 @@ describe.concurrent("cask-app-release integration", () => {
     expect(ruby).toContain('cask "seaquel" do');
     expect(ruby).toContain("strategy :github_latest");
     expect(ruby).toContain("zap trash:");
-  });
+  }, 120000);
 
   const codegRepoInfo = {
     name: "codeg",
@@ -414,7 +420,7 @@ describe.concurrent("cask-app-release integration", () => {
     ],
   };
 
-  it("Codeg: payload from Tauri release is well-formed", async () => {
+it("Codeg: payload from Tauri release is well-formed", async () => {
     const payload = await collectCaskAppReleasePayload(
       codegRepoInfo,
       codegRelease,
@@ -425,7 +431,7 @@ describe.concurrent("cask-app-release integration", () => {
     expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(payload.url).toContain("#{version}");
     expect(payload.appName).toContain(".app");
-  });
+  }, 180000);
 
   it("Codeg: generates structurally valid Ruby cask", async () => {
     const payload = await collectCaskAppReleasePayload(
@@ -437,7 +443,7 @@ describe.concurrent("cask-app-release integration", () => {
     expect(ruby).toContain('cask "codeg" do');
     expect(ruby).toContain("strategy :github_latest");
     expect(ruby).toContain("zap trash:");
-  });
+  }, 180000);
 
   const knowNoteRepoInfo = {
     name: "KnowNote",
@@ -471,7 +477,7 @@ describe.concurrent("cask-app-release integration", () => {
     ],
   };
 
-  it("KnowNote: payload from release is well-formed", async () => {
+it("KnowNote: payload from release is well-formed", async () => {
     const payload = await collectCaskAppReleasePayload(
       knowNoteRepoInfo,
       knowNoteRelease,
@@ -483,7 +489,7 @@ describe.concurrent("cask-app-release integration", () => {
     expect(payload.url).toContain("#{version}");
     expect(payload.url).toContain(".dmg");
     expect(payload.appName).toContain(".app");
-  }, 60000);
+  }, 180000);
 
   it("KnowNote: generates structurally valid Ruby cask", async () => {
     const payload = await collectCaskAppReleasePayload(
@@ -495,7 +501,7 @@ describe.concurrent("cask-app-release integration", () => {
     expect(ruby).toContain('cask "knownote" do');
     expect(ruby).toContain("strategy :github_latest");
     expect(ruby).toContain("zap trash:");
-  }, 60000);
+  }, 180000);
 
   const harnessKitRepoInfo = {
     name: "HarnessKit",
@@ -579,7 +585,7 @@ describe.concurrent("cask-app-release integration", () => {
     ],
   };
 
-  it("MōIcons: payload from arm64-only release is well-formed", async () => {
+it("MōIcons: payload from arm64-only release is well-formed", async () => {
     const payload = await collectCaskAppReleasePayload(
       moIconsRepoInfo,
       moIconsRelease,
@@ -592,7 +598,7 @@ describe.concurrent("cask-app-release integration", () => {
     expect(payload.url).toContain("#{version}");
     expect(payload.url).toContain(".dmg");
     expect(payload.appName).toBe("MoIcons.app");
-  });
+  }, 180000);
 
   it("MōIcons: generates structurally valid Ruby cask", async () => {
     const payload = await collectCaskAppReleasePayload(
@@ -606,7 +612,7 @@ describe.concurrent("cask-app-release integration", () => {
     expect(ruby).toContain("strategy :github_latest");
     expect(ruby).toContain('app "MoIcons.app"');
     expect(ruby).toContain("zap trash:");
-  });
+  }, 180000);
 
   const eigentRepoInfo = {
     name: "eigent",
@@ -647,7 +653,8 @@ describe.concurrent("cask-app-release integration", () => {
     ],
   };
 
-  it("Eigent: payload from AI desktop agent release is well-formed", async () => {
+  // ~660MB DMG — keep out of the CI gate; still run in full `test:int`.
+  it(quarantine("Eigent: payload from AI desktop agent release is well-formed"), async () => {
     const payload = await collectCaskAppReleasePayload(
       eigentRepoInfo,
       eigentRelease,
@@ -662,9 +669,9 @@ describe.concurrent("cask-app-release integration", () => {
     expect(payload.appName).toContain(".app");
     expect(payload.desc).toContain("Cowork Desktop");
     expect(payload.homepage).toBe("https://www.eigent.ai/");
-  });
+  }, 600000);
 
-  it("Eigent: generates structurally valid Ruby cask", async () => {
+  it(quarantine("Eigent: generates structurally valid Ruby cask"), async () => {
     const payload = await collectCaskAppReleasePayload(
       eigentRepoInfo,
       eigentRelease,
@@ -676,7 +683,7 @@ describe.concurrent("cask-app-release integration", () => {
     expect(ruby).toContain('app "Eigent.app"');
     expect(ruby).toContain("https://www.eigent.ai/");
     expect(ruby).toContain("zap trash:");
-  });
+  }, 600000);
 
   const hermesOneRepoInfo = {
     name: "hermes-desktop",

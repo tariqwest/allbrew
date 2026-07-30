@@ -194,17 +194,17 @@ describe("collectCaskAppPayload", () => {
     expect(payload.sha256.length).toBeGreaterThan(0);
   });
 
-  it("Postman: version extracted from CDN URL path", async () => {
+it("Postman: version extracted from CDN URL path", async () => {
     const payload = await collectCaskAppPayload(
-      "https://dl.pstmn.io/download/version/12.16.4/osx_arm64",
+      "https://dl.pstmn.io/download/version/12.21.1/osx_arm64",
       { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
     );
-    expect(payload.versionLine).toContain("12.16.4");
+    expect(payload.versionLine).toContain("12.21.1");
   });
 
   it("Postman: template is cask_app", async () => {
     const payload = await collectCaskAppPayload(
-      "https://dl.pstmn.io/download/version/12.16.4/osx_arm64",
+      "https://dl.pstmn.io/download/version/12.21.1/osx_arm64",
       { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
     );
     expect(payload.template).toBe("cask_app");
@@ -212,7 +212,7 @@ describe("collectCaskAppPayload", () => {
 
   it("Postman: respects name override", async () => {
     const payload = await collectCaskAppPayload(
-      "https://dl.pstmn.io/download/version/12.16.4/osx_arm64",
+      "https://dl.pstmn.io/download/version/12.21.1/osx_arm64",
       { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
     );
     expect(payload.name).toBe("postman");
@@ -220,7 +220,7 @@ describe("collectCaskAppPayload", () => {
 
   it("Postman: respects appName and homepage overrides", async () => {
     const payload = await collectCaskAppPayload(
-      "https://dl.pstmn.io/download/version/12.16.4/osx_arm64",
+      "https://dl.pstmn.io/download/version/12.21.1/osx_arm64",
       { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
     );
     expect(payload.appOrPkgBlock).toContain("Postman.app");
@@ -229,7 +229,7 @@ describe("collectCaskAppPayload", () => {
 
   it("Postman: includes SHA256", async () => {
     const payload = await collectCaskAppPayload(
-      "https://dl.pstmn.io/download/version/12.16.4/osx_arm64",
+      "https://dl.pstmn.io/download/version/12.21.1/osx_arm64",
       { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
     );
     expect(payload.sha256).toBeTruthy();

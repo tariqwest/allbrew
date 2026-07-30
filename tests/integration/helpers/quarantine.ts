@@ -26,6 +26,7 @@
 export const QUARANTINED_PACKAGES = new Set<string>([
   // Add package names here when they become flaky.
   // Example: "napari" (large PyPI package, slow download, occasional timeouts)
+  "eigent", // ~660MB DMG — too heavy for the default CI gate
 ]);
 
 export const LIVE_SMOKE_PACKAGES = new Set<string>([

@@ -30,11 +30,15 @@ const processComposeRepoInfo = {
 };
 
 describe.concurrent("go-package integration", () => {
-  it("wakapi: payload fields are well-formed (head-only)", async () => {
+it("wakapi: payload fields are well-formed (head-only)", async () => {
     const payload = await collectGoPackagePayload(wakapiRepoInfo, null);
     expect(payload.template).toBe("go_package");
     expect(payload.name).toBe("wakapi");
-    expect(payload.urlLines).toBe("");
+    // Head-only still prefers a versioned Go module proxy zip when @latest resolves.
+    expect(payload.urlLines).toContain(
+      "proxy.golang.org/github.com/muety/wakapi/@v/",
+    );
+    expect(payload.urlLines).toMatch(/sha256 "[a-f0-9]{64}"/);
     expect(payload.livecheckBlock).toContain(
       "proxy.golang.org/github.com/muety/wakapi/@latest",
     );
@@ -47,7 +51,7 @@ describe.concurrent("go-package integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain('depends_on "go" => :build');
-    expect(ruby).toContain('system "go", "install"');
+    expect(ruby).toContain('system "go", "build", *std_go_args');
     expect(ruby).toContain('head "https://github.com/muety/wakapi.git"');
   });
 
@@ -252,9 +256,9 @@ describe.concurrent("go-package integration", () => {
     assertValidFormula(ruby);
     expect(payload.name).toBe("ugm");
     expect(payload.className).toBe("Ugm");
-    expect(ruby).toContain("class Ugm < Formula");
+expect(ruby).toContain("class Ugm < Formula");
     expect(ruby).toContain('depends_on "go" => :build');
-    expect(ruby).toContain('system "go", "install"');
+    expect(ruby).toContain('system "go", "build", *std_go_args');
     expect(ruby).toContain('head "https://github.com/ariasmn/ugm.git"');
     expect(payload.livecheckBlock).toContain(
       "proxy.golang.org/github.com/ariasmn/ugm/@latest",

@@ -104,7 +104,7 @@ describe("downloadAndHash", () => {
     );
   });
 
-  it("handles multi-chunk streams correctly", async () => {
+it("handles multi-chunk streams correctly", async () => {
     const chunk1 = Buffer.from("hello ");
     const chunk2 = Buffer.from("world");
     const combined = "hello world";
@@ -116,6 +116,40 @@ describe("downloadAndHash", () => {
     const result = await downloadAndHash("http://example.com/multi");
     expect(result.sha256).toBe(expected);
     expect(result.size).toBe(combined.length);
+  });
+
+  it("follows redirects and normalizes uppercase HTTPS Location schemes", async () => {
+    const data = "redirected body";
+    const expected = createHash("sha256").update(data).digest("hex");
+    let sawNormalized = false;
+    global.fetch = mock((input: RequestInfo | URL) => {
+      const href = String(input);
+      if (href === "https://example.com/start") {
+        return Promise.resolve({
+          ok: false,
+          status: 302,
+          statusText: "Found",
+          headers: {
+            get: (name: string) =>
+              name.toLowerCase() === "location"
+                ? "HTTPS://download.example.com:443/install.sh"
+                : null,
+          },
+          arrayBuffer: async () => new ArrayBuffer(0),
+          body: null,
+        } as any);
+      }
+      if (href.startsWith("https://download.example.com")) {
+        sawNormalized = true;
+        return Promise.resolve(mockResponse(data));
+      }
+      return Promise.resolve(mockResponse("miss", { status: 404, statusText: "Not Found" }));
+    }) as any;
+
+    const result = await downloadAndHash("https://example.com/start");
+    expect(sawNormalized).toBe(true);
+    expect(result.sha256).toBe(expected);
+    expect(result.buffer!.toString()).toBe(data);
   });
 });
 

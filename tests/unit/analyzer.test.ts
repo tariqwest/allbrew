@@ -84,9 +84,30 @@ describe("detectInstallMethod", () => {
     expect(result).toEqual({ method: "npm", package: "elia-chat" });
   });
 
-  it("detects npx as npm", () => {
+it("detects npx as npm", () => {
     const result = detectInstallMethod("```bash\nnpx marimo\n```");
     expect(result).toEqual({ method: "npm", package: "marimo" });
+  });
+
+  it("strips @latest from npm install -g", () => {
+    const result = detectInstallMethod(
+      "```bash\nnpm install -g gitnexus@latest\n```",
+    );
+    expect(result).toEqual({ method: "npm", package: "gitnexus" });
+  });
+
+  it("strips version tags from npx package specs", () => {
+    const result = detectInstallMethod(
+      "```bash\nnpx gitnexus@1.6.9 analyze\n```",
+    );
+    expect(result).toEqual({ method: "npm", package: "gitnexus" });
+  });
+
+  it("preserves scoped npm package names while stripping tags", () => {
+    const result = detectInstallMethod(
+      "```bash\nnpm install -g @scope/tool@latest\n```",
+    );
+    expect(result).toEqual({ method: "npm", package: "@scope/tool" });
   });
 
   it("detects pip install as pip", () => {

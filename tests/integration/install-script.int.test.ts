@@ -127,7 +127,9 @@ describe.concurrent("install-script integration", () => {
     expect(ruby).toContain("class Poetry < Formula");
   });
 
-  it("qoder: install script URL resolves to valid payload (requires auth)", async () => {
+it("qoder: install script URL follows uppercase HTTPS redirect", async () => {
+    // qoder.com returns Location: HTTPS://download.qoder.com/... which Bun's
+    // auto-follow rejects; downloadAndHash normalizes the scheme manually.
     const payload = await collectInstallScriptPayload(
       "https://qoder.com/install",
       { name: "qoder" },
@@ -135,6 +137,7 @@ describe.concurrent("install-script integration", () => {
     expect(payload.template).toBe("install_script");
     expect(payload.name).toBe("qoder");
     expect(payload.scriptFilename).toBe("install");
+    expect(payload.sha256).toMatch(/^[a-f0-9]{64}$/);
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Qoder < Formula");

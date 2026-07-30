@@ -195,8 +195,8 @@
     "notes": "ZIP containing .app \u2014 tests listZipEntries path + developer site redirect to GitHub"
   },
   {
-    "name": "balenaetcher",
-    "url": "https://github.com/balena-io/etcher/releases/latest/download/balenaEtcher-darwin-arm64.dmg",
+"name": "balenaetcher",
+    "url": "https://github.com/balena-io/etcher/releases/download/v2.1.6/balenaEtcher-2.1.6-arm64.dmg",
     "generator": "cask-app",
     "allbrewArgs": [
       "--name",
@@ -213,7 +213,7 @@
       "balenaEtcher"
     ],
     "skip": false,
-    "notes": "GitHub /latest/ redirect with arch in filename \u2014 tests no-version URL pattern"
+    "notes": "Pinned arm64 DMG (balena renamed assets away from balenaEtcher-darwin-arm64.dmg)"
   },
   {
     "name": "taskbook",

@@ -106,19 +106,34 @@ export function detectInstallMethod(readmeText) {
   let match;
 
   match = readmeText.match(NPM_INSTALL_RE);
-  if (match) return { method: "npm", package: match[1] };
+  if (match) {
+    const pkg = cleanNpmPackageSpec(match[1]);
+    if (pkg) return { method: "npm", package: pkg };
+  }
 
   match = readmeText.match(PNPM_INSTALL_RE);
-  if (match) return { method: "npm", package: match[1] };
+  if (match) {
+    const pkg = cleanNpmPackageSpec(match[1]);
+    if (pkg) return { method: "npm", package: pkg };
+  }
 
   match = readmeText.match(YARN_GLOBAL_ADD_RE);
-  if (match) return { method: "npm", package: match[1] };
+  if (match) {
+    const pkg = cleanNpmPackageSpec(match[1]);
+    if (pkg) return { method: "npm", package: pkg };
+  }
 
   match = readmeText.match(BUN_INSTALL_RE);
-  if (match) return { method: "npm", package: match[1] };
+  if (match) {
+    const pkg = cleanNpmPackageSpec(match[1]);
+    if (pkg) return { method: "npm", package: pkg };
+  }
 
   match = readmeText.match(NPX_RE);
-  if (match) return { method: "npm", package: match[1] };
+  if (match) {
+    const pkg = cleanNpmPackageSpec(match[1]);
+    if (pkg) return { method: "npm", package: pkg };
+  }
 
   match = readmeText.match(PIP_INSTALL_RE);
   if (match) {
@@ -351,6 +366,34 @@ function packageNameFromSpecifier(specifier) {
     .replace(/#.*$/, "");
 
   return cleaned.split("/").filter(Boolean).at(-1) || null;
+}
+
+function cleanNpmPackageSpec(specifier) {
+  if (!specifier) return null;
+
+  let cleaned = String(specifier)
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+
+  if (!cleaned || cleaned.startsWith("-") || cleaned === ".") return null;
+
+  cleaned = cleaned.replace(/^npm:/, "");
+  cleaned = cleaned.replace(/[?#].*$/, "");
+
+  // Keep scoped names (@scope/pkg) while stripping trailing tags/versions
+  // like pkg@latest, pkg@1.2.3, and @scope/pkg@latest.
+  if (cleaned.startsWith("@")) {
+    const scoped = cleaned.match(/^(@[^/\s]+\/[^@\s]+)(?:@[^\s]+)?$/);
+    if (!scoped) return null;
+    cleaned = scoped[1];
+  } else {
+    cleaned = cleaned.replace(/@[^/\s]+$/, "");
+  }
+
+  cleaned = cleaned.trim();
+  if (!cleaned || cleaned.startsWith("-")) return null;
+
+  return cleaned;
 }
 
 function cleanPipPackageSpec(specifier) {

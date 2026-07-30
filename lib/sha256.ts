@@ -8,16 +8,66 @@ import { assertSafeFetchUrl } from "./utils.ts";
 
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 600_000;
 const MAX_DOWNLOAD_BYTES = 2_000_000_000;
+const MAX_REDIRECTS = 20;
+
+/**
+ * Some CDNs (e.g. qoder.com) return Location headers with an uppercase scheme
+ * like `HTTPS://...`. Bun's fetch throws UnsupportedRedirectProtocol when
+ * auto-following those. Resolve redirects manually and normalize the scheme.
+ */
+function normalizeFetchUrl(urlString: string, base?: string): string {
+  const url = base ? new URL(urlString, base) : new URL(urlString);
+  url.protocol = url.protocol.toLowerCase();
+  return url.href;
+}
+
+async function fetchFollowingRedirects(
+  url: string,
+  init: {
+    headers?: HeadersInit;
+    signal?: AbortSignal;
+  },
+): Promise<Response> {
+  let current = normalizeFetchUrl(url);
+
+  for (let i = 0; i < MAX_REDIRECTS; i++) {
+    assertSafeFetchUrl(current);
+
+    const response = await fetch(current, {
+      redirect: "manual",
+      headers: init.headers,
+      signal: init.signal,
+    });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) {
+        throw new Error(
+          `Redirect ${response.status} from ${current} without Location header`,
+        );
+      }
+      // Consume/cancel body so the connection can be reused.
+      try {
+        await response.arrayBuffer();
+      } catch {
+        /* ignore */
+      }
+      current = normalizeFetchUrl(location, current);
+      continue;
+    }
+
+    return response;
+  }
+
+  throw new Error(`Too many redirects (max ${MAX_REDIRECTS}) for ${url}`);
+}
 
 export async function downloadAndHash(
   url: string,
   destPath: string | null = null,
   timeoutMs: number = DEFAULT_DOWNLOAD_TIMEOUT_MS,
 ) {
-  assertSafeFetchUrl(url);
-
-  const response = await fetch(url, {
-    redirect: "follow",
+  const response = await fetchFollowingRedirects(url, {
     headers: { "User-Agent": "allbrew/1.0" },
     signal: AbortSignal.timeout(timeoutMs),
   });
