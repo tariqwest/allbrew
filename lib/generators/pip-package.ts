@@ -93,10 +93,11 @@ export async function collectPipPackagePayload(
   const rootVersion = dist.version || pypiData.info.version;
   const deps = await resolveTransitiveDeps(
     packageName,
-    new Set(),
+    new Map(),
     5,
     0,
     rootVersion,
+    [],
   );
   const undeclared = await resolveUndeclaredDeps(packageName, deps);
   const allDeps = dedupeResources([...deps, ...undeclared]);
@@ -218,23 +219,57 @@ export function parseVersionConstraint(raw: string): VersionConstraint {
   return { raw: cleaned, clauses };
 }
 
+export type RequirementEnv = {
+  sysPlatform?: string;
+  platformSystem?: string;
+  pythonVersion?: string;
+  /** Single extra name when evaluating one extra branch. */
+  extra?: string | null;
+  /**
+   * Extras requested on the package currently being walked (from Foo[a,b]).
+   * Root resolution uses [] so optional extras on the root package stay off.
+   * Only used for the multi-extra fan-out; single-extra evaluation substitutes
+   * `extra` directly into the marker expression.
+   */
+  activeExtras?: string[];
+};
+
 /**
  * Evaluate a subset of PEP 508 environment markers for the formula target
- * (CPython 3.13 on the host OS/arch). Extras are never selected.
+ * (CPython 3.13 on the host OS/arch).
+ *
+ * Extra-marked requirements are included only when the matching extra is in
+ * `activeExtras` (or `extra`). That lets `pkg[server]` pull server deps while
+ * still skipping root-level optional extras like `dev`.
  */
 export function isRequirementApplicable(
   marker: string | null,
-  env: {
-    sysPlatform?: string;
-    platformSystem?: string;
-    pythonVersion?: string;
-    extra?: string | null;
-  } = {},
+  env: RequirementEnv = {},
 ): boolean {
   if (!marker || !marker.trim()) return true;
 
-  // Never install extras-only deps into the formula.
-  if (/\bextra\s*==/.test(marker)) return false;
+  // Multi-extra fan-out: try each requested extra once, then evaluate with a
+  // concrete `extra` value (no further fan-out).
+  if (/\bextra\b/.test(marker) && env.activeExtras !== undefined) {
+    if (!env.activeExtras.length) return false;
+    return env.activeExtras.some((extra) =>
+      isRequirementApplicable(marker, {
+        sysPlatform: env.sysPlatform,
+        platformSystem: env.platformSystem,
+        pythonVersion: env.pythonVersion,
+        extra,
+      }),
+    );
+  }
+
+  // No active extras and no concrete extra => optional extras stay off.
+  if (
+    /\bextra\b/.test(marker) &&
+    (env.extra == null || env.extra === "") &&
+    env.activeExtras === undefined
+  ) {
+    return false;
+  }
 
   const sysPlatform =
     env.sysPlatform ??
@@ -766,9 +801,17 @@ async function selectDistForDependency(
   }
 }
 
+/**
+ * Track which extras have already been expanded per package.
+ * The empty string means base (non-extra) requirements were walked.
+ */
+type VisitedExtras = Map<string, Set<string>>;
+
+const BASE_EXTRA = "";
+
 async function resolveTransitiveDeps(
   packageName: string,
-  visited: Set<string>,
+  visited: VisitedExtras,
   maxDepth = 5,
   depth = 0,
   /**
@@ -778,10 +821,28 @@ async function resolveTransitiveDeps(
    * (e.g. mcp 1.28.1 needs httpx-sse; mcp 2.x needs httpx2 instead).
    */
   packageVersion?: string,
+  /** Extras requested via Foo[a,b] when this package was depended on. */
+  activeExtras: string[] = [],
 ): Promise<ResolvedResource[]> {
   const key = normalizePackageName(packageName);
-  if (depth >= maxDepth || visited.has(key)) return [];
-  visited.add(key);
+  if (depth >= maxDepth) return [];
+
+  const seen = visited.get(key) ?? new Set<string>();
+  const normalizedExtras = activeExtras
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  const newExtras = normalizedExtras.filter((e) => !seen.has(e));
+  const needBase = !seen.has(BASE_EXTRA);
+  if (!needBase && newExtras.length === 0) return [];
+
+  if (!visited.has(key)) visited.set(key, seen);
+  if (needBase) seen.add(BASE_EXTRA);
+  for (const e of newExtras) seen.add(e);
+
+  // Only evaluate extras that are newly required on this visit (plus base).
+  const extrasForMarkers = needBase
+    ? [...normalizedExtras]
+    : [...newExtras];
 
   const resources: ResolvedResource[] = [];
 
@@ -802,17 +863,28 @@ async function resolveTransitiveDeps(
     for (const req of requires) {
       const parsed = parseRequiresDistEntry(req);
       if (!parsed) continue;
-      if (!isRequirementApplicable(parsed.marker)) continue;
+      if (
+        !isRequirementApplicable(parsed.marker, {
+          activeExtras: extrasForMarkers,
+        })
+      ) {
+        continue;
+      }
 
       const depKey = normalizePackageName(parsed.name);
-      if (visited.has(depKey)) continue;
+      const depSeen = visited.get(depKey);
+      const depExtras = parsed.extras.map((e) => e.trim().toLowerCase()).filter(Boolean);
+      const depAlreadyFullyExpanded =
+        depSeen?.has(BASE_EXTRA) &&
+        depExtras.every((e) => depSeen.has(e));
 
       try {
         const dist = await selectDistForDependency(
           parsed.name,
           parsed.constraint,
         );
-        if (dist) {
+        // Install the wheel once; extras only affect transitive requirements.
+        if (dist && !depSeen) {
           resources.push({
             name: parsed.name,
             url: dist.url,
@@ -821,12 +893,15 @@ async function resolveTransitiveDeps(
           });
         }
 
+        if (depAlreadyFullyExpanded) continue;
+
         const transitive = await resolveTransitiveDeps(
           parsed.name,
           visited,
           maxDepth,
           depth + 1,
           dist?.version,
+          depExtras,
         );
         resources.push(...transitive);
       } catch {
@@ -850,6 +925,11 @@ async function resolveUndeclaredDeps(
 
   const have = new Set(already.map((r) => normalizePackageName(r.name)));
   const out: ResolvedResource[] = [];
+  const visited: VisitedExtras = new Map([
+    [normalizePackageName(packageName), new Set([BASE_EXTRA])],
+  ]);
+  for (const h of have) visited.set(h, new Set([BASE_EXTRA]));
+
   for (const depName of extras) {
     const key = normalizePackageName(depName);
     if (have.has(key)) continue;
@@ -869,7 +949,11 @@ async function resolveUndeclaredDeps(
 
       const nested = await resolveTransitiveDeps(
         depName,
-        new Set([normalizePackageName(packageName), ...have]),
+        visited,
+        5,
+        0,
+        dist.version || data.info.version,
+        [],
       );
       for (const n of nested) {
         const nk = normalizePackageName(n.name);

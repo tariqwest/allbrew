@@ -553,9 +553,20 @@ describe("pip requirement parsing helpers", () => {
     expect(parsed?.marker).toContain("python_version");
   });
 
-  it("skips extras-only requirements", () => {
+  it("skips extras-only requirements unless that extra is active", () => {
     expect(isRequirementApplicable('extra == "dev"')).toBe(false);
     expect(isRequirementApplicable('extra == "litellm"')).toBe(false);
+    expect(
+      isRequirementApplicable('extra == "server"', { activeExtras: ["server"] }),
+    ).toBe(true);
+    expect(
+      isRequirementApplicable('extra == "server"', {
+        activeExtras: ["client"],
+      }),
+    ).toBe(false);
+    expect(
+      isRequirementApplicable('extra == "server"', { extra: "server" }),
+    ).toBe(true);
   });
 
   it("evaluates platform markers for the host", () => {
@@ -777,6 +788,185 @@ describe("collectPipPackagePayload — pinned dep version skew", () => {
     expect(payload.resourcesBlock).toContain('resource "httpx-sse"');
     expect(payload.resourcesBlock).toContain("httpx_sse-0.4.3-py3-none-any.whl");
     expect(payload.resourcesBlock).not.toContain('resource "httpx2"');
+  });
+});
+
+describe("collectPipPackagePayload — dependency extras expansion", () => {
+  beforeEach(() => {
+    mock.restore();
+
+    const rootPkg = {
+      info: {
+        name: "root-pkg",
+        version: "1.0.0",
+        summary: "Root depending on fastmcp meta package",
+        home_page: "https://example.com/root-pkg",
+        license: "MIT",
+        requires_dist: ["fastmcp==3.4.4"],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "root_pkg-1.0.0-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/root_pkg-1.0.0-py3-none-any.whl",
+          digests: { sha256: "11".repeat(32) },
+        },
+      ],
+    };
+
+    const fastmcp = {
+      info: {
+        name: "fastmcp",
+        version: "3.4.4",
+        summary: "Meta package requiring slim extras",
+        // Same shape as real fastmcp: extras on the dependency, not env markers.
+        requires_dist: ["fastmcp-slim[client,server]==3.4.4"],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "fastmcp-3.4.4-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/fastmcp-3.4.4-py3-none-any.whl",
+          digests: { sha256: "22".repeat(32) },
+        },
+      ],
+    };
+
+    const fastmcpSlim = {
+      info: {
+        name: "fastmcp-slim",
+        version: "3.4.4",
+        summary: "Slim core with optional extras",
+        requires_dist: [
+          "platformdirs>=4.0.0",
+          'griffelib>=2.0.0; extra == "server"',
+          'httpx>=0.28.1; extra == "client"',
+          'anthropic>=0.48.0; extra == "anthropic"',
+        ],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "fastmcp_slim-3.4.4-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/fastmcp_slim-3.4.4-py3-none-any.whl",
+          digests: { sha256: "33".repeat(32) },
+        },
+      ],
+    };
+
+    const griffelib = {
+      info: {
+        name: "griffelib",
+        version: "2.1.0",
+        summary: "Provides griffe import",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "griffelib-2.1.0-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/griffelib-2.1.0-py3-none-any.whl",
+          digests: { sha256: "44".repeat(32) },
+        },
+      ],
+    };
+
+    const httpx = {
+      info: {
+        name: "httpx",
+        version: "0.28.1",
+        summary: "httpx",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "httpx-0.28.1-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/httpx-0.28.1-py3-none-any.whl",
+          digests: { sha256: "55".repeat(32) },
+        },
+      ],
+    };
+
+    const platformdirs = {
+      info: {
+        name: "platformdirs",
+        version: "4.3.0",
+        summary: "platformdirs",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "platformdirs-4.3.0-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/platformdirs-4.3.0-py3-none-any.whl",
+          digests: { sha256: "66".repeat(32) },
+        },
+      ],
+    };
+
+    const anthropic = {
+      info: {
+        name: "anthropic",
+        version: "0.50.0",
+        summary: "optional anthropic extra",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "anthropic-0.50.0-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/anthropic-0.50.0-py3-none-any.whl",
+          digests: { sha256: "77".repeat(32) },
+        },
+      ],
+    };
+
+    global.fetch = mock((url: string) => {
+      const u = String(url);
+      let body: unknown;
+      if (u.includes("/root-pkg/")) body = rootPkg;
+      else if (u.includes("/fastmcp-slim/")) body = fastmcpSlim;
+      else if (u.includes("/fastmcp/")) body = fastmcp;
+      else if (u.includes("/griffelib/")) body = griffelib;
+      else if (u.includes("/httpx/")) body = httpx;
+      else if (u.includes("/platformdirs/")) body = platformdirs;
+      else if (u.includes("/anthropic/")) body = anthropic;
+      else {
+        body = {
+          info: {
+            name: "unknown",
+            version: "1.0.0",
+            summary: "Unknown",
+            requires_dist: [],
+          },
+          urls: [],
+        };
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(body),
+      });
+    }) as any;
+  });
+
+  it("expands Foo[client,server] extras into transitive resources", async () => {
+    const payload = await collectPipPackagePayload("root-pkg");
+    expect(payload.resourcesBlock).toContain('resource "fastmcp"');
+    expect(payload.resourcesBlock).toContain('resource "fastmcp-slim"');
+    // server + client extras from fastmcp-slim[client,server]
+    expect(payload.resourcesBlock).toContain('resource "griffelib"');
+    expect(payload.resourcesBlock).toContain('resource "httpx"');
+    expect(payload.resourcesBlock).toContain('resource "platformdirs"');
+    // unrelated optional extra stays off
+    expect(payload.resourcesBlock).not.toContain('resource "anthropic"');
   });
 });
 
