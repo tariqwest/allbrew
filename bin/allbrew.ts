@@ -281,6 +281,12 @@ program
     "-m, --manual",
     "Manually choose the formula type instead of auto-detecting",
   )
+  .option(
+    "--discover <mode>",
+    "Homepage download discovery for unknown URLs: auto|static|webview|off (default: auto)",
+    "auto",
+  )
+  .option("--no-discover", "Disable homepage download discovery")
   .option("--service", "Include a Homebrew service block in generated formulas")
   .option("--no-service", "Do not include a Homebrew service block")
   .option(

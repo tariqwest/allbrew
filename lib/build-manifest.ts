@@ -33,9 +33,23 @@ function buildOptions(opts: Record<string, unknown>) {
     token: _token,
     verbose: _verbose,
     manual: _manual,
+    discover: _discover,
+    noDiscover: _noDiscover,
     ...rest
   } = opts;
+  // Preserve discovery provenance when present (page → resolved artifact).
   return rest;
+}
+
+function withDiscoveryFields(
+  source: Record<string, unknown>,
+  opts: Record<string, unknown>,
+) {
+  const out: Record<string, unknown> = { ...source };
+  if (opts.sourceUrl) out.sourceUrl = opts.sourceUrl;
+  if (opts.resolvedUrl) out.resolvedUrl = opts.resolvedUrl;
+  if (opts.discoverMethod) out.discoverMethod = opts.discoverMethod;
+  return out;
 }
 
 function buildSource(
@@ -88,23 +102,32 @@ function buildSource(
         appName: opts.appName || params.appName || null,
       };
     case "install-script":
-      return { url: params.url };
+      return withDiscoveryFields({ url: params.url }, opts);
     case "archive-build":
-      return {
-        downloadUrl: archiveInfo?.downloadUrl,
-        forcedBuildSystem: archiveInfo?.forcedBuildSystem || null,
-      };
+      return withDiscoveryFields(
+        {
+          downloadUrl: archiveInfo?.downloadUrl,
+          forcedBuildSystem: archiveInfo?.forcedBuildSystem || null,
+        },
+        opts,
+      );
     case "binary-direct":
-      return {
-        downloadUrl: archiveInfo?.downloadUrl,
-        selectedBinaries:
-          params.selectedBinaries || archiveInfo?.binaries || null,
-      };
+      return withDiscoveryFields(
+        {
+          downloadUrl: archiveInfo?.downloadUrl,
+          selectedBinaries:
+            params.selectedBinaries || archiveInfo?.binaries || null,
+        },
+        opts,
+      );
     case "cask-app":
-      return {
-        url: params.url,
-        appName: params.appName || opts.appName || null,
-      };
+      return withDiscoveryFields(
+        {
+          url: params.url,
+          appName: params.appName || opts.appName || null,
+        },
+        opts,
+      );
     case "cask-app-mas":
       return { appStoreUrl: params.url };
     case "cask-app-setapp":

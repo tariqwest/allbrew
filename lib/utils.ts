@@ -116,6 +116,55 @@ export function guessLicenseIdentifier(license) {
   return map[key] || license;
 }
 
+function isCloudMetadataHostname(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (
+    host === "metadata.google.internal" ||
+    host.endsWith(".metadata.google.internal")
+  ) {
+    return true;
+  }
+  // AWS IMDS / link-local metadata
+  if (host === "169.254.169.254") return true;
+  return false;
+}
+
+function isPrivateOrLocalHostname(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  if (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host.endsWith(".internal")
+  ) {
+    return true;
+  }
+
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) {
+    const parts = host.split(".").map(Number);
+    if (parts.some((p) => p > 255)) return true;
+    const [a, b] = parts;
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    return false;
+  }
+
+  if (host.includes(":")) {
+    if (host === "::1") return true;
+    if (host.startsWith("fe80:") || host.startsWith("fc") || host.startsWith("fd"))
+      return true;
+    if (host.startsWith("::ffff:")) {
+      return isPrivateOrLocalHostname(host.slice("::ffff:".length));
+    }
+  }
+
+  return false;
+}
+
 export function assertSafeFetchUrl(urlString: string): void {
   let url: URL;
   try {
@@ -128,16 +177,99 @@ export function assertSafeFetchUrl(urlString: string): void {
     throw new Error(`Unsupported URL protocol for fetch: ${url.protocol}`);
   }
 
-  const host = url.hostname.toLowerCase();
-
-  // Block well-known cloud metadata endpoints (SSRF protection).
-  if (
-    host === "169.254.169.254" ||
-    host === "metadata.google.internal" ||
-    host.endsWith(".metadata.google.internal")
-  ) {
+  // Always block cloud metadata. Localhost remains allowed for e2e fixture servers.
+  if (isCloudMetadataHostname(url.hostname)) {
     throw new Error(`Blocked cloud metadata URL: ${urlString}`);
   }
+}
+
+/** Stricter SSRF guard for untrusted page-discovery URLs (no private/local). */
+export function assertSafePublicFetchUrl(urlString: string): void {
+  assertSafeFetchUrl(urlString);
+  const host = new URL(urlString).hostname;
+  if (isPrivateOrLocalHostname(host) || isCloudMetadataHostname(host)) {
+    throw new Error(`Blocked private or local URL: ${urlString}`);
+  }
+}
+
+/** Lightweight HTML GET with size/time limits and safe redirects. */
+export async function fetchTextLimited(
+  urlString: string,
+  opts: { timeoutMs?: number; maxBytes?: number; maxRedirects?: number } = {},
+): Promise<{ url: string; contentType: string; body: string }> {
+  const timeoutMs = opts.timeoutMs ?? 30_000;
+  const maxBytes = opts.maxBytes ?? 2_000_000;
+  const maxRedirects = opts.maxRedirects ?? 10;
+
+  let current = urlString;
+  for (let i = 0; i <= maxRedirects; i++) {
+    assertSafePublicFetchUrl(current);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(current, {
+        method: "GET",
+        redirect: "manual",
+        headers: {
+          "User-Agent": "allbrew/1.0",
+          Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+        },
+        signal: controller.signal,
+      });
+
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
+        const location = response.headers.get("location");
+        if (!location) {
+          throw new Error(`Redirect without Location from ${current}`);
+        }
+        current = new URL(location, current).href;
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} fetching ${current}`);
+      }
+
+      const contentType = (response.headers.get("content-type") || "").toLowerCase();
+      const reader = response.body?.getReader();
+      if (!reader) {
+        const text = await response.text();
+        if (text.length > maxBytes) {
+          throw new Error(`Response exceeds ${maxBytes} bytes for ${current}`);
+        }
+        return { url: current, contentType, body: text };
+      }
+
+      const chunks: Uint8Array[] = [];
+      let total = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) {
+          try {
+            await reader.cancel();
+          } catch {
+            /* ignore */
+          }
+          throw new Error(`Response exceeds ${maxBytes} bytes for ${current}`);
+        }
+        chunks.push(value);
+      }
+      const merged = new Uint8Array(total);
+      let offset = 0;
+      for (const c of chunks) {
+        merged.set(c, offset);
+        offset += c.byteLength;
+      }
+      const body = new TextDecoder("utf-8", { fatal: false }).decode(merged);
+      return { url: current, contentType, body };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  throw new Error(`Too many redirects (max ${maxRedirects}) for ${urlString}`);
 }
 
 export function archPatterns() {

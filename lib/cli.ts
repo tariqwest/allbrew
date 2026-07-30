@@ -1,7 +1,12 @@
 import { select, input, confirm, checkbox } from "@inquirer/prompts";
 import chalk from "chalk";
 import ora from "ora";
-import { classify, classifyWithHead } from "./classifier.ts";
+import { classifyWithHead } from "./classifier.ts";
+import {
+  discoverPageDownloads,
+  parseDiscoverMode,
+  type DiscoverCandidate,
+} from "./page-discover.ts";
 import {
   initOctokit,
   getRepoInfo,
@@ -49,58 +54,232 @@ export async function run(url, opts: any = {}) {
   spinner.succeed(`Classified as: ${chalk.bold(classification.type)}`);
 
   try {
-    switch (classification.type) {
-      case "github-repo":
-        return await handleGithubRepo(classification, opts);
-      case "bash-script":
-        return await handleBashScript(classification.url, opts);
-      case "cask-dmg":
-        return await handleCaskDmg(classification.url, opts);
-      case "archive":
-        return await handleArchive(classification.url, opts);
-      case "mac-app-store":
-        return await handleMacAppStore(classification.url, opts);
-      case "setapp-app":
-        return await handleSetappApp(classification.url, opts);
-      case "npm-package":
-        return await handleNpmPackage(classification, opts);
-      case "pip-package":
-        return await handlePipPackage(classification, opts);
-      case "gem-package":
-        return await handleGemPackage(classification, opts);
-      case "dotnet-package":
-        return await handleDotnetPackage(classification, opts);
-      default:
+    if (classification.type === "unknown") {
+      const discovered = await maybeDiscoverFromUnknownPage(url, opts);
+      if (discovered) {
+        classification = discovered.classification;
+        opts = {
+          ...opts,
+          sourceUrl: url,
+          resolvedUrl: discovered.resolvedUrl,
+          discoverMethod: discovered.method,
+        };
         console.log(
-          chalk.yellow(
-            `\nUnable to automatically determine how to handle this URL.`,
-          ),
+          `  Resolved download via discovery (${chalk.cyan(discovered.method)}): ${chalk.bold(classification.type)} → ${chalk.cyan(discovered.resolvedUrl)}`,
         );
-        const choice = await select({
-          message: "What type of content does this URL point to?",
-          choices: [
-            { name: "Bash/shell install script", value: "bash-script" },
-            { name: "Archive containing source code", value: "archive" },
-            { name: "Archive containing a pre-built binary", value: "archive" },
-            {
-              name: "DMG or archive containing a macOS .app",
-              value: "cask-dmg",
-            },
-          ],
-        });
-        switch (choice) {
-          case "bash-script":
-            return await handleBashScript(classification.url, opts);
-          case "cask-dmg":
-            return await handleCaskDmg(classification.url, opts);
-          case "archive":
-            return await handleArchive(classification.url, opts);
-        }
+      }
     }
+
+    return await dispatchClassification(classification, opts);
   } catch (err) {
     console.error(chalk.red(`\nError: ${err.message}`));
     if (opts.verbose) console.error(err.stack);
     process.exit(1);
+  }
+}
+
+async function dispatchClassification(classification: any, opts: any) {
+  switch (classification.type) {
+    case "github-repo":
+      return await handleGithubRepo(classification, opts);
+    case "bash-script":
+      return await handleBashScript(classification.url, opts);
+    case "cask-dmg":
+      return await handleCaskDmg(classification.url, opts);
+    case "archive":
+      return await handleArchive(classification.url, opts);
+    case "mac-app-store":
+      return await handleMacAppStore(classification.url, opts);
+    case "setapp-app":
+      return await handleSetappApp(classification.url, opts);
+    case "npm-package":
+      return await handleNpmPackage(classification, opts);
+    case "pip-package":
+      return await handlePipPackage(classification, opts);
+    case "gem-package":
+      return await handleGemPackage(classification, opts);
+    case "dotnet-package":
+      return await handleDotnetPackage(classification, opts);
+    default:
+      return await promptUnknownUrl(
+        classification.url,
+        opts,
+        (opts._discoveredCandidates as DiscoverCandidate[]) || [],
+      );
+  }
+}
+
+async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
+  const mode = parseDiscoverMode(
+    opts.discover === undefined ? (opts.noDiscover ? "off" : "auto") : opts.discover,
+  );
+  if (mode === "off") return null;
+
+  // Skip discovery for obvious non-page inputs (already handled by classify usually).
+  try {
+    const path = new URL(url).pathname.toLowerCase();
+    if (/\.(dmg|pkg|zip|tgz|tar\.gz|tar\.bz2|tar\.xz|sh|bash)(\?|$)/i.test(path)) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  const spinner = ora("Discovering downloads on page...").start();
+  try {
+    const result = await discoverPageDownloads(url, {
+      mode,
+      verbose: Boolean(opts.verbose),
+      log: (msg) => {
+        if (opts.verbose) console.log(chalk.dim(`  ${msg}`));
+      },
+    });
+
+    if (result.candidates.length === 0) {
+      spinner.info(
+        `No download candidates found${result.reason ? ` (${result.reason})` : ""}`,
+      );
+      return null;
+    }
+
+    spinner.succeed(
+      `Found ${result.candidates.length} download candidate(s) via ${result.method}`,
+    );
+    for (const c of result.candidates.slice(0, 5)) {
+      console.log(
+        chalk.dim(
+          `    [${c.score}] ${c.kind} ${c.url}${c.evidence?.length ? ` (${c.evidence.slice(0, 3).join(", ")})` : ""}`,
+        ),
+      );
+    }
+
+    // Keep candidates for the unknown fallback prompt if auto-pick fails.
+    opts._discoveredCandidates = result.candidates;
+
+    let chosen: DiscoverCandidate | null = result.chosen;
+    if (!chosen) {
+      chosen = await promptDiscoveredCandidates(result.candidates);
+      if (!chosen) return null;
+    }
+
+    const classification = await classifyWithHead(chosen.url);
+    if (classification.type === "unknown") {
+      console.log(
+        chalk.yellow(
+          `  Discovered URL still classifies as unknown: ${chosen.url}`,
+        ),
+      );
+      await promptUnknownUrl(chosen.url, opts, result.candidates);
+      return null;
+    }
+
+    return {
+      classification,
+      resolvedUrl: chosen.url,
+      method: result.method,
+    };
+  } catch (err: any) {
+    spinner.warn(`Discovery failed: ${err?.message || err}`);
+    return null;
+  }
+}
+
+async function promptDiscoveredCandidates(
+  candidates: DiscoverCandidate[],
+): Promise<DiscoverCandidate | null> {
+  const top = candidates.slice(0, 8);
+  const choice = await select({
+    message: "Multiple download candidates found. Which should allbrew use?",
+    choices: [
+      ...top.map((c, i) => ({
+        name: `[${c.score}] ${c.kind} — ${c.url}`,
+        value: String(i),
+      })),
+      { name: "None — fall back to manual type prompt", value: "none" },
+    ],
+  });
+  if (choice === "none") return null;
+  return top[Number(choice)] || null;
+}
+
+async function promptUnknownUrl(
+  url: string,
+  opts: any,
+  discovered: DiscoverCandidate[],
+) {
+  console.log(
+    chalk.yellow(`\nUnable to automatically determine how to handle this URL.`),
+  );
+
+  const choices: { name: string; value: string }[] = [];
+  for (const [i, c] of discovered.slice(0, 5).entries()) {
+    choices.push({
+      name: `Use discovered: [${c.score}] ${c.kind} — ${c.url}`,
+      value: `disc:${i}`,
+    });
+  }
+  choices.push(
+    { name: "Bash/shell install script", value: "bash-script" },
+    { name: "Archive containing source code", value: "archive" },
+    { name: "Archive containing a pre-built binary", value: "archive" },
+    { name: "DMG or archive containing a macOS .app", value: "cask-dmg" },
+    { name: "GitHub repository URL (enter/paste)", value: "github-repo" },
+    { name: "npm / PyPI / other registry package page", value: "registry" },
+  );
+
+  const choice = await select({
+    message: "What type of content does this URL point to?",
+    choices,
+  });
+
+  if (choice.startsWith("disc:")) {
+    const idx = Number(choice.slice(5));
+    const c = discovered[idx];
+    if (!c) throw new Error("Invalid discovered candidate");
+    const classification = await classifyWithHead(c.url);
+    opts.sourceUrl = opts.sourceUrl || url;
+    opts.resolvedUrl = c.url;
+    if (classification.type === "unknown") {
+      // Force artifact handlers by extension-ish kind
+      if (c.kind === "bash-script") return await handleBashScript(c.url, opts);
+      if (c.kind === "cask-dmg") return await handleCaskDmg(c.url, opts);
+      if (c.kind === "archive") return await handleArchive(c.url, opts);
+      throw new Error(`Still unable to handle discovered URL: ${c.url}`);
+    }
+    return await dispatchClassification(classification, {
+      ...opts,
+      sourceUrl: opts.sourceUrl || url,
+      resolvedUrl: c.url,
+    });
+  }
+
+  switch (choice) {
+    case "bash-script":
+      return await handleBashScript(url, opts);
+    case "cask-dmg":
+      return await handleCaskDmg(url, opts);
+    case "archive":
+      return await handleArchive(url, opts);
+    case "github-repo": {
+      const ghUrl = await input({
+        message: "GitHub repository URL:",
+        default: url.includes("github.com") ? url : "",
+      });
+      const classification = await classifyWithHead(ghUrl);
+      if (classification.type !== "github-repo") {
+        throw new Error(`Not a GitHub repo URL: ${ghUrl}`);
+      }
+      return await handleGithubRepo(classification, opts);
+    }
+    case "registry": {
+      const regUrl = await input({
+        message: "Registry package URL (npm/PyPI/crates/RubyGems/NuGet):",
+      });
+      const classification = await classifyWithHead(regUrl);
+      return await dispatchClassification(classification, opts);
+    }
+    default:
+      throw new Error(`Unhandled choice: ${choice}`);
   }
 }
 
