@@ -74,7 +74,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Nomad TUI \u2014 Rust, real tarball v1.1.0"
+    "notes": "Nomad TUI — Rust, real tarball v1.1.0"
   },
   {
     "name": "wakapi",
@@ -171,7 +171,7 @@
       "ApiArk"
     ],
     "skip": false,
-    "notes": "API client DMG cask \u2014 GitHub release"
+    "notes": "API client DMG cask — GitHub release"
   },
   {
     "name": "ollama-zip",
@@ -192,7 +192,7 @@
       "Ollama"
     ],
     "skip": false,
-    "notes": "ZIP containing .app \u2014 tests listZipEntries path + developer site redirect to GitHub"
+    "notes": "ZIP containing .app — tests listZipEntries path + developer site redirect to GitHub"
   },
   {
     "name": "balenaetcher",
@@ -229,7 +229,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Tasks/notes TUI (bin tb \u2260 package name)"
+    "notes": "Tasks/notes TUI (bin tb ≠ package name)"
   },
   {
     "name": "vtop",
@@ -277,7 +277,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Astral Python package manager installer (in Homebrew \u2014 tests ignore-brew path)"
+    "notes": "Astral Python package manager installer (in Homebrew — tests ignore-brew path)"
   },
   {
     "name": "localsend",
@@ -335,7 +335,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Swift SPM CLI tool \u2014 CocoaPods cache"
+    "notes": "Swift SPM CLI tool — CocoaPods cache"
   },
   {
     "name": "doedit",
@@ -351,7 +351,7 @@
       "--help"
     ],
     "skip": false,
-    "notes": "Swift SPM CLI \u2014 batch text file editor"
+    "notes": "Swift SPM CLI — batch text file editor"
   },
   {
     "name": "dotnet-serve",
@@ -367,7 +367,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": ".NET global tool \u2014 simple HTTP server"
+    "notes": ".NET global tool — simple HTTP server"
   },
   {
     "name": "csharprepl",
@@ -383,7 +383,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": ".NET global tool \u2014 C# REPL"
+    "notes": ".NET global tool — C# REPL"
   },
   {
     "name": "pry",
@@ -399,7 +399,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Ruby IRB alternative \u2014 well-known gem"
+    "notes": "Ruby IRB alternative — well-known gem"
   },
   {
     "name": "license-finder",
@@ -417,7 +417,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Ruby gem \u2014 license compliance tool"
+    "notes": "Ruby gem — license compliance tool"
   },
   {
     "name": "iblinter",
@@ -433,7 +433,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Mint-installed Swift CLI \u2014 XIB/Storyboard linter"
+    "notes": "Mint-installed Swift CLI — XIB/Storyboard linter"
   },
   {
     "name": "swiftplantuml",
@@ -449,7 +449,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Mint-installed Swift CLI \u2014 PlantUML class diagram generator"
+    "notes": "Mint-installed Swift CLI — PlantUML class diagram generator"
   },
   {
     "name": "bartycrouch",
@@ -465,7 +465,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Mint-installed Swift CLI \u2014 Strings file updater/translator"
+    "notes": "Mint-installed Swift CLI — Strings file updater/translator"
   },
   {
     "name": "asccli",
@@ -481,7 +481,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Mint-installed Swift CLI \u2014 App Store Connect CLI tool"
+    "notes": "Mint-installed Swift CLI — App Store Connect CLI tool"
   },
   {
     "name": "licenseplist",
@@ -497,7 +497,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Mint-installed Swift CLI \u2014 iOS license list generator"
+    "notes": "Mint-installed Swift CLI — iOS license list generator"
   },
   {
     "name": "starship-binary",
@@ -513,7 +513,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Binary release path \u2014 cross-platform prebuilt binaries from GitHub release"
+    "notes": "Binary release path — cross-platform prebuilt binaries from GitHub release"
   },
   {
     "name": "slides",
@@ -529,7 +529,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Build from source path \u2014 Go project built from tarball"
+    "notes": "Build from source path — Go project built from tarball"
   },
   {
     "name": "seaquel-release",
@@ -548,7 +548,7 @@
       "Seaquel"
     ],
     "skip": false,
-    "notes": "GitHub release cask path \u2014 DMG from release assets"
+    "notes": "GitHub release cask path — DMG from release assets"
   },
   {
     "name": "magnet",
@@ -565,7 +565,7 @@
       "441258766"
     ],
     "skip": false,
-    "notes": "Mac App Store app \u2014 MAS-only window manager"
+    "notes": "Mac App Store app — MAS-only window manager"
   },
   {
     "name": "starship-raw",
@@ -581,7 +581,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Raw binary path \u2014 single prebuilt binary archive"
+    "notes": "Raw binary path — single prebuilt binary archive"
   },
   {
     "name": "slides-source",
@@ -597,7 +597,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Source archive path \u2014 Go project from source tarball"
+    "notes": "Source archive path — Go project from source tarball"
   },
   {
     "name": "ddclient",
@@ -613,7 +613,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Perl dynamic DNS client \u2014 autotools build from GitHub releases; service-block candidate"
+    "notes": "Perl dynamic DNS client — autotools build from GitHub releases; service-block candidate"
   },
   {
     "name": "agent-deck",
@@ -629,7 +629,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Go TUI for AI agent session management \u2014 go install path; web UI mode; not in HB core"
+    "notes": "Go TUI for AI agent session management — go install path; web UI mode; not in HB core"
   },
   {
     "name": "poe",
@@ -650,7 +650,7 @@
       "Poe"
     ],
     "skip": false,
-    "notes": "AI chat client DMG \u2014 CDN hosted, no version in URL; closed-source; also on MAS"
+    "notes": "AI chat client DMG — CDN hosted, no version in URL; closed-source; also on MAS"
   },
   {
     "name": "popclip",
@@ -671,7 +671,7 @@
       "PopClip"
     ],
     "skip": false,
-    "notes": "Text action tool .zip \u2014 developer site download, version in filename; closed-source; also on MAS"
+    "notes": "Text action tool .zip — developer site download, version in filename; closed-source; also on MAS"
   },
   {
     "name": "mission-control-plus",
@@ -692,7 +692,7 @@
       "Mission Control Plus"
     ],
     "skip": false,
-    "notes": "Window manager DMG from GitHub releases-only repo \u2014 closed-source; requires Accessibility permission"
+    "notes": "Window manager DMG from GitHub releases-only repo — closed-source; requires Accessibility permission"
   },
   {
     "name": "hermes-desktop",
@@ -713,7 +713,7 @@
       "HermesDesktop"
     ],
     "skip": false,
-    "notes": "Native macOS Hermes Agent companion \u2014 Swift/SwiftUI; GitHub release .zip; ad-hoc signed (not notarized); MIT; open-source"
+    "notes": "Native macOS Hermes Agent companion — Swift/SwiftUI; GitHub release .zip; ad-hoc signed (not notarized); MIT; open-source"
   },
   {
     "name": "veronum",
@@ -734,7 +734,7 @@
       "Veronum"
     ],
     "skip": false,
-    "notes": "Multi-LLM workspace Electron app \u2014 GitHub /latest/ redirect DMG; signed + notarized; not in HB"
+    "notes": "Multi-LLM workspace Electron app — GitHub /latest/ redirect DMG; signed + notarized; not in HB"
   },
   {
     "name": "authsec-bridge",
@@ -753,7 +753,7 @@
       "--help"
     ],
     "skip": false,
-    "notes": "Python CLI session bridge for Claude/Codex/Gemini \u2014 pip install from GitHub; no PyPI; no releases; edge case for source-build"
+    "notes": "Python CLI session bridge for Claude/Codex/Gemini — pip install from GitHub; no PyPI; no releases; edge case for source-build"
   },
   {
     "name": "agy-acp",
@@ -791,7 +791,7 @@
       "MoIcons"
     ],
     "skip": false,
-    "notes": "AI macOS app icon generator \u2014 arm64-only DMG from GitHub releases; signed + notarized; MIT; v1.0.3"
+    "notes": "AI macOS app icon generator — arm64-only DMG from GitHub releases; signed + notarized; MIT; v1.0.3"
   },
   {
     "name": "shell-gpt",
@@ -809,7 +809,7 @@
       "--version"
     ],
     "skip": true,
-    "notes": "Python CLI for AI LLMs \u2014 pip install shell-gpt; bin sgpt; 31 releases; v1.5.1; MIT; not in HB"
+    "notes": "Python CLI for AI LLMs — pip install shell-gpt; bin sgpt; 31 releases; v1.5.1; MIT; not in HB"
   },
   {
     "name": "cline",
@@ -825,7 +825,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Autonomous coding agent CLI \u2014 npm i -g cline; Homebrew formula deprecated; monorepo; 293 releases; v3.0.29; Apache-2.0"
+    "notes": "Autonomous coding agent CLI — npm i -g cline; Homebrew formula deprecated; monorepo; 293 releases; v3.0.29; Apache-2.0"
   },
   {
     "name": "bartender-setapp",
@@ -841,7 +841,7 @@
       "list"
     ],
     "skip": true,
-    "notes": "Setapp app \u2014 requires Setapp subscription and setapp-cli"
+    "notes": "Setapp app — requires Setapp subscription and setapp-cli"
   },
   {
     "name": "kdash",
@@ -857,7 +857,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Kubernetes dashboard TUI \u2014 prebuilt GitHub release binaries"
+    "notes": "Kubernetes dashboard TUI — prebuilt GitHub release binaries"
   },
   {
     "name": "dnote",
@@ -873,7 +873,7 @@
       "--help"
     ],
     "skip": false,
-    "notes": "Simple note-taking CLI \u2014 prebuilt GitHub release binaries"
+    "notes": "Simple note-taking CLI — prebuilt GitHub release binaries"
   },
   {
     "name": "xplr",
@@ -889,7 +889,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Terminal file explorer \u2014 prebuilt GitHub release binaries"
+    "notes": "Terminal file explorer — prebuilt GitHub release binaries"
   },
   {
     "name": "gotty",
@@ -905,7 +905,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Share terminal as web app \u2014 build from GitHub release source"
+    "notes": "Share terminal as web app — build from GitHub release source"
   },
   {
     "name": "tdash",
@@ -921,7 +921,7 @@
       "-h"
     ],
     "skip": false,
-    "notes": "Terminal dashboard \u2014 build from GitHub release source"
+    "notes": "Terminal dashboard — build from GitHub release source"
   },
   {
     "name": "gotty-archive",
@@ -937,7 +937,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Share terminal as web app \u2014 source archive build"
+    "notes": "Share terminal as web app — source archive build"
   },
   {
     "name": "updo-archive",
@@ -953,7 +953,7 @@
       "--help"
     ],
     "skip": false,
-    "notes": "Uptime monitor TUI \u2014 source archive build"
+    "notes": "Uptime monitor TUI — source archive build"
   },
   {
     "name": "planor-archive",
@@ -969,7 +969,7 @@
       "--help"
     ],
     "skip": false,
-    "notes": "Multi-cloud TUI \u2014 source archive build"
+    "notes": "Multi-cloud TUI — source archive build"
   },
   {
     "name": "tdash-archive",
@@ -985,7 +985,7 @@
       "-h"
     ],
     "skip": false,
-    "notes": "Terminal dashboard \u2014 source archive build"
+    "notes": "Terminal dashboard — source archive build"
   },
   {
     "name": "tv",
@@ -1001,7 +1001,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "General purpose fuzzy finder TUI \u2014 direct binary archive"
+    "notes": "General purpose fuzzy finder TUI — direct binary archive"
   },
   {
     "name": "csvlens",
@@ -1017,7 +1017,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "CSV file viewer \u2014 direct binary archive"
+    "notes": "CSV file viewer — direct binary archive"
   },
   {
     "name": "kdash-direct",
@@ -1033,7 +1033,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Kubernetes dashboard TUI \u2014 direct binary archive"
+    "notes": "Kubernetes dashboard TUI — direct binary archive"
   },
   {
     "name": "xplr-direct",
@@ -1049,7 +1049,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Terminal file explorer \u2014 direct binary archive"
+    "notes": "Terminal file explorer — direct binary archive"
   },
   {
     "name": "devbox",
@@ -1065,7 +1065,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Nix-powered dev environments \u2014 curl/bash installer"
+    "notes": "Nix-powered dev environments — curl/bash installer"
   },
   {
     "name": "volta",
@@ -1081,7 +1081,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "JavaScript toolchain manager \u2014 curl/bash installer"
+    "notes": "JavaScript toolchain manager — curl/bash installer"
   },
   {
     "name": "mise",
@@ -1097,7 +1097,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Polyglot dev tool and dependency manager \u2014 curl/bash installer"
+    "notes": "Polyglot dev tool and dependency manager — curl/bash installer"
   },
   {
     "name": "baca",
@@ -1113,7 +1113,7 @@
       "--help"
     ],
     "skip": false,
-    "notes": "Terminal EPUB reader \u2014 pip package"
+    "notes": "Terminal EPUB reader — pip package"
   },
   {
     "name": "oatmeal",
@@ -1129,7 +1129,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "LLM chat TUI \u2014 cargo install from GitHub release source"
+    "notes": "LLM chat TUI — cargo install from GitHub release source"
   },
   {
     "name": "tickrs",
@@ -1145,7 +1145,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Stock ticker TUI \u2014 cargo install from GitHub release source"
+    "notes": "Stock ticker TUI — cargo install from GitHub release source"
   },
   {
     "name": "managarr",
@@ -1161,7 +1161,7 @@
       "--help"
     ],
     "skip": false,
-    "notes": "Servarr manager TUI \u2014 cargo install from GitHub release source"
+    "notes": "Servarr manager TUI — cargo install from GitHub release source"
   },
   {
     "name": "updo",
@@ -1177,7 +1177,7 @@
       "--help"
     ],
     "skip": false,
-    "notes": "Uptime monitor TUI \u2014 go install path"
+    "notes": "Uptime monitor TUI — go install path"
   },
   {
     "name": "planor",
@@ -1193,7 +1193,7 @@
       "--help"
     ],
     "skip": false,
-    "notes": "Multi-cloud TUI \u2014 go install path"
+    "notes": "Multi-cloud TUI — go install path"
   },
   {
     "name": "taskjuggler",
@@ -1209,7 +1209,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Project scheduler \u2014 Ruby gem, bin tj3"
+    "notes": "Project scheduler — Ruby gem, bin tj3"
   },
   {
     "name": "mailcatcher",
@@ -1225,7 +1225,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "SMTP catcher + web inbox \u2014 Ruby gem"
+    "notes": "SMTP catcher + web inbox — Ruby gem"
   },
   {
     "name": "smashing",
@@ -1241,7 +1241,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Dashing fork dashboard framework \u2014 Ruby gem"
+    "notes": "Dashing fork dashboard framework — Ruby gem"
   },
   {
     "name": "dotnet-monitor",
@@ -1257,7 +1257,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": ".NET diagnostic monitoring tool \u2014 NuGet global tool"
+    "notes": ".NET diagnostic monitoring tool — NuGet global tool"
   },
   {
     "name": "ilspycmd",
@@ -1273,7 +1273,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": ".NET decompiler CLI \u2014 NuGet global tool"
+    "notes": ".NET decompiler CLI — NuGet global tool"
   },
   {
     "name": "dotnet-counters",
@@ -1289,7 +1289,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": ".NET performance counters CLI \u2014 NuGet global tool"
+    "notes": ".NET performance counters CLI — NuGet global tool"
   },
   {
     "name": "mockolo",
@@ -1305,7 +1305,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Swift mock generator \u2014 build with Swift Package Manager"
+    "notes": "Swift mock generator — build with Swift Package Manager"
   },
   {
     "name": "swift-outdated",
@@ -1321,7 +1321,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Swift package dependency checker \u2014 build with Swift Package Manager"
+    "notes": "Swift package dependency checker — build with Swift Package Manager"
   },
   {
     "name": "swiftpolyglot",
@@ -1337,7 +1337,7 @@
       "--version"
     ],
     "skip": false,
-    "notes": "Localization coverage checker \u2014 build with Swift Package Manager"
+    "notes": "Localization coverage checker — build with Swift Package Manager"
   },
   {
     "name": "knownote",
@@ -1358,7 +1358,7 @@
       "KnowNote"
     ],
     "skip": false,
-    "notes": "Local-first NotebookLM alternative \u2014 GitHub release cask"
+    "notes": "Local-first NotebookLM alternative — GitHub release cask"
   },
   {
     "name": "paste-mas",
@@ -1375,7 +1375,7 @@
       "967805235"
     ],
     "skip": true,
-    "notes": "MAS clipboard manager \u2014 requires Mac App Store purchase"
+    "notes": "MAS clipboard manager — requires Mac App Store purchase"
   },
   {
     "name": "colorslurp-mas",
@@ -1392,7 +1392,7 @@
       "1287239339"
     ],
     "skip": true,
-    "notes": "MAS color picker \u2014 requires Mac App Store purchase"
+    "notes": "MAS color picker — requires Mac App Store purchase"
   },
   {
     "name": "bear-mas",
@@ -1409,7 +1409,7 @@
       "1016366447"
     ],
     "skip": true,
-    "notes": "MAS notes app \u2014 requires Mac App Store purchase"
+    "notes": "MAS notes app — requires Mac App Store purchase"
   },
   {
     "name": "tailscale-mas",
@@ -1426,7 +1426,7 @@
       "1475387142"
     ],
     "skip": true,
-    "notes": "MAS VPN \u2014 requires Mac App Store purchase"
+    "notes": "MAS VPN — requires Mac App Store purchase"
   },
   {
     "name": "cleanshot-setapp",
@@ -1442,7 +1442,7 @@
       "list"
     ],
     "skip": true,
-    "notes": "Setapp screenshot tool \u2014 requires Setapp subscription"
+    "notes": "Setapp screenshot tool — requires Setapp subscription"
   },
   {
     "name": "paste-setapp",
@@ -1458,7 +1458,7 @@
       "list"
     ],
     "skip": true,
-    "notes": "Setapp clipboard manager \u2014 requires Setapp subscription"
+    "notes": "Setapp clipboard manager — requires Setapp subscription"
   },
   {
     "name": "popclip-setapp",
@@ -1474,7 +1474,7 @@
       "list"
     ],
     "skip": true,
-    "notes": "Setapp text action tool \u2014 requires Setapp subscription"
+    "notes": "Setapp text action tool — requires Setapp subscription"
   },
   {
     "name": "proxyman-setapp",
@@ -1490,7 +1490,7 @@
       "list"
     ],
     "skip": true,
-    "notes": "Setapp proxy debugger \u2014 requires Setapp subscription"
+    "notes": "Setapp proxy debugger — requires Setapp subscription"
   },
   {
     "name": "browsr",
@@ -2578,7 +2578,7 @@
       "--version"
     ],
     "skip": true,
-    "notes": "AWS TUI \u2014 go install github.com/clawscli/claws/cmd/claws"
+    "notes": "AWS TUI — go install github.com/clawscli/claws/cmd/claws"
   },
   {
     "name": "goatcounter",
@@ -2805,7 +2805,7 @@
       "--version"
     ],
     "skip": true,
-    "notes": "Steam depot downloader; web claims a HB formula; not present as of June 2026 \u2014 verify"
+    "notes": "Steam depot downloader; web claims a HB formula; not present as of June 2026 — verify"
   },
   {
     "name": "liana",
@@ -3828,7 +3828,7 @@
       "Ollama"
     ],
     "skip": true,
-    "notes": "site\u2192GitHub redirect"
+    "notes": "site→GitHub redirect"
   },
   {
     "name": "proxyman",
@@ -4286,7 +4286,7 @@
       "1475387142"
     ],
     "skip": true,
-    "notes": ".zip, \"latest\"\u2192302; also on MAS"
+    "notes": ".zip, \"latest\"→302; also on MAS"
   },
   {
     "name": "mermark-editor",
@@ -4705,7 +4705,7 @@
       "--version"
     ],
     "skip": true,
-    "notes": "multi-agent collaboration platform (ACP); Tauri 2 + Rust + SolidJS; no releases, no registry, HEAD-only; 18 stars; MIT; edge case for source-build (no build system match \u2014 requires pnpm + Rust toolchain)"
+    "notes": "multi-agent collaboration platform (ACP); Tauri 2 + Rust + SolidJS; no releases, no registry, HEAD-only; 18 stars; MIT; edge case for source-build (no build system match — requires pnpm + Rust toolchain)"
   },
   {
     "name": "m-icons",
@@ -4719,7 +4719,7 @@
     "verifyCommand": [
       "open",
       "-a",
-      "M\u014dIcons"
+      "MōIcons"
     ],
     "skip": true,
     "notes": "AI macOS app icon generator; arm64-only DMG; signed + notarized; MIT; v1.0.3; 703 stars; not in HB"
@@ -4940,7 +4940,7 @@
       "--version"
     ],
     "skip": true,
-    "notes": "All-in-one AI chat CLI \u2014 Rust crates.io package preferred over prebuilt GitHub release archives; also in Homebrew as formula; cargo-package generator"
+    "notes": "All-in-one AI chat CLI — Rust crates.io package preferred over prebuilt GitHub release archives; also in Homebrew as formula; cargo-package generator"
   },
   {
     "name": "chat-shared-conversation-to-file",
@@ -4959,5 +4959,23 @@
     ],
     "skip": true,
     "notes": "Bun-compiled bare multi-arch release binaries (csctf-macos-arm64 etc.); no archive extension. Regression for isBinaryAsset bare detection + bin rename."
+  },
+  {
+    "name": "afm",
+    "url": "https://github.com/rudrankriyam/Foundation-Models-Framework-CLI",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "afm",
+      "--desc",
+      "Command-line tool for Apple's Foundation Models framework."
+    ],
+    "expectedBin": "afm",
+    "verifyCommand": [
+      "afm",
+      "--help"
+    ],
+    "skip": true,
+    "notes": "Swift CLI with versioned bare universal binary afm_*_macOS_universal; optional afm serve is not brew-services primary"
   }
 ]

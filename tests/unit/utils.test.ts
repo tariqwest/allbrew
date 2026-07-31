@@ -273,4 +273,11 @@ describe("isBinaryAsset", () => {
     expect(isBinaryAsset("sha256.txt")).toBe(false);
     expect(isBinaryAsset("README.md")).toBe(false);
   });
+
+  it("matches versioned bare binaries like afm_0.1.0_macOS_universal", () => {
+    expect(isBinaryAsset("afm_0.1.0_macOS_universal")).toBe(true);
+    expect(matchAssetToArch("afm_0.1.0_macOS_universal")).toBe("macosUniversal");
+    expect(isBinaryAsset("tool-1.2.3-linux-x64")).toBe(true);
+    expect(isBinaryAsset("afm_0.1.0_checksums.txt")).toBe(false);
+  });
 });

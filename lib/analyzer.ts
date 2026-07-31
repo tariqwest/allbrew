@@ -63,9 +63,12 @@ const LOCAL_ENDPOINT_RE =
 const WEB_SERVICE_CONTEXT_RE =
   /\b(?:api|dashboard|web\s*ui|ui|server|serve|gateway|proxy|endpoint|base\s+url|listens?|listening|available\s+at|runs?\s+at|open\s+in\s+(?:a\s+)?browser)\b/i;
 const NON_RUN_COMMAND_RE =
-  /^(?:brew|launchctl|sudo|systemctl|make|curl|wget|git|docker|podman|export|cp|mkdir|cd|echo|cat)\b/i;
+  /^(?:brew|launchctl|sudo|systemctl|make|curl|wget|git|docker|podman|export|cp|mkdir|cd|echo|cat|swift|npm|pnpm|yarn|bun|deno|cargo|go|python[3]?|pip[3]?|uv|uvx)\b/i;
 const INSTALL_COMMAND_RE =
-  /^(?:(?:npm|pnpm|yarn|bun)[ \t]+(?:install|i|add)\b|yarn[ \t]+global[ \t]+add\b|(?:pip|pip3|pipx)[ \t]+install\b|uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)\b|uvx\b|cargo[ \t]+install\b|go[ \t]+install\b|deno[ \t]+install\b|swift[ \t]+package\b.*\binstall\b)/i;
+  /^(?:(?:npm|pnpm|yarn|bun)[ \t]+(?:install|i|add)\b|yarn[ \t]+global[ \t]+add\b|(?:pip|pip3|pipx)[ \t]+install\b|uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)\b|uvx\b|cargo[ \t]+install\b|go[ \t]+install\b|deno[ \t]+install\b|swift[ \t]+(?:run|build|test|package)\b)/i;
+// Language-toolchain "run" is not a supervised daemon (swift run, npm run, cargo run, …).
+const LANGUAGE_RUNNER_RE =
+  /^(?:swift|npm|pnpm|yarn|bun|deno|cargo|go|python[3]?|pip[3]?|uv|uvx)\s+run\b/i;
 const STATUS_LINE_RE =
   /^(?:api|dashboard|endpoint|listening|server|ui|web\s*ui)\s+(?:at|on|is|available|running)\b/i;
 
@@ -321,11 +324,16 @@ export function detectServiceConfig(readmeText, packageName = "") {
   }
 
   const preferred = preferPackageCommand(commands, packageName) || commands[0];
+  if (!preferred) return null;
 
   return {
-    command: preferred || packageName,
+    command: preferred,
     keepAlive: true,
-    confidence: preferred ? "medium" : "low",
+    // Optional `pkg serve`/`server` stays low so non-interactive runs skip it;
+    // brew services / launchctl paths above remain high/medium.
+    confidence: isOptionalDevServeCommand(preferred, packageName)
+      ? "low"
+      : "medium",
     reason: "README contains service/daemon wording",
   };
 }
@@ -343,23 +351,40 @@ function detectLocalWebService(readmeText, packageName) {
 
   if (!hasWebServiceContext) return null;
 
-  const command =
+  let command =
     findCommandNearEndpoint(readmeText, endpoints[0].index || 0, packageName) ||
-    findPackageRunCommand(readmeText, packageName) ||
-    packageName;
+    findPackageRunCommand(readmeText, packageName);
 
+  // Do not invent `packageName` alone from a localhost URL — that over-fires on
+  // CLI tools with optional `serve` docs. Require a real runnable command.
   if (!command) return null;
 
-  const executable = command.split(/\s+/)[0].split("/").pop();
+  const parts = command.split(/\s+/).filter(Boolean);
+  const executable = parts[0].split("/").pop();
+  const barePackageCommand =
+    parts.length === 1 && executable === packageName;
+  const optionalServe = isOptionalDevServeCommand(command, packageName);
 
   return {
     command,
     keepAlive: true,
-    confidence: executable === packageName ? "high" : "medium",
+    // High only when the binary itself is the long-running process (e.g. maildev).
+    // Optional `pkg serve` is low so non-interactive installs skip the service block.
+    confidence: barePackageCommand ? "high" : optionalServe ? "low" : "medium",
     reason:
       "README shows a local web/API endpoint started by the package command",
     endpoints: endpoints.map((endpoint) => cleanEndpoint(endpoint[0])),
   };
+}
+
+/** `pkg serve` / `pkg server` — optional dev bridge, not a supervised daemon default. */
+function isOptionalDevServeCommand(command, packageName) {
+  if (!command || !packageName) return false;
+  const re = new RegExp(
+    `^${escapeRegExp(packageName)}\\s+(serve|server)(?:\\s|$)`,
+    "i",
+  );
+  return re.test(String(command).trim());
 }
 
 function findCommandNearEndpoint(readmeText, endpointIndex, packageName) {
@@ -426,9 +451,23 @@ function isRunnableCommand(command) {
   if (!command) return false;
   if (NON_RUN_COMMAND_RE.test(command)) return false;
   if (INSTALL_COMMAND_RE.test(command)) return false;
+  if (LANGUAGE_RUNNER_RE.test(command)) return false;
   if (STATUS_LINE_RE.test(command)) return false;
   if (/^(?:#|\/\/)/.test(command)) return false;
   if (/https?:\/\//i.test(command)) return false;
+  // Help/version probes are not long-running services
+  if (/(?:^|\s)(--help|-h|--version|-V)(?:\s|$)/.test(command)) return false;
+  // Reject prose sentences mistaken for commands (capitalized English openers).
+  if (
+    /^(?:The|This|These|Those|A|An|When|Where|What|How|If|For|With|After|Before|Once|Then|Also|Note|Please)\b/.test(
+      command,
+    )
+  ) {
+    return false;
+  }
+  // Long comma-heavy lines are almost always prose, not argv.
+  if ((command.match(/,/g) || []).length >= 2) return false;
+  if (command.split(/\s+/).length > 12) return false;
   return /^[a-zA-Z0-9._/-]+(?:\s+[^\n]+)?$/.test(command);
 }
 
@@ -549,6 +588,7 @@ export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null 
   if (names.has("package.json")) return { method: "npm" };
   if (names.has("setup.py") || names.has("pyproject.toml"))
     return { method: "pip" };
+  if (names.has("package.swift")) return { method: "swift" };
   if (names.has("cmakelists.txt")) return { method: "build", system: "cmake" };
   if (names.has("meson.build")) return { method: "build", system: "meson" };
   if (names.has("configure")) return { method: "build", system: "autotools" };

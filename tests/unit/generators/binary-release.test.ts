@@ -1,5 +1,8 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectBinaryReleasePayload } from "../../../lib/generators/binary-release.ts";
+import {
+  collectBinaryReleasePayload,
+  templateReleaseUrl,
+} from "../../../lib/generators/binary-release.ts";
 import wakapiFixture from "../../fixtures/github/wakapi.json";
 
 mock.module("../../../lib/sha256.ts", () => ({
@@ -159,5 +162,57 @@ describe("collectBinaryReleasePayload", () => {
     });
     expect(payload.binName).toBe("chatctl");
     expect(payload.installBody).toContain('bin.install bin_path => "chatctl"');
+  });
+
+  it("templateReleaseUrl preserves bare version tags without injecting v", () => {
+    const bare =
+      "https://github.com/o/r/releases/download/0.1.0/afm_0.1.0_macOS_universal";
+    expect(templateReleaseUrl(bare, "0.1.0", "0.1.0")).toBe(
+      "https://github.com/o/r/releases/download/#{version}/afm_#{version}_macOS_universal",
+    );
+    const tagged =
+      "https://github.com/o/r/releases/download/v2.12.2/wakapi_v2.12.2_darwin_arm64.tar.gz";
+    expect(templateReleaseUrl(tagged, "2.12.2", "v2.12.2")).toBe(
+      "https://github.com/o/r/releases/download/v#{version}/wakapi_v#{version}_darwin_arm64.tar.gz",
+    );
+  });
+
+  it("detects versioned bare universal binaries (afm_0.1.0_macOS_universal)", async () => {
+    const bareRelease = {
+      tagName: "0.1.0",
+      assets: [
+        {
+          name: "afm_0.1.0_macOS_universal",
+          url: "https://github.com/rudrankriyam/Foundation-Models-Framework-CLI/releases/download/0.1.0/afm_0.1.0_macOS_universal",
+        },
+        {
+          name: "afm_0.1.0_checksums.txt",
+          url: "https://github.com/rudrankriyam/Foundation-Models-Framework-CLI/releases/download/0.1.0/afm_0.1.0_checksums.txt",
+        },
+      ],
+    };
+    const bareRepo = {
+      name: "Foundation-Models-Framework-CLI",
+      fullName: "rudrankriyam/Foundation-Models-Framework-CLI",
+      description: "Command-line tool for Apple's Foundation Models framework.",
+      homepage: "https://github.com/rudrankriyam/Foundation-Models-Framework-CLI",
+      htmlUrl: "https://github.com/rudrankriyam/Foundation-Models-Framework-CLI",
+      license: "MIT",
+      defaultBranch: "main",
+    };
+    const payload = await collectBinaryReleasePayload(bareRepo, bareRelease, {
+      name: "afm",
+    });
+    expect(payload.template).toBe("binary_release");
+    expect(payload.binName).toBe("afm");
+    expect(payload.platformBlocks).toContain("on_macos do");
+    expect(payload.platformBlocks).toContain("on_arm do");
+    expect(payload.platformBlocks).toContain("on_intel do");
+    expect(payload.platformBlocks).toContain(
+      "afm_#{version}_macOS_universal",
+    );
+    expect(payload.platformBlocks).not.toContain("afm_v#{version}");
+    expect(payload.installBody).toContain('bin.install bin_path => "afm"');
+    expect(payload.serviceBlock).toBe("");
   });
 });

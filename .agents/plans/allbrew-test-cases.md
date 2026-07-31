@@ -291,6 +291,7 @@
 | CleanShot X | | | cleanshot.com | | cleanshot (cask) | setapp.com/apps/cleanshot | | | | | | | | | | | yes | | | | yes | | cask-app-setapp test case; display name with space and X suffix; also direct download via cask-app; screenshot tool |
 | Mission Control Plus | | | fadel.io/missioncontrolplus | github.com/ronyfadel/MissionControlPlusReleases | mission-control-plus (cask) | setapp.com/apps/mission-control-plus | | | | | | | | | | | yes | | .dmg | | yes | | window manager for Mission Control; GitHub releases-only repo (no source); v1.24; closed-source; requires Accessibility permission |
 | Hermes Desktop | Swift | SwiftUI | | github.com/dodo-reach/hermes-desktop | | | | | | | | | | | | | yes | | HermesDesktop.app.zip | yes | | | native macOS companion for Hermes Agent; GitHub release .zip; ad-hoc signed (not notarized); MIT; v1.2.0; build script `./scripts/build-macos-app.sh`; 1.9k stars |
+| afm | Swift | FoundationModels / SPM | | https://github.com/rudrankriyam/Foundation-Models-Framework-CLI | not in HB | | | | | | | | yes | | | yes | | | | yes | yes (1 universal) | | v0.1.0 MIT; bare release binary afm_*_macOS_universal; product afm; optional afm serve (not brew services); binary-release preferred over spm |
 | Veronum | TypeScript | Electron | thetoolswebsite.com | github.com/DylanWain/veronum-desktop | | | | | | | | | | | | | yes | | Veronum.dmg | | | | multi-LLM workspace desktop app; GitHub /latest/ redirect DMG (no version in URL); signed + notarized; v0.1.2; not in HB |
 | Codeg | TypeScript / Rust | Tauri 2 | | github.com/xintaofei/codeg | | | | | | | | | | | | | yes (132) | | codeg_0.18.2_aarch64.dmg | yes | yes | | multi-agent AI coding workspace (Claude Code, Codex, OpenCode, etc.); Tauri 2 desktop + server + Docker; versioned DMG with arch suffix; 1.8k stars; Apache-2.0; not in HB |
 | KnowNote | TypeScript | Electron / React | | github.com/MrSibe/KnowNote | no | | | | | | | | | | | | yes | | knownote-1.2.0.dmg | yes | yes (6) | | local-first NotebookLM alternative; RAG + Ollama/OpenAI; v1.2.0; GPL-3.0; 1k stars; arm64 ZIP + x64 DMG on GitHub releases; code-signing issues (xattr -cr needed); not in HB; cask-app-release generator |
@@ -316,7 +317,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -361,9 +362,8 @@
 | allbrew https://github.com/bytedance/trae-agent --manual  # → source-build | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install trae-agent && trae-cli --help | | | | | | | | | | | | | | | | | | | | | | | |
 | chat-shared-conversation-to-file | bun/typescript | cli | | https://github.com/Dicklesworthstone/chat_shared_conversation_to_file | no | | | | | | | | | | | | | | | yes | yes (5: csctf-macos-arm64/x64, linux-arm64/x64, windows-x64.exe) | yes | Bun-compiled bare release binaries (no archive ext). bin=csctf. binary-release. v0.4.5 not in HB. Playwright for scrape. |
-# source-build (Tauri desktop app; no releases, no registry; HEAD-only)
-allbrew https://github.com/recailai/jockey --manual  # → source-build (make fallback)
-
+| # source-build (Tauri desktop app; no releases, no registry; HEAD-only) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/recailai/jockey --manual  # → source-build (make fallback) | | | | | | | | | | | | | | | | | | | | | | | |
 # cask-app-release (arm64-only DMG; signed + notarized)
 allbrew https://github.com/mo-browser-apps/icons --manual  # → cask-app-release
 brew install --cask moicons && open -a MoIcons

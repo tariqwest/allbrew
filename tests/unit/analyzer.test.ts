@@ -352,11 +352,41 @@ describe("detectServiceConfig", () => {
     expect(detectServiceConfig("", "foo")).toBeNull();
   });
 
-  it("returns low confidence for generic service wording without a clear command", () => {
+  it("returns null for generic service wording without a clear command", () => {
     const readme = "This tool runs as a background process.";
-    const result = detectServiceConfig(readme, "foo");
+    expect(detectServiceConfig(readme, "foo")).toBeNull();
+  });
+
+  it("marks optional pkg serve + localhost as low confidence (not brew-services primary)", () => {
+    const readme = [
+      "## Serve",
+      "",
+      "```bash",
+      "afm serve",
+      "```",
+      "",
+      "Open http://localhost:1976 in a browser",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "afm");
     expect(result).not.toBeNull();
+    expect(result!.command).toBe("afm serve");
     expect(result!.confidence).toBe("low");
+  });
+
+  it("still detects bare long-running CLIs with a local web UI as high confidence", () => {
+    const readme = [
+      "## Usage",
+      "",
+      "```bash",
+      "maildev",
+      "```",
+      "",
+      "The web UI is available at http://localhost:1080",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "maildev");
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("maildev");
+    expect(result!.confidence).toBe("high");
   });
 });
 
@@ -403,6 +433,12 @@ describe("detectBuildSystemFromFiles", () => {
 
   it("detects package.json", () => {
     expect(detectBuildSystemFromFiles(["package.json", "index.js"])).toEqual({ method: "npm" });
+  });
+
+  it("detects Package.swift as swift/spm", () => {
+    expect(detectBuildSystemFromFiles(["Package.swift", "Sources", "README.md"])).toEqual({
+      method: "swift",
+    });
   });
 
   it("detects root install.sh as script before other build files", () => {

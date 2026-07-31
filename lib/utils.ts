@@ -367,15 +367,37 @@ export function isArchiveBinaryAsset(assetName) {
   );
 }
 
-/** Extensionless (or .exe) platform-tagged release binaries, e.g. csctf-macos-arm64. */
+/** Extensionless (or .exe) platform-tagged release binaries, e.g. csctf-macos-arm64.
+ * Also accepts versioned bare names like afm_0.1.0_macOS_universal (dots only in versions).
+ */
 export function isBareBinaryAsset(assetName) {
   const lower = assetName.toLowerCase();
   if (!assetName || BARE_BINARY_SKIP_NAMES.has(lower)) return false;
   if (isAppAsset(assetName) || isArchiveBinaryAsset(assetName)) return false;
   if (BARE_BINARY_SKIP_SUFFIXES.some((s) => lower.endsWith(s))) return false;
-  // Windows .exe with arch tags is a bare binary; other dotted names are not.
-  if (lower.includes(".") && !lower.endsWith(".exe")) return false;
-  return matchAssetToArch(assetName) != null;
+  if (matchAssetToArch(assetName) == null) return false;
+  if (lower.endsWith(".exe")) return true;
+  if (!lower.includes(".")) return true;
+
+  // Allow dots only when they look like embedded versions (1.2.3), not real extensions.
+  // Real archive/app extensions are already rejected above.
+  if (!/\d+\.\d+/.test(lower)) return false;
+
+  const stripped = lower
+    .replace(
+      /[-_.]?(darwin|macos|osx|linux|windows|win32|apple)[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal)?/gi,
+      " ",
+    )
+    .replace(/[-_.]+/g, " ")
+    .trim();
+  if (!stripped) return false;
+
+  for (const token of stripped.split(/\s+/)) {
+    if (/^\d+(?:\.\d+)*$/.test(token)) continue; // version segment
+    if (/^[a-z][a-z0-9]*$/i.test(token)) continue; // name segment
+    return false;
+  }
+  return true;
 }
 
 export function isBinaryAsset(assetName) {

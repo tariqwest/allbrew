@@ -33,14 +33,16 @@ export function resolveBinaryReleaseBinName(
   const bare = assetNames.filter((n) => isBareBinaryAsset(n));
   if (bare.length === 0) return formulaName;
 
-  // Prefer common prefix before first arch/platform token.
+  // Prefer common prefix before arch/platform token and optional embedded version.
+  // e.g. afm_0.1.0_macOS_universal → afm, csctf-macos-arm64 → csctf
   const stripped = bare.map((n) =>
     n
       .replace(/\.exe$/i, "")
       .replace(
-        /[-_.]?(darwin|macos|linux|windows|win32|apple)[-_.]?(arm64|aarch64|amd64|x86_64|x64|universal)?$/i,
+        /[-_.]?(darwin|macos|osx|linux|windows|win32|apple)[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal)?$/i,
         "",
       )
+      .replace(/[-_.]\d+\.\d+(?:\.\d+)*(?:[-_][0-9A-Za-z]+)?$/i, "")
       .replace(/[-_.]+$/g, ""),
   );
   if (stripped.every((s) => s && s === stripped[0])) return stripped[0];
@@ -107,8 +109,9 @@ export async function collectBinaryReleasePayload(
   const assetNames = Object.values(hashes).map((h) => h.name);
   const binName = resolveBinaryReleaseBinName(name, assetNames, options);
 
-  const urlTemplate = (url: string) =>
-    url.replace(version, "#{version}").replace(release.tagName, "v#{version}");
+  // Template version tokens without double-rewriting (tag 0.1.0 must not turn
+  // afm_0.1.0_macOS into afm_v#{version}_macOS after a partial first replace).
+  const urlTemplate = (url: string) => templateReleaseUrl(url, version, release.tagName);
 
   return {
     template: "binary_release",
@@ -126,6 +129,28 @@ export async function collectBinaryReleasePayload(
     testBinName: rubyEscape(binName),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
+}
+
+/** Replace release tag / version in download URLs with Homebrew #{version}. */
+export function templateReleaseUrl(
+  url: string,
+  version: string,
+  tagName: string,
+): string {
+  let out = String(url);
+  const tag = String(tagName || "");
+  const ver = String(version || "");
+
+  // Prefer whole-tag replacement first (handles v1.2.3 tags and bare 1.2.3).
+  if (tag && out.includes(tag)) {
+    const tagHasV = /^v/i.test(tag);
+    const replacement = tagHasV ? "v#{version}" : "#{version}";
+    out = out.split(tag).join(replacement);
+  } else if (ver && out.includes(ver)) {
+    out = out.split(ver).join("#{version}");
+  }
+
+  return out;
 }
 
 function buildPlatformBlocks(
