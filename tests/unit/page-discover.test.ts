@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   discoverPageDownloads,
+  extractArtifactUrlsFromJson,
   extractCandidatesFromHtml,
   mergeCandidates,
   parseDiscoverMode,
@@ -142,5 +143,31 @@ describe("mergeCandidates", () => {
     expect(merged).toHaveLength(1);
     expect(merged[0].score).toBe(90);
     expect(merged[0].source).toBe("webview");
+  });
+});
+
+
+describe("extractArtifactUrlsFromJson", () => {
+  it("finds nested dmg urls and prefers them in discovery scoring", () => {
+    const payload = {
+      data: {
+        manifest: {
+          darwin: {
+            download: [
+              { region: "cn", apple: "https://lf-cdn.example.cn/Trae-darwin-arm64.dmg" },
+              { region: "us", apple: "https://lf-cdn.example.com/Trae-darwin-arm64.dmg", intel: "https://lf-cdn.example.com/Trae-darwin-x64.dmg" },
+            ],
+          },
+          win32: { download: [{ x64: "https://lf-cdn.example.com/Trae-win32-x64.exe" }] },
+        },
+      },
+    };
+    const urls = extractArtifactUrlsFromJson(payload);
+    expect(urls.some((u) => u.endsWith(".dmg"))).toBe(true);
+    const dmgs = urls.filter((u) => u.endsWith(".dmg"));
+    const scored = dmgs.map((u) => scoreCandidateUrl(u, "https://www.trae.ai/download"));
+    scored.sort((a, b) => b.score - a.score);
+    expect(scored[0].url).toContain(".dmg");
+    expect(scored[0].kind).toBe("cask-dmg");
   });
 });

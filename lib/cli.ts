@@ -109,6 +109,13 @@ async function dispatchClassification(classification: any, opts: any) {
   }
 }
 
+function isNonInteractive(opts: any = {}): boolean {
+  if (opts.yes || opts.nonInteractive || opts.noninteractive) return true;
+  if (process.env.ALLBREW_NONINTERACTIVE === "1") return true;
+  if (process.env.CI === "true" || process.env.CI === "1") return true;
+  return !process.stdin.isTTY || !process.stdout.isTTY;
+}
+
 async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
   const mode = parseDiscoverMode(
     opts.discover === undefined ? (opts.noDiscover ? "off" : "auto") : opts.discover,
@@ -158,8 +165,29 @@ async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
 
     let chosen: DiscoverCandidate | null = result.chosen;
     if (!chosen) {
-      chosen = await promptDiscoveredCandidates(result.candidates);
-      if (!chosen) return null;
+      const usable = result.candidates.filter(
+        (c) => c.kind !== "unknown" || /\.(dmg|pkg|zip|tgz|tar\.gz|sh|bash)(?:\?|#|$)/i.test(c.url),
+      );
+      if (isNonInteractive(opts)) {
+        // Never hang automation on ambiguous HTML noise.
+        chosen = usable[0] || null;
+        if (!chosen) {
+          spinner.warn(
+            "No high-confidence download candidate in non-interactive mode",
+          );
+          return null;
+        }
+        console.log(
+          chalk.dim(
+            `  Non-interactive: selecting top usable candidate [${chosen.score}] ${chosen.kind} ${chosen.url}`,
+          ),
+        );
+      } else {
+        chosen = await promptDiscoveredCandidates(
+          usable.length ? usable : result.candidates,
+        );
+        if (!chosen) return null;
+      }
     }
 
     const classification = await classifyWithHead(chosen.url);
@@ -1022,13 +1050,22 @@ async function handleGithubRepo(classification, opts) {
           break;
         }
         case "deno":
-        case "swift":
           console.log(
             chalk.dim(
               `  ${method.method} install hints will be used for service detection; continuing with repository analysis for formula generation`,
             ),
           );
           break;
+        case "swift":
+          return await generateWithConfirmation(
+            "spm-package",
+            {
+              repoInfo,
+              release,
+              serviceConfig: serviceConfigFromReadme,
+            },
+            opts,
+          );
       }
     }
   }
@@ -1114,6 +1151,12 @@ async function handleGithubRepo(classification, opts) {
       case "go":
         return await generateWithConfirmation(
           "go-package",
+          { repoInfo, release, serviceConfig },
+          opts,
+        );
+      case "swift":
+        return await generateWithConfirmation(
+          "spm-package",
           { repoInfo, release, serviceConfig },
           opts,
         );
@@ -1622,12 +1665,14 @@ async function collectServiceOptions(params: any, opts: any, formulaName: any) {
   }
 
   // Non-interactive runs (monitored installs, pipes): auto-detect only — never prompt.
+  // Skip low-confidence hints (generic "background process" wording, weak serve cues).
   if (!isInteractiveTty()) {
-    if (params.serviceConfig?.command) {
+    const detected = params.serviceConfig;
+    if (detected?.command && detected.confidence !== "low") {
       return {
         serviceConfig: {
-          ...params.serviceConfig,
-          keepAlive: params.serviceConfig.keepAlive !== false,
+          ...detected,
+          keepAlive: detected.keepAlive !== false,
         },
       };
     }

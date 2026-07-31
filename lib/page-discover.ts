@@ -149,8 +149,17 @@ export function scoreCandidateUrl(
     ev.push("linux-only-penalty");
   }
   if (/download|releases?|latest/i.test(url)) {
-    score += 10;
-    ev.push("download-path");
+    // Only reward download-ish paths when they look like files/CDNs, not HTML pages
+    if (/\.(dmg|pkg|zip|tgz|tar\.gz|sh|bash)(?:\?|#|$)/i.test(url) || /cdn|releases\/download|artifacts?/i.test(url)) {
+      score += 10;
+      ev.push("download-path");
+    } else if (!sameSite(url, pageUrl)) {
+      score += 4;
+      ev.push("download-path-soft");
+    } else {
+      score -= 8;
+      ev.push("html-download-page-penalty");
+    }
   }
   if (/arm64|aarch64|apple.?silicon/i.test(url)) {
     score += 8;
@@ -314,6 +323,187 @@ export type DiscoverOptions = {
 /**
  * Discover installable download candidates from a generic webpage URL.
  */
+
+const JSON_ARTIFACT_RE =
+  /\.(dmg|pkg|zip|tar\.gz|tgz|tar\.bz2|tar\.xz|exe|msi|appimage)(?:\?|#|$)/i;
+
+/** Walk arbitrary JSON and collect installable artifact URLs. */
+export function extractArtifactUrlsFromJson(value: unknown, out: string[] = []): string[] {
+  if (typeof value === "string") {
+    if (/^https?:\/\//i.test(value) && JSON_ARTIFACT_RE.test(value)) out.push(value);
+    return out;
+  }
+  if (Array.isArray(value)) {
+    for (const v of value) extractArtifactUrlsFromJson(v, out);
+    return out;
+  }
+  if (value && typeof value === "object") {
+    for (const v of Object.values(value as Record<string, unknown>)) {
+      extractArtifactUrlsFromJson(v, out);
+    }
+  }
+  return out;
+}
+
+function preferArchUrls(urls: string[]): string[] {
+  const arch = typeof process !== "undefined" && process.arch === "arm64" ? "arm" : "x64";
+  const scored = urls.map((u) => {
+    let s = 0;
+    if (/\.dmg(?:\?|#|$)/i.test(u)) s += 50;
+    if (/darwin|mac/i.test(u)) s += 30;
+    if (arch === "arm" && /arm64|aarch64|apple/i.test(u)) s += 20;
+    if (arch === "x64" && /x64|amd64|intel/i.test(u)) s += 20;
+    if (/windows|\.exe|linux|\.deb|\.rpm/i.test(u) && !/darwin|mac/i.test(u)) s -= 40;
+    // Prefer non-CN CDN when multiple regions exist
+    if (/\.com\.cn\//i.test(u)) s -= 5;
+    if (/trae\.ai|traecdn\.us/i.test(u)) s += 5;
+    return { u, s };
+  });
+  scored.sort((a, b) => b.s - a.s);
+  return scored.map((x) => x.u);
+}
+
+/**
+ * When a page is a JS app shell, fetch a few script bundles and any embedded
+ * version/download API endpoints, then extract artifact URLs from JSON.
+ */
+export async function discoverFromScriptBundles(
+  pageUrl: string,
+  html: string,
+  opts: { maxScripts?: number; maxScriptBytes?: number } = {},
+): Promise<DiscoverCandidate[]> {
+  const maxScripts = opts.maxScripts ?? 8;
+  const maxScriptBytes = opts.maxScriptBytes ?? 2_000_000;
+  const scriptSrcs: string[] = [];
+  const srcRe = /(?:src|href)\s*=\s*["']([^"']+\.js[^"']*)["']/gi;
+  let m: RegExpExecArray | null;
+  while ((m = srcRe.exec(html)) !== null) {
+    let s = m[1];
+    if (s.startsWith("//")) s = "https:" + s;
+    try {
+      s = new URL(s, pageUrl).href;
+      assertSafePublicFetchUrl(s);
+      scriptSrcs.push(s);
+    } catch {
+      /* skip */
+    }
+  }
+
+  const apiUrls = new Set<string>();
+  const artifactUrls = new Set<string>();
+  const candidates: DiscoverCandidate[] = [];
+
+  // Prefer main/app bundles first
+  const ordered = [...scriptSrcs].sort((a, b) => {
+    const score = (u: string) =>
+      (/main|app|index|download|chunk/i.test(u) ? 10 : 0) + (/static\/js/i.test(u) ? 2 : 0);
+    return score(b) - score(a);
+  });
+
+  for (const src of ordered.slice(0, maxScripts)) {
+    try {
+      const fetched = await fetchTextLimited(src, {
+        maxBytes: maxScriptBytes,
+        timeoutMs: 20_000,
+      });
+      const body = fetched.body;
+      // direct artifact URLs in JS
+      const bare = body.match(/https?:\/\/[^"'\\s)]+\.(?:dmg|pkg|zip|tgz|tar\.gz)[^"'\\s)]*/gi) || [];
+      for (const u of bare) {
+        try {
+          assertSafePublicFetchUrl(u);
+          artifactUrls.add(u.replace(/[),.;]+$/g, ""));
+        } catch {}
+      }
+      // API endpoints that look like version/download manifests
+      const apis =
+        body.match(
+          /https?:\/\/[^"'\\s)]+(?:icube[^"'\\s)]*)?(?:\/api\/|\/icube\/api\/)[^"'\\s)]*(?:version|download|latest|release)[^"'\\s)]*/gi,
+        ) || [];
+      // relative api paths
+      const rel =
+        body.match(/["'](\/?(?:icube\/)?api\/v\d+\/[^"']*(?:version|download|latest)[^"']*)["']/gi) ||
+        [];
+      for (const raw of apis) {
+        try {
+          const u = raw.replace(/[),.;]+$/g, "");
+          assertSafePublicFetchUrl(u);
+          apiUrls.add(u);
+        } catch {}
+      }
+      for (const raw of rel) {
+        const path = raw.replace(/^['"]|['"]$/g, "");
+        // Try common host bases seen on modern product sites
+        const bases = [
+          new URL(pageUrl).origin,
+          "https://icube-normal.traeapi.us",
+          "https://icube-normal.trae.ai",
+        ];
+        // Also derive from nearby absolute hosts in the same bundle
+        const hostHits =
+          body.match(/https?:\/\/icube[^"'\\s/]+/gi) ||
+          body.match(/https?:\/\/[a-z0-9.-]+traeapi\.[a-z.]+/gi) ||
+          [];
+        for (const h of hostHits.slice(0, 5)) bases.push(h.replace(/\/$/, ""));
+        for (const b of bases) {
+          try {
+            const u = new URL(path.startsWith("/") ? path : `/${path}`, b).href;
+            if (!/version|download|latest|release/i.test(u)) continue;
+            assertSafePublicFetchUrl(u);
+            apiUrls.add(u);
+          } catch {}
+        }
+      }
+    } catch {
+      /* skip script */
+    }
+  }
+
+  // Fetch API JSON payloads
+  for (const api of [...apiUrls].slice(0, 10)) {
+    try {
+      const fetched = await fetchTextLimited(api, { maxBytes: 1_500_000, timeoutMs: 15_000 });
+      const ct = fetched.contentType || "";
+      let json: unknown = null;
+      if (ct.includes("json") || fetched.body.trim().startsWith("{") || fetched.body.trim().startsWith("[")) {
+        try {
+          json = JSON.parse(fetched.body);
+        } catch {
+          json = null;
+        }
+      }
+      if (json) {
+        for (const u of extractArtifactUrlsFromJson(json)) {
+          try {
+            assertSafePublicFetchUrl(u);
+            artifactUrls.add(u);
+          } catch {}
+        }
+      }
+      // also bare artifacts in body
+      const bare = fetched.body.match(/https?:\/\/[^"'\\s)]+\.(?:dmg|pkg|zip)[^"'\\s)]*/gi) || [];
+      for (const u of bare) {
+        try {
+          assertSafePublicFetchUrl(u.replace(/[),.;]+$/g, ""));
+          artifactUrls.add(u.replace(/[),.;]+$/g, ""));
+        } catch {}
+      }
+    } catch {
+      /* skip api */
+    }
+  }
+
+  const preferred = preferArchUrls([...artifactUrls]);
+  for (const u of preferred) {
+    const scored = scoreCandidateUrl(u, pageUrl, ["script-bundle-or-api"]);
+    scored.score += 35;
+    scored.evidence.push("api-or-bundle-discovery");
+    candidates.push(scored);
+  }
+  return candidates.sort((a, b) => b.score - a.score);
+}
+
+
 export async function discoverPageDownloads(
   pageUrl: string,
   opts: DiscoverOptions = {},
@@ -374,11 +564,25 @@ export async function discoverPageDownloads(
   let method: DiscoverResult["method"] = "static";
   let candidates = staticCandidates;
 
-  const top = pickAutoCandidate(staticCandidates);
+  // Tier A.5: JS bundle / version-API probe for button-driven download pages
+  const topStatic = pickAutoCandidate(staticCandidates);
+  if (!topStatic || looksLikeEmptyShell(body) || staticCandidates.every((c) => c.kind === "unknown")) {
+    try {
+      const apiCands = await discoverFromScriptBundles(finalPageUrl, body);
+      if (apiCands.length) {
+        candidates = mergeCandidates(staticCandidates, apiCands);
+        method = "static";
+      }
+    } catch {
+      /* ignore api discovery errors */
+    }
+  }
+
+  const top = pickAutoCandidate(candidates);
   const needWebview =
     mode === "webview" ||
     (mode === "auto" &&
-      (!top || looksLikeEmptyShell(body) || staticCandidates.length === 0));
+      (!top || looksLikeEmptyShell(body) || !candidates.some((c) => c.kind !== "unknown" && c.score >= 70)));
 
   if (needWebview) {
     const webviewFn =
@@ -440,7 +644,7 @@ async function loadWebviewDiscover(
       log?.("Bun.WebView not available; skipping rendered discovery");
       return null;
     }
-    return (pageUrl: string) => mod.discoverWithWebView(pageUrl);
+    return (pageUrl: string) => mod.discoverWithWebView(pageUrl) as Promise<DiscoverCandidate[]>;
   } catch (err: any) {
     log?.(`WebView module unavailable: ${err?.message || err}`);
     return null;
