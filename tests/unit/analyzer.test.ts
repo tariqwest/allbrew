@@ -303,6 +303,34 @@ it("detects npx as npm", () => {
     expect(detectInstallMethod("just some text")).toBeNull();
     expect(detectInstallMethod("")).toBeNull();
   });
+
+  it("prefers preferred package when README lists freebuff before codebuff", () => {
+    const readme = [
+      "# Codebuff",
+      "",
+      "### Install",
+      "```bash",
+      "npm install -g freebuff",
+      "```",
+      "",
+      "## CLI: Install and start coding",
+      "```bash",
+      "npm install -g codebuff",
+      "```",
+    ].join("\n");
+    expect(detectInstallMethod(readme)).toEqual({
+      method: "npm",
+      package: "freebuff",
+    });
+    expect(detectInstallMethod(readme, "codebuff")).toEqual({
+      method: "npm",
+      package: "codebuff",
+    });
+    expect(detectInstallMethod(readme, "Codebuff")).toEqual({
+      method: "npm",
+      package: "codebuff",
+    });
+  });
 });
 
 describe("detectServiceConfig", () => {
@@ -355,6 +383,24 @@ describe("detectServiceConfig", () => {
   it("returns null for generic service wording without a clear command", () => {
     const readme = "This tool runs as a background process.";
     expect(detectServiceConfig(readme, "foo")).toBeNull();
+  });
+
+  it("does not treat README 'Run:' headings as a service command", () => {
+    const readme = [
+      "We use prompts to provide the service.",
+      "",
+      "Install:",
+      "```bash",
+      "npm install -g codebuff",
+      "```",
+      "",
+      "Run:",
+      "```bash",
+      "cd your-project",
+      "codebuff",
+      "```",
+    ].join("\n");
+    expect(detectServiceConfig(readme, "codebuff")).toBeNull();
   });
 
   it("marks optional pkg serve + localhost as low confidence (not brew-services primary)", () => {

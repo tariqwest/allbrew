@@ -4977,5 +4977,23 @@
     ],
     "skip": true,
     "notes": "Swift CLI with versioned bare universal binary afm_*_macOS_universal; optional afm serve is not brew-services primary"
+  },
+  {
+    "name": "codebuff",
+    "url": "https://github.com/CodebuffAI/codebuff",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--name",
+      "codebuff",
+      "--package",
+      "codebuff"
+    ],
+    "expectedBin": "codebuff",
+    "verifyCommand": [
+      "codebuff",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "AI coding agent CLI; README lists freebuff before codebuff; no brew services; dual bin cb/codebuff"
   }
 ]

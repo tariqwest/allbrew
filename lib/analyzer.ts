@@ -55,7 +55,7 @@ const BUILD_PATTERNS = [
 ];
 
 const SERVICE_HINT_RE =
-  /\b(?:brew\s+services|launchctl|launchd|launch\s*agent|launch\s*daemon|daemon|service|background\s+process|run\s+in\s+the\s+background|start\s+on\s+login)\b/i;
+  /\b(?:brew\s+services|launchctl|launchd|launch\s*agent|launch\s*daemon|systemd|(?:as\s+a\s+)?daemon|background\s+process|run\s+in\s+the\s+background|start\s+on\s+login|supervised\s+service)\b/i;
 const SERVICE_COMMAND_RE =
   /(?:^|[\n`])\s*(?:\$\s*)?([a-zA-Z0-9._/-]+(?:\s+(?:serve|server|start|daemon|agent|run|--daemon|--service)\b[^\n`]*)?)/gm;
 const LOCAL_ENDPOINT_RE =
@@ -72,7 +72,7 @@ const LANGUAGE_RUNNER_RE =
 const STATUS_LINE_RE =
   /^(?:api|dashboard|endpoint|listening|server|ui|web\s*ui)\s+(?:at|on|is|available|running)\b/i;
 
-export function detectBrewInstall(readmeText) {
+export function detectBrewInstall(readmeText, preferredPackageName = "") {
   if (!readmeText) return null;
 
   const commands = [];
@@ -104,7 +104,27 @@ export function detectBrewInstall(readmeText) {
 
   if (commands.length === 0) return null;
 
-  const primary = commands[0];
+  const preferred = String(preferredPackageName || "").trim().toLowerCase();
+  const preferredLast = preferred.split("/").pop();
+  const primary =
+    (preferred &&
+      commands.find((c) => {
+        const pkg = String(c.package || "").toLowerCase();
+        const last = pkg.split("/").pop();
+        return pkg === preferred || last === preferred || last === preferredLast;
+      })) ||
+    commands[0];
+
+  // When the caller has a preferred package and the only brew hits are unrelated
+  // deps (e.g. `brew install tmux` in testing docs), do not claim the app is on Homebrew.
+  if (preferred) {
+    const pkg = String(primary.package || "").toLowerCase();
+    const last = pkg.split("/").pop();
+    const matches =
+      pkg === preferred || last === preferred || last === preferredLast;
+    if (!matches) return null;
+  }
+
   return {
     installCommand:
       taps.length > 0
@@ -125,40 +145,16 @@ export type InstallMethodHint = {
   script?: string;
 };
 
-export function detectInstallMethod(readmeText): InstallMethodHint | null {
+export function detectInstallMethod(
+  readmeText,
+  preferredPackageName = "",
+): InstallMethodHint | null {
   if (!readmeText) return null;
 
   let match;
 
-  match = readmeText.match(NPM_INSTALL_RE);
-  if (match) {
-    const pkg = cleanNpmPackageSpec(match[1]);
-    if (pkg) return { method: "npm", package: pkg };
-  }
-
-  match = readmeText.match(PNPM_INSTALL_RE);
-  if (match) {
-    const pkg = cleanNpmPackageSpec(match[1]);
-    if (pkg) return { method: "npm", package: pkg };
-  }
-
-  match = readmeText.match(YARN_GLOBAL_ADD_RE);
-  if (match) {
-    const pkg = cleanNpmPackageSpec(match[1]);
-    if (pkg) return { method: "npm", package: pkg };
-  }
-
-  match = readmeText.match(BUN_INSTALL_RE);
-  if (match) {
-    const pkg = cleanNpmPackageSpec(match[1]);
-    if (pkg) return { method: "npm", package: pkg };
-  }
-
-  match = readmeText.match(NPX_RE);
-  if (match) {
-    const pkg = cleanNpmPackageSpec(match[1]);
-    if (pkg) return { method: "npm", package: pkg };
-  }
+  const npmPackage = pickPreferredNpmPackage(readmeText, preferredPackageName);
+  if (npmPackage) return { method: "npm", package: npmPackage };
 
   match = readmeText.match(PIP_INSTALL_RE);
   if (match) {
@@ -314,13 +310,8 @@ export function detectServiceConfig(readmeText, packageName = "") {
   while ((match = SERVICE_COMMAND_RE.exec(readmeText)) !== null) {
     const command = cleanCommand(match[1]);
     if (!isRunnableCommand(command)) continue;
-    if (
-      /\b(?:serve|server|start|daemon|agent|run|--daemon|--service)\b/i.test(
-        command,
-      )
-    ) {
-      commands.push(command);
-    }
+    if (!isServiceLikeCommand(command, packageName)) continue;
+    commands.push(command);
   }
 
   const preferred = preferPackageCommand(commands, packageName) || commands[0];
@@ -447,6 +438,68 @@ function preferPackageCommand(commands, packageName) {
   });
 }
 
+function pickPreferredNpmPackage(readmeText, preferredPackageName = "") {
+  const patterns = [
+    NPM_INSTALL_RE,
+    PNPM_INSTALL_RE,
+    YARN_GLOBAL_ADD_RE,
+    BUN_INSTALL_RE,
+    NPX_RE,
+  ];
+  const candidates = [];
+  for (const pattern of patterns) {
+    const globalRe = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
+    let match;
+    while ((match = globalRe.exec(readmeText)) !== null) {
+      const pkg = cleanNpmPackageSpec(match[1]);
+      if (!pkg) continue;
+      candidates.push({
+        package: pkg,
+        raw: match[0],
+        index: match.index,
+        globalInstall: /(?:^|\s)(?:-g|--global|global\s+add)(?:\s|$)/i.test(match[0]),
+      });
+    }
+  }
+  if (candidates.length === 0) return null;
+
+  const preferred = String(preferredPackageName || "").trim();
+  if (preferred) {
+    const preferredLower = preferred.toLowerCase();
+    const preferredLast = preferredLower.split("/").pop();
+    const matchPreferred = candidates.find((c) => {
+      const pkg = c.package.toLowerCase();
+      const last = pkg.split("/").pop();
+      return (
+        pkg === preferredLower ||
+        pkg === preferredLast ||
+        last === preferredLower ||
+        last === preferredLast
+      );
+    });
+    if (matchPreferred) return matchPreferred.package;
+  }
+
+  const globalHit = candidates.find((c) => c.globalInstall);
+  if (globalHit) return globalHit.package;
+  return candidates[0].package;
+}
+
+/** Bare English headings like `Run:` must not become service commands. */
+function isServiceLikeCommand(command, packageName = "") {
+  if (!command) return false;
+  const parts = command.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return false;
+
+  // Bare package/binary names are handled by brew-services / launchctl / local-web paths.
+  // Matching them here over-fires when README only says "service" in prose and lists the CLI.
+  if (parts.length === 1) return false;
+
+  return /\b(?:serve|server|start|daemon|agent|run|--daemon|--service)\b/i.test(
+    command,
+  );
+}
+
 function isRunnableCommand(command) {
   if (!command) return false;
   if (NON_RUN_COMMAND_RE.test(command)) return false;
@@ -459,10 +512,14 @@ function isRunnableCommand(command) {
   if (/(?:^|\s)(--help|-h|--version|-V)(?:\s|$)/.test(command)) return false;
   // Reject prose sentences mistaken for commands (capitalized English openers).
   if (
-    /^(?:The|This|These|Those|A|An|When|Where|What|How|If|For|With|After|Before|Once|Then|Also|Note|Please)\b/.test(
+    /^(?:The|This|These|Those|A|An|When|Where|What|How|If|For|With|After|Before|Once|Then|Also|Note|Please|Run|Start|Stop|Install|Usage|Usage:|Run:|Start:)\b/.test(
       command,
     )
   ) {
+    return false;
+  }
+  // Bare English verbs used as markdown headings ("Run:", "Start") are not argv.
+  if (/^(?:run|start|stop|serve|server|daemon|agent)$/i.test(command.trim())) {
     return false;
   }
   // Long comma-heavy lines are almost always prose, not argv.

@@ -898,7 +898,10 @@ async function handleGithubRepo(classification, opts) {
     readmeSpinner.succeed("README fetched");
 
     // Check for existing Homebrew availability first
-    const brewInfo = detectBrewInstall(readme);
+    const brewInfo = detectBrewInstall(
+      readme,
+      opts.package || opts.name || repoInfo.name,
+    );
     if (brewInfo) {
       console.log();
       console.log(
@@ -953,7 +956,10 @@ async function handleGithubRepo(classification, opts) {
     }
 
     // Detect install method and service hints from README
-    const method = detectInstallMethod(readme);
+    const method = detectInstallMethod(
+      readme,
+      opts.package || opts.name || repoInfo.name,
+    );
     serviceConfigFromReadme = detectServiceConfig(
       readme,
       opts.name || method?.package || repoInfo.name,
