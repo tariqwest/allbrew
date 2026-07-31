@@ -39,7 +39,19 @@ describe("renderFormula", () => {
       `\n` +
       `  def install\n` +
       `    system "npm", "install", *std_npm_args, "--min-release-age=0"\n` +
-      `    bin.install_symlink libexec.glob("bin/*")\n` +
+      `    bin.install_symlink libexec.glob("bin/*")\n\n` +
+      `    return unless OS.mac?\n\n` +
+      `    mach_o = Utils.safe_popen_read(\n` +
+      `      "/usr/bin/find", libexec.to_s, "-type", "f", "-perm", "+111", "-print0"\n` +
+      `    ).split("\\0").reject(&:empty?).select do |path|\n` +
+      `      Utils.safe_popen_read("/usr/bin/file", "-b", path).include?("Mach-O")\n` +
+      `    rescue\n` +
+      `      false\n` +
+      `    end\n\n` +
+      `    mach_o.each do |path|\n` +
+      `      system "/usr/bin/xattr", "-cr", path\n` +
+      `      system "/usr/bin/codesign", "--force", "--sign", "-", path\n` +
+      `    end\n` +
       `  end\n\n` +
       `  test do\n` +
       `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
