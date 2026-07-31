@@ -101,6 +101,11 @@ async function dispatchClassification(classification: any, opts: any) {
     case "dotnet-package":
       return await handleDotnetPackage(classification, opts);
     default:
+      if (isNonInteractive(opts)) {
+        throw new Error(
+          `Unable to automatically handle URL (non-interactive): ${classification.url}`,
+        );
+      }
       return await promptUnknownUrl(
         classification.url,
         opts,

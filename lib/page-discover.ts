@@ -579,10 +579,13 @@ export async function discoverPageDownloads(
   }
 
   const top = pickAutoCandidate(candidates);
+  const hasStrong = Boolean(top && top.score >= 70 && top.kind !== "unknown");
   const needWebview =
     mode === "webview" ||
     (mode === "auto" &&
-      (!top || looksLikeEmptyShell(body) || !candidates.some((c) => c.kind !== "unknown" && c.score >= 70)));
+      !hasStrong &&
+      (looksLikeEmptyShell(body) ||
+        !candidates.some((c) => c.kind !== "unknown" && c.score >= 70)));
 
   if (needWebview) {
     const webviewFn =
@@ -593,7 +596,7 @@ export async function discoverPageDownloads(
       try {
         const wv = await webviewFn(finalPageUrl);
         const tagged = wv.map((c) => ({ ...c, source: "webview" as const }));
-        candidates = mergeCandidates(staticCandidates, tagged);
+        candidates = mergeCandidates(candidates, tagged);
         method = "webview";
       } catch (err: any) {
         log(`WebView discovery failed: ${err?.message || err}`);
