@@ -307,6 +307,7 @@
 | open-notebook | Python | FastAPI/Next.js | open-notebook.ai | github.com/lfnovo/open-notebook | | | | | | | | | | | | | | yes | | yes | tags only | | open-source NotebookLM alternative; Docker primary; pip-installable from source (pyproject.toml); PyPI name taken by unrelated NIST project; no prebuilt binaries; generator: source-build; 34.7k stars; MIT; v1.10.0 |
 | trae-agent | Python | | www.trae.ai | github.com/bytedance/trae-agent | | | | | | | | | | | | yes | | | | yes | none | | LLM-based agent for software engineering; cmd `trae-cli`; bin `trae-cli`; uv sync setup (pyproject.toml); no PyPI package; no GitHub releases; Python 3.12+; MIT; 11.9k stars; not in HB; source-build |
 | Cline | TypeScript | | cline.bot | github.com/cline/cline | cline (formula) | | | | npmjs.com/package/cline | | | | | | | | | | | | | | autonomous coding agent CLI; npm i -g cline; Homebrew formula deprecated (2027-05-18); monorepo (apps/cli); 293 releases; v3.0.29; 63.9k stars; Apache-2.0 |
+| nanobot | python | Typer/WebUI | | https://github.com/HKUDS/nanobot | core has different Go nanobot 0.0.91; allbrew uses nanobot-ai | | | | nanobot-ai | | | | | | | | | yes | | yes | | yes | PyPI nanobot-ai, CLI bin nanobot, gateway service; core name collision → formula nanobot-ai; preserve_rpath; pip-package |
 | command-code | Node | | commandcode.ai | github.com/CommandCodeAI/command-code | | | | npmjs.com/package/command-code | | | | | | | | yes | | | | yes | none | | AI coding agent; cmd `cmd`; bin `cmd` != package name; UNLICENSED; 310 npm versions; 3.5k stars; no GitHub releases |
 | auggie | Node | | | github.com/augmentcode/auggie | | | | npmjs.com/package/@augmentcode/auggie | | | | | | | | yes | | | | yes | | | AI agentic coding CLI; scoped pkg @augmentcode/auggie; bin auggie (augment.mjs); non-SPDX license; homepage augmentcode.com; 251 stars; v0.32.0; not in HB; npm-package generator |
 | smithery-cli | Node | | smithery.ai | github.com/smithery-ai/cli | smithery-cli (formula) | | | npmjs.com/package/@smithery/cli | | | | | | | | yes | | | | yes | | | MCP server/skill manager CLI; bin smithery; scoped pkg @smithery/cli normalizes to smithery-cli; repo also publishes unscoped smithery v1.2.0; v4.11.1; 805 stars; AGPL-3.0-or-later; in HB as smithery-cli; npm-package |
@@ -317,7 +318,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -364,10 +365,9 @@
 | chat-shared-conversation-to-file | bun/typescript | cli | | https://github.com/Dicklesworthstone/chat_shared_conversation_to_file | no | | | | | | | | | | | | | | | yes | yes (5: csctf-macos-arm64/x64, linux-arm64/x64, windows-x64.exe) | yes | Bun-compiled bare release binaries (no archive ext). bin=csctf. binary-release. v0.4.5 not in HB. Playwright for scrape. |
 | # source-build (Tauri desktop app; no releases, no registry; HEAD-only) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://github.com/recailai/jockey --manual  # → source-build (make fallback) | | | | | | | | | | | | | | | | | | | | | | | |
-# cask-app-release (arm64-only DMG; signed + notarized)
-allbrew https://github.com/mo-browser-apps/icons --manual  # → cask-app-release
-brew install --cask moicons && open -a MoIcons
-
+| # cask-app-release (arm64-only DMG; signed + notarized) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/mo-browser-apps/icons --manual  # → cask-app-release | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install --cask moicons && open -a MoIcons | | | | | | | | | | | | | | | | | | | | | | | |
 # go-package (not-in-HB Go TUI with web UI)
 allbrew https://github.com/asheshgoplani/agent-deck --manual  # → go-package
 brew install agent-deck && agent-deck --version

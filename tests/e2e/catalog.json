@@ -4995,5 +4995,25 @@
     ],
     "skip": true,
     "notes": "AI coding agent CLI; README lists freebuff before codebuff; no brew services; dual bin cb/codebuff"
+  },
+  {
+    "name": "nanobot-ai",
+    "url": "https://github.com/HKUDS/nanobot",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--name",
+      "nanobot",
+      "--package",
+      "nanobot-ai",
+      "--desc",
+      "Ultra-lightweight self-hosted personal AI agent framework with WebUI and gateway"
+    ],
+    "expectedBin": "nanobot",
+    "verifyCommand": [
+      "nanobot",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "HKUDS/nanobot PyPI nanobot-ai; homebrew/core owns unrelated nanobot Go formula so allbrew renames to nanobot-ai; service should be nanobot gateway; preserve_rpath for jiter wheels"
   }
 ]

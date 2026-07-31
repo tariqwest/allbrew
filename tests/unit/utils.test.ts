@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import {
   toFormulaName,
   toClassName,
@@ -11,7 +11,13 @@ import {
   isAppAsset,
   isBinaryAsset,
   assertSafeFetchUrl,
+  resolveNonCollidingFormulaName,
+  setHomebrewCorePrefixForTests,
+  isHomebrewCoreFormulaName,
 } from "../../lib/utils.ts";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 describe("toFormulaName", () => {
   it("lowercases and replaces non-alphanumeric with hyphens", () => {
@@ -58,6 +64,54 @@ describe("toClassName", () => {
 
   it("handles numeric segments", () => {
     expect(toClassName("smtp4dev")).toBe("Smtp4dev");
+  });
+});
+
+describe("resolveNonCollidingFormulaName", () => {
+  let coreRoot: string;
+
+  beforeEach(() => {
+    coreRoot = mkdtempSync(join(tmpdir(), "allbrew-core-"));
+    mkdirSync(join(coreRoot, "Formula", "n"), { recursive: true });
+    writeFileSync(join(coreRoot, "Formula", "n", "nanobot.rb"), "class Nanobot < Formula\nend\n");
+    setHomebrewCorePrefixForTests(coreRoot);
+  });
+
+  afterEach(() => {
+    setHomebrewCorePrefixForTests(undefined);
+    rmSync(coreRoot, { recursive: true, force: true });
+  });
+
+  it("keeps names that are free in homebrew/core", () => {
+    const result = resolveNonCollidingFormulaName("unique-cli", ["unique-cli"]);
+    expect(result).toEqual({
+      name: "unique-cli",
+      renamedFrom: null,
+      reason: null,
+    });
+    expect(isHomebrewCoreFormulaName("unique-cli")).toBe(false);
+  });
+
+  it("renames bare nanobot to nanobot-ai when core owns nanobot", () => {
+    expect(isHomebrewCoreFormulaName("nanobot")).toBe(true);
+    const result = resolveNonCollidingFormulaName("nanobot", [
+      "nanobot-ai",
+      "nanobot",
+    ]);
+    expect(result.name).toBe("nanobot-ai");
+    expect(result.renamedFrom).toBe("nanobot");
+    expect(result.reason).toContain("nanobot");
+  });
+
+  it("falls back to -tap suffix when alternatives also collide", () => {
+    mkdirSync(join(coreRoot, "Formula", "n"), { recursive: true });
+    writeFileSync(
+      join(coreRoot, "Formula", "n", "nanobot-ai.rb"),
+      "class NanobotAi < Formula\nend\n",
+    );
+    const result = resolveNonCollidingFormulaName("nanobot", ["nanobot-ai"]);
+    expect(result.name).toBe("nanobot-tap");
+    expect(result.renamedFrom).toBe("nanobot");
   });
 });
 

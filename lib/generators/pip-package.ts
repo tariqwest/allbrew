@@ -28,6 +28,7 @@ export const UNDECLARED_RUNTIME_DEPS: Record<string, string[]> = {
 export const KNOWN_BIN_NAMES: Record<string, string> = {
   "shell-gpt": "sgpt",
   graphifyy: "graphify",
+  "nanobot-ai": "nanobot",
 };
 
 type PypiUrl = {
@@ -137,7 +138,12 @@ export async function collectPipPackagePayload(
     resourcesBlock: buildResourcesBlock(allDeps),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(testBinName),
-    serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+    // Service argv should target the console-script bin, which may differ from
+    // the formula token when homebrew/core forces a rename (nanobot-ai → bin nanobot).
+    serviceBlock: buildServiceBlock(
+      serviceFromOptions(options, testBinName),
+      testBinName,
+    ),
   };
 }
 

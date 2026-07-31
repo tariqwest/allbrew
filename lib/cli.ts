@@ -23,7 +23,13 @@ import {
   detectServiceConfigFromFiles,
 } from "./analyzer.ts";
 import { inspectArchive } from "./archive-inspector.ts";
-import { matchAssetToArch, isAppAsset, isBinaryAsset } from "./utils.ts";
+import {
+  matchAssetToArch,
+  isAppAsset,
+  isBinaryAsset,
+  resolveNonCollidingFormulaName,
+  toFormulaName,
+} from "./utils.ts";
 import { buildManifest } from "./build-manifest.ts";
 import { saveManifest } from "./manifest.ts";
 import type { GeneratorName } from "./manifest.ts";
@@ -1380,6 +1386,32 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
     userOpts.name = opts.name;
   }
 
+  if (isFormulaGenerator(generatorName)) {
+    const preferred = toFormulaName(userOpts.name);
+    const altSources = [
+      params.packageName,
+      params.crateName,
+      params.gemName,
+      params.goModule,
+      opts.package,
+      opts.crateName,
+      opts.binName,
+      params.repoInfo?.name,
+    ];
+    const resolved = resolveNonCollidingFormulaName(preferred, altSources);
+    if (resolved.renamedFrom && resolved.name !== preferred) {
+      console.log(
+        chalk.yellow(
+          `  Formula name "${preferred}" collides with homebrew/core; using "${resolved.name}" instead`,
+        ),
+      );
+      if (!opts.binName && !userOpts.binName) {
+        userOpts.binName = preferred;
+      }
+      userOpts.name = resolved.name;
+    }
+  }
+
   if (!opts.desc) {
     const defaultDesc = guessDesc(generatorName, params);
     const desc = await input({
@@ -1634,6 +1666,7 @@ async function brewAutoInstall(result: any, opts: any) {
     console.log(
       chalk.dim(`  Retry manually: ${installLabel}`),
     );
+    process.exitCode = 1;
   }
 
   console.log(chalk.dim(`  (written to tap at: ${opts.tapPath})`));

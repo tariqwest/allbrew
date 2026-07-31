@@ -342,9 +342,18 @@ function detectLocalWebService(readmeText, packageName) {
 
   if (!hasWebServiceContext) return null;
 
+  const near =
+    findCommandNearEndpoint(readmeText, endpoints[0].index || 0, packageName);
+  const whole = findPackageRunCommand(readmeText, packageName);
+  // Prefer the better supervised entrypoint when the README documents both an
+  // interactive webui launcher near the URL and a gateway/daemon elsewhere.
   let command =
-    findCommandNearEndpoint(readmeText, endpoints[0].index || 0, packageName) ||
-    findPackageRunCommand(readmeText, packageName);
+    preferPackageCommand(
+      [near, whole].filter(Boolean),
+      packageName,
+    ) ||
+    near ||
+    whole;
 
   // Do not invent `packageName` alone from a localhost URL — that over-fires on
   // CLI tools with optional `serve` docs. Require a real runnable command.
@@ -380,6 +389,10 @@ function isOptionalDevServeCommand(command, packageName) {
 
 function findCommandNearEndpoint(readmeText, endpointIndex, packageName) {
   const beforeEndpoint = readmeText.slice(0, endpointIndex);
+  const afterEndpoint = readmeText.slice(
+    endpointIndex,
+    Math.min(readmeText.length, endpointIndex + 400),
+  );
   const fencedBlocks = [
     ...beforeEndpoint.matchAll(/```[^\n`]*\n([\s\S]*?)```/g),
   ];
@@ -389,7 +402,10 @@ function findCommandNearEndpoint(readmeText, endpointIndex, packageName) {
     if (command) return command;
   }
 
-  const nearbyLines = beforeEndpoint.split(/\r?\n/).slice(-12).join("\n");
+  const nearbyLines = [
+    ...beforeEndpoint.split(/\r?\n/).slice(-12),
+    ...afterEndpoint.split(/\r?\n/).slice(0, 12),
+  ].join("\n");
   return findRunnableCommandInText(nearbyLines, packageName);
 }
 
@@ -409,13 +425,17 @@ function findPackageRunCommand(readmeText, packageName) {
     `swift[ \\t]+package\\b[^\\n]*\\binstall\\b[^\\n]*${escapedName}`,
   ];
 
+  // Presence of an install-then-run pattern is a strong signal the package CLI is
+  // the primary entrypoint, but the first post-install command may be an
+  // interactive webui launcher. Rank all package commands in the README.
   for (const pattern of installThenRunPatterns) {
     const installThenRun = new RegExp(
       `${pattern}[\\s\\S]{0,500}?(?:^|\\n)\\s*(?:\\$\\s*)?(${escapedName}(?:[ \\t]+[^\\n]+)?)`,
       "im",
     );
-    const match = readmeText.match(installThenRun);
-    if (match) return cleanCommand(match[1]);
+    if (installThenRun.test(readmeText)) {
+      return findRunnableCommandInText(readmeText, packageName);
+    }
   }
 
   return findRunnableCommandInText(readmeText, packageName);
@@ -427,15 +447,86 @@ function findRunnableCommandInText(text, packageName) {
     .map(cleanCommand)
     .filter(isRunnableCommand);
 
-  return preferPackageCommand(commands, packageName) || commands.at(-1) || null;
+  // Also accept package subcommands that are service-like even when the generic
+  // SERVICE_COMMAND_RE verbs are absent (e.g. `nanobot gateway`, `foo webui`).
+  const packageSubcommands = [];
+  if (packageName) {
+    const pkg = String(packageName);
+    for (const rawLine of String(text || "").split(/\r?\n/)) {
+      const line = cleanCommand(rawLine);
+      if (!line) continue;
+      const parts = line.split(/\s+/).filter(Boolean);
+      if (parts.length < 2) continue;
+      const executable = parts[0].split("/").pop();
+      if (executable !== pkg) continue;
+      // Keep first two tokens as the candidate service entrypoint.
+      const command = `${parts[0]} ${parts[1]}`;
+      if (!isRunnableCommand(command) && !isPackageServiceSubcommand(command, pkg))
+        continue;
+      packageSubcommands.push(command);
+    }
+  }
+
+  const merged = [...commands, ...packageSubcommands];
+  const unique = [];
+  const seen = new Set();
+  for (const command of merged) {
+    if (seen.has(command)) continue;
+    seen.add(command);
+    unique.push(command);
+  }
+
+  return preferPackageCommand(unique, packageName) || unique.at(-1) || null;
+}
+
+function isPackageServiceSubcommand(command, packageName) {
+  if (!command || !packageName) return false;
+  const re = new RegExp(
+    `^${escapeRegExp(packageName)}\\s+(gateway|webui|serve|server|start|daemon|agent)(?:\\s|$)`,
+    "i",
+  );
+  return re.test(String(command).trim());
 }
 
 function preferPackageCommand(commands, packageName) {
-  if (!packageName) return null;
-  return commands.find((command) => {
-    const executable = command.split(/\s+/)[0].split("/").pop();
-    return executable === packageName;
-  });
+  if (!commands?.length) return null;
+
+  const packageCommands = packageName
+    ? commands.filter((command) => {
+        const executable = command.split(/\s+/)[0].split("/").pop();
+        return executable === packageName;
+      })
+    : commands.slice();
+
+  const pool = packageCommands.length > 0 ? packageCommands : commands;
+  return pickBestServiceCommand(pool) || pool[0] || null;
+}
+
+/** Prefer supervised daemon entrypoints over interactive webui launchers. */
+function pickBestServiceCommand(commands) {
+  if (!commands?.length) return null;
+  const scored = commands.map((command, index) => ({
+    command,
+    index,
+    score: scoreServiceCommand(command),
+  }));
+  scored.sort((a, b) => b.score - a.score || a.index - b.index);
+  return scored[0]?.command || null;
+}
+
+function scoreServiceCommand(command) {
+  const c = String(command || "").trim().toLowerCase();
+  if (!c) return -100;
+  let score = 0;
+  if (/\bgateway\b/.test(c)) score += 50;
+  if (/\b(?:serve|server|daemon|agent)\b/.test(c)) score += 30;
+  if (/\bstart\b/.test(c)) score += 20;
+  if (/\b(?:--daemon|--service|--background)\b/.test(c)) score += 25;
+  if (/\bwebui\b/.test(c) || /\bweb\s*ui\b/.test(c)) score -= 40;
+  if (/\bopen\b/.test(c) && /\bbrowser\b/.test(c)) score -= 30;
+  // Prefer fewer tokens when scores tie elsewhere (handled by sort stability via index)
+  score -= Math.min(c.split(/\s+/).length, 8);
+  return score;
 }
 
 function pickPreferredNpmPackage(readmeText, preferredPackageName = "") {
@@ -495,7 +586,7 @@ function isServiceLikeCommand(command, packageName = "") {
   // Matching them here over-fires when README only says "service" in prose and lists the CLI.
   if (parts.length === 1) return false;
 
-  return /\b(?:serve|server|start|daemon|agent|run|--daemon|--service)\b/i.test(
+  return /\b(?:serve|server|start|daemon|agent|run|gateway|webui|--daemon|--service|--background)\b/i.test(
     command,
   );
 }

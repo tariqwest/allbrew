@@ -1,5 +1,7 @@
+import { existsSync } from "node:fs";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 
 export function toFormulaName(name) {
   return name
@@ -22,6 +24,91 @@ export function toCaskToken(name) {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase();
+}
+
+let cachedHomebrewCorePrefix: string | null | undefined;
+
+/** Resolve homebrew/core checkout path (or null when brew/core is unavailable). */
+export function getHomebrewCorePrefix(): string | null {
+  if (cachedHomebrewCorePrefix !== undefined) return cachedHomebrewCorePrefix;
+  try {
+    const out = execFileSync("brew", ["--repo", "homebrew/core"], {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    cachedHomebrewCorePrefix = out || null;
+  } catch {
+    cachedHomebrewCorePrefix = null;
+  }
+  return cachedHomebrewCorePrefix;
+}
+
+/** Test-only: override or clear the cached brew --repo homebrew/core path. */
+export function setHomebrewCorePrefixForTests(path: string | null | undefined) {
+  cachedHomebrewCorePrefix = path;
+}
+
+/** True when homebrew/core already ships a formula with this token. */
+export function isHomebrewCoreFormulaName(name: string): boolean {
+  const token = toFormulaName(name || "");
+  if (!token) return false;
+  const core = getHomebrewCorePrefix();
+  if (!core) return false;
+  const letter = token[0];
+  if (!/[a-z0-9]/.test(letter)) return false;
+  return existsSync(join(core, "Formula", letter, `${token}.rb`));
+}
+
+/**
+ * Avoid bare tokens that collide with homebrew/core.
+ * Homebrew's keg_relocate looks up Formula[name] by bare name, so a third-party
+ * formula that reuses a core token (e.g. nanobot) silently inherits core
+ * metadata — including preserve_rpath? === false — and breaks pip native wheels.
+ */
+export function resolveNonCollidingFormulaName(
+  preferredName: string,
+  alternatives: Array<string | null | undefined> = [],
+): { name: string; renamedFrom: string | null; reason: string | null } {
+  const preferred = toFormulaName(preferredName || "");
+  if (!preferred) {
+    return { name: preferred, renamedFrom: null, reason: null };
+  }
+  if (!isHomebrewCoreFormulaName(preferred)) {
+    return { name: preferred, renamedFrom: null, reason: null };
+  }
+
+  const seen = new Set<string>([preferred]);
+  for (const alt of alternatives) {
+    const candidate = toFormulaName(String(alt || ""));
+    if (!candidate || seen.has(candidate)) continue;
+    seen.add(candidate);
+    if (!isHomebrewCoreFormulaName(candidate)) {
+      return {
+        name: candidate,
+        renamedFrom: preferred,
+        reason: `homebrew/core already has formula "${preferred}"`,
+      };
+    }
+  }
+
+  let suffix = 1;
+  while (suffix < 50) {
+    const candidate = `${preferred}-tap${suffix === 1 ? "" : suffix}`;
+    if (!isHomebrewCoreFormulaName(candidate) && !seen.has(candidate)) {
+      return {
+        name: candidate,
+        renamedFrom: preferred,
+        reason: `homebrew/core already has formula "${preferred}"`,
+      };
+    }
+    suffix += 1;
+  }
+
+  return {
+    name: `${preferred}-allbrew`,
+    renamedFrom: preferred,
+    reason: `homebrew/core already has formula "${preferred}"`,
+  };
 }
 
 export function extractVersionFromTag(tag) {

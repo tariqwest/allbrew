@@ -434,6 +434,36 @@ describe("detectServiceConfig", () => {
     expect(result!.command).toBe("maildev");
     expect(result!.confidence).toBe("high");
   });
+
+  it("prefers gateway over interactive webui when both are documented", () => {
+    const readme = [
+      "# nanobot",
+      "",
+      "```bash",
+      "pip install nanobot-ai",
+      "nanobot webui",
+      "```",
+      "",
+      "Open http://localhost:8765",
+      "",
+      "Prefer a gateway-first workflow?",
+      "",
+      "```bash",
+      "nanobot gateway",
+      "```",
+      "",
+      "Install as a supervised service:",
+      "",
+      "```bash",
+      "nanobot gateway install-service --manager launchd",
+      "```",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "nanobot");
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("nanobot gateway");
+    expect(result!.keepAlive).toBe(true);
+    expect(["medium", "high"]).toContain(result!.confidence);
+  });
 });
 
 describe("detectServiceConfigFromFiles", () => {
