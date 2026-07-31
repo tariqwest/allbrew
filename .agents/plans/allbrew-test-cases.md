@@ -83,7 +83,7 @@
 | deputui | Node | | | github.com/twiddler/deputui | | | | npmjs.com/package/deputui | | | | | | | | yes | | | | yes | | | dep updater |
 | forage-cli | Node | | | github.com/starmorph/forage-cli | | | | npmjs.com/package/forage-cli | | | | | | | | yes | | | | yes | | | cmd `forage` |
 | dirac | Node | Ink | dirac.run | github.com/dirac-run/dirac | | | | npmjs.com/package/dirac-cli | | | | | | | | yes | | | | yes | | | cmd `dirac`; bin `dirac` != package name `dirac-cli`; Apache-2.0 |
-| cline | Node | OpenTUI | cline.bot | github.com/cline/cline | cline (formula, deprecated) | | | npmjs.com/package/cline | | | | | | | | yes | | | | yes | yes | | AI coding agent TUI; deprecated in HB (non-FOSS dep + prebuilt bins); 64k stars; Apache-2.0; platform bins via optionalDeps |
+| cline | Node | OpenTUI | cline.bot | github.com/cline/cline | cline (formula, deprecated) | | | npmjs.com/package/cline | | | | | | | | yes | | | | yes | yes | | AI coding agent TUI; deprecated in HB (non-FOSS dep + prebuilt bins); 64k stars; Apache-2.0; platform bins via optionalDeps; npm min-release-age cooldown on fresh @cline/* deps (brew_fail→override) |
 | maildev | Node | | | github.com/maildev/maildev | | | | npmjs.com/package/maildev | | | | | | | | | | yes | | yes | | | SMTP catcher + web inbox |
 | verdaccio | Node | | | github.com/verdaccio/verdaccio | | | | npmjs.com/package/verdaccio | | | | | | | | | | yes | | yes | | | private npm registry + web UI |
 | json-server | Node | | | github.com/typicode/json-server | | | | npmjs.com/package/json-server | | | | | | | | | | yes | | yes | | | JSON->REST + browser UI; `json-server db.json` |

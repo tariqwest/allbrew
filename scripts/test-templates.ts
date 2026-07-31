@@ -92,7 +92,7 @@ function buildNpmPackageCase(): Case {
     `  depends_on "node"\n` +
     `\n` +
     `  def install\n` +
-    `    system "npm", "install", *std_npm_args\n` +
+    `    system "npm", "install", *std_npm_args, "--min-release-age=0"\n` +
     `    bin.install_symlink libexec.glob("bin/*")\n` +
     `  end\n\n` +
     `  test do\n` +

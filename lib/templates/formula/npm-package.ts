@@ -10,7 +10,7 @@ ${p.licenseLine}
 ${p.livecheckBlock}  depends_on "node"
 ${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}
   def install
-    system "npm", "install", *std_npm_args
+    system "npm", "install", *std_npm_args, "--min-release-age=0"
     bin.install_symlink libexec.glob("bin/*")
   end
 

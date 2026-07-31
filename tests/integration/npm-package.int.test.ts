@@ -117,6 +117,7 @@ describe.concurrent("npm-package integration", () => {
     expect(ruby).toContain("class Cline < Formula");
     expect(ruby).toContain('depends_on "node"');
     expect(ruby).toContain('system "npm", "install"');
+    expect(ruby).toContain('*std_npm_args, "--min-release-age=0"');
     expect(ruby).toContain("bin.install_symlink");
   });
 
