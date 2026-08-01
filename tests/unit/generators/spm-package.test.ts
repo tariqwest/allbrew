@@ -1,5 +1,9 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectSpmPackagePayload } from "../../../lib/generators/spm-package.ts";
+import {
+  collectSpmPackagePayload,
+  parseSpmExecutableProducts,
+  preferSpmBinName,
+} from "../../../lib/generators/spm-package.ts";
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
@@ -93,6 +97,64 @@ describe("collectSpmPackagePayload", () => {
 
   it("includes empty service block by default", async () => {
     const payload = await collectSpmPackagePayload(repoInfo, release);
+    expect(payload.serviceBlock).toBe("");
+  });
+});
+
+describe("parseSpmExecutableProducts / preferSpmBinName", () => {
+  const packageSwift = `
+// swift-tools-version: 6.2
+let package = Package(
+  name: "TurboFieldfare",
+  products: [
+    .library(name: "TurboFieldfare", targets: ["TurboFieldfare"]),
+    .executable(name: "TurboFieldfareRepack", targets: ["TurboFieldfareRepack"]),
+    .executable(name: "TurboFieldfareCLI", targets: ["TurboFieldfareCLI"]),
+    .executable(name: "TurboFieldfareMac", targets: ["TurboFieldfareMac"]),
+    .executable(name: "TurboFieldfareDecodeService", targets: ["TurboFieldfareDecodeService"]),
+    .executable(name: "TurboFieldfareServer", targets: ["TurboFieldfareServer"]),
+  ],
+  targets: [
+    .executableTarget(name: "TurboFieldfareCLI", dependencies: ["TurboFieldfare"]),
+  ]
+)
+`;
+
+  it("parses executable products from Package.swift", () => {
+    const bins = parseSpmExecutableProducts(packageSwift);
+    expect(bins).toContain("TurboFieldfareCLI");
+    expect(bins).toContain("TurboFieldfareServer");
+    expect(bins).not.toContain("TurboFieldfare");
+  });
+
+  it("prefers CLI product for turbo-fieldfare", () => {
+    const bins = parseSpmExecutableProducts(packageSwift);
+    expect(preferSpmBinName(bins, "turbo-fieldfare", "turbo-fieldfare")).toBe(
+      "TurboFieldfareCLI",
+    );
+  });
+
+  it("installs all parsed executables with CLI as test bin", async () => {
+    const payload = await collectSpmPackagePayload(
+      {
+        name: "turbo-fieldfare",
+        fullName: "drumih/turbo-fieldfare",
+        description: "Gemma inference",
+        homepage: "",
+        htmlUrl: "https://github.com/drumih/turbo-fieldfare",
+        license: "Apache-2.0",
+        defaultBranch: "main",
+      },
+      { tagName: "0.3" },
+      { packageSwiftText: packageSwift, name: "turbo-fieldfare" },
+    );
+    expect(payload.testBinName).toBe("TurboFieldfareCLI");
+    expect(payload.binInstallPaths).toContain(
+      ".build/release/TurboFieldfareCLI",
+    );
+    expect(payload.binInstallPaths).toContain(
+      ".build/release/TurboFieldfareServer",
+    );
     expect(payload.serviceBlock).toBe("");
   });
 });

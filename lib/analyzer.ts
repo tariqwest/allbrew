@@ -40,18 +40,25 @@ const SHELL_C_CURL_RE =
   /(?:bash|sh)\s+-c\s+["']\s*\$\(\s*(?:curl|wget)\b[^\n`"']*?(https?:\/\/[^\s;|&"'`\)\]]+)/i;
 const MARKDOWN_SCRIPT_LINK_RE =
   /\[[^\]]*\]\((https?:\/\/[^\s)]+\.(?:sh|bash)(?:\?[^\s)]*)?)\)/i;
+// Require a path segment before .sh/.bash so hostnames like img.shields.io do not match.
 const BARE_SCRIPT_URL_RE =
-  /(?:^|[`\n(\s])((?:https?:\/\/)[^\s;|&"'`\)\]]+\.(?:sh|bash)(?:\?[^\s;|&"'`\)\]]*)?)/i;
+  /(?:^|[`\n(\s])((?:https?:\/\/)[^\s;|&"'`\)\]]+\/[^\s;|&"'`\)\]]+\.(?:sh|bash)(?:\?[^\s;|&"'`\)\]]*)?)/i;
 const RELATIVE_INSTALL_SCRIPT_RE =
   /(?:^|[`\n])\s*(?:\$\s*)?(?:bash|sh)\s+(\.?\/?[\w./-]*(?:install|setup)\.(?:sh|bash))\b/i;
 
 const BUILD_PATTERNS = [
+  // Prefer local/editable Python installs before loose build-tool matches.
+  {
+    pattern:
+      /\b(?:python[3]?\s+-m\s+pip|pip[3]?)\s+install\s+(?:(?:-[a-zA-Z]|--[\w-]+)(?:\s|=)[^\s]*)*\s*\./i,
+    system: "python",
+  },
   { pattern: /cmake\s+/i, system: "cmake" },
   { pattern: /\.\/configure/i, system: "autotools" },
-  { pattern: /make\s+(?:install|all|build)?/i, system: "make" },
+  // Require an explicit make target — bare "make " / "Make sure" must not match.
+  { pattern: /\bmake\s+(?:install|all|build)\b/i, system: "make" },
   { pattern: /meson\s+/i, system: "meson" },
   { pattern: /\bgo\s+build\b/i, system: "go" },
-  { pattern: /\b(?:python[3]?\s+-m\s+pip|pip[3]?)\s+install\s+(?:-[a-zA-Z]+\s+)*\./i, system: "python" },
 ];
 
 const SERVICE_HINT_RE =
@@ -63,7 +70,7 @@ const LOCAL_ENDPOINT_RE =
 const WEB_SERVICE_CONTEXT_RE =
   /\b(?:api|dashboard|web\s*ui|ui|server|serve|gateway|proxy|endpoint|base\s+url|listens?|listening|available\s+at|runs?\s+at|open\s+in\s+(?:a\s+)?browser)\b/i;
 const NON_RUN_COMMAND_RE =
-  /^(?:brew|launchctl|sudo|systemctl|make|curl|wget|git|docker|podman|export|cp|mkdir|cd|echo|cat|swift|npm|pnpm|yarn|bun|deno|cargo|go|python[3]?|pip[3]?|uv|uvx)\b/i;
+  /^(?:brew|launchctl|sudo|systemctl|make|curl|wget|git|docker|podman|export|cp|mkdir|cd|echo|cat|bash|sh|zsh|fish|pwsh|powershell|cmd|swift|npm|pnpm|yarn|bun|deno|cargo|go|python[3]?|pip[3]?|uv|uvx)\b/i;
 const INSTALL_COMMAND_RE =
   /^(?:(?:npm|pnpm|yarn|bun)[ \t]+(?:install|i|add)\b|yarn[ \t]+global[ \t]+add\b|(?:pip|pip3|pipx)[ \t]+install\b|uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)\b|uvx\b|cargo[ \t]+install\b|go[ \t]+install\b|deno[ \t]+install\b|swift[ \t]+(?:run|build|test|package)\b)/i;
 // Language-toolchain "run" is not a supervised daemon (swift run, npm run, cargo run, …).
@@ -158,18 +165,28 @@ export function detectInstallMethod(
 
   match = readmeText.match(PIP_INSTALL_RE);
   if (match) {
+    // Editable/local installs (pip install -e .) are source builds, not PyPI packages.
+    if (isLocalPipInstallTarget(match[1])) {
+      return { method: "build", system: "python" };
+    }
     const pkg = cleanPipPackageSpec(match[1]);
     if (pkg) return { method: "pip", package: pkg };
   }
 
   match = readmeText.match(PIPX_INSTALL_RE);
   if (match) {
+    if (isLocalPipInstallTarget(match[1])) {
+      return { method: "build", system: "python" };
+    }
     const pkg = cleanPipPackageSpec(match[1]);
     if (pkg) return { method: "pip", package: pkg };
   }
 
   match = readmeText.match(UV_TOOL_INSTALL_RE);
   if (match) {
+    if (isLocalPipInstallTarget(match[1])) {
+      return { method: "build", system: "python" };
+    }
     const pkg = cleanPipPackageSpec(match[1]);
     if (pkg) return { method: "pip", package: pkg };
   }
@@ -218,31 +235,32 @@ export function detectScriptInstall(readmeText): InstallMethodHint | null {
 
   let match = readmeText.match(CURL_PIPE_SHELL_RE);
   if (match?.[1]) {
-    const url = cleanScriptUrl(match[1]);
+    // curl|bash may use hosts without .sh (e.g. https://get.docker.com)
+    const url = cleanScriptUrl(match[1], { requireScriptExt: false });
     if (url) return { method: "script", url };
   }
 
   match = readmeText.match(SHELL_PROCESS_SUBST_RE);
   if (match?.[1]) {
-    const url = cleanScriptUrl(match[1]);
+    const url = cleanScriptUrl(match[1], { requireScriptExt: false });
     if (url) return { method: "script", url };
   }
 
   match = readmeText.match(SHELL_C_CURL_RE);
   if (match?.[1]) {
-    const url = cleanScriptUrl(match[1]);
+    const url = cleanScriptUrl(match[1], { requireScriptExt: false });
     if (url) return { method: "script", url };
   }
 
   match = readmeText.match(MARKDOWN_SCRIPT_LINK_RE);
   if (match?.[1]) {
-    const url = cleanScriptUrl(match[1]);
+    const url = cleanScriptUrl(match[1], { requireScriptExt: true });
     if (url) return { method: "script", url };
   }
 
   match = readmeText.match(BARE_SCRIPT_URL_RE);
   if (match?.[1]) {
-    const url = cleanScriptUrl(match[1]);
+    const url = cleanScriptUrl(match[1], { requireScriptExt: true });
     if (url) return { method: "script", url };
   }
 
@@ -255,8 +273,12 @@ export function detectScriptInstall(readmeText): InstallMethodHint | null {
   return null;
 }
 
-function cleanScriptUrl(raw) {
+const BADGE_OR_STATIC_HOST_RE =
+  /(?:^|\.)(?:shields\.io|badge(?:s)?\.[a-z0-9.-]+|img\.shields\.io)$/i;
+
+function cleanScriptUrl(raw, opts: { requireScriptExt?: boolean } = {}) {
   if (!raw) return null;
+  const requireScriptExt = opts.requireScriptExt !== false;
   let url = String(raw).trim();
   // Strip common trailing punctuation from markdown/prose
   url = url.replace(/[),.;]+$/g, "");
@@ -264,8 +286,10 @@ function cleanScriptUrl(raw) {
   url = url.replace(/^['"]|['"]$/g, "");
   if (!/^https?:\/\//i.test(url)) return null;
   try {
-    // Validate URL shape
-    new URL(url);
+    const parsed = new URL(url);
+    if (BADGE_OR_STATIC_HOST_RE.test(parsed.hostname)) return null;
+    // Bare/markdown matches must be real script paths (blocks img.shields.io false positives)
+    if (requireScriptExt && !/\.(?:sh|bash)$/i.test(parsed.pathname)) return null;
   } catch {
     return null;
   }
@@ -289,6 +313,9 @@ export function detectServiceConfig(readmeText, packageName = "") {
 
   const localWebService = detectLocalWebService(readmeText, packageName);
   if (localWebService) return localWebService;
+
+  const portBoundService = detectPortBoundPackageService(readmeText, packageName);
+  if (portBoundService) return portBoundService;
 
   if (!SERVICE_HINT_RE.test(readmeText)) return null;
 
@@ -329,6 +356,53 @@ export function detectServiceConfig(readmeText, packageName = "") {
   };
 }
 
+/**
+ * Long-running package binaries documented with PORT= / --port / --host without
+ * an explicit localhost URL (e.g. LiteLLM proxies: `PORT=8080 acp-router`).
+ */
+function detectPortBoundPackageService(readmeText, packageName) {
+  if (!packageName || !readmeText) return null;
+
+  const hasPortBinding =
+    /\bPORT\s*=\s*\d+/i.test(readmeText) ||
+    /(?:^|[\s`])(?:--port|--host)(?:\s+|=)\S+/im.test(readmeText) ||
+    /\blistens?\b/i.test(readmeText);
+  if (!hasPortBinding) return null;
+
+  const hasProxyContext =
+    WEB_SERVICE_CONTEXT_RE.test(readmeText) ||
+    /\b(?:proxy|gateway|openai-compatible|litellm|uvicorn|gunicorn|asgi|wsgi)\b/i.test(
+      readmeText,
+    );
+  if (!hasProxyContext) return null;
+
+// Require the package binary to appear as a documented run command — never invent it.
+  const command = findPackageRunCommand(readmeText, packageName);
+  if (!command) return null;
+
+  const parts = String(command).split(/\s+/).filter(Boolean);
+  const executable = parts[0]?.split("/").pop();
+  if (executable !== packageName) return null;
+
+  // Prefer the bare binary when flags are only port/host overrides.
+  const bareOrPortFlags =
+    parts.length === 1 ||
+    parts
+      .slice(1)
+      .every((t) =>
+        /^(?:--port|--host|=?\d+|0\.0\.0\.0|localhost|127\.0\.0\.1)$/i.test(t),
+      );
+  const serviceCommand = bareOrPortFlags ? packageName : command;
+
+  return {
+    command: serviceCommand,
+    keepAlive: true,
+    confidence: "high",
+    reason:
+      "README documents a port-bound long-running package process (PORT/--port/--host)",
+  };
+}
+
 function detectLocalWebService(readmeText, packageName) {
   LOCAL_ENDPOINT_RE.lastIndex = 0;
   const endpoints = [...readmeText.matchAll(LOCAL_ENDPOINT_RE)];
@@ -355,12 +429,15 @@ function detectLocalWebService(readmeText, packageName) {
     near ||
     whole;
 
-  // Do not invent `packageName` alone from a localhost URL — that over-fires on
+// Do not invent `packageName` alone from a localhost URL — that over-fires on
   // CLI tools with optional `serve` docs. Require a real runnable command.
   if (!command) return null;
 
   const parts = command.split(/\s+/).filter(Boolean);
   const executable = parts[0].split("/").pop();
+  // When a package name is known, the service entrypoint must be that package
+  // (or a path ending in it). Avoid picking fence languages / prose near URLs.
+  if (packageName && executable !== packageName) return null;
   const barePackageCommand =
     parts.length === 1 && executable === packageName;
   const optionalServe = isOptionalDevServeCommand(command, packageName);
@@ -476,7 +553,12 @@ function findRunnableCommandInText(text, packageName) {
     unique.push(command);
   }
 
-  return preferPackageCommand(unique, packageName) || unique.at(-1) || null;
+  const preferred = preferPackageCommand(unique, packageName);
+  if (preferred) return preferred;
+  // Never fall back to an arbitrary nearby line (README prose like "RAM.").
+  return (
+    unique.find((command) => isServiceLikeCommand(command, packageName)) || null
+  );
 }
 
 function isPackageServiceSubcommand(command, packageName) {
@@ -498,8 +580,16 @@ function preferPackageCommand(commands, packageName) {
       })
     : commands.slice();
 
-  const pool = packageCommands.length > 0 ? packageCommands : commands;
-  return pickBestServiceCommand(pool) || pool[0] || null;
+  if (packageCommands.length > 0) {
+    return pickBestServiceCommand(packageCommands) || packageCommands[0] || null;
+  }
+
+  // Without a package-aligned executable, only accept clearly service-like argv.
+  const serviceLike = commands.filter((command) =>
+    isServiceLikeCommand(command, packageName),
+  );
+  if (serviceLike.length === 0) return null;
+  return pickBestServiceCommand(serviceLike) || serviceLike[0] || null;
 }
 
 /** Prefer supervised daemon entrypoints over interactive webui launchers. */
@@ -599,23 +689,54 @@ function isRunnableCommand(command) {
   if (STATUS_LINE_RE.test(command)) return false;
   if (/^(?:#|\/\/)/.test(command)) return false;
   if (/https?:\/\//i.test(command)) return false;
+// Continued shell lines that start with flags are not complete argv.
+  if (/^-/.test(command.trim())) return false;
+  // Status labels near URLs ("OpenAI-compatible endpoint:") are not argv.
+  if (/:$/.test(command.trim())) return false;
+  // Markdown list/link leftovers are never argv (e.g. "- [Local server](docs/x.md)").
+  if (/[[\]]/.test(command) || /\]\(/.test(command)) return false;
+  if (/^[-*+]\s+/.test(command) || command.startsWith("- ")) return false;
+  // Build-tree paths are not Homebrew service entrypoints.
+  if (/(?:^|[\s/])\.build\//.test(command) || command.startsWith("./")) return false;
+  // Single ALLCAPS token / sentence fragment leftovers ("RAM.")
+  if (/^[A-Z]{2,8}\.?$/.test(command.trim())) return false;
   // Help/version probes are not long-running services
   if (/(?:^|\s)(--help|-h|--version|-V)(?:\s|$)/.test(command)) return false;
   // Reject prose sentences mistaken for commands (capitalized English openers).
   if (
-    /^(?:The|This|These|Those|A|An|When|Where|What|How|If|For|With|After|Before|Once|Then|Also|Note|Please|Run|Start|Stop|Install|Usage|Usage:|Run:|Start:)\b/.test(
+    /^(?:The|This|These|Those|A|An|When|Where|What|How|If|For|With|After|Before|Once|Then|Also|Note|Please|Run|Start|Stop|Install|Usage|Usage:|Run:|Start:|Local)\b/.test(
       command,
     )
   ) {
     return false;
   }
-  // Bare English verbs used as markdown headings ("Run:", "Start") are not argv.
+// Bare English verbs used as markdown headings ("Run:", "Start") are not argv.
   if (/^(?:run|start|stop|serve|server|daemon|agent)$/i.test(command.trim())) {
+    return false;
+  }
+  // Markdown fence languages (```bash) must not become argv after stripping ticks.
+  if (/^(?:bash|sh|zsh|fish|shell|console|shellsession|powershell|pwsh|cmd|terminal)$/i.test(command.trim())) {
     return false;
   }
   // Long comma-heavy lines are almost always prose, not argv.
   if ((command.match(/,/g) || []).length >= 2) return false;
-  if (command.split(/\s+/).length > 12) return false;
+  const tokens = command.split(/\s+/).filter(Boolean);
+  if (tokens.length > 12) return false;
+  // Multi-word lines without flags/paths are almost always English prose, not argv
+  // (e.g. "loopback server accepts function-tool declarations and returns").
+  if (tokens.length >= 4) {
+    const hasFlag = tokens.some((t) => t.startsWith("-"));
+    const hasPath = tokens[0].includes("/");
+    if (!hasFlag && !hasPath) return false;
+  }
+  if (
+    tokens.length >= 3 &&
+    /\b(?:accepts|returns|provides|includes|supports|allows|using|about|declarations?)\b/i.test(
+      command,
+    )
+  ) {
+    return false;
+  }
   return /^[a-zA-Z0-9._/-]+(?:\s+[^\n]+)?$/.test(command);
 }
 
@@ -624,11 +745,26 @@ function cleanEndpoint(endpoint) {
 }
 
 function cleanCommand(line) {
-  return String(line || "")
+  let cleaned = String(line || "")
     .replace(/^\s*(?:\$|>)\s*/, "")
+    // Markdown unordered/ordered list markers
+    .replace(/^\s*(?:[-*+]|\d+\.)\s+/, "")
+    // Markdown links: keep visible label text only when it looks like code; else drop
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\s+#.*$/, "")
     .replace(/\s+\/\/.*$/, "")
+    // Line-continuation backslashes from multi-line shell examples
+    .replace(/\s*\\$/, "")
     .trim();
+  // Drop pure markdown emphasis leftovers
+  cleaned = cleaned.replace(/^[`*]+|[`*]+$/g, "").trim();
+  // Strip leading ENV=value assignments: PORT=8080 acp-router → acp-router
+  while (/^[A-Za-z_][A-Za-z0-9_]*=\S+\s+/.test(cleaned)) {
+    cleaned = cleaned.replace(/^[A-Za-z_][A-Za-z0-9_]*=\S+\s+/, "").trim();
+  }
+  // Sentence-ending punctuation is not part of argv
+  cleaned = cleaned.replace(/[.;:!?]+$/g, "").trim();
+  return cleaned;
 }
 
 function packageNameFromSpecifier(specifier) {
@@ -670,6 +806,15 @@ function cleanNpmPackageSpec(specifier) {
   if (!cleaned || cleaned.startsWith("-")) return null;
 
   return cleaned;
+}
+
+function isLocalPipInstallTarget(specifier) {
+  if (!specifier) return false;
+  const cleaned = String(specifier)
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+  // pip install . / ./ / -e . handled via flags + target in the regex group
+  return cleaned === "." || cleaned === "./" || /^\.\//.test(cleaned);
 }
 
 function cleanPipPackageSpec(specifier) {

@@ -247,6 +247,21 @@ it("detects npx as npm", () => {
     expect(result).toEqual({ method: "script", script: "install.sh" });
   });
 
+  it("does not treat shields.io badge hosts as install scripts", () => {
+    const readme = [
+      "![build](https://img.shields.io/github/actions/workflow/status/org/repo/ci.yml)",
+      "![version](https://img.shields.io/badge/version-1.0-blue)",
+      "See https://img.shields.io/static/v1?label=foo&message=bar",
+    ].join("\n");
+    expect(detectInstallMethod(readme)).toBeNull();
+  });
+
+  it("still detects real bare install.sh URLs", () => {
+    expect(
+      detectInstallMethod("Download https://example.com/path/install.sh and run it"),
+    ).toEqual({ method: "script", url: "https://example.com/path/install.sh" });
+  });
+
   it("prefers package-manager install over curl|bash when both present", () => {
     const result = detectInstallMethod(
       "```bash\npip install foo\ncurl -fsSL https://example.com/install.sh | bash\n```",
@@ -284,9 +299,41 @@ it("detects npx as npm", () => {
     expect(result).toEqual({ method: "build", system: "autotools" });
   });
 
-  it("detects make build system", () => {
+it("detects make build system", () => {
     const result = detectInstallMethod("```bash\nmake install\n```");
     expect(result).toEqual({ method: "build", system: "make" });
+  });
+
+  it("does not treat English 'Make sure' as make build system", () => {
+    const result = detectInstallMethod(
+      "Make sure you have Python 3.10+. Then run the server.",
+    );
+    expect(result).toBeNull();
+  });
+
+  it("detects pip install -e . as python source build", () => {
+    const result = detectInstallMethod(
+      "```bash\npip install -e .\n```\n\nThen run `acp-router`.",
+    );
+    expect(result).toEqual({ method: "build", system: "python" });
+  });
+
+  it("prefers pip install -e . over prose that contains Make", () => {
+    const readme = [
+      "# ACP Router for LiteLLM",
+      "",
+      "Make sure LiteLLM is available.",
+      "",
+      "```bash",
+      "pip install -e .",
+      "```",
+      "",
+      "PORT=8080 acp-router",
+    ].join("\n");
+    expect(detectInstallMethod(readme, "acp-router")).toEqual({
+      method: "build",
+      system: "python",
+    });
   });
 
   it("detects meson build system", () => {
@@ -348,6 +395,26 @@ describe("detectServiceConfig", () => {
     const readme = "```bash\nbrew services start wakapi\n```";
     const result = detectServiceConfig(readme, "");
     expect(result!.command).toBe("wakapi");
+  });
+
+it("detects port-bound package binary without localhost URL (acp-router)", () => {
+    const readme = [
+      "# ACP Router for LiteLLM",
+      "",
+      "OpenAI-compatible proxy for ACP agents via LiteLLM.",
+      "",
+      "```bash",
+      "pip install -e .",
+      "PORT=8080 acp-router",
+      "acp-router --port 8080 --host 0.0.0.0",
+      "```",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "acp-router");
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("acp-router");
+    expect(result!.keepAlive).toBe(true);
+    expect(result!.confidence).toBe("high");
+    expect(result!.reason).toMatch(/port-bound/i);
   });
 
   it("detects local web service endpoint with context", () => {
@@ -463,6 +530,24 @@ describe("detectServiceConfig", () => {
     expect(result!.command).toBe("nanobot gateway");
     expect(result!.keepAlive).toBe(true);
     expect(["medium", "high"]).toContain(result!.confidence);
+  });
+
+  it("does not treat markdown list links near localhost as service commands (turbo-fieldfare)", () => {
+    const readme = [
+      "# turbo-fieldfare",
+      "",
+      "- [Local OpenAI-compatible server](docs/OPENAI_SERVER.md)",
+      "",
+      "```bash",
+      "swift build -c release --product TurboFieldfareServer",
+      ".build/release/TurboFieldfareServer \\",
+      "  --model ~/Models/gemma-4-26b-a4b.gturbo \\",
+      "  --port 8080",
+      "```",
+      "",
+      "OpenAI-compatible endpoint: http://localhost:8080/v1",
+    ].join("\n");
+    expect(detectServiceConfig(readme, "turbo-fieldfare")).toBeNull();
   });
 });
 

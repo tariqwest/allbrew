@@ -5054,5 +5054,21 @@
     ],
     "skip": true,
     "notes": "Rust Codex-fork package tarball with nested bin/interpreter + resources; not the legacy PyPI open-interpreter package."
+  },
+  {
+    "name": "turbo-fieldfare",
+    "url": "https://github.com/drumih/turbo-fieldfare",
+    "generator": "spm-package",
+    "allbrewArgs": [
+      "--name",
+      "turbo-fieldfare"
+    ],
+    "expectedBin": "TurboFieldfareCLI",
+    "verifyCommand": [
+      "TurboFieldfareCLI",
+      "--help"
+    ],
+    "skip": true,
+    "notes": "Multi-product SPM Gemma Metal runtime; requires macOS 26+/Swift 6.2; no service block; primary bin TurboFieldfareCLI"
   }
 ]

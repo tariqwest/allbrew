@@ -1086,16 +1086,28 @@ async function handleGithubRepo(classification, opts) {
             ),
           );
           break;
-        case "swift":
+        case "swift": {
+          const packageSwiftText = await getFileContent(
+            owner,
+            repo,
+            "Package.swift",
+          );
+          const spmOpts = await resolveSpmBinOptions(
+            packageSwiftText,
+            repoInfo,
+            opts,
+          );
           return await generateWithConfirmation(
             "spm-package",
             {
               repoInfo,
               release,
               serviceConfig: serviceConfigFromReadme,
+              packageSwiftText: packageSwiftText || "",
             },
-            opts,
+            { ...opts, ...spmOpts },
           );
+        }
       }
     }
   }
@@ -1184,12 +1196,28 @@ async function handleGithubRepo(classification, opts) {
           { repoInfo, release, serviceConfig },
           opts,
         );
-      case "swift":
-        return await generateWithConfirmation(
-          "spm-package",
-          { repoInfo, release, serviceConfig },
+      case "swift": {
+        const packageSwiftText = await getFileContent(
+          owner,
+          repo,
+          "Package.swift",
+        );
+        const spmOpts = await resolveSpmBinOptions(
+          packageSwiftText,
+          repoInfo,
           opts,
         );
+        return await generateWithConfirmation(
+          "spm-package",
+          {
+            repoInfo,
+            release,
+            serviceConfig,
+            packageSwiftText: packageSwiftText || "",
+          },
+          { ...opts, ...spmOpts },
+        );
+      }
       case "build":
         return await generateWithConfirmation(
           "source-build",
@@ -1680,9 +1708,13 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
 async function brewAutoInstall(result: any, opts: any) {
   const isCask = result.type === "cask";
   const installFlag = isCask ? "--cask" : "--formula";
+  const headOnly = !isCask && (await isHeadOnlyFormulaFile(result.filePath));
+  const headFlag = headOnly ? ["--HEAD"] : [];
   const installLabel = isCask
     ? `brew install --cask ${result.name}`
-    : `brew install ${result.name}`;
+    : headOnly
+      ? `brew install --HEAD ${result.name}`
+      : `brew install ${result.name}`;
 
   console.log();
 
@@ -1705,7 +1737,7 @@ async function brewAutoInstall(result: any, opts: any) {
   try {
     await execFileAsync(
       "brew",
-      ["install", installFlag, result.filePath],
+      ["install", ...headFlag, installFlag, result.filePath],
       { env: installEnv },
     );
     installSpinner.succeed(`Installed: ${chalk.green(result.name)}`);
@@ -1725,6 +1757,20 @@ async function brewAutoInstall(result: any, opts: any) {
 
   console.log(chalk.dim(`  (written to tap at: ${opts.tapPath})`));
   console.log();
+}
+
+/** True when the formula has a `head` stanza and no stable `url` (HEAD-only). */
+async function isHeadOnlyFormulaFile(filePath: string): Promise<boolean> {
+  if (!filePath) return false;
+  try {
+    const { readFile } = await import("node:fs/promises");
+    const text = await readFile(filePath, "utf8");
+    const hasHead = /^\s*head\s+["']/m.test(text);
+    const hasStableUrl = /^\s*url\s+["']/m.test(text);
+    return hasHead && !hasStableUrl;
+  } catch {
+    return false;
+  }
 }
 
 function isFormulaGenerator(generatorName: string) {
@@ -1750,9 +1796,11 @@ function isInteractiveTty() {
 }
 
 async function collectServiceOptions(params: any, opts: any, formulaName: any) {
+  const { isValidServiceCommand } = await import("./generators/service.ts");
   if (opts.service === false) return { service: false };
   if (opts.service || opts.serviceCommand) {
     const command = opts.serviceCommand || params.serviceConfig?.command || formulaName;
+    if (!isValidServiceCommand(String(command || ""))) return { service: false };
     return {
       serviceConfig: {
         ...params.serviceConfig,
@@ -1766,7 +1814,11 @@ async function collectServiceOptions(params: any, opts: any, formulaName: any) {
   // Skip low-confidence hints (generic "background process" wording, weak serve cues).
   if (!isInteractiveTty()) {
     const detected = params.serviceConfig;
-    if (detected?.command && detected.confidence !== "low") {
+    if (
+      detected?.command &&
+      detected.confidence !== "low" &&
+      isValidServiceCommand(String(detected.command))
+    ) {
       return {
         serviceConfig: {
           ...detected,
@@ -1824,6 +1876,30 @@ function parseCargoPackageName(cargoToml: string | null) {
   }
 
   return null;
+}
+
+async function resolveSpmBinOptions(
+  packageSwiftText: string | null | undefined,
+  repoInfo: any,
+  opts: any,
+) {
+  if (opts?.binName || (Array.isArray(opts?.binNames) && opts.binNames.length)) {
+    return {};
+  }
+  const { parseSpmExecutableProducts, preferSpmBinName } = await import(
+    "./generators/spm-package.ts"
+  );
+  const bins = parseSpmExecutableProducts(packageSwiftText || "");
+  if (bins.length === 0) return {};
+  const formulaName = opts?.name || toFormulaName(repoInfo?.name || "");
+  const preferred =
+    preferSpmBinName(bins, formulaName, repoInfo?.name || "") || bins[0];
+  if (bins.length > 1) {
+    console.log(
+      `  SPM executables: ${bins.join(", ")} (primary bin: ${preferred})`,
+    );
+  }
+  return { binName: preferred, binNames: bins };
 }
 
 /**

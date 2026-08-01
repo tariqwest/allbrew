@@ -292,6 +292,7 @@
 | Mission Control Plus | | | fadel.io/missioncontrolplus | github.com/ronyfadel/MissionControlPlusReleases | mission-control-plus (cask) | setapp.com/apps/mission-control-plus | | | | | | | | | | | yes | | .dmg | | yes | | window manager for Mission Control; GitHub releases-only repo (no source); v1.24; closed-source; requires Accessibility permission |
 | Hermes Desktop | Swift | SwiftUI | | github.com/dodo-reach/hermes-desktop | | | | | | | | | | | | | yes | | HermesDesktop.app.zip | yes | | | native macOS companion for Hermes Agent; GitHub release .zip; ad-hoc signed (not notarized); MIT; v1.2.0; build script `./scripts/build-macos-app.sh`; 1.9k stars |
 | afm | Swift | FoundationModels / SPM | | https://github.com/rudrankriyam/Foundation-Models-Framework-CLI | not in HB | | | | | | | | yes | | | yes | | | | yes | yes (1 universal) | | v0.1.0 MIT; bare release binary afm_*_macOS_universal; product afm; optional afm serve (not brew services); binary-release preferred over spm |
+| turbo-fieldfare | Swift 6.2 / Metal | SPM / Metal | | https://github.com/drumih/turbo-fieldfare | no | | | | | | | | yes | | | | | | | yes | no | | Multi-product SPM (CLI/Server/Mac/Repack/DecodeService); no release assets; macOS 26+; optional OpenAI loopback server must NOT become brew service; spm-package parses Package.swift for bins; v0.3 Apache-2.0 |
 | Veronum | TypeScript | Electron | thetoolswebsite.com | github.com/DylanWain/veronum-desktop | | | | | | | | | | | | | yes | | Veronum.dmg | | | | multi-LLM workspace desktop app; GitHub /latest/ redirect DMG (no version in URL); signed + notarized; v0.1.2; not in HB |
 | Codeg | TypeScript / Rust | Tauri 2 | | github.com/xintaofei/codeg | | | | | | | | | | | | | yes (132) | | codeg_0.18.2_aarch64.dmg | yes | yes | | multi-agent AI coding workspace (Claude Code, Codex, OpenCode, etc.); Tauri 2 desktop + server + Docker; versioned DMG with arch suffix; 1.8k stars; Apache-2.0; not in HB |
 | KnowNote | TypeScript | Electron / React | | github.com/MrSibe/KnowNote | no | | | | | | | | | | | | yes | | knownote-1.2.0.dmg | yes | yes (6) | | local-first NotebookLM alternative; RAG + Ollama/OpenAI; v1.2.0; GPL-3.0; 1k stars; arm64 ZIP + x64 DMG on GitHub releases; code-signing issues (xattr -cr needed); not in HB; cask-app-release generator |
@@ -320,7 +321,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -375,11 +376,10 @@
 | brew install agent-deck && agent-deck --version | | | | | | | | | | | | | | | | | | | | | | | |
 | # future generators (manual today) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned) | | | | | | | | | | | | | | | | | | | | | | | |
-| ``` | | | | | | | | | | | | | | | | | | | | | | | |
-Record per pick: generator chosen, bin name vs package name drift, livecheck source, service
-block (flower/wakapi/smtp4dev), and any native-build failures (tgt/TDLib, goatcounter/CGO,
-Fyne/`fyne install`).
-
+| ``` | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| Record per pick: generator chosen, bin name vs package name drift, livecheck source, service | | | | | | | | | | | | | | | | | | | | | | | |
+| block (flower/wakapi/smtp4dev), and any native-build failures (tgt/TDLib, goatcounter/CGO, | | | | | | | | | | | | | | | | | | | | | | | |
+| Fyne/`fyne install`). | | | | | | | | | | | | | | | | | | | | | | | |
 ---
 
 ## How to drive a test (cask-app & script-install)

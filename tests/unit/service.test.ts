@@ -66,6 +66,19 @@ describe("normalizeServiceConfig", () => {
     expect(normalizeServiceConfig({}, "")).toBeNull();
   });
 
+  it("rejects markdown/prose service commands", () => {
+    expect(
+      normalizeServiceConfig({
+        command: "- [Local OpenAI-compatible server](docs/OPENAI_SERVER.md)",
+      }),
+    ).toBeNull();
+    expect(
+      normalizeServiceConfig({
+        command: ".build/release/TurboFieldfareServer --port 8080",
+      }),
+    ).toBeNull();
+  });
+
   it("defaults keepAlive to true", () => {
     const result = normalizeServiceConfig({ command: "foo" });
     expect(result?.keepAlive).toBe(true);

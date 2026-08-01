@@ -12,6 +12,59 @@ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { SpmPackagePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
+/** Extract executable product names from Package.swift source text. */
+export function parseSpmExecutableProducts(packageSwiftText: string): string[] {
+  if (!packageSwiftText) return [];
+  const found: string[] = [];
+  const seen = new Set<string>();
+  const patterns = [
+    /\.executable\s*\(\s*name:\s*"([^"]+)"/g,
+    /\.executableTarget\s*\(\s*name:\s*"([^"]+)"/g,
+  ];
+  for (const re of patterns) {
+    let match;
+    while ((match = re.exec(packageSwiftText)) !== null) {
+      const name = match[1];
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      found.push(name);
+    }
+  }
+  return found;
+}
+
+/** Prefer CLI-style product over Server/Mac/Service/Repack helpers. */
+export function preferSpmBinName(
+  executables: string[],
+  formulaName = "",
+  repoName = "",
+): string | null {
+  if (!executables?.length) return null;
+  const normalize = (s: string) =>
+    String(s || "")
+      .toLowerCase()
+      .replace(/[-_]/g, "");
+  const formulaKey = normalize(formulaName);
+  const repoKey = normalize(repoName);
+
+  const score = (name: string) => {
+    const n = normalize(name);
+    let s = 0;
+    if (formulaKey && (n === formulaKey || n.endsWith(formulaKey))) s += 40;
+    if (repoKey && (n === repoKey || n.endsWith(repoKey))) s += 30;
+    if (/cli$/i.test(name) || /\bcli\b/i.test(name)) s += 50;
+    if (/server$/i.test(name) || /service$/i.test(name)) s -= 20;
+    if (/mac$/i.test(name) || /app$/i.test(name)) s -= 25;
+    if (/repack$/i.test(name) || /tool$/i.test(name)) s -= 10;
+    return s;
+  };
+
+  const ranked = executables
+    .map((name, index) => ({ name, index, score: score(name) }))
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+  return ranked[0]?.name || null;
+}
+
 export async function collectSpmPackagePayload(
   repoInfo: any,
   release: any,
@@ -41,8 +94,29 @@ export async function collectSpmPackagePayload(
     urlLines = `  url ${rubyString(sourceUrl)}\n  sha256 ${rubyString(sha256)}\n`;
   }
 
-  const binTarget = options.binName || repoInfo.name || name;
-  const binInstallPaths = rubyString(`.build/release/${binTarget}`);
+  const packageSwift =
+    options.packageSwiftText || options.packageSwift || "";
+  const parsedBins = parseSpmExecutableProducts(packageSwift);
+  const binNames: string[] = Array.isArray(options.binNames)
+    ? options.binNames.filter(Boolean)
+    : parsedBins.length > 0
+      ? parsedBins
+      : [];
+
+  const binTarget =
+    options.binName ||
+    preferSpmBinName(binNames, name, repoInfo.name) ||
+    binNames[0] ||
+    repoInfo.name ||
+    name;
+
+  const installTargets =
+    binNames.length > 0
+      ? Array.from(new Set([binTarget, ...binNames].filter(Boolean)))
+      : [binTarget];
+  const binInstallPaths = installTargets
+    .map((b) => rubyString(`.build/release/${b}`))
+    .join(", ");
 
   return {
     template: "spm_package",

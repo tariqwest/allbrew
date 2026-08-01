@@ -21,6 +21,7 @@ export function normalizeServiceConfig(config: any, fallbackName = "") {
 
   const command = String(config.command || fallbackName || "").trim();
   if (!command) return null;
+  if (!isValidServiceCommand(command)) return null;
 
   return {
     command,
@@ -29,6 +30,42 @@ export function normalizeServiceConfig(config: any, fallbackName = "") {
     logPath: config.logPath || null,
     errorLogPath: config.errorLogPath || null,
   };
+}
+
+/** Reject markdown/prose fragments that must never become `service do` run argv. */
+export function isValidServiceCommand(command: string): boolean {
+  const c = String(command || "").trim();
+  if (!c) return false;
+  if (/[[\]]/.test(c) || /\]\(/.test(c)) return false;
+  if (/^[-*+]\s+/.test(c) || c.startsWith("- ")) return false;
+  if (/https?:\/\//i.test(c)) return false;
+  if (/(?:^|[\s/])\.build\//.test(c)) return false;
+  if (
+    /^(?:The|This|These|Those|A|An|When|Where|What|How|If|For|With|After|Before|Once|Then|Also|Note|Please|Run|Start|Stop|Install|Usage|Local)\b/.test(
+      c,
+    )
+  ) {
+    return false;
+  }
+  // First token must look like an executable path/name, not punctuation.
+  const tokens = c.split(/\s+/).filter(Boolean);
+  const first = tokens[0] || "";
+  if (!/^[a-zA-Z0-9._/-]+$/.test(first)) return false;
+  if (first === "-" || first === "--") return false;
+  if (tokens.length >= 4) {
+    const hasFlag = tokens.some((t) => t.startsWith("-"));
+    const hasPath = first.includes("/");
+    if (!hasFlag && !hasPath) return false;
+  }
+  if (
+    tokens.length >= 3 &&
+    /\b(?:accepts|returns|provides|includes|supports|allows|using|about|declarations?)\b/i.test(
+      c,
+    )
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export function buildServiceBlock(serviceConfig: any, fallbackName = "") {
