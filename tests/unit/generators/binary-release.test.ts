@@ -92,6 +92,25 @@ describe("collectBinaryReleasePayload", () => {
     ).rejects.toThrow("No platform-specific binary assets");
   });
 
+  it("throws when only Linux binary assets are present", async () => {
+    const linuxOnly = {
+      tagName: "v1.1.0",
+      assets: [
+        {
+          name: "wander_1.1.0_Linux_arm64.tar.gz",
+          url: "https://example.com/wander_1.1.0_Linux_arm64.tar.gz",
+        },
+        {
+          name: "wander_1.1.0_Linux_x86_64.tar.gz",
+          url: "https://example.com/wander_1.1.0_Linux_x86_64.tar.gz",
+        },
+      ],
+    };
+    await expect(
+      collectBinaryReleasePayload(repoInfo, linuxOnly),
+    ).rejects.toThrow(/No macOS binary assets/);
+  });
+
   it("includes empty service block by default", async () => {
     const payload = await collectBinaryReleasePayload(repoInfo, release);
     expect(payload.serviceBlock).toBe("");

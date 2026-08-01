@@ -38,9 +38,12 @@ export async function collectCaskAppReleasePayload(
     await cleanup();
   }
 
+  // Never invent a .app name for CLI/darwin archives — brew cask then fails with
+  // "App source ... is not there".
   if (!appName) {
-    appName =
-      repoInfo.name.charAt(0).toUpperCase() + repoInfo.name.slice(1) + ".app";
+    throw new Error(
+      `No .app bundle found inside release asset ${bestAsset.name}; not generating a cask`,
+    );
   }
 
   if (!appName.toLowerCase().endsWith(".app")) {

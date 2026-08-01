@@ -588,10 +588,22 @@ export function matchAssetToArch(assetName) {
 
 export function isAppAsset(assetName) {
   const lower = assetName.toLowerCase();
-  return (
-    lower.endsWith(".dmg") ||
-    (lower.endsWith(".zip") && /mac|macos|osx|darwin|app/i.test(lower))
+  if (lower.endsWith(".dmg")) return true;
+  if (!lower.endsWith(".zip")) return false;
+  // Explicit app-bundle archives
+  if (lower.includes(".app")) return true;
+  const hasMacToken = /(?:^|[^a-z])(?:mac|macos|osx|darwin)(?:[^a-z]|$)/i.test(
+    lower,
   );
+  if (!hasMacToken) return false;
+  // Arch-tagged darwin/macos zips are almost always CLI binaries (e.g. gogs_*_darwin_amd64.zip),
+  // not .app bundles. Desktop app zips usually omit cpu arch or use "universal" with .app.
+  const hasCpuArch =
+    /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(
+      lower,
+    );
+  if (hasCpuArch) return false;
+  return true;
 }
 
 const ARCHIVE_BINARY_EXTS = [".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".zip"];

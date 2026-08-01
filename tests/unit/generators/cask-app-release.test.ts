@@ -158,12 +158,13 @@ describe("collectCaskAppReleasePayload", () => {
   });
 
   it("falls back to .zip when no .dmg", async () => {
+    mockArchiveInspector({ zip: ["Seaquel.app/"] });
     const zipRelease = {
       tagName: "v1.0.0",
       assets: [
         {
-          name: "Seaquel-macos-arm64.zip",
-          url: "https://github.com/webstonehq/seaquel/releases/download/v1.0.0/Seaquel-macos-arm64.zip",
+          name: "Seaquel-macos.zip",
+          url: "https://github.com/webstonehq/seaquel/releases/download/v1.0.0/Seaquel-macos.zip",
         },
       ],
     };
@@ -172,6 +173,26 @@ describe("collectCaskAppReleasePayload", () => {
       zipRelease,
     );
     expect(payload.url).toContain(".zip");
+    expect(payload.appName).toBe("Seaquel.app");
+  });
+
+  it("throws when zip has no .app bundle instead of inventing Repo.app", async () => {
+    mockArchiveInspector({ zip: ["bin/gogs", "README.md"] });
+    const zipRelease = {
+      tagName: "v0.14.3",
+      assets: [
+        {
+          name: "gogs_0.14.3_darwin_amd64.zip",
+          // still classified only if isAppAsset; force via app-named zip without .app inside
+          url: "https://example.com/Foo-macos.zip",
+        },
+      ],
+    };
+    // Asset name must pass isAppAsset (macos zip without cpu arch)
+    zipRelease.assets[0].name = "Foo-macos.zip";
+    await expect(
+      collectCaskAppReleasePayload(repoInfo, zipRelease),
+    ).rejects.toThrow(/No \.app bundle found/);
   });
 });
 

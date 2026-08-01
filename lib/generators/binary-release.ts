@@ -255,6 +255,15 @@ export async function collectBinaryReleasePayload(
   const binName = archiveBinName
     || resolveBinaryReleaseBinName(name, assetNames, options);
 
+  // macOS brew install needs a macOS url; Linux-only platform blocks yield
+  // "formula requires at least a URL" on Darwin.
+  const hasMacosAsset = Boolean(hashes.macosArm || hashes.macosIntel);
+  if (!hasMacosAsset) {
+    throw new Error(
+      "No macOS binary assets found in release (Linux-only binaries cannot be installed with Homebrew on macOS)",
+    );
+  }
+
   // Template version tokens without double-rewriting (tag 0.1.0 must not turn
   // afm_0.1.0_macOS into afm_v#{version}_macOS after a partial first replace).
   const urlTemplate = (url: string) => templateReleaseUrl(url, version, release.tagName);

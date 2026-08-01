@@ -394,9 +394,16 @@ describe("isAppAsset", () => {
     expect(isAppAsset("Foo-1.2.3.DMG")).toBe(true);
   });
 
-  it("matches macOS .zip files", () => {
+  it("matches macOS desktop .zip files without cpu arch tags", () => {
     expect(isAppAsset("Foo-macos.zip")).toBe(true);
-    expect(isAppAsset("Foo-darwin-arm64.zip")).toBe(true);
+    expect(isAppAsset("Foo-darwin.zip")).toBe(true);
+    expect(isAppAsset("MyApp.app.zip")).toBe(true);
+  });
+
+  it("rejects arch-tagged darwin/macos CLI zips (not app bundles)", () => {
+    expect(isAppAsset("Foo-darwin-arm64.zip")).toBe(false);
+    expect(isAppAsset("gogs_0.14.3_darwin_amd64.zip")).toBe(false);
+    expect(isAppAsset("tool-macos-x64.zip")).toBe(false);
   });
 
   it("rejects non-mac .zip files", () => {
@@ -428,6 +435,12 @@ describe("isBinaryAsset", () => {
   it("rejects app assets", () => {
     expect(isBinaryAsset("Foo-macos.zip")).toBe(false);
     expect(isBinaryAsset("Foo.dmg")).toBe(false);
+    expect(isBinaryAsset("MyApp.app.zip")).toBe(false);
+  });
+
+  it("treats arch-tagged darwin zips as CLI binaries", () => {
+    expect(isBinaryAsset("gogs_0.14.3_darwin_amd64.zip")).toBe(true);
+    expect(isBinaryAsset("Foo-darwin-arm64.zip")).toBe(true);
   });
 
   it("rejects checksum/docs and untagged binaries", () => {
