@@ -224,3 +224,33 @@ describe("collectInstallScriptPayload — Cua Driver", () => {
     expect(payload.livecheckBlock).toContain("cua.ai/driver/install.sh");
   });
 });
+
+describe("collectInstallScriptPayload — version attribute", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
+  it("includes a non-empty version for static install URLs", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://starship.rs/install.sh",
+    );
+    expect(payload.version).toBeTruthy();
+    expect(String(payload.version).length).toBeGreaterThan(0);
+  });
+
+  it("respects version override", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://starship.rs/install.sh",
+      { version: "v9.8.7" },
+    );
+    expect(payload.version).toBe("9.8.7");
+  });
+
+  it("extracts version from URL path when present", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://example.com/releases/v1.2.3/install.sh",
+    );
+    expect(payload.version).toBe("1.2.3");
+  });
+});
+

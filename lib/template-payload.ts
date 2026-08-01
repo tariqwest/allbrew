@@ -85,6 +85,7 @@ export type SetappCliPayload = Omit<BinaryReleasePayload, "template"> & {
 
 export type InstallScriptPayload = FormulaCommonFields & {
   template: "install_script";
+  version: string;
   url: string;
   licenseLine: string;
   sha256: string;

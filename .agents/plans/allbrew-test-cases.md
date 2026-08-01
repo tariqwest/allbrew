@@ -301,7 +301,7 @@
 | authsec-bridge | Python | | | github.com/authsec-ai/authsec-bridge | | | | | | | | | | | | | | | | | | | session bridge for Claude Code/Codex/Gemini CLI; `pip install -e .` from git clone; no PyPI package; no releases; MIT; edge case for source-build (Python not autotools) |
 | MōIcons | TypeScript | React / MōBrowser | | github.com/mo-browser-apps/icons | | | | | | | | | | | | | yes | | MoIcons-1.0.3-arm64.dmg | yes | yes | | AI macOS app icon generator; arm64-only DMG; signed + notarized; MIT; v1.0.3; 703 stars; not in HB |
 | Eigent | | | | eigent-ai/eigent | cask | | | | | | | | | | | | yes | | Eigent-1.0.1-arm64.dmg | | yes | | Desktop AI agent, 14.5k stars, Apache-2.0, already in HB as cask, cask-app-release generator |
-| Hermes One | TypeScript | Electron | hermesone.org | github.com/fathah/hermes-desktop | | | | | | | | | | | | | yes | | hermes-desktop-0.7.3-arm64.dmg | yes | | | Hermes Agent desktop GUI; MIT; v0.7.3; 13.4k stars; not in HB; electron-builder; arm64+x64 DMG; name override needed (repo name hermes-desktop collides with dodo-reach/hermes-desktop); cask-app-release |
+| Hermes One | TypeScript/Electron | | https://hermesone.org/ | github.com/fathah/hermes-desktop | hermes-desktop (different product: NousResearch agent desktop) | | | | | | | | | | | | yes | | hermes-desktop-0.7.6-arm64.dmg | | | yes | Marketing site hermesone.org links curl|bash agent script + fathah/hermes-desktop; page-discover must enrich GH release DMGs over install.sh. Collides with HB cask hermes-desktop (different app) → hermes-desktop-tap. cask-app-release. v0.7.6 MIT. |
 | ego lite | | | lite.ego.app | github.com/citrolabs/ego-lite | | | | | | | | | | | | | yes | | egolite.dmg | | yes (2) | | AI agent browser (Chromium); repo MIT, browser binary is separate free download (closed-source); v1.2.5; 5.4k stars; CDN DMG at cdn.ego.app with no version in URL (arm64 + x64); GitHub releases only host the ego-browser skill zip, not the DMG; not in HB; cask-app generator |
 | zap-zerx-lab | rust | gui-terminal | | https://github.com/zerx-lab/zap | homebrew/cask has unrelated OWASP zap (deprecated) | | | | | | | | | | | | yes | | Zap-arm64.dmg | yes | yes (dmg+tgz dual) | | zerx-lab/zap local-first AI terminal; dual app+CLI release assets; prefer cask-app-release; rename away from homebrew/cask zap (OWASP); no brew service; AGPL-3.0 cask-app-release |
 | harnesskit | Rust/TypeScript | Tauri 2 / React | | github.com/RealZST/HarnessKit | | | | | | | | | | | | | yes | | HarnessKit_1.6.5_aarch64.dmg | yes | yes (14) | | AI coding agent extension manager; Tauri 2 desktop + standalone hk CLI binary; arch-specific DMGs (aarch64 + x64); hk CLI binary also on releases; install.sh available; Apache-2.0; 352 stars; v1.6.5; not in HB; cask-app-release generator |
@@ -321,7 +321,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -376,12 +376,11 @@
 | brew install agent-deck && agent-deck --version | | | | | | | | | | | | | | | | | | | | | | | |
 | # future generators (manual today) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned) | | | | | | | | | | | | | | | | | | | | | | | |
-| ``` | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ``` | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | Record per pick: generator chosen, bin name vs package name drift, livecheck source, service | | | | | | | | | | | | | | | | | | | | | | | |
 | block (flower/wakapi/smtp4dev), and any native-build failures (tgt/TDLib, goatcounter/CGO, | | | | | | | | | | | | | | | | | | | | | | | |
 | Fyne/`fyne install`). | | | | | | | | | | | | | | | | | | | | | | | |
----
-
+| --- | | | | | | | | | | | | | | | | | | | | | | | |
 ## How to drive a test (cask-app & script-install)
 
 ```bash

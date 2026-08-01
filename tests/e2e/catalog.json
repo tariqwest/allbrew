@@ -5070,5 +5070,21 @@
     ],
     "skip": true,
     "notes": "Multi-product SPM Gemma Metal runtime; requires macOS 26+/Swift 6.2; no service block; primary bin TurboFieldfareCLI"
+  },
+  {
+    "name": "hermes-desktop-tap",
+    "url": "https://hermesone.org/",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "hermes-desktop"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "ls",
+      "/Users/tariqwest/Applications/Hermes One.app"
+    ],
+    "skip": true,
+    "notes": "Homepage discovers fathah/hermes-desktop release DMG via GH enrichment; renames off homebrew/cask hermes-desktop collision."
   }
 ]

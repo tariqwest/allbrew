@@ -465,6 +465,7 @@ function buildInstallScriptCase(): Case {
     desc: "Install foo via setup script",
     homepage: "https://example.com/install.sh",
     url: "https://example.com/install.sh",
+    version: "0.0.1",
     sha256: "11",
     licenseLine: "",
     scriptFilename: "install.sh",
@@ -478,6 +479,7 @@ function buildInstallScriptCase(): Case {
     `  desc "Install foo via setup script"\n` +
     `  homepage "https://example.com/install.sh"\n` +
     `  url "https://example.com/install.sh"\n` +
+    `  version "0.0.1"\n` +
     `  sha256 "11"\n` +
     `\n` +
     `  def install\n` +

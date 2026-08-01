@@ -5,6 +5,7 @@ export default function renderInstallScript(p: InstallScriptPayload): string {
   desc "${p.desc}"
   homepage "${p.homepage}"
   url "${p.url}"
+  version "${p.version}"
   sha256 "${p.sha256}"
 ${p.licenseLine}
 ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n\n` : ""}  def install

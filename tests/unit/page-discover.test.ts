@@ -9,6 +9,8 @@ import {
   parseDiscoverMode,
   pickAutoCandidate,
   scoreCandidateUrl,
+  enrichGithubReleaseAssets,
+  parseGithubRepoHome,
 } from "../../lib/page-discover.ts";
 import { assertSafePublicFetchUrl } from "../../lib/utils.ts";
 
@@ -171,3 +173,49 @@ describe("extractArtifactUrlsFromJson", () => {
     expect(scored[0].kind).toBe("cask-dmg");
   });
 });
+
+describe("enrichGithubReleaseAssets", () => {
+  it("parses clean github repo homes only", () => {
+    expect(parseGithubRepoHome("https://github.com/fathah/hermes-desktop")).toEqual({
+      owner: "fathah",
+      repo: "hermes-desktop",
+    });
+    expect(parseGithubRepoHome("https://github.com/fathah/hermes-desktop/blob/main/LICENSE")).toBeNull();
+  });
+
+  it("adds release DMG candidates so they beat install scripts", async () => {
+    const page = "https://hermesone.org/";
+    const list = [
+      scoreCandidateUrl(
+        "https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh",
+        page,
+        ["install-command"],
+      ),
+      scoreCandidateUrl("https://github.com/fathah/hermes-desktop", page),
+      scoreCandidateUrl("https://github.com/NousResearch/hermes-agent", page),
+    ].sort((a, b) => b.score - a.score);
+
+    const enriched = await enrichGithubReleaseAssets(list, page, {
+      getLatestRelease: async (owner, repo) => {
+        if (owner === "fathah" && repo === "hermes-desktop") {
+          return {
+            tagName: "v0.7.6",
+            assets: [
+              {
+                name: "hermes-desktop-0.7.6-arm64.dmg",
+                url: "https://github.com/fathah/hermes-desktop/releases/download/v0.7.6/hermes-desktop-0.7.6-arm64.dmg",
+              },
+            ],
+          };
+        }
+        return { tagName: "v1.0.0", assets: [] };
+      },
+    });
+
+    const chosen = pickAutoCandidate(enriched);
+    expect(chosen?.kind).toBe("cask-dmg");
+    expect(chosen?.url).toContain(".dmg");
+    expect(chosen!.score).toBeGreaterThan(list[0].score);
+  });
+});
+

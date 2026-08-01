@@ -300,6 +300,102 @@ export function pickAutoCandidate(
   return top;
 }
 
+const GITHUB_REPO_URL_RE =
+  /^https?:\/\/(?:www\.)?github\.com\/([^/\s]+)\/([^/\s#?]+)\/?$/i;
+
+/** Parse owner/repo from a clean GitHub repository homepage URL (not blob/tree/issues). */
+export function parseGithubRepoHome(url: string): { owner: string; repo: string } | null {
+  try {
+    const u = new URL(url);
+    if (!/^(?:www\.)?github\.com$/i.test(u.hostname)) return null;
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (parts.length !== 2) return null;
+    const [owner, repoRaw] = parts;
+    const repo = repoRaw.replace(/\.git$/i, "");
+    if (!owner || !repo || owner === "orgs" || owner === "settings") return null;
+    return { owner, repo };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * When a marketing page only links GitHub repos (and maybe curl|bash), expand
+ * latest-release DMG/PKG/ZIP app assets so macOS desktop installs win over
+ * secondary agent install scripts.
+ */
+export async function enrichGithubReleaseAssets(
+  candidates: DiscoverCandidate[],
+  pageUrl: string,
+  opts: {
+    log?: (msg: string) => void;
+    getLatestRelease?: (owner: string, repo: string) => Promise<any>;
+    maxRepos?: number;
+  } = {},
+): Promise<DiscoverCandidate[]> {
+  const log = opts.log || (() => {});
+  const maxRepos = opts.maxRepos ?? 4;
+  const hasDmg = candidates.some(
+    (c) => c.kind === "cask-dmg" || /\.dmg(?:\?|#|$)/i.test(c.url),
+  );
+  if (hasDmg) return candidates;
+
+  const seen = new Set<string>();
+  const repos: { owner: string; repo: string; sourceUrl: string }[] = [];
+  for (const c of candidates) {
+    if (c.kind !== "github-repo" && !GITHUB_REPO_URL_RE.test(c.url)) continue;
+    const parsed = parseGithubRepoHome(c.url);
+    if (!parsed) continue;
+    const key = `${parsed.owner}/${parsed.repo}`.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    repos.push({ ...parsed, sourceUrl: c.url });
+    if (repos.length >= maxRepos) break;
+  }
+  if (repos.length === 0) return candidates;
+
+  let getLatest = opts.getLatestRelease;
+  if (!getLatest) {
+    try {
+      const gh = await import("./github.ts");
+      getLatest = gh.getLatestRelease;
+    } catch {
+      return candidates;
+    }
+  }
+
+  const extras: DiscoverCandidate[] = [];
+  for (const { owner, repo } of repos) {
+    try {
+      const release = await getLatest(owner, repo);
+      if (!release?.assets?.length) continue;
+      for (const asset of release.assets) {
+        const assetUrl = String(asset.url || asset.browser_download_url || "");
+        const name = String(asset.name || assetUrl);
+        if (!assetUrl) continue;
+        if (!/\.(dmg|pkg|zip)(?:\?|#|$)/i.test(assetUrl) && !/\.(dmg|pkg|zip)$/i.test(name)) {
+          continue;
+        }
+        // Skip obvious non-mac archives when name encodes platform
+        if (/windows|win32|win64|linux|\.exe/i.test(name) && !/mac|darwin|osx/i.test(name)) {
+          continue;
+        }
+        const scored = scoreCandidateUrl(assetUrl, pageUrl, [
+          "github-release-asset",
+          `repo:${owner}/${repo}`,
+        ]);
+        scored.score += 20;
+        scored.evidence.push("release-enrichment");
+        extras.push(scored);
+      }
+    } catch (err: any) {
+      log(`release enrich ${owner}/${repo}: ${err?.message || err}`);
+    }
+  }
+  if (!extras.length) return candidates;
+  return mergeCandidates(candidates, extras);
+}
+
 function looksLikeEmptyShell(html: string): boolean {
   const stripped = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -576,6 +672,13 @@ export async function discoverPageDownloads(
     } catch {
       /* ignore api discovery errors */
     }
+  }
+
+  // Tier A.6: expand GitHub repo links to latest release DMG/PKG/ZIP assets
+  try {
+    candidates = await enrichGithubReleaseAssets(candidates, finalPageUrl, { log });
+  } catch {
+    /* ignore release enrichment errors */
   }
 
   const top = pickAutoCandidate(candidates);
