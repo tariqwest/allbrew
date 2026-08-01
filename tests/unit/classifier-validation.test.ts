@@ -2,12 +2,18 @@ import { describe, it, expect } from "bun:test";
 import { classify } from "../../lib/classifier.ts";
 import { oracleClassify } from "../helpers/classifier-oracle.ts";
 import {
+  expectedClassifierType,
+  loadGroundTruthOverrides,
+} from "../helpers/classifier-ground-truth.ts";
+import {
   materializeCell,
   materializeFromTable,
   DEFAULT_TEST_CASES_TABLE,
 } from "../helpers/test-case-locations.ts";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+
+const GT_OVERRIDES = loadGroundTruthOverrides();
 
 // Same conflict matrix URLs as classifier-conflict-matrix.test.ts
 const CONFLICT_URLS: { url: string; expectedType: string }[] = [
@@ -236,6 +242,32 @@ describe("seed fixtures", () => {
       const r = classify(s.url);
       expect(typeof r.type).toBe("string");
       expect(oracleClassify(s.url).type).toBe(r.type);
+      const gt = expectedClassifierType("seed", s.url, GT_OVERRIDES);
+      // When ground truth is shape-driven, classifier must match.
+      if (gt.basis === "url-shape" || gt.basis === "override") {
+        expect(r.type).toBe(gt.expected_type);
+      }
+    }
+  });
+});
+
+describe("ground-truth overrides fixture", () => {
+  it("ground-truth-overrides.json parses and applies", () => {
+    const path = resolve(
+      import.meta.dir,
+      "../fixtures/classifier-validation/ground-truth-overrides.json",
+    );
+    expect(existsSync(path)).toBe(true);
+    const file = JSON.parse(readFileSync(path, "utf-8")) as {
+      version: number;
+      overrides: Record<string, { expected_type: string }>;
+    };
+    expect(file.version).toBe(1);
+    expect(Object.keys(file.overrides).length).toBeGreaterThan(0);
+    for (const [url, o] of Object.entries(file.overrides)) {
+      const gt = expectedClassifierType("seed", url, GT_OVERRIDES);
+      expect(gt.expected_type).toBe(o.expected_type);
+      expect(gt.basis).toBe("override");
     }
   });
 });

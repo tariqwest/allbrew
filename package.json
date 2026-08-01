@@ -32,6 +32,8 @@
     "test:durations": "bun run scripts/categorize-test-durations.ts",
     "test:classifier-validate": "bun run scripts/classifier-validate.ts",
     "test:classifier-validate:bootstrap": "bun run scripts/classifier-validate.ts --write-agent-judgments --fail-on-oracle",
+    "test:classifier-validate:ground-truth": "bun run scripts/classifier-validate.ts --fail-on-ground-truth",
+    "test:classifier-ground-truth": "bun test tests/unit/classifier-ground-truth.test.ts tests/unit/classifier-validation.test.ts",
     "vm:init": "macos-test-harness init",
     "vm:setup": "macos-test-harness setup",
     "vm:test": "macos-test-harness run",
