@@ -246,6 +246,14 @@ describe("extractVersionFromTag", () => {
   it("handles complex version strings", () => {
     expect(extractVersionFromTag("v2026.4.8")).toBe("2026.4.8");
   });
+
+  it("strips rust-v style prefixes", () => {
+    expect(extractVersionFromTag("rust-v0.0.34")).toBe("0.0.34");
+  });
+
+  it("strips release- prefixes", () => {
+    expect(extractVersionFromTag("release-1.2.3")).toBe("1.2.3");
+  });
 });
 
 describe("rubyEscape", () => {

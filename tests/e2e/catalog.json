@@ -5036,5 +5036,23 @@
     ],
     "skip": true,
     "notes": "zerx-lab/zap GUI terminal; dual DMG+tarball assets; non-interactive prefers cask; renames off homebrew/cask OWASP zap token to zap-zerx-lab / zap-tap; no service"
+  },
+  {
+    "name": "open-interpreter",
+    "url": "https://github.com/openinterpreter/openinterpreter",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "open-interpreter",
+      "--desc",
+      "A coding agent for open models like Kimi K3"
+    ],
+    "expectedBin": "open-interpreter",
+    "verifyCommand": [
+      "open-interpreter",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Rust Codex-fork package tarball with nested bin/interpreter + resources; not the legacy PyPI open-interpreter package."
   }
 ]

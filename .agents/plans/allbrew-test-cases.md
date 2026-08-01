@@ -315,11 +315,12 @@
 | LibreChat | TypeScript | React / Node.js | librechat.ai | github.com/danny-avila/LibreChat | | | | | | | | | | | | | | yes | | yes | tags only | | Self-hosted multi-provider AI chat; Docker primary; npm workspaces monorepo (not npm-published); no release assets; v0.8.7 pre-release; MIT; 41.2k stars; not in HB; source-build (make fallback; requires custom Node/Docker build) |
 | cua-driver | Rust | | cua.ai/cua-driver | github.com/trycua/cua | | | | | | | | | | | | | yes | | | yes | yes | https://cua.ai/driver/install.sh | Background computer-use driver; installs CuaDriver.app + cua-driver CLI via install script; monorepo libs/cua-driver; latest stable v0.9.1; pre-release v0.10.0; 20.4k stars; MIT; not in HB; install-script generator |
 | aichat | Rust | | | github.com/sigoden/aichat | aichat (formula) | | | | | crates.io/crates/aichat | | | | | | yes | | | | yes | yes (10) | | All-in-one AI chat CLI; v0.30.0; 10.3k stars; MIT OR Apache-2.0; in HB; also on crates.io; cargo-package generator (prefer crates.io over prebuilt GitHub release archives) |
+| Open Interpreter (Rust) | rust | Bazel/Codex fork | | https://github.com/openinterpreter/openinterpreter | no | | | | | | | | | | | yes | | | | | yes (4 tar.gz) | yes | Rust coding agent (not PyPI open-interpreter). Release assets open-interpreter-package-*-apple-darwin.tar.gz nest entrypoint at bin/interpreter + codex-resources. Tag rust-v0.0.34. binary-release must libexec.install + symlink; flat bin.install open-interpreter ENOENT. binary-release |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -372,10 +373,9 @@
 | # go-package (not-in-HB Go TUI with web UI) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://github.com/asheshgoplani/agent-deck --manual  # → go-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install agent-deck && agent-deck --version | | | | | | | | | | | | | | | | | | | | | | | |
-# future generators (manual today)
-allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned)
-```
-
+| # future generators (manual today) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned) | | | | | | | | | | | | | | | | | | | | | | | |
+| ``` | | | | | | | | | | | | | | | | | | | | | | | |
 Record per pick: generator chosen, bin name vs package name drift, livecheck source, service
 block (flower/wakapi/smtp4dev), and any native-build failures (tgt/TDLib, goatcounter/CGO,
 Fyne/`fyne install`).

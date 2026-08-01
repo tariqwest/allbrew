@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import {
   toFormulaName,
   toClassName,
@@ -5,16 +7,19 @@ import {
   matchAssetToArch,
   isBinaryAsset,
   isBareBinaryAsset,
+  isArchiveBinaryAsset,
   rubyString,
   rubyEscape,
   guessLicenseIdentifier,
   getAllbrewFormulaDependency,
 } from "../utils.ts";
-import { downloadAndHash } from "../sha256.ts";
+import { downloadToTemp } from "../sha256.ts";
 import { githubLatestLivecheckBlock } from "./livecheck.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { BinaryReleasePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
+
+const execFileAsync = promisify(execFile);
 
 type ArchHash = { url: string; sha256: string; name: string };
 
@@ -50,24 +55,123 @@ export function resolveBinaryReleaseBinName(
   return formulaName;
 }
 
+/** Prefer entrypoint names that match formula / common CLI conventions. */
+export function pickArchiveEntrypoint(
+  members: string[],
+  formulaName: string,
+  options: { binName?: string } = {},
+): { sourcePath: string; binName: string } | null {
+  const files = members
+    .map((m) => m.replace(/\\/g, "/").replace(/^\.\//, ""))
+    .filter((m) => m && !m.endsWith("/"));
+
+  const candidates = files.filter((m) => {
+    const base = m.split("/").pop() || "";
+    if (!base || base.startsWith(".")) return false;
+    if (/\.(txt|md|json|sha256|sig|asc|1|html|sample|dylib|so|a)$/i.test(base)) return false;
+    // Prefer bin/ layout; also allow root-level binaries.
+    return (
+      /(^|\/)bin\//.test(m) ||
+      !m.includes("/")
+    );
+  });
+
+  if (candidates.length === 0) return null;
+
+  const preferredNames = [
+    options.binName,
+    formulaName,
+    formulaName.replace(/-/g, ""),
+    // Common short aliases for "open-interpreter" style packages.
+    formulaName.endsWith("-interpreter") ? "interpreter" : "",
+    formulaName.startsWith("open-") ? formulaName.slice(5) : "",
+  ].filter(Boolean) as string[];
+
+  const score = (path: string): number => {
+    const base = path.split("/").pop() || "";
+    let s = 0;
+    if (/(^|\/)bin\//.test(path)) s += 50;
+    const prefIdx = preferredNames.findIndex((n) => n.toLowerCase() === base.toLowerCase());
+    if (prefIdx >= 0) s += 40 - prefIdx;
+    // Deprioritize helper hosts / path tools.
+    if (/host|rg$|zsh|node|python/i.test(base)) s -= 20;
+    if (base.length === 1) s -= 5; // e.g. "i"
+    return s;
+  };
+
+  const ranked = [...candidates].sort((a, b) => score(b) - score(a));
+  const best = ranked[0];
+  const base = best.split("/").pop() || formulaName;
+  const binName = options.binName || preferredNames[0] || base;
+  return { sourcePath: best, binName };
+}
+
 export function buildBinaryReleaseInstallBody(
   binName: string,
   assetNames: string[],
+  archiveEntrypoint?: string | null,
 ): string {
   const bare = assetNames.filter((n) => isBareBinaryAsset(n));
-  if (bare.length === 0) {
-    return `bin.install ${rubyString(binName)}`;
+  if (bare.length > 0) {
+    // Each platform URL is a single bare binary; rename asset basename → binName.
+    // Use Dir[] so the staged filename (asset basename) is discovered without
+    // hardcoding every arch-specific name into the formula.
+    return [
+      `bin_path = Dir["*"].find { |f| File.file?(f) && File.executable?(f) }`,
+      `bin_path ||= Dir["*"].find { |f| File.file?(f) && !f.end_with?(".txt", ".sha256", ".sig", ".asc") }`,
+      `odie "No binary found in download" unless bin_path`,
+      `bin.install bin_path => ${rubyString(binName)}`,
+    ].join("\n    ");
   }
 
-  // Each platform URL is a single bare binary; rename asset basename → binName.
-  // Use Dir[] so the staged filename (asset basename) is discovered without
-  // hardcoding every arch-specific name into the formula.
-  return [
-    `bin_path = Dir["*"].find { |f| File.file?(f) && File.executable?(f) }`,
-    `bin_path ||= Dir["*"].find { |f| File.file?(f) && !f.end_with?(".txt", ".sha256", ".sig", ".asc") }`,
-    `odie "No binary found in download" unless bin_path`,
-    `bin.install bin_path => ${rubyString(binName)}`,
-  ].join("\n    ");
+  // Nested package archives (e.g. open-interpreter-package-*/bin/interpreter + resources).
+  if (archiveEntrypoint) {
+    const src = archiveEntrypoint.replace(/\\/g, "/");
+    const lines = [
+      `libexec.install Dir["*"]`,
+      `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(binName)}`,
+    ];
+    // Also expose the upstream entrypoint basename when it differs (interpreter vs open-interpreter).
+    const upstreamBase = src.split("/").pop() || "";
+    if (upstreamBase && upstreamBase !== binName) {
+      lines.push(
+        `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(upstreamBase)}`,
+      );
+    }
+    return lines.join("\n    ");
+  }
+
+  // Fallback: flat archive with binary named like the formula.
+  return `bin.install ${rubyString(binName)}`;
+}
+
+async function listArchiveMembersFromPath(archivePath: string): Promise<string[]> {
+  const lower = archivePath.toLowerCase();
+  if (lower.endsWith(".zip")) {
+    try {
+      const { stdout } = await execFileAsync("zipinfo", ["-1", archivePath]);
+      return stdout.split("\n").map((l) => l.trim()).filter(Boolean);
+    } catch {
+      const { stdout } = await execFileAsync("unzip", ["-l", archivePath]);
+      return stdout
+        .split("\n")
+        .slice(3)
+        .map((line) => line.trim().split(/\s+/).slice(3).join(" "))
+        .filter((f) => f && !f.startsWith("---"));
+    }
+  }
+  if (
+    lower.endsWith(".tar.gz") ||
+    lower.endsWith(".tgz") ||
+    lower.endsWith(".tar.bz2") ||
+    lower.endsWith(".tar.xz") ||
+    lower.endsWith(".tar") ||
+    lower.endsWith(".tar.zst")
+  ) {
+    const { stdout } = await execFileAsync("tar", ["-tf", archivePath]);
+    return stdout.split("\n").map((l) => l.trim()).filter(Boolean);
+  }
+  return [];
 }
 
 export async function collectBinaryReleasePayload(
@@ -101,13 +205,55 @@ export async function collectBinaryReleasePayload(
   }
 
   const hashes: Record<string, ArchHash> = {};
-  for (const [arch, asset] of Object.entries(archAssets)) {
-    const { sha256 } = await downloadAndHash(asset.url);
-    hashes[arch] = { url: asset.url, sha256, name: asset.name };
+  let archiveEntrypoint: string | null = null;
+  let archiveBinName: string | undefined;
+
+  // Prefer inspecting a macOS archive first (local brew installs), else any arch.
+  const archOrder = ["macosArm", "macosIntel", "linuxArm", "linuxIntel"];
+  const orderedArchs = [
+    ...archOrder.filter((a) => archAssets[a]),
+    ...Object.keys(archAssets).filter((a) => !archOrder.includes(a)),
+  ];
+
+  let inspectedArchive = false;
+  for (const arch of orderedArchs) {
+    const asset = archAssets[arch];
+    const shouldInspect =
+      !inspectedArchive && isArchiveBinaryAsset(asset.name);
+
+    if (shouldInspect) {
+      inspectedArchive = true;
+      const dl = await downloadToTemp(asset.url, asset.name);
+      try {
+        hashes[arch] = { url: asset.url, sha256: dl.sha256, name: asset.name };
+        try {
+          const members = await listArchiveMembersFromPath(dl.path);
+          const picked = pickArchiveEntrypoint(members, name, options);
+          if (picked) {
+            archiveEntrypoint = picked.sourcePath;
+            archiveBinName = picked.binName;
+          }
+        } catch {
+          // Fall back to formula-name install if listing fails.
+        }
+      } finally {
+        await dl.cleanup();
+      }
+    } else {
+      // Stream hash to a throwaway path so multi-hundred-MB archives are not
+      // retained in memory for every architecture.
+      const dl = await downloadToTemp(asset.url, asset.name);
+      try {
+        hashes[arch] = { url: asset.url, sha256: dl.sha256, name: asset.name };
+      } finally {
+        await dl.cleanup();
+      }
+    }
   }
 
   const assetNames = Object.values(hashes).map((h) => h.name);
-  const binName = resolveBinaryReleaseBinName(name, assetNames, options);
+  const binName = archiveBinName
+    || resolveBinaryReleaseBinName(name, assetNames, options);
 
   // Template version tokens without double-rewriting (tag 0.1.0 must not turn
   // afm_0.1.0_macOS into afm_v#{version}_macOS after a partial first replace).
@@ -121,7 +267,7 @@ export async function collectBinaryReleasePayload(
     homepage: rubyEscape(homepage),
     version: rubyEscape(version),
     binName: rubyEscape(binName),
-    installBody: buildBinaryReleaseInstallBody(binName, assetNames),
+    installBody: buildBinaryReleaseInstallBody(binName, assetNames, archiveEntrypoint),
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     platformBlocks: buildPlatformBlocks(hashes, urlTemplate),
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName, ":stable"),
@@ -141,10 +287,17 @@ export function templateReleaseUrl(
   const tag = String(tagName || "");
   const ver = String(version || "");
 
-  // Prefer whole-tag replacement first (handles v1.2.3 tags and bare 1.2.3).
+  // Prefer whole-tag replacement first. Preserve non-version prefixes in the tag
+  // (e.g. rust-v0.0.34 → rust-v#{version}, v1.2.3 → v#{version}).
   if (tag && out.includes(tag)) {
-    const tagHasV = /^v/i.test(tag);
-    const replacement = tagHasV ? "v#{version}" : "#{version}";
+    let replacement: string;
+    if (ver && tag.includes(ver)) {
+      replacement = tag.split(ver).join("#{version}");
+    } else if (/^v/i.test(tag)) {
+      replacement = "v#{version}";
+    } else {
+      replacement = "#{version}";
+    }
     out = out.split(tag).join(replacement);
   } else if (ver && out.includes(ver)) {
     out = out.split(ver).join("#{version}");
