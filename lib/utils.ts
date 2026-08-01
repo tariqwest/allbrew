@@ -27,6 +27,10 @@ export function toCaskToken(name) {
 }
 
 let cachedHomebrewCorePrefix: string | null | undefined;
+let cachedHomebrewCaskPrefix: string | null | undefined;
+let cachedHomebrewCachePrefix: string | null | undefined;
+/** Test override for isHomebrewCaskToken: Set of tokens treated as official casks. */
+let homebrewCaskTokenTestOverride: Set<string> | null | undefined;
 
 /** Resolve homebrew/core checkout path (or null when brew/core is unavailable). */
 export function getHomebrewCorePrefix(): string | null {
@@ -43,9 +47,67 @@ export function getHomebrewCorePrefix(): string | null {
   return cachedHomebrewCorePrefix;
 }
 
+/** Resolve homebrew/cask checkout path (or null when brew/cask is unavailable). */
+export function getHomebrewCaskPrefix(): string | null {
+  if (cachedHomebrewCaskPrefix !== undefined) return cachedHomebrewCaskPrefix;
+  try {
+    const out = execFileSync("brew", ["--repo", "homebrew/cask"], {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    cachedHomebrewCaskPrefix = out || null;
+  } catch {
+    cachedHomebrewCaskPrefix = null;
+  }
+  return cachedHomebrewCaskPrefix;
+}
+
+/** Resolve Homebrew cache root (or null). Used for API JSON cask lookups. */
+export function getHomebrewCachePrefix(): string | null {
+  if (cachedHomebrewCachePrefix !== undefined) return cachedHomebrewCachePrefix;
+  try {
+    const out = execFileSync("brew", ["--cache"], {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    cachedHomebrewCachePrefix = out || null;
+  } catch {
+    cachedHomebrewCachePrefix = null;
+  }
+  return cachedHomebrewCachePrefix;
+}
+
 /** Test-only: override or clear the cached brew --repo homebrew/core path. */
 export function setHomebrewCorePrefixForTests(path: string | null | undefined) {
   cachedHomebrewCorePrefix = path;
+}
+
+/** Test-only: override or clear the cached brew --repo homebrew/cask path. */
+export function setHomebrewCaskPrefixForTests(path: string | null | undefined) {
+  cachedHomebrewCaskPrefix = path;
+}
+
+/** Test-only: override or clear the cached brew --cache path. */
+export function setHomebrewCachePrefixForTests(path: string | null | undefined) {
+  cachedHomebrewCachePrefix = path;
+}
+
+/**
+ * Test-only: force isHomebrewCaskToken answers without invoking brew.
+ * Pass a Set of colliding tokens, null for "none collide", undefined to clear.
+ */
+export function setHomebrewCaskTokenOverrideForTests(
+  tokens: Set<string> | null | undefined,
+) {
+  homebrewCaskTokenTestOverride = tokens;
+}
+
+function homebrewCaskRubyPaths(caskRoot: string, token: string): string[] {
+  const letter = token[0];
+  return [
+    join(caskRoot, "Casks", letter, `${token}.rb`),
+    join(caskRoot, "Casks", `${token}.rb`),
+  ];
 }
 
 /** True when homebrew/core already ships a formula with this token. */
@@ -57,6 +119,50 @@ export function isHomebrewCoreFormulaName(name: string): boolean {
   const letter = token[0];
   if (!/[a-z0-9]/.test(letter)) return false;
   return existsSync(join(core, "Formula", letter, `${token}.rb`));
+}
+
+/** True when homebrew/cask already ships a cask with this token. */
+export function isHomebrewCaskToken(name: string): boolean {
+  const token = toCaskToken(name || "");
+  if (!token) return false;
+  if (homebrewCaskTokenTestOverride !== undefined) {
+    if (homebrewCaskTokenTestOverride === null) return false;
+    return homebrewCaskTokenTestOverride.has(token);
+  }
+  const letter = token[0];
+  if (!/[a-z0-9]/.test(letter)) return false;
+
+  const caskRoot = getHomebrewCaskPrefix();
+  if (caskRoot && homebrewCaskRubyPaths(caskRoot, token).some((p) => existsSync(p))) {
+    return true;
+  }
+
+  // Modern Homebrew often has no full homebrew/cask checkout; use API cache JSON.
+  const cacheRoot = getHomebrewCachePrefix();
+  if (cacheRoot && existsSync(join(cacheRoot, "api", "cask", `${token}.json`))) {
+    return true;
+  }
+
+  // Last resort: ask brew (works even when cache is cold).
+  try {
+    const out = execFileSync(
+      "brew",
+      ["info", "--json=v2", "--cask", token],
+      {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+      },
+    );
+    const parsed = JSON.parse(out);
+    const casks = Array.isArray(parsed?.casks) ? parsed.casks : [];
+    return casks.some(
+      (c: any) =>
+        (c?.token === token || c?.full_token === token) &&
+        String(c?.tap || "").includes("homebrew/cask"),
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -109,6 +215,68 @@ export function resolveNonCollidingFormulaName(
     renamedFrom: preferred,
     reason: `homebrew/core already has formula "${preferred}"`,
   };
+}
+
+/**
+ * Avoid bare cask tokens that collide with homebrew/cask.
+ * Reusing tokens like "zap" (OWASP ZAP) makes brew info/install ambiguous and
+ * can install or report the wrong app when multiple taps define the same token.
+ */
+export function resolveNonCollidingCaskName(
+  preferredName: string,
+  alternatives: Array<string | null | undefined> = [],
+): { name: string; renamedFrom: string | null; reason: string | null } {
+  const preferred = toCaskToken(preferredName || "");
+  if (!preferred) {
+    return { name: preferred, renamedFrom: null, reason: null };
+  }
+  if (!isHomebrewCaskToken(preferred)) {
+    return { name: preferred, renamedFrom: null, reason: null };
+  }
+
+  const seen = new Set<string>([preferred]);
+  for (const alt of alternatives) {
+    const candidate = toCaskToken(String(alt || ""));
+    if (!candidate || seen.has(candidate)) continue;
+    seen.add(candidate);
+    if (!isHomebrewCaskToken(candidate)) {
+      return {
+        name: candidate,
+        renamedFrom: preferred,
+        reason: `homebrew/cask already has cask "${preferred}"`,
+      };
+    }
+  }
+
+  let suffix = 1;
+  while (suffix < 50) {
+    const candidate = `${preferred}-tap${suffix === 1 ? "" : suffix}`;
+    if (!isHomebrewCaskToken(candidate) && !seen.has(candidate)) {
+      return {
+        name: candidate,
+        renamedFrom: preferred,
+        reason: `homebrew/cask already has cask "${preferred}"`,
+      };
+    }
+    suffix += 1;
+  }
+
+  return {
+    name: `${preferred}-allbrew`,
+    renamedFrom: preferred,
+    reason: `homebrew/cask already has cask "${preferred}"`,
+  };
+}
+
+/** Prefer cask when a GitHub release ships both app bundles and CLI binaries. */
+export function chooseReleaseArtifactKind(
+  appAssetCount: number,
+  binAssetCount: number,
+): "cask" | "binary" | null {
+  if (appAssetCount > 0 && binAssetCount > 0) return "cask";
+  if (appAssetCount > 0) return "cask";
+  if (binAssetCount > 0) return "binary";
+  return null;
 }
 
 export function extractVersionFromTag(tag) {

@@ -5015,5 +5015,26 @@
     ],
     "skip": true,
     "notes": "HKUDS/nanobot PyPI nanobot-ai; homebrew/core owns unrelated nanobot Go formula so allbrew renames to nanobot-ai; service should be nanobot gateway; preserve_rpath for jiter wheels"
+  },
+  {
+    "name": "zap-zerx-lab",
+    "url": "https://github.com/zerx-lab/zap",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "zap",
+      "--app-name",
+      "Zap",
+      "--desc",
+      "Zap is an open, local-first terminal with first-class AI and agent support."
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "test",
+      "-d",
+      "/Applications/Zap.app"
+    ],
+    "skip": true,
+    "notes": "zerx-lab/zap GUI terminal; dual DMG+tarball assets; non-interactive prefers cask; renames off homebrew/cask OWASP zap token to zap-zerx-lab / zap-tap; no service"
   }
 ]

@@ -302,6 +302,7 @@
 | Eigent | | | | eigent-ai/eigent | cask | | | | | | | | | | | | yes | | Eigent-1.0.1-arm64.dmg | | yes | | Desktop AI agent, 14.5k stars, Apache-2.0, already in HB as cask, cask-app-release generator |
 | Hermes One | TypeScript | Electron | hermesone.org | github.com/fathah/hermes-desktop | | | | | | | | | | | | | yes | | hermes-desktop-0.7.3-arm64.dmg | yes | | | Hermes Agent desktop GUI; MIT; v0.7.3; 13.4k stars; not in HB; electron-builder; arm64+x64 DMG; name override needed (repo name hermes-desktop collides with dodo-reach/hermes-desktop); cask-app-release |
 | ego lite | | | lite.ego.app | github.com/citrolabs/ego-lite | | | | | | | | | | | | | yes | | egolite.dmg | | yes (2) | | AI agent browser (Chromium); repo MIT, browser binary is separate free download (closed-source); v1.2.5; 5.4k stars; CDN DMG at cdn.ego.app with no version in URL (arm64 + x64); GitHub releases only host the ego-browser skill zip, not the DMG; not in HB; cask-app generator |
+| zap-zerx-lab | rust | gui-terminal | | https://github.com/zerx-lab/zap | homebrew/cask has unrelated OWASP zap (deprecated) | | | | | | | | | | | | yes | | Zap-arm64.dmg | yes | yes (dmg+tgz dual) | | zerx-lab/zap local-first AI terminal; dual app+CLI release assets; prefer cask-app-release; rename away from homebrew/cask zap (OWASP); no brew service; AGPL-3.0 cask-app-release |
 | harnesskit | Rust/TypeScript | Tauri 2 / React | | github.com/RealZST/HarnessKit | | | | | | | | | | | | | yes | | HarnessKit_1.6.5_aarch64.dmg | yes | yes (14) | | AI coding agent extension manager; Tauri 2 desktop + standalone hk CLI binary; arch-specific DMGs (aarch64 + x64); hk CLI binary also on releases; install.sh available; Apache-2.0; 352 stars; v1.6.5; not in HB; cask-app-release generator |
 | shell-gpt | Python | | | github.com/TheR1D/shell_gpt | | | | | pypi.org/project/shell-gpt | | | | | | | yes | | | | yes | | | CLI productivity tool for AI LLMs; `pip install shell-gpt`; bin `sgpt`; 31 releases; v1.5.1; 12.2k stars; MIT; not in HB; pip-package |
 | open-notebook | Python | FastAPI/Next.js | open-notebook.ai | github.com/lfnovo/open-notebook | | | | | | | | | | | | | | yes | | yes | tags only | | open-source NotebookLM alternative; Docker primary; pip-installable from source (pyproject.toml); PyPI name taken by unrelated NIST project; no prebuilt binaries; generator: source-build; 34.7k stars; MIT; v1.10.0 |
@@ -318,7 +319,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -368,10 +369,9 @@
 | # cask-app-release (arm64-only DMG; signed + notarized) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://github.com/mo-browser-apps/icons --manual  # → cask-app-release | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install --cask moicons && open -a MoIcons | | | | | | | | | | | | | | | | | | | | | | | |
-# go-package (not-in-HB Go TUI with web UI)
-allbrew https://github.com/asheshgoplani/agent-deck --manual  # → go-package
-brew install agent-deck && agent-deck --version
-
+| # go-package (not-in-HB Go TUI with web UI) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/asheshgoplani/agent-deck --manual  # → go-package | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install agent-deck && agent-deck --version | | | | | | | | | | | | | | | | | | | | | | | |
 # future generators (manual today)
 allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned)
 ```

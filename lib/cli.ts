@@ -27,8 +27,11 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  chooseReleaseArtifactKind,
   resolveNonCollidingFormulaName,
+  resolveNonCollidingCaskName,
   toFormulaName,
+  toCaskToken,
 } from "./utils.ts";
 import { buildManifest } from "./build-manifest.ts";
 import { saveManifest } from "./manifest.ts";
@@ -834,20 +837,30 @@ async function handleGithubRepo(classification, opts) {
         `  Found ${chalk.cyan(appAssets.length)} app asset(s) and ${chalk.cyan(binAssets.length)} binary asset(s)`,
       );
 
-      const choice = await select({
-        message:
-          "This release has both app bundles and CLI binaries. Which should we use?",
-        choices: [
-          {
-            name: `macOS App Cask (${appAssets.map((a) => a.name).join(", ")})`,
-            value: "cask",
-          },
-          {
-            name: `CLI Binary Formula (${binAssets.map((a) => a.name).join(", ")})`,
-            value: "binary",
-          },
-        ],
-      });
+      let choice: "cask" | "binary" = "cask";
+      if (isNonInteractive(opts)) {
+        choice = chooseReleaseArtifactKind(appAssets.length, binAssets.length) || "cask";
+        console.log(
+          chalk.dim(
+            `  Non-interactive: preferring ${choice === "cask" ? "macOS App Cask" : "CLI Binary Formula"}`,
+          ),
+        );
+      } else {
+        choice = await select({
+          message:
+            "This release has both app bundles and CLI binaries. Which should we use?",
+          choices: [
+            {
+              name: `macOS App Cask (${appAssets.map((a) => a.name).join(", ")})`,
+              value: "cask",
+            },
+            {
+              name: `CLI Binary Formula (${binAssets.map((a) => a.name).join(", ")})`,
+              value: "binary",
+            },
+          ],
+        });
+      }
 
       if (choice === "cask") {
         return await generateWithConfirmation(
@@ -1371,17 +1384,30 @@ async function handleSetappApp(url, opts) {
   return await generateWithConfirmation("cask-app-setapp", { url }, opts);
 }
 
+function isCaskGenerator(generatorName: string) {
+  return [
+    "cask-app",
+    "cask-app-release",
+    "cask-app-mas",
+    "cask-app-setapp",
+  ].includes(generatorName);
+}
+
 async function generateWithConfirmation(generatorName, params: any, opts: any) {
   console.log();
 
   const userOpts: any = {};
   if (!opts.name) {
     const defaultName = guessName(generatorName, params);
-    const name = await input({
-      message: "Formula/cask name:",
-      default: defaultName,
-    });
-    userOpts.name = name;
+    if (isNonInteractive(opts)) {
+      userOpts.name = defaultName;
+    } else {
+      const name = await input({
+        message: "Formula/cask name:",
+        default: defaultName,
+      });
+      userOpts.name = name;
+    }
   } else {
     userOpts.name = opts.name;
   }
@@ -1412,13 +1438,41 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
     }
   }
 
+  if (isCaskGenerator(generatorName)) {
+    const preferred = toCaskToken(userOpts.name);
+    const owner = params.repoInfo?.fullName?.split?.("/")?.[0];
+    const altSources = [
+      params.repoInfo?.fullName
+        ? String(params.repoInfo.fullName).replace("/", "-")
+        : null,
+      owner && params.repoInfo?.name ? `${params.repoInfo.name}-${owner}` : null,
+      owner ? `${preferred}-${owner}` : null,
+      opts.appName,
+      params.slug,
+      params.repoInfo?.name,
+    ];
+    const resolved = resolveNonCollidingCaskName(preferred, altSources);
+    if (resolved.renamedFrom && resolved.name !== preferred) {
+      console.log(
+        chalk.yellow(
+          `  Cask name "${preferred}" collides with homebrew/cask; using "${resolved.name}" instead`,
+        ),
+      );
+      userOpts.name = resolved.name;
+    }
+  }
+
   if (!opts.desc) {
     const defaultDesc = guessDesc(generatorName, params);
-    const desc = await input({
-      message: "Description:",
-      default: defaultDesc,
-    });
-    userOpts.desc = desc;
+    if (isNonInteractive(opts)) {
+      userOpts.desc = defaultDesc;
+    } else {
+      const desc = await input({
+        message: "Description:",
+        default: defaultDesc,
+      });
+      userOpts.desc = desc;
+    }
   } else {
     userOpts.desc = opts.desc;
   }

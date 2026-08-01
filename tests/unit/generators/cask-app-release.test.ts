@@ -175,6 +175,59 @@ describe("collectCaskAppReleasePayload", () => {
   });
 });
 
+describe("collectCaskAppReleasePayload — Zap terminal (dual assets, cask collision)", () => {
+  beforeEach(() => {
+    mock.restore();
+    mockArchiveInspector({ dmg: ["Zap.app"] });
+  });
+
+  const zapRepoInfo = {
+    name: "zap",
+    fullName: "zerx-lab/zap",
+    description:
+      "Zap is an open, local-first terminal with first-class AI and agent support.",
+    homepage: "https://zap.zerx.dev",
+    htmlUrl: "https://github.com/zerx-lab/zap",
+    license: "AGPL-3.0",
+  };
+
+  const zapRelease = {
+    tagName: "v2026.07.09.1",
+    assets: [
+      {
+        name: "Zap-arm64.dmg",
+        url: "https://github.com/zerx-lab/zap/releases/download/v2026.07.09.1/Zap-arm64.dmg",
+      },
+      {
+        name: "Zap-intel.dmg",
+        url: "https://github.com/zerx-lab/zap/releases/download/v2026.07.09.1/Zap-intel.dmg",
+      },
+      {
+        name: "zap-macos-aarch64.tar.gz",
+        url: "https://github.com/zerx-lab/zap/releases/download/v2026.07.09.1/zap-macos-aarch64.tar.gz",
+      },
+      {
+        name: "zap-macos-x86_64.tar.gz",
+        url: "https://github.com/zerx-lab/zap/releases/download/v2026.07.09.1/zap-macos-x86_64.tar.gz",
+      },
+    ],
+  };
+
+  it("builds cask payload from DMG when dual assets are present", async () => {
+    const payload = await collectCaskAppReleasePayload(zapRepoInfo, zapRelease, {
+      name: "zap-zerx-lab",
+      appName: "Zap.app",
+    });
+    expect(payload.template).toBe("cask_app_release");
+    expect(payload.name).toBe("zap-zerx-lab");
+    expect(payload.version).toBe("2026.07.09.1");
+    expect(payload.appName).toBe("Zap.app");
+    expect(payload.url).toContain("Zap-arm64.dmg");
+    expect(payload.url).toContain("#{version}");
+    expect(payload.homepage).toBe("https://zap.zerx.dev");
+  });
+});
+
 describe("collectCaskAppReleasePayload — KnowNote (Electron, lowercase DMG)", () => {
   beforeEach(() => {
     mock.restore();

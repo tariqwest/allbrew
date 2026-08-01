@@ -12,8 +12,14 @@ import {
   isBinaryAsset,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
+  resolveNonCollidingCaskName,
+  chooseReleaseArtifactKind,
   setHomebrewCorePrefixForTests,
+  setHomebrewCaskPrefixForTests,
+  setHomebrewCachePrefixForTests,
+  setHomebrewCaskTokenOverrideForTests,
   isHomebrewCoreFormulaName,
+  isHomebrewCaskToken,
 } from "../../lib/utils.ts";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -112,6 +118,101 @@ describe("resolveNonCollidingFormulaName", () => {
     const result = resolveNonCollidingFormulaName("nanobot", ["nanobot-ai"]);
     expect(result.name).toBe("nanobot-tap");
     expect(result.renamedFrom).toBe("nanobot");
+  });
+});
+
+describe("resolveNonCollidingCaskName", () => {
+  let caskRoot: string;
+  let cacheRoot: string;
+
+  beforeEach(() => {
+    caskRoot = mkdtempSync(join(tmpdir(), "allbrew-cask-"));
+    cacheRoot = mkdtempSync(join(tmpdir(), "allbrew-brew-cache-"));
+    mkdirSync(join(caskRoot, "Casks", "z"), { recursive: true });
+    writeFileSync(
+      join(caskRoot, "Casks", "z", "zap.rb"),
+      'cask "zap" do\nend\n',
+    );
+    setHomebrewCaskPrefixForTests(caskRoot);
+    setHomebrewCachePrefixForTests(cacheRoot);
+    setHomebrewCaskTokenOverrideForTests(undefined);
+  });
+
+  afterEach(() => {
+    setHomebrewCaskPrefixForTests(undefined);
+    setHomebrewCachePrefixForTests(undefined);
+    setHomebrewCaskTokenOverrideForTests(undefined);
+    rmSync(caskRoot, { recursive: true, force: true });
+    rmSync(cacheRoot, { recursive: true, force: true });
+  });
+
+  it("keeps names that are free in homebrew/cask", () => {
+    const result = resolveNonCollidingCaskName("unique-app", ["unique-app"]);
+    expect(result).toEqual({
+      name: "unique-app",
+      renamedFrom: null,
+      reason: null,
+    });
+    expect(isHomebrewCaskToken("unique-app")).toBe(false);
+  });
+
+  it("renames bare zap using owner alternative when homebrew/cask owns zap", () => {
+    expect(isHomebrewCaskToken("zap")).toBe(true);
+    const result = resolveNonCollidingCaskName("zap", [
+      "zerx-lab-zap",
+      "zap-zerx-lab",
+    ]);
+    expect(result.name).toBe("zerx-lab-zap");
+    expect(result.renamedFrom).toBe("zap");
+    expect(result.reason).toContain("zap");
+  });
+
+  it("falls back to -tap suffix when alternatives also collide", () => {
+    writeFileSync(
+      join(caskRoot, "Casks", "z", "zap-zerx-lab.rb"),
+      'cask "zap-zerx-lab" do\nend\n',
+    );
+    const result = resolveNonCollidingCaskName("zap", ["zap-zerx-lab"]);
+    expect(result.name).toBe("zap-tap");
+    expect(result.renamedFrom).toBe("zap");
+  });
+
+  it("detects cask tokens from Homebrew API cache when tap checkout is missing", () => {
+    setHomebrewCaskPrefixForTests(null);
+    mkdirSync(join(cacheRoot, "api", "cask"), { recursive: true });
+    writeFileSync(
+      join(cacheRoot, "api", "cask", "zap.json"),
+      JSON.stringify({ token: "zap", tap: "homebrew/cask" }),
+    );
+    expect(isHomebrewCaskToken("zap")).toBe(true);
+    const result = resolveNonCollidingCaskName("zap", ["zap-zerx-lab"]);
+    expect(result.name).toBe("zap-zerx-lab");
+  });
+
+  it("honors explicit token override set for tests", () => {
+    setHomebrewCaskPrefixForTests(null);
+    setHomebrewCachePrefixForTests(null);
+    setHomebrewCaskTokenOverrideForTests(new Set(["collision"]));
+    expect(isHomebrewCaskToken("collision")).toBe(true);
+    expect(isHomebrewCaskToken("free-name")).toBe(false);
+  });
+});
+
+describe("chooseReleaseArtifactKind", () => {
+  it("prefers cask when both app and binary assets exist", () => {
+    expect(chooseReleaseArtifactKind(2, 3)).toBe("cask");
+  });
+
+  it("returns cask when only app assets exist", () => {
+    expect(chooseReleaseArtifactKind(1, 0)).toBe("cask");
+  });
+
+  it("returns binary when only binary assets exist", () => {
+    expect(chooseReleaseArtifactKind(0, 2)).toBe("binary");
+  });
+
+  it("returns null when neither asset kind exists", () => {
+    expect(chooseReleaseArtifactKind(0, 0)).toBeNull();
   });
 });
 
