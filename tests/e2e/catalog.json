@@ -5086,5 +5086,21 @@
     ],
     "skip": true,
     "notes": "Homepage discovers fathah/hermes-desktop release DMG via GH enrichment; renames off homebrew/cask hermes-desktop collision."
+  },
+  {
+    "name": "omnigent",
+    "url": "https://github.com/omnigent-ai/omnigent",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--name",
+      "omnigent"
+    ],
+    "expectedBin": "omnigent",
+    "verifyCommand": [
+      "omnigent",
+      "--help"
+    ],
+    "skip": true,
+    "notes": "Python monorepo with private package.json; README npm install -g pnpm must not select npm generator; uv tool install omnigent + local server service."
   }
 ]

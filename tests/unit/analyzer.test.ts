@@ -130,6 +130,46 @@ it("detects npx as npm", () => {
     expect(result).toEqual({ method: "pip", package: "marimo" });
   });
 
+  it("prefers uv/pip package over unrelated npm install -g pnpm when preferred name is set (omnigent)", () => {
+    const readme = `
+## Install
+
+Prerequisite for contributors:
+
+\`\`\`bash
+npm install -g pnpm
+\`\`\`
+
+Install the CLI:
+
+\`\`\`bash
+uv tool install omnigent        # or: pip install "omnigent"
+brew install omnigent-ai/tap/omnigent
+\`\`\`
+
+Start the local server:
+
+\`\`\`bash
+omnigent server --background
+\`\`\`
+`;
+    const result = detectInstallMethod(readme, "omnigent");
+    expect(result).toEqual({ method: "pip", package: "omnigent" });
+  });
+
+  it("does not treat npm install -g pnpm as the app package when preferred name is set", () => {
+    const readme = "```bash\nnpm install -g pnpm\n```\n\n```bash\npip install toolong\n```";
+    expect(detectInstallMethod(readme, "toolong")).toEqual({
+      method: "pip",
+      package: "toolong",
+    });
+    // Without preferred name, first global npm hit still wins (legacy behavior).
+    expect(detectInstallMethod(readme)).toEqual({
+      method: "npm",
+      package: "pnpm",
+    });
+  });
+
   it("detects uv tool install -U and skips the upgrade flag", () => {
     const result = detectInstallMethod(
       "```bash\nuv tool install -U fast-agent-mcp\n```",
@@ -486,6 +526,23 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
     expect(result!.confidence).toBe("low");
   });
 
+  it("treats pkg server (+ optional --background) as medium confidence for brew services (omnigent)", () => {
+    const readme = [
+      "## Start",
+      "",
+      "```bash",
+      "omnigent server --background",
+      "```",
+      "",
+      "Open the web UI at http://localhost:6767",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "omnigent");
+    expect(result).not.toBeNull();
+    expect(result!.command).toMatch(/^omnigent server/);
+    expect(result!.confidence).toBe("medium");
+    expect(result!.keepAlive).toBe(true);
+  });
+
   it("still detects bare long-running CLIs with a local web UI as high confidence", () => {
     const readme = [
       "## Usage",
@@ -623,6 +680,17 @@ describe("detectBuildSystemFromFiles", () => {
     expect(detectBuildSystemFromFiles(["pyproject.toml"])).toEqual({ method: "pip" });
   });
 
+  it("prefers pyproject.toml over package.json for Python monorepos (omnigent)", () => {
+    expect(
+      detectBuildSystemFromFiles([
+        "package.json",
+        "pyproject.toml",
+        "pnpm-lock.yaml",
+        "README.md",
+      ]),
+    ).toEqual({ method: "pip" });
+  });
+
   it("detects CMakeLists.txt", () => {
     expect(detectBuildSystemFromFiles(["CMakeLists.txt"])).toEqual({ method: "build", system: "cmake" });
   });
@@ -686,6 +754,15 @@ describe("detectBuildSystemFromArchive", () => {
 
   it("detects pyproject.toml in archive", () => {
     expect(detectBuildSystemFromArchive(["foo-1.0/pyproject.toml"])).toEqual({ method: "pip" });
+  });
+
+  it("prefers pyproject.toml over package.json in archive monorepos", () => {
+    expect(
+      detectBuildSystemFromArchive([
+        "foo-1.0/package.json",
+        "foo-1.0/pyproject.toml",
+      ]),
+    ).toEqual({ method: "pip" });
   });
 
   it("detects meson.build in archive", () => {

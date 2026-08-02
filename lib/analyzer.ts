@@ -454,14 +454,26 @@ function detectLocalWebService(readmeText, packageName) {
   };
 }
 
-/** `pkg serve` / `pkg server` — optional dev bridge, not a supervised daemon default. */
+/**
+ * Optional short-lived/dev bridges that should stay low-confidence so
+ * non-interactive installs skip a service block.
+ *
+ * `pkg serve` is commonly an MCP/stdio or one-off bridge (e.g. gitnexus).
+ * `pkg server` / `daemon` / `gateway` are treated as real supervised entrypoints
+ * (e.g. omnigent server + local web UI) unless they are clearly one-shot.
+ */
 function isOptionalDevServeCommand(command, packageName) {
   if (!command || !packageName) return false;
+  const trimmed = String(command).trim();
+  // Explicit background/daemon flags mean a long-running process even on "serve".
+  if (/(?:^|\s)(?:--daemon|--service|--background)(?:\s|$)/i.test(trimmed)) {
+    return false;
+  }
   const re = new RegExp(
-    `^${escapeRegExp(packageName)}\\s+(serve|server)(?:\\s|$)`,
+    `^${escapeRegExp(packageName)}\\s+serve(?:\\s|$)`,
     "i",
   );
-  return re.test(String(command).trim());
+  return re.test(trimmed);
 }
 
 function findCommandNearEndpoint(readmeText, endpointIndex, packageName) {
@@ -658,7 +670,11 @@ function pickPreferredNpmPackage(readmeText, preferredPackageName = "") {
         last === preferredLast
       );
     });
+    // Prefer matching the app/package name. Do not fall back to an unrelated
+    // global npm/pnpm install (e.g. `npm install -g pnpm` in a Python monorepo
+    // README) when the preferred package only appears via pip/uv later.
     if (matchPreferred) return matchPreferred.package;
+    return null;
   }
 
   const globalHit = candidates.find((c) => c.globalInstall);
@@ -878,9 +894,11 @@ export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null 
 
   if (names.has("go.mod")) return { method: "go" };
   if (names.has("cargo.toml")) return { method: "cargo" };
-  if (names.has("package.json")) return { method: "npm" };
+  // Prefer Python packaging markers over package.json so JS monorepo stubs
+  // (private root package.json + packageManager pnpm) do not win over PyPI apps.
   if (names.has("setup.py") || names.has("pyproject.toml"))
     return { method: "pip" };
+  if (names.has("package.json")) return { method: "npm" };
   if (names.has("package.swift")) return { method: "swift" };
   if (names.has("cmakelists.txt")) return { method: "build", system: "cmake" };
   if (names.has("meson.build")) return { method: "build", system: "meson" };
@@ -916,9 +934,9 @@ export function detectBuildSystemFromArchive(fileNames) {
   if (names.has("go.mod")) return { method: "go" };
   if (names.has("cmakelists.txt")) return { method: "build", system: "cmake" };
   if (names.has("cargo.toml")) return { method: "cargo" };
-  if (names.has("package.json")) return { method: "npm" };
   if (names.has("setup.py") || names.has("pyproject.toml"))
     return { method: "pip" };
+  if (names.has("package.json")) return { method: "npm" };
   if (names.has("meson.build")) return { method: "build", system: "meson" };
   if (names.has("configure")) return { method: "build", system: "autotools" };
   if (names.has("makefile") || names.has("gnumakefile"))
