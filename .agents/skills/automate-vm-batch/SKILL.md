@@ -14,7 +14,7 @@ This skill provides comprehensive automation for provisioning Lume macOS testing
 ### 1. VM & Endpoint Layout
 - **Remote Endpoint (`homeserver`)**: Remote Lume VM (`vm-homeserver-macos-testing`) accessed via `app-user@homeserver.local` (`LUME_REMOTE_ENABLED=true`).
 - **Local Endpoint (`local`)**: Twin VM (`vm-local-macos-testing`) on local host (`LUME_REMOTE_ENABLED=false`).
-- **Guest Workspace & User**: Dedicated non-root account `th-allbrew` with an exclusive mounted sparsebundle prefix at `/opt/homebrew`.
+- **Guest Workspace & User**: Dedicated non-root account `th-allbrew` with an exclusive mounted sparsebundle prefix at `/opt/homebrew`. (Note: JS helper `lib/batch-helpers.mjs` falls back to `["th-allbrew-w1", "th-allbrew-w2"]` if `TH_BATCH_WORKERS` is not set).
 
 ### 2. Lock & Concurrency Control
 - **Host Endpoint Mutex**: Directory locks in `tests/monitored-install-batch/logs/vm-mutex-<id>.lockdir` serialize host access per VM endpoint (`acquireEndpointMutex`).
@@ -56,7 +56,7 @@ For every URL in `tests/monitored-install-batch/urls-shuffled.json`:
 
 ## Automation Script Reference (`automate-vm-batch.sh`)
 
-The shell automation helper is located at `tests/monitored-install-batch/automate-vm-batch.sh`.
+The shell automation helper is located at `tests/monitored-install-batch/automate-vm-batch.sh`. Single-installation executions can also be driven via `vm-install-one.mjs` using `--url <url> --name <slug> [--endpoint homeserver|local] [--log <path>]`.
 
 ### Key CLI Flags
 - `-c, --concurrency <N>`: Worker concurrency target (default: `8`).
