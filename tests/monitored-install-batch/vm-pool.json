@@ -1,0 +1,73 @@
+{
+  "updatedAt": "2026-08-03T14:42:00Z",
+  "strategy": "least-busy",
+  "notes": "Initial OS setup phase uses 4 CPU / 4GB RAM. Actual test runs use 2 CPU / 3.5GB RAM.",
+  "endpoints": [
+    {
+      "id": "homeserver",
+      "label": "homeserver remote Lume",
+      "enabled": true,
+      "env": {
+        "LUME_REMOTE_ENABLED": "true",
+        "LUME_REMOTE_HOST": "app-user@homeserver.local",
+        "LUME_REMOTE_DIR": "/Users/app-user/allbrew",
+        "LUME_REMOTE_IPSW_DIR": "/Users/app-user/Downloads",
+        "LUME_VM_NAME": "vm-homeserver-macos-testing",
+        "LUME_VM_CPU": "2",
+        "LUME_VM_MEMORY": "3.5GB",
+        "LUME_VM_DISK": "65GB",
+        "LUME_VM_DISPLAY": "1280x800",
+        "LUME_VM_USER": "lume",
+        "LUME_VM_PASSWORD": "lume",
+        "TH_PROJECT_USER": "th-allbrew",
+        "TH_HOMEBREW_MOUNT_POINT": "/opt/homebrew",
+        "TH_HOMEBREW_LOCK_PATH": "/var/run/lume-homebrew.lock"
+      },
+      "mutexDir": "logs/vm-mutex-homeserver.lockdir"
+    },
+    {
+      "id": "local-1",
+      "label": "local twin Lume 1 (tariqmac)",
+      "enabled": true,
+      "env": {
+        "LUME_REMOTE_ENABLED": "false",
+        "LUME_VM_NAME": "vm-local-macos-testing-1",
+        "LUME_VM_CPU": "2",
+        "LUME_VM_MEMORY": "3.5GB",
+        "LUME_VM_DISK": "65GB",
+        "LUME_VM_DISPLAY": "1280x800",
+        "LUME_VM_USER": "lume",
+        "LUME_VM_PASSWORD": "lume",
+        "LUME_IPSW": "/Volumes/EXTBAK2/os-images/UniversalMac_26.5.2_25F84_Restore.ipsw",
+        "TH_PROJECT_USER": "th-allbrew",
+        "TH_VM_WORKDIR": "/Volumes/Shared/allbrew",
+        "TH_VM_WORKSPACE": "/Users/th-allbrew/Developer/allbrew",
+        "TH_HOMEBREW_MOUNT_POINT": "/opt/homebrew",
+        "TH_HOMEBREW_LOCK_PATH": "/var/run/lume-homebrew.lock"
+      },
+      "mutexDir": "logs/vm-mutex-local-1.lockdir"
+    },
+    {
+      "id": "local-2",
+      "label": "local twin Lume 2 (tariqmac)",
+      "enabled": true,
+      "env": {
+        "LUME_REMOTE_ENABLED": "false",
+        "LUME_VM_NAME": "vm-local-macos-testing-2",
+        "LUME_VM_CPU": "2",
+        "LUME_VM_MEMORY": "3.5GB",
+        "LUME_VM_DISK": "65GB",
+        "LUME_VM_DISPLAY": "1280x800",
+        "LUME_VM_USER": "lume",
+        "LUME_VM_PASSWORD": "lume",
+        "LUME_IPSW": "/Volumes/EXTBAK2/os-images/UniversalMac_26.5.2_25F84_Restore.ipsw",
+        "TH_PROJECT_USER": "th-allbrew",
+        "TH_VM_WORKDIR": "/Volumes/Shared/allbrew",
+        "TH_VM_WORKSPACE": "/Users/th-allbrew/Developer/allbrew",
+        "TH_HOMEBREW_MOUNT_POINT": "/opt/homebrew",
+        "TH_HOMEBREW_LOCK_PATH": "/var/run/lume-homebrew.lock"
+      },
+      "mutexDir": "logs/vm-mutex-local-2.lockdir"
+    }
+  ]
+}

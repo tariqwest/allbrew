@@ -1,0 +1,126 @@
+mcphub	https://github.com/Express/Hono
+MōIcons	https://github.com/github.com/mo-browser
+LibreChat	https://github.com/github.com/danny
+croc	https://getcroc.schollz.com
+Perplexity	https://github.com/perplexity.ai/personal-computer
+rerun	https://github.com/github.com/rerun
+Volta	https://github.com/github.com/volta
+cua-driver	https://github.com/cua.ai/cua-driver
+Open Interpreter (Rust)	https://github.com/openinterpreter/openinterpreter
+block (flower/wakapi/smtp4dev), and any native-build failures (tgt/TDLib, goatcounter/CGO,	https://github.com/tgt/TDLib
+Docker Desktop	https://github.com/docker/desktop
+Rugby	https://github.com/swiftyfinch/Rugby
+Popcorn Time	https://github.com/github.com/popcorn
+afm	https://github.com/rudrankriyam/Foundation-Models-Framework-CLI
+shiori	https://github.com/github.com/go
+Postman	https://github.com/postman.com/downloads
+Starship	https://github.com/rs/install.sh
+chat-shared-conversation-to-file	https://github.com/Dicklesworthstone/chat_shared_conversation_to_file
+allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual  # → cask-app	https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg
+godns	https://github.com/cmd/godns
+Nix	https://nixos.org/nix/install
+marimo	https://github.com/github.com/marimo
+Poetry	https://github.com/github.com/python
+ddclient	https://github.com/./configure
+nicotine-plus	https://github.com/github.com/nicotine
+Hermes Desktop	https://github.com/github.com/dodo
+pry	https://github.com/REPL/console
+pokete	https://github.com/github.com/lxgr
+allbrew https://github.com/YS-L/csvlens --manual        # → binary-release / source-build	https://github.com/YS-L/csvlens
+Pool	https://downloads.poolside.ai/pool/install.sh
+tes3edit	https://github.com/binary/cask
+nanobot	https://github.com/HKUDS/nanobot
+Deno	https://github.com/land/install.sh
+Railway CLI	https://github.com/railway/cli
+zap-zerx-lab	https://github.com/zerx-lab/zap
+Bun	https://github.com/github.com/oven
+swift-outdated	https://github.com/kiliankoe/swift-outdated
+Fly.io CLI	https://github.com/io/install.sh
+kdash	https://github.com/github.com/kdash
+IconChamp	https://github.com/macenhance.com/iconchamp.html
+uv	https://github.com/github.com/astral
+licenseplist	https://github.com/mono0926/LicensePlist
+allbrew https://github.com/muety/wakapi --manual        # → go-package	https://github.com/muety/wakapi
+asccli	https://github.com/tddworks/asc-cli
+auggie	https://github.com/augmentcode/auggie
+allbrew https://pypi.org/project/marimo/ --manual      # → pip-package	https://pypi.org/project/marimo/
+MerMark Editor	https://github.com/Markdown/Mermaid
+bartycrouch	https://github.com/FlineDev/BartyCrouch
+PopClip	https://github.com/pilotmoon.com/downloads
+swiftpolyglot	https://github.com/appdecostudio/SwiftPolyglot
+TokenBar	https://github.com/tokenbar.site/get-started
+Pixi	https://github.com/github.com/prefix
+dotnet-monitor	https://github.com/REST/web
+open-notebook	https://github.com/FastAPI/Next.js
+iblinter	https://github.com/IBDecodable/IBLinter
+allbrew https://github.com/TheR1D/shell_gpt --manual   # → pip-package	https://github.com/TheR1D/shell_gpt
+# source-build (Python CLI from GitHub; no PyPI; no releases; uv/pyproject.toml; bin name trae-cli)	https://github.com/uv/pyproject.toml
+Oh My Zsh	https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+FMPy	https://github.com/github.com/CATIA
+Tailscale	https://github.com/com/install.sh
+allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned)	https://www.nuget.org/packages/Rnwood.Smtp4dev/
+Qoder	https://github.com/qoder.com/install
+Mise	https://mise.run
+Cline	https://github.com/apps/cli
+allbrew https://www.npmjs.com/package/taskbook --manual # → npm-package	https://www.npmjs.com/package/taskbook
+Hermes One	https://github.com/TypeScript/Electron
+dirac	https://github.com/github.com/dirac
+Liana	https://github.com/binary/cask
+Ollama	https://github.com/ollama.com/download
+mockolo	https://github.com/uber/mockolo
+markserv	https://github.com/markdown/dirs
+agent-deck	https://raw.githubusercontent.com/asheshgoplani/agent-deck/main/install.sh
+krokiet	https://github.com/qarmin/czkawka
+nvm	https://github.com/github.com/nvm
+Rustup	https://github.com/github.com/rust
+napari	https://github.com/resource/SHA
+jwt-ui	https://github.com/github.com/jwt
+Right Crane	https://github.com/rightright.me/products
+Unfatten	https://github.com/avelio.tech/unfatten
+managarr	https://github.com/github.com/Dark-Alex
+Setapp	https://github.com/setapp.com/download
+allbrew https://crates.io/crates/managarr --manual      # → cargo-package	https://crates.io/crates/managarr
+allbrew https://github.com/ddclient/ddclient --manual   # → source-build	https://github.com/ddclient/ddclient
+KnowNote	https://github.com/Ollama/OpenAI
+allbrew https://github.com/cline/cline --manual          # → npm-package	https://github.com/cline/cline
+utiluti	https://github.com/query/set
+smithery-cli	https://github.com/github.com/smithery
+swiftplantuml	https://github.com/MarcoEidinger/SwiftPlantUML
+allbrew https://github.com/TimothyYe/godns --manual     # → go-package / binary-release	https://github.com/TimothyYe/godns
+macMLX (app)	https://github.com/binary/cask
+> Originally extracted from [allbrew-test-cases-deep-research-2026-06.md](./allbrew-test-cases-deep-research-2026-06.md).	https://github.com/./allbrew-test-cases-deep-research-2026-06.md
+allbrew https://github.com/recailai/jockey --manual  # → source-build (make fallback)	https://github.com/recailai/jockey
+allbrew https://starship.rs/install.sh --manual         # → script-install	https://github.com/rs/install.sh
+Homebrew	https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
+allbrew https://github.com/bytedance/trae-agent --manual  # → source-build	https://github.com/bytedance/trae-agent
+MetricSync	https://github.com/5/mo
+allbrew https://qoder.com/install --manual               # → script-install	https://github.com/com/install
+authsec-bridge	https://github.com/github.com/authsec
+Mission Control Plus	https://github.com/fadel.io/missioncontrolplus
+Eigent	https://github.com/eigent-ai/eigent
+ER-Save-Editor	https://github.com/binary/cask
+pnpm	https://github.com/pnpm.io/install.sh
+allbrew https://github.com/sigoden/aichat --manual      # → cargo-package	https://github.com/sigoden/aichat
+Zellij	https://github.com/github.com/zellij
+Devbox	https://github.com/github.com/jetify
+officecli	https://github.com/officecli/officecli
+SydneyQt	https://github.com/Bing/Copilot
+# script-install (closed-source AI IDE; installer at qoder.com/install)	https://github.com/qoder.com/install
+allbrew https://github.com/asheshgoplani/agent-deck --manual  # → go-package	https://github.com/asheshgoplani/agent-deck
+gradio	https://github.com/github.com/gradio
+balenaEtcher	https://github.com/github.com/balena
+SDKMAN!	https://get.sdkman.io
+@hehehai/buke	https://github.com/hehehai/buke
+Atuin	https://setup.atuin.sh
+allbrew https://github.com/authsec-ai/authsec-bridge --manual  # → source-build	https://github.com/authsec-ai/authsec-bridge
+turbo-fieldfare	https://github.com/drumih/turbo-fieldfare
+rrtop	https://github.com/github.com/wojciech
+allbrew https://github.com/mo-browser-apps/icons --manual  # → cask-app-release	https://github.com/mo-browser-apps/icons
+goatcounter	https://github.com/CGO/SQLite
+LottieViewConvert	https://github.com/TGS/Lottie
+dev-manager-desktop	https://github.com/binary/cask
+csvlens	https://github.com/github.com/YS
+harnesskit	https://github.com/Rust/TypeScript
+flower	https://github.com/mher/flower
+oculante	https://github.com/egui/wgpu
+ugm	https://github.com/users/groups

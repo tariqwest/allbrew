@@ -1,0 +1,1597 @@
+[
+  {
+    "name": "KnowNote",
+    "url": "https://github.com/MrSibe/KnowNote",
+    "source": "in_github"
+  },
+  {
+    "name": "frogmouth",
+    "url": "https://github.com/Textualize/frogmouth",
+    "source": "in_github"
+  },
+  {
+    "name": "Rnwood.Smtp4dev",
+    "url": "https://github.com/rnwood/smtp4dev",
+    "source": "in_github"
+  },
+  {
+    "name": "clinic",
+    "url": "https://github.com/clinicjs/node-clinic",
+    "source": "in_github"
+  },
+  {
+    "name": "gitsimulator",
+    "url": "https://github.com/egekaya1/GitSimulator",
+    "source": "in_github"
+  },
+  {
+    "name": "process-compose",
+    "url": "https://github.com/F1bonacc1/process-compose",
+    "source": "in_github"
+  },
+  {
+    "name": "Veronum",
+    "url": "https://github.com/DylanWain/veronum-desktop",
+    "source": "in_github"
+  },
+  {
+    "name": "Hermes Desktop",
+    "url": "https://github.com/dodo-reach/hermes-desktop",
+    "source": "in_github"
+  },
+  {
+    "name": "npkill",
+    "url": "https://github.com/zaldih/npkill",
+    "source": "in_github"
+  },
+  {
+    "name": "verdaccio",
+    "url": "https://github.com/verdaccio/verdaccio",
+    "source": "in_github"
+  },
+  {
+    "name": "pop",
+    "url": "https://github.com/charmbracelet/pop",
+    "source": "in_github"
+  },
+  {
+    "name": "baca",
+    "url": "https://github.com/wustho/baca",
+    "source": "in_github"
+  },
+  {
+    "name": "iblinter",
+    "url": "https://github.com/IBDecodable/IBLinter",
+    "source": "in_github"
+  },
+  {
+    "name": "FMPy",
+    "url": "https://github.com/CATIA-Systems/FMPy",
+    "source": "in_github"
+  },
+  {
+    "name": "asccli",
+    "url": "https://github.com/tddworks/asc-cli",
+    "source": "in_github"
+  },
+  {
+    "name": "Pixi",
+    "url": "https://github.com/prefix-dev/pixi",
+    "source": "in_github"
+  },
+  {
+    "name": "doedit",
+    "url": "https://github.com/danterobles/doedit",
+    "source": "in_github"
+  },
+  {
+    "name": "comictagger",
+    "url": "https://github.com/comictagger/comictagger",
+    "source": "in_github"
+  },
+  {
+    "name": "ER-Save-Editor",
+    "url": "https://github.com/ClayAmore/ER-Save-Editor",
+    "source": "in_github"
+  },
+  {
+    "name": "Rustup",
+    "url": "https://github.com/rust-lang/rustup",
+    "source": "in_github"
+  },
+  {
+    "name": "Nix",
+    "url": "https://github.com/NixOS/nix",
+    "source": "in_github"
+  },
+  {
+    "name": "Starship",
+    "url": "https://github.com/starship/starship",
+    "source": "in_github"
+  },
+  {
+    "name": "agy-acp",
+    "url": "https://github.com/hicder/agy-acp",
+    "source": "in_github"
+  },
+  {
+    "name": "gokapi",
+    "url": "https://github.com/Forceu/Gokapi",
+    "source": "in_github"
+  },
+  {
+    "name": "tgt",
+    "url": "https://github.com/FedericoBruzzone/tgt",
+    "source": "in_github"
+  },
+  {
+    "name": "Postman",
+    "url": "https://github.com/postman.com/downloads",
+    "source": "in_dev_website"
+  },
+  {
+    "name": "otree",
+    "url": "https://github.com/fioncat/otree",
+    "source": "in_github"
+  },
+  {
+    "name": "rio",
+    "url": "https://github.com/raphamorim/rio",
+    "source": "in_github"
+  },
+  {
+    "name": "agent-deck",
+    "url": "https://github.com/asheshgoplani/agent-deck",
+    "source": "in_github"
+  },
+  {
+    "name": "ApiArk",
+    "url": "https://github.com/berbicanes/apiark",
+    "source": "in_github"
+  },
+  {
+    "name": "shell-gpt",
+    "url": "https://github.com/TheR1D/shell_gpt",
+    "source": "in_github"
+  },
+  {
+    "name": "sniffnet",
+    "url": "https://github.com/GyulyVGC/sniffnet",
+    "source": "in_github"
+  },
+  {
+    "name": "napari",
+    "url": "https://github.com/napari/napari",
+    "source": "in_github"
+  },
+  {
+    "name": "nativefier",
+    "url": "https://github.com/nativefier/nativefier",
+    "source": "in_github"
+  },
+  {
+    "name": "lazyjj",
+    "url": "https://github.com/Cretezy/lazyjj",
+    "source": "in_github"
+  },
+  {
+    "name": "label-studio",
+    "url": "https://github.com/HumanSignal/label-studio",
+    "source": "in_github"
+  },
+  {
+    "name": "Zellij",
+    "url": "https://github.com/zellij-org/zellij",
+    "source": "in_github"
+  },
+  {
+    "name": "utiluti",
+    "url": "https://github.com/scriptingosx/utiluti",
+    "source": "in_github"
+  },
+  {
+    "name": "afm",
+    "url": "https://github.com/rudrankriyam/Foundation-Models-Framework-CLI",
+    "source": "in_github"
+  },
+  {
+    "name": "pypdfeditor-gui",
+    "url": "https://github.com/Augus1999/pyPDFeditor-GUI",
+    "source": "in_github"
+  },
+  {
+    "name": "vorta",
+    "url": "https://github.com/borgbase/vorta",
+    "source": "in_github"
+  },
+  {
+    "name": "Right Crane",
+    "url": "https://github.com/rightright.me/products",
+    "source": "in_dev_website"
+  },
+  {
+    "name": "damon",
+    "url": "https://github.com/hashicorp/damon",
+    "source": "in_github"
+  },
+  {
+    "name": "Volta",
+    "url": "https://github.com/volta-cli/volta",
+    "source": "in_github"
+  },
+  {
+    "name": "tenere",
+    "url": "https://github.com/pythops/tenere",
+    "source": "in_github"
+  },
+  {
+    "name": "npm-check",
+    "url": "https://github.com/dylang/npm-check",
+    "source": "in_github"
+  },
+  {
+    "name": "SydneyQt",
+    "url": "https://github.com/juzeon/SydneyQt",
+    "source": "in_github"
+  },
+  {
+    "name": "dotnet-monitor",
+    "url": "https://github.com/dotnet/dotnet-monitor",
+    "source": "in_github"
+  },
+  {
+    "name": "beeref",
+    "url": "https://github.com/rbreu/beeref",
+    "source": "in_github"
+  },
+  {
+    "name": "dashbrew",
+    "url": "https://github.com/rasjonell/dashbrew",
+    "source": "in_github"
+  },
+  {
+    "name": "Homebrew",
+    "url": "https://github.com/Homebrew/brew",
+    "source": "in_github"
+  },
+  {
+    "name": "pug",
+    "url": "https://github.com/leg100/pug",
+    "source": "in_github"
+  },
+  {
+    "name": "slides",
+    "url": "https://github.com/maaslalani/slides",
+    "source": "in_github"
+  },
+  {
+    "name": "pake",
+    "url": "https://github.com/tw93/Pake",
+    "source": "in_github"
+  },
+  {
+    "name": "twitch-tui",
+    "url": "https://github.com/Xithrius/twitch-tui",
+    "source": "in_github"
+  },
+  {
+    "name": "taskbook",
+    "url": "https://github.com/klaussinani/taskbook",
+    "source": "in_github"
+  },
+  {
+    "name": "smithery-cli",
+    "url": "https://github.com/smithery-ai/cli",
+    "source": "in_github"
+  },
+  {
+    "name": "doxx",
+    "url": "https://github.com/bgreenwell/doxx",
+    "source": "in_github"
+  },
+  {
+    "name": "joshuto",
+    "url": "https://github.com/kamiyaa/joshuto",
+    "source": "in_github"
+  },
+  {
+    "name": "portal",
+    "url": "https://github.com/SpatiumPortae/portal",
+    "source": "in_github"
+  },
+  {
+    "name": "officecli",
+    "url": "https://github.com/iOfficeAI/OfficeCLI",
+    "source": "in_github"
+  },
+  {
+    "name": "kupo",
+    "url": "https://github.com/darrenburns/kupo",
+    "source": "in_github"
+  },
+  {
+    "name": "json-server",
+    "url": "https://github.com/typicode/json-server",
+    "source": "in_github"
+  },
+  {
+    "name": "oculante",
+    "url": "https://github.com/woelper/oculante",
+    "source": "in_github"
+  },
+  {
+    "name": "manga-tui",
+    "url": "https://github.com/josueBarretogit/manga-tui",
+    "source": "in_github"
+  },
+  {
+    "name": "euporie",
+    "url": "https://github.com/joouha/euporie",
+    "source": "in_github"
+  },
+  {
+    "name": "dotnet-serve",
+    "url": "https://github.com/natemcmaster/dotnet-serve",
+    "source": "in_github"
+  },
+  {
+    "name": "MōIcons",
+    "url": "https://github.com/mo-browser-apps/icons",
+    "source": "in_github"
+  },
+  {
+    "name": "tabulous",
+    "url": "https://github.com/hanjinliu/tabulous",
+    "source": "in_github"
+  },
+  {
+    "name": "Mise",
+    "url": "https://github.com/jdx/mise",
+    "source": "in_github"
+  },
+  {
+    "name": "deputui",
+    "url": "https://github.com/twiddler/deputui",
+    "source": "in_github"
+  },
+  {
+    "name": "extraterm",
+    "url": "https://github.com/sedwards2009/extraterm",
+    "source": "in_github"
+  },
+  {
+    "name": "toolong",
+    "url": "https://github.com/Textualize/toolong",
+    "source": "in_github"
+  },
+  {
+    "name": "Perplexity",
+    "url": "https://github.com/perplexity.ai/personal-computer",
+    "source": "in_dev_website"
+  },
+  {
+    "name": "sshs",
+    "url": "https://github.com/quantumsheep/sshs",
+    "source": "in_github"
+  },
+  {
+    "name": "gtop",
+    "url": "https://github.com/aksakalli/gtop",
+    "source": "in_github"
+  },
+  {
+    "name": "tes3edit",
+    "url": "https://github.com/rfuzzo/tes3edit",
+    "source": "in_github"
+  },
+  {
+    "name": "mockolo",
+    "url": "https://github.com/uber/mockolo",
+    "source": "in_github"
+  },
+  {
+    "name": "goshot",
+    "url": "https://github.com/janpfeifer/goshot",
+    "source": "in_github"
+  },
+  {
+    "name": "forage-cli",
+    "url": "https://github.com/starmorph/forage-cli",
+    "source": "in_github"
+  },
+  {
+    "name": "frescobaldi",
+    "url": "https://github.com/frescobaldi/frescobaldi",
+    "source": "in_github"
+  },
+  {
+    "name": "mapscii",
+    "url": "https://github.com/rastapasta/mapscii",
+    "source": "in_github"
+  },
+  {
+    "name": "kiorg",
+    "url": "https://github.com/houqp/kiorg",
+    "source": "in_github"
+  },
+  {
+    "name": "Macos App Thinner",
+    "url": "https://github.com/mvmalyi/macos-app-thinner",
+    "source": "in_github"
+  },
+  {
+    "name": "updo",
+    "url": "https://github.com/Owloops/updo",
+    "source": "in_github"
+  },
+  {
+    "name": "geminabox",
+    "url": "https://github.com/geminabox/geminabox",
+    "source": "in_github"
+  },
+  {
+    "name": "veusz",
+    "url": "https://github.com/veusz/veusz",
+    "source": "in_github"
+  },
+  {
+    "name": "mlflow",
+    "url": "https://github.com/mlflow/mlflow",
+    "source": "in_github"
+  },
+  {
+    "name": "tuisky",
+    "url": "https://github.com/sugyan/tuisky",
+    "source": "in_github"
+  },
+  {
+    "name": "zap-zerx-lab",
+    "url": "https://github.com/zerx-lab/zap",
+    "source": "in_github"
+  },
+  {
+    "name": "managarr",
+    "url": "https://github.com/Dark-Alex-17/managarr",
+    "source": "in_github"
+  },
+  {
+    "name": "caliscope",
+    "url": "https://github.com/mprib/caliscope",
+    "source": "in_github"
+  },
+  {
+    "name": "ddclient",
+    "url": "https://github.com/ddclient/ddclient",
+    "source": "in_github"
+  },
+  {
+    "name": "browsr",
+    "url": "https://github.com/juftin/browsr",
+    "source": "in_github"
+  },
+  {
+    "name": "ego lite",
+    "url": "https://github.com/citrolabs/ego-lite",
+    "source": "in_github"
+  },
+  {
+    "name": "shiori",
+    "url": "https://github.com/go-shiori/shiori",
+    "source": "in_github"
+  },
+  {
+    "name": "Devbox",
+    "url": "https://github.com/jetify-com/devbox",
+    "source": "in_github"
+  },
+  {
+    "name": "smashing",
+    "url": "https://github.com/Smashing/smashing",
+    "source": "in_github"
+  },
+  {
+    "name": "CSharpRepl",
+    "url": "https://github.com/waf/CSharpRepl",
+    "source": "in_github"
+  },
+  {
+    "name": "swift-outdated",
+    "url": "https://github.com/kiliankoe/swift-outdated",
+    "source": "in_github"
+  },
+  {
+    "name": "planor",
+    "url": "https://github.com/mrusme/planor",
+    "source": "in_github"
+  },
+  {
+    "name": "macMLX (CLI)",
+    "url": "https://github.com/magicnight/Mac-MLX",
+    "source": "in_github"
+  },
+  {
+    "name": "pry",
+    "url": "https://github.com/pry/pry",
+    "source": "in_github"
+  },
+  {
+    "name": "Fly.io CLI",
+    "url": "https://github.com/superfly/flyctl",
+    "source": "in_github"
+  },
+  {
+    "name": "Ollama",
+    "url": "https://github.com/ollama/ollama",
+    "source": "in_github"
+  },
+  {
+    "name": "nvm",
+    "url": "https://github.com/nvm-sh/nvm",
+    "source": "in_github"
+  },
+  {
+    "name": "persepolis-download-manager",
+    "url": "https://github.com/persepolisdm/persepolis",
+    "source": "in_github"
+  },
+  {
+    "name": "wishlist",
+    "url": "https://github.com/charmbracelet/wishlist",
+    "source": "in_github"
+  },
+  {
+    "name": "pyzo",
+    "url": "https://github.com/pyzo/pyzo",
+    "source": "in_github"
+  },
+  {
+    "name": "Railway CLI",
+    "url": "https://github.com/railwayapp/cli",
+    "source": "in_github"
+  },
+  {
+    "name": "cua-driver",
+    "url": "https://github.com/trycua/cua",
+    "source": "in_github"
+  },
+  {
+    "name": "pyqt-openai",
+    "url": "https://github.com/yjg30737/pyqt-openai",
+    "source": "in_github"
+  },
+  {
+    "name": "jwt-ui",
+    "url": "https://github.com/jwt-rs/jwt-ui",
+    "source": "in_github"
+  },
+  {
+    "name": "Atuin",
+    "url": "https://github.com/atuinsh/atuin",
+    "source": "in_github"
+  },
+  {
+    "name": "open-notebook",
+    "url": "https://github.com/lfnovo/open-notebook",
+    "source": "in_github"
+  },
+  {
+    "name": "dirac",
+    "url": "https://github.com/dirac-run/dirac",
+    "source": "in_github"
+  },
+  {
+    "name": "Transmission",
+    "url": "https://github.com/transmission/transmission",
+    "source": "in_github"
+  },
+  {
+    "name": "croc",
+    "url": "https://github.com/schollz/croc",
+    "source": "in_github"
+  },
+  {
+    "name": "rerun",
+    "url": "https://github.com/rerun-io/rerun",
+    "source": "in_github"
+  },
+  {
+    "name": "turbo-fieldfare",
+    "url": "https://github.com/drumih/turbo-fieldfare",
+    "source": "in_github"
+  },
+  {
+    "name": "Oh My Zsh",
+    "url": "https://github.com/ohmyzsh/ohmyzsh",
+    "source": "in_github"
+  },
+  {
+    "name": "IconChamp",
+    "url": "https://github.com/macenhance.com/iconchamp.html",
+    "source": "in_dev_website"
+  },
+  {
+    "name": "ugm",
+    "url": "https://github.com/ariasmn/ugm",
+    "source": "in_github"
+  },
+  {
+    "name": "md-tui",
+    "url": "https://github.com/henriklovhaug/md-tui",
+    "source": "in_github"
+  },
+  {
+    "name": "flower",
+    "url": "https://github.com/mher/flower",
+    "source": "in_github"
+  },
+  {
+    "name": "scooter",
+    "url": "https://github.com/thomasschafer/scooter",
+    "source": "in_github"
+  },
+  {
+    "name": "Liana",
+    "url": "https://github.com/wizardsardine/liana",
+    "source": "in_github"
+  },
+  {
+    "name": "marimo",
+    "url": "https://github.com/marimo-team/marimo",
+    "source": "in_github"
+  },
+  {
+    "name": "pnpm",
+    "url": "https://github.com/pnpm/pnpm",
+    "source": "in_github"
+  },
+  {
+    "name": "manuskript",
+    "url": "https://github.com/olivierkes/manuskript",
+    "source": "in_github"
+  },
+  {
+    "name": "LocalSend",
+    "url": "https://github.com/localsend/localsend",
+    "source": "in_github"
+  },
+  {
+    "name": "Archify",
+    "url": "https://github.com/Oct4Pie/archify",
+    "source": "in_github"
+  },
+  {
+    "name": "command-code",
+    "url": "https://github.com/CommandCodeAI/command-code",
+    "source": "in_github"
+  },
+  {
+    "name": "stu",
+    "url": "https://github.com/lusingander/stu",
+    "source": "in_github"
+  },
+  {
+    "name": "DepotDownloader",
+    "url": "https://github.com/SteamRE/DepotDownloader",
+    "source": "in_github"
+  },
+  {
+    "name": "rainfrog",
+    "url": "https://github.com/achristmascarl/rainfrog",
+    "source": "in_github"
+  },
+  {
+    "name": "oatmeal",
+    "url": "https://github.com/dustinblackman/oatmeal",
+    "source": "in_github"
+  },
+  {
+    "name": "auggie",
+    "url": "https://github.com/augmentcode/auggie",
+    "source": "in_github"
+  },
+  {
+    "name": "MerMark Editor",
+    "url": "https://github.com/Vesperino/MerMarkEditor",
+    "source": "in_github"
+  },
+  {
+    "name": "license_finder",
+    "url": "https://github.com/pivotal/LicenseFinder",
+    "source": "in_github"
+  },
+  {
+    "name": "IINA",
+    "url": "https://github.com/iina/iina",
+    "source": "in_github"
+  },
+  {
+    "name": "Rugby",
+    "url": "https://github.com/swiftyfinch/Rugby",
+    "source": "in_github"
+  },
+  {
+    "name": "wombat",
+    "url": "https://github.com/rogchap/wombat",
+    "source": "in_github"
+  },
+  {
+    "name": "tabiew",
+    "url": "https://github.com/shshemi/tabiew",
+    "source": "in_github"
+  },
+  {
+    "name": "yozefu",
+    "url": "https://github.com/MAIF/yozefu",
+    "source": "in_github"
+  },
+  {
+    "name": "browser-sync",
+    "url": "https://github.com/BrowserSync/browser-sync",
+    "source": "in_github"
+  },
+  {
+    "name": "chainlit",
+    "url": "https://github.com/Chainlit/chainlit",
+    "source": "in_github"
+  },
+  {
+    "name": "gpg-tui",
+    "url": "https://github.com/orhun/gpg-tui",
+    "source": "in_github"
+  },
+  {
+    "name": "swiftpolyglot",
+    "url": "https://github.com/appdecostudio/SwiftPolyglot",
+    "source": "in_github"
+  },
+  {
+    "name": "wander",
+    "url": "https://github.com/robinovitch61/wander",
+    "source": "in_github"
+  },
+  {
+    "name": "Eigent",
+    "url": "https://github.com/eigent-ai/eigent",
+    "source": "in_github"
+  },
+  {
+    "name": "swiftplantuml",
+    "url": "https://github.com/MarcoEidinger/SwiftPlantUML",
+    "source": "in_github"
+  },
+  {
+    "name": "aim",
+    "url": "https://github.com/aimhubio/aim",
+    "source": "in_github"
+  },
+  {
+    "name": "tdash",
+    "url": "https://github.com/jessfraz/tdash",
+    "source": "in_github"
+  },
+  {
+    "name": "Pool",
+    "url": "https://github.com/poolsideai/pool",
+    "source": "in_github"
+  },
+  {
+    "name": "termscp",
+    "url": "https://github.com/veeso/termscp",
+    "source": "in_github"
+  },
+  {
+    "name": "gobang",
+    "url": "https://github.com/TaKO8Ki/gobang",
+    "source": "in_github"
+  },
+  {
+    "name": "mailcatcher",
+    "url": "https://github.com/sj26/mailcatcher",
+    "source": "in_github"
+  },
+  {
+    "name": "gogs",
+    "url": "https://github.com/gogs/gogs",
+    "source": "in_github"
+  },
+  {
+    "name": "bartycrouch",
+    "url": "https://github.com/FlineDev/BartyCrouch",
+    "source": "in_github"
+  },
+  {
+    "name": "LibreChat",
+    "url": "https://github.com/danny-avila/LibreChat",
+    "source": "in_github"
+  },
+  {
+    "name": "kdash",
+    "url": "https://github.com/kdash-rs/kdash",
+    "source": "in_github"
+  },
+  {
+    "name": "vtop",
+    "url": "https://github.com/MrRio/vtop",
+    "source": "in_github"
+  },
+  {
+    "name": "trae-agent",
+    "url": "https://github.com/bytedance/trae-agent",
+    "source": "in_github"
+  },
+  {
+    "name": "lazyjournal",
+    "url": "https://github.com/Lifailon/lazyjournal",
+    "source": "in_github"
+  },
+  {
+    "name": "streamlit",
+    "url": "https://github.com/streamlit/streamlit",
+    "source": "in_github"
+  },
+  {
+    "name": "diskonaut",
+    "url": "https://github.com/imsnif/diskonaut",
+    "source": "in_github"
+  },
+  {
+    "name": "nostui",
+    "url": "https://github.com/akiomik/nostui",
+    "source": "in_github"
+  },
+  {
+    "name": "wetty",
+    "url": "https://github.com/butlerx/wetty",
+    "source": "in_github"
+  },
+  {
+    "name": "godns",
+    "url": "https://github.com/TimothyYe/godns",
+    "source": "in_github"
+  },
+  {
+    "name": "paw",
+    "url": "https://github.com/lucor/paw",
+    "source": "in_github"
+  },
+  {
+    "name": "htsgrid",
+    "url": "https://github.com/kojix2/htsgrid",
+    "source": "in_github"
+  },
+  {
+    "name": "rymdport",
+    "url": "https://github.com/Jacalz/rymdport",
+    "source": "in_github"
+  },
+  {
+    "name": "gotify",
+    "url": "https://github.com/gotify/cli",
+    "source": "in_github"
+  },
+  {
+    "name": "Popcorn Time",
+    "url": "https://github.com/popcorn-official/popcorn-desktop",
+    "source": "in_github"
+  },
+  {
+    "name": "Poetry",
+    "url": "https://github.com/python-poetry/poetry",
+    "source": "in_github"
+  },
+  {
+    "name": "Bun",
+    "url": "https://github.com/oven-sh/bun",
+    "source": "in_github"
+  },
+  {
+    "name": "cq-editor",
+    "url": "https://github.com/CadQuery/CQ-editor",
+    "source": "in_github"
+  },
+  {
+    "name": "Qoder",
+    "url": "https://github.com/qoder.com/install",
+    "source": "has_script_install"
+  },
+  {
+    "name": "TokenBar",
+    "url": "https://github.com/tokenbar.site/get-started",
+    "source": "in_dev_website"
+  },
+  {
+    "name": "emulsion",
+    "url": "https://github.com/ArturKovacs/emulsion",
+    "source": "in_github"
+  },
+  {
+    "name": "docsify-cli",
+    "url": "https://github.com/docsifyjs/docsify-cli",
+    "source": "in_github"
+  },
+  {
+    "name": "kubetui",
+    "url": "https://github.com/sarub0b0/kubetui",
+    "source": "in_github"
+  },
+  {
+    "name": "Tailscale",
+    "url": "https://github.com/tailscale/tailscale",
+    "source": "in_github"
+  },
+  {
+    "name": "visdom",
+    "url": "https://github.com/fossasia/visdom",
+    "source": "in_github"
+  },
+  {
+    "name": "reveal-md",
+    "url": "https://github.com/webpro/reveal-md",
+    "source": "in_github"
+  },
+  {
+    "name": "cline",
+    "url": "https://github.com/cline/cline",
+    "source": "in_github"
+  },
+  {
+    "name": "serpl",
+    "url": "https://github.com/yassinebridi/serpl",
+    "source": "in_github"
+  },
+  {
+    "name": "supersonic",
+    "url": "https://github.com/dweymouth/supersonic",
+    "source": "in_github"
+  },
+  {
+    "name": "spotify_player",
+    "url": "https://github.com/aome510/spotify-player",
+    "source": "in_github"
+  },
+  {
+    "name": "licenseplist",
+    "url": "https://github.com/mono0926/LicensePlist",
+    "source": "in_github"
+  },
+  {
+    "name": "krokiet",
+    "url": "https://github.com/qarmin/czkawka",
+    "source": "in_github"
+  },
+  {
+    "name": "go2tv",
+    "url": "https://github.com/alexballas/go2tv",
+    "source": "in_github"
+  },
+  {
+    "name": "gradio",
+    "url": "https://github.com/gradio-app/gradio",
+    "source": "in_github"
+  },
+  {
+    "name": "EasyLPAC",
+    "url": "https://github.com/creamlike1024/EasyLPAC",
+    "source": "in_github"
+  },
+  {
+    "name": "pyNastran",
+    "url": "https://github.com/SteveDoyle2/pyNastran",
+    "source": "in_github"
+  },
+  {
+    "name": "television",
+    "url": "https://github.com/alexpasmantier/television",
+    "source": "in_github"
+  },
+  {
+    "name": "dev-manager-desktop",
+    "url": "https://github.com/webosbrew/dev-manager-desktop",
+    "source": "in_github"
+  },
+  {
+    "name": "Unfatten",
+    "url": "https://github.com/avelio.tech/unfatten",
+    "source": "in_dev_website"
+  },
+  {
+    "name": "pokete",
+    "url": "https://github.com/lxgr-linux/pokete",
+    "source": "in_github"
+  },
+  {
+    "name": "tickrs",
+    "url": "https://github.com/tarkah/tickrs",
+    "source": "in_github"
+  },
+  {
+    "name": "Codeg",
+    "url": "https://github.com/xintaofei/codeg",
+    "source": "in_github"
+  },
+  {
+    "name": "goatcounter",
+    "url": "https://github.com/arp242/goatcounter",
+    "source": "in_github"
+  },
+  {
+    "name": "picoshare",
+    "url": "https://github.com/mtlynch/picoshare",
+    "source": "in_github"
+  },
+  {
+    "name": "gridplayer",
+    "url": "https://github.com/vzhd1701/gridplayer",
+    "source": "in_github"
+  },
+  {
+    "name": "horcrux-ui",
+    "url": "https://github.com/jesseduffield/horcrux-ui",
+    "source": "in_github"
+  },
+  {
+    "name": "authsec-bridge",
+    "url": "https://github.com/authsec-ai/authsec-bridge",
+    "source": "in_github"
+  },
+  {
+    "name": "nanobot",
+    "url": "https://github.com/HKUDS/nanobot",
+    "source": "in_github"
+  },
+  {
+    "name": "wakapi",
+    "url": "https://github.com/muety/wakapi",
+    "source": "in_github"
+  },
+  {
+    "name": "balenaEtcher",
+    "url": "https://github.com/balena-io/etcher",
+    "source": "in_github"
+  },
+  {
+    "name": "Jockey",
+    "url": "https://github.com/recailai/jockey",
+    "source": "in_github"
+  },
+  {
+    "name": "rubio-radio",
+    "url": "https://github.com/kojix2/rubio-radio",
+    "source": "in_github"
+  },
+  {
+    "name": "SDKMAN!",
+    "url": "https://github.com/sdkman/sdkman-cli",
+    "source": "in_github"
+  },
+  {
+    "name": "gotty",
+    "url": "https://github.com/sorenisanerd/gotty",
+    "source": "in_github"
+  },
+  {
+    "name": "Hermes One",
+    "url": "https://github.com/fathah/hermes-desktop",
+    "source": "in_github"
+  },
+  {
+    "name": "memray",
+    "url": "https://github.com/bloomberg/memray",
+    "source": "in_github"
+  },
+  {
+    "name": "adamantite",
+    "url": "https://github.com/jakebruemmer/adamantite",
+    "source": "in_github"
+  },
+  {
+    "name": "Deno",
+    "url": "https://github.com/denoland/deno",
+    "source": "in_github"
+  },
+  {
+    "name": "UTM",
+    "url": "https://github.com/utmapp/UTM",
+    "source": "in_github"
+  },
+  {
+    "name": "elia",
+    "url": "https://github.com/darrenburns/elia",
+    "source": "in_github"
+  },
+  {
+    "name": "uv",
+    "url": "https://github.com/astral-sh/uv",
+    "source": "in_github"
+  },
+  {
+    "name": "rrtop",
+    "url": "https://github.com/wojciech-zurek/rrtop",
+    "source": "in_github"
+  },
+  {
+    "name": "gitu",
+    "url": "https://github.com/altsem/gitu",
+    "source": "in_github"
+  },
+  {
+    "name": "LottieViewConvert",
+    "url": "https://github.com/SwaggyMacro/LottieViewConvert",
+    "source": "in_github"
+  },
+  {
+    "name": "mcphub",
+    "url": "https://github.com/samanhappy/mcphub",
+    "source": "in_github"
+  },
+  {
+    "name": "dotnet-counters",
+    "url": "https://github.com/dotnet/diagnostics",
+    "source": "in_github"
+  },
+  {
+    "name": "harnesskit",
+    "url": "https://github.com/RealZST/HarnessKit",
+    "source": "in_github"
+  },
+  {
+    "name": "recoverpy",
+    "url": "https://github.com/PabloLec/recoverpy",
+    "source": "in_github"
+  },
+  {
+    "name": "dooit",
+    "url": "https://github.com/kraanzu/dooit",
+    "source": "in_github"
+  },
+  {
+    "name": "Seaquel",
+    "url": "https://github.com/webstonehq/seaquel",
+    "source": "in_github"
+  },
+  {
+    "name": "maildev",
+    "url": "https://github.com/maildev/maildev",
+    "source": "in_github"
+  },
+  {
+    "name": "dnote",
+    "url": "https://github.com/dnote/dnote",
+    "source": "in_github"
+  },
+  {
+    "name": "Open Interpreter (Rust)",
+    "url": "https://github.com/openinterpreter/openinterpreter",
+    "source": "in_github"
+  },
+  {
+    "name": "xplr",
+    "url": "https://github.com/sayanarijit/xplr",
+    "source": "in_github"
+  },
+  {
+    "name": "electrum",
+    "url": "https://github.com/spesmilo/electrum",
+    "source": "in_github"
+  },
+  {
+    "name": "tiddlywiki",
+    "url": "https://github.com/TiddlyWiki/TiddlyWiki5",
+    "source": "in_github"
+  },
+  {
+    "name": "pm2",
+    "url": "https://github.com/Unitech/pm2",
+    "source": "in_github"
+  },
+  {
+    "name": "bleachbit",
+    "url": "https://github.com/bleachbit/bleachbit",
+    "source": "in_github"
+  },
+  {
+    "name": "castero",
+    "url": "https://github.com/xgi/castero",
+    "source": "in_github"
+  },
+  {
+    "name": "pudb",
+    "url": "https://github.com/inducer/pudb",
+    "source": "in_github"
+  },
+  {
+    "name": "ilspycmd",
+    "url": "https://github.com/icsharpcode/ILSpy",
+    "source": "in_github"
+  },
+  {
+    "name": "nicotine-plus",
+    "url": "https://github.com/nicotine-plus/nicotine-plus",
+    "source": "in_github"
+  },
+  {
+    "name": "orange3",
+    "url": "https://github.com/biolab/orange3",
+    "source": "in_github"
+  },
+  {
+    "name": "csvlens",
+    "url": "https://github.com/YS-L/csvlens",
+    "source": "in_github"
+  },
+  {
+    "name": "Mission Control Plus",
+    "url": "https://github.com/ronyfadel/MissionControlPlusReleases",
+    "source": "in_github"
+  },
+  {
+    "name": "aichat",
+    "url": "https://github.com/sigoden/aichat",
+    "source": "in_github"
+  },
+  {
+    "name": "jiratui",
+    "url": "https://github.com/whyisdifficult/jiratui",
+    "source": "in_github"
+  },
+  {
+    "name": "friture",
+    "url": "https://github.com/tlecomte/friture",
+    "source": "in_github"
+  },
+  {
+    "name": "Docker Desktop",
+    "url": "https://get.docker.com",
+    "source": "has_script_install"
+  },
+  {
+    "name": "taskjuggler",
+    "url": "https://github.com/taskjuggler/TaskJuggler",
+    "source": "in_github"
+  },
+  {
+    "name": "chat-shared-conversation-to-file",
+    "url": "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file",
+    "source": "in_github"
+  },
+  {
+    "name": "@hehehai/buke",
+    "url": "https://github.com/hehehai/buke",
+    "source": "in_github"
+  },
+  {
+    "name": "ddv",
+    "url": "https://github.com/lusingander/ddv",
+    "source": "in_github"
+  },
+  {
+    "name": "Setapp",
+    "url": "https://github.com/setapp.com/download",
+    "source": "in_dev_website"
+  },
+  {
+    "name": "s-tui",
+    "url": "https://github.com/amanusk/s-tui",
+    "source": "in_github"
+  },
+  {
+    "name": "markserv",
+    "url": "https://github.com/markserv/markserv",
+    "source": "in_github"
+  },
+  {
+    "name": "Chirpy",
+    "url": "https://chirpy.pro/download",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "Kosmik",
+    "url": "https://kosmik.app/downloads",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "ButterKit",
+    "url": "https:// butterkit.app/download/",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "CodeMantis",
+    "url": "https://codemantis.dev/download",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "Yaak",
+    "url": "https://yaak.app/download",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "Tablen",
+    "url": "https://tablen.app/download",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "Pasty",
+    "url": "https://pasty.dev",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "ego (lite)",
+    "url": "https://lite.ego.app/download",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "DevDash",
+    "url": "https://devdash.dev (or GitHub Pages)",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "Multica",
+    "url": "https://multica.ai/download",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "Superwhisper",
+    "url": "https://superwhisper.com",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "Halo",
+    "url": "https://heyhalo.app",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "Unpeel",
+    "url": "https://unpeel.com",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "FilenQ",
+    "url": "https://filenq.app",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "Aizen",
+    "url": "https://aizen.win",
+    "source": "homepage-download-test-cases-js-gated"
+  },
+  {
+    "name": "TogglePresent",
+    "url": "https://togglepresent.com",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Echo",
+    "url": "https://theodorehq.com/echo",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "AlDente Pro",
+    "url": "https://apphousekitchen.com",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "BetterDisplay",
+    "url": "https://betterdisplay.pro",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "DiskLens",
+    "url": "https://disklens.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Consul",
+    "url": "https://consul.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Compresto",
+    "url": "https://compresto.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "SaneBar",
+    "url": "https://sanebar.com",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Thaw",
+    "url": "https://github.com/stonerl/Thaw",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "NetBar",
+    "url": "https://github.com/mh-sudo/NetBar",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "MacMonitor",
+    "url": "https://github.com/ryyansafar/MacMonitor",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "MacThrottle",
+    "url": "https://github.com/angristan/MacThrottle",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Clipped",
+    "url": "https://github.com/mcclowes/clipped",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Orbit",
+    "url": "https://github.com/yuzeguitarist/Orbit",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "iA Writer",
+    "url": "https://ia.net/writer",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "DEVONthink",
+    "url": "https://devontechnologies.com",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Things 3",
+    "url": "https://culturedcode.com/things",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Resurf",
+    "url": "https://resurf.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "NoteMap",
+    "url": "https://notemap.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Refine",
+    "url": "https://refine.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Canto",
+    "url": "https://canto.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "TablePro",
+    "url": "https://tablepro.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Superconductor",
+    "url": "https://superconductor.dev",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "T3Code",
+    "url": "https://t3code.com",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "PortDeck",
+    "url": "https://github.com/JessePeplinski/portdeck",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Jan",
+    "url": "https://jan.ai",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "BoltAI",
+    "url": "https://boltai.com",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Snaply",
+    "url": "https://snaply.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "AimeFlux",
+    "url": "https://aimeflux.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Snippetbar",
+    "url": "https://snippetbar.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Cotypist",
+    "url": "https://cotypist.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Skreen",
+    "url": "https://github.com/levskiy0/skreenme",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Screencharm",
+    "url": "https://screencharm.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Recordly",
+    "url": "https://recordly.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Cap",
+    "url": "https://cap.so",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "OpenVox",
+    "url": "https://openvox.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Zyp",
+    "url": "https://getzyp.com",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Harbor",
+    "url": "https://github.com/thsnkhn/harbor",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Syncthing Menu",
+    "url": "https://github.com/gtunes-dev/syncthing-menu",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Itsypin",
+    "url": "https://itsypin.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Tempo",
+    "url": "https://tempoapp.app/downloads",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "LookAway",
+    "url": "https://lookaway.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Chronoid",
+    "url": "https://chronoid.com",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Pieoneer",
+    "url": "https://pieoneer.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Carbon Copy Cloner",
+    "url": "https://bombich.com",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Lattix",
+    "url": "https://lattix.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "Tusk",
+    "url": "https://tusk.app",
+    "source": "homepage-download-test-cases"
+  },
+  {
+    "name": "SystemEQ",
+    "url": "https://github.com/denzam/SystemEQ-for-Mac",
+    "source": "homepage-download-test-cases"
+  }
+]
