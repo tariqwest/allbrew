@@ -610,6 +610,9 @@ const ARCHIVE_BINARY_EXTS = [".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".zip"];
 const BARE_BINARY_SKIP_SUFFIXES = [
   ".sha256",
   ".sha256sum",
+  ".sha512",
+  ".sha512sum",
+  ".sha384",
   ".sig",
   ".asc",
   ".pem",

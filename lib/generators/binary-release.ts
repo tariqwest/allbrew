@@ -69,10 +69,13 @@ export function pickArchiveEntrypoint(
     const base = m.split("/").pop() || "";
     if (!base || base.startsWith(".")) return false;
     if (/\.(txt|md|json|sha256|sig|asc|1|html|sample|dylib|so|a)$/i.test(base)) return false;
-    // Prefer bin/ layout; also allow root-level binaries.
+    // Prefer bin/ layout; also allow root-level binaries and files one directory
+    // deep (common for release archives with a top-level wrapper directory like
+    // `project-arch/binary`).
+    const depth = m.split("/").length - 1;
     return (
       /(^|\/)bin\//.test(m) ||
-      !m.includes("/")
+      depth <= 1
     );
   });
 
@@ -96,6 +99,11 @@ export function pickArchiveEntrypoint(
     // Deprioritize helper hosts / path tools.
     if (/host|rg$|zsh|node|python/i.test(base)) s -= 20;
     if (base.length === 1) s -= 5; // e.g. "i"
+    // Boost binary-like files (no extension or known non-doc) over
+    // documentation/license files (common in release archives).
+    const DOC_PATTERNS = /^(license|licence|readme|changelog|changes|authors|contributing|copying|notice|authors|install|todo)\b/i;
+    if (DOC_PATTERNS.test(base)) s -= 10;
+    else if (!base.includes(".")) s += 5;
     return s;
   };
 
