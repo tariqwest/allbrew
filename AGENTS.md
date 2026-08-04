@@ -13,6 +13,11 @@
 > - [`allbrew-tap-update-e2e.md`](./.agents/plans/allbrew-tap-update-e2e.md) — E2E tap + livecheck update cycle tests with synthetic fixtures
 > - [`allbrew-user-lifecycle-test-plan.md`](./.agents/plans/allbrew-user-lifecycle-test-plan.md) — user-lifecycle test gaps (services, uninstall residuals, hooks, personas, Lume nightly journeys)
 > - [`allbrew-local-test-cleanup-rollback.md`](./.agents/plans/allbrew-local-test-cleanup-rollback.md) — snapshot/restore for local E2E runs so they don't pollute the user's workspace
+
+## Core Mandates & Rules
+
+### Monitored Allbrew Install Batching Rule
+Any `monitored-allbrew-install-batch` solution must have a real agent in the loop providing dynamic judgement and live test/fix/retest/save-fix loop as laid out in the `.agents/skills/monitored-allbrew-install/` skill. The idea is to implement the skill's logic, just in batches for greater concurrency and isolation than can be achieved by running the skill manually in the user's local workspace.
 > - [`allbrew-agent-skills.md`](./.agents/plans/allbrew-agent-skills.md) — proposed agent skills for orientation, diagnosis, and repair (12 skills across understand/diagnose/fix tiers)
 
 ## Project overview

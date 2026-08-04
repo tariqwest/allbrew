@@ -1,6 +1,6 @@
-# Allbrew Test Cases
 | app | lang/runtime | framework | in_dev_website | in_github | in_homebrew | in_setapp | in_mas | in_npm | in_pip | in_cargo | in_go_mod | in_ruby_gem | in_swiftpm | in_mint | in_dotnet | is_tui_app | is_gui_app | is_webui_app | is_cask_dist | has_source_dist | has_prebuilt_bin_dist | has_script_install | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| # Allbrew Test Cases | | | | | | | | | | | | | | | | | | | | | | | |
 | > Originally extracted from [allbrew-test-cases-deep-research-2026-06.md](./allbrew-test-cases-deep-research-2026-06.md). | | | | | | | | | | | | | | | | | | | | | | | |
 | > That document contains the full research narrative, per-ecosystem tables, and generator-coverage analysis. | | | | | | | | | | | | | | | | | | | | | | | |
 | > This file is the single consolidated table of every app including many not in the original research document. | | | | | | | | | | | | | | | | | | | | | | | |
@@ -322,7 +322,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -377,85 +377,80 @@
 | brew install agent-deck && agent-deck --version | | | | | | | | | | | | | | | | | | | | | | | |
 | # future generators (manual today) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned) | | | | | | | | | | | | | | | | | | | | | | | |
-| ``` | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ``` | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | Record per pick: generator chosen, bin name vs package name drift, livecheck source, service | | | | | | | | | | | | | | | | | | | | | | | |
 | block (flower/wakapi/smtp4dev), and any native-build failures (tgt/TDLib, goatcounter/CGO, | | | | | | | | | | | | | | | | | | | | | | | |
 | Fyne/`fyne install`). | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (cask-app & script-install) | | | | | | | | | | | | | | | | | | | | | | | |
-```bash
-# Not-in-HB app (GitHub release DMG)
-allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual
-brew install --cask seaquel && open -a Seaquel
-
-# Not-in-HB app (GitHub release DMG, different naming)
-allbrew https://github.com/berbicanes/apiark/releases/download/v0.4.6/ApiArk_0.4.6_aarch64.dmg --manual
-brew install --cask apiark && open -a ApiArk
-
-# Developer site redirect → GitHub .zip
-allbrew https://ollama.com/download/Ollama-darwin.zip --manual
-brew install --cask ollama && ollama --version
-
-# Developer CDN "latest" DMG
-allbrew https://proxyman.io/release/osx/Proxyman_latest.dmg --manual
-brew install --cask proxyman && open -a Proxyman
-
-# Developer CDN DMG (no version in URL; closed-source; also on MAS)
-allbrew https://desktop-app.poecdn.net/downloads/Poe.dmg --manual
-brew install --cask poe && open -a Poe
-
-# Developer CDN DMG (no version in URL; closed-source AI agent browser; arm64 + x64 variants)
-# Edge case: filename `egolite.dmg` has no separator → default cask token would be "egolite",
-# but the brand token is "ego-lite"; app bundle name has a space ("ego lite.app").
-allbrew https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg --manual \
-  --name ego-lite --app-name "ego lite.app" --homepage https://lite.ego.app
-brew install --cask ego-lite && open -a "ego lite"
-
-# Developer site .zip (version in filename; closed-source; also on MAS)
-allbrew https://pilotmoon.com/downloads/PopClip-2025.9.2.zip --manual
-brew install --cask popclip && open -a PopClip
-
-# GitHub release cask (releases-only repo; closed-source)
-allbrew https://github.com/ronyfadel/MissionControlPlusReleases --manual
-brew install --cask mission-control-plus && open -a "Mission Control Plus"
-
-# GitHub release cask (.zip with .app; open-source Swift; unsigned)
-allbrew https://github.com/dodo-reach/hermes-desktop --manual
-brew install --cask hermes-desktop && open -a HermesDesktop
-
-# GitHub release cask (Tauri 2 desktop; versioned DMG with arch suffix; open-source)
-allbrew https://github.com/xintaofei/codeg --manual
-brew install --cask codeg && open -a Codeg
-
-# PKG installer (not DMG)
-allbrew https://zoom.us/client/latest/Zoom.pkg --manual
-brew install --cask zoom && open -a zoom.us
-
-# GitHub /latest/ redirect (no version in URL)
-allbrew https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg --manual
-brew install --cask utm && open -a UTM
-
-# GitHub /latest/ redirect DMG (Electron app; signed + notarized)
-allbrew https://github.com/DylanWain/veronum-desktop/releases/latest/download/Veronum.dmg --manual
-brew install --cask veronum && open -a Veronum
-
-# Script-install test
-allbrew https://starship.rs/install.sh --manual
-brew install starship && starship --version
-
-# Script-install — no .sh extension
-allbrew https://get.volta.sh --manual
-brew install volta && volta --version
-
-# Script-install — launcher script (not one-shot)
-allbrew https://get.jetify.com/devbox --manual
-brew install devbox && devbox version
-
-# Script-install — macOS driver that drops CuaDriver.app + symlinks cua-driver CLI
-allbrew https://cua.ai/driver/install.sh --manual --name cua-driver
-brew install cua-driver && cua-driver --version
-```
-
-# GitHub release cask (AI desktop agent; already in HB as cask; good for testing duplicate detection)
-allbrew https://github.com/eigent-ai/eigent --manual
-brew install --cask eigent && open -a Eigent
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | |
+| # Not-in-HB app (GitHub release DMG) | | | | | | | | | | | | | | | | | | | | | | | |
+| allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual | | | | | | | | | | | | | | | | | | | | | | | |
+| brew install --cask seaquel && open -a Seaquel | | | | | | | | | | | | | | | | | | | | | | | |
+| chirpy | Swift | AppKit | chirpy.pro/download | | | | | | | | | | | | | | yes | | .dmg | | | | JS-gated download button; custom notification sounds per Slack channel/app; notarized; $19.99; Sparkle updates; not on MAS/Homebrew |
+| kosmik | Swift/JS | AppKit/Web | kosmik.app/downloads | | | | | | | | | | | | | | yes | | .dmg | | | | JS-gated arch-specific selector (Apple Silicon / Intel); creative workspace with built-in browser; free tier |
+| butterkit | Swift | SwiftUI | butterkit.app/download | | butterkit (cask) | | | | | | | | | | | | yes | | .dmg | | | | JS-gated client arch detection with JS disabled fallback; App Store screenshot tool; requires macOS 26+ |
+| codemantis | Rust/TypeScript | Tauri 2 | codemantis.dev/download | github.com/codemantis-dev/codemantis | | | | | | | | | | | | | yes | | .dmg | | yes | | JS-gated runtime fetch to GitHub API releases; Claude Code GUI; MIT licensed |
+| yaak | Rust/TypeScript | Tauri | yaak.app/download | github.com/yaakapp/app | yaak (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | JS-gated platform/arch selector; local-first REST/GraphQL/gRPC API client |
+| tablen | Swift | AppKit | tablen.app/download | | tablen (cask) | | | | | | | | | | | | yes | | .dmg | | | | JS-gated arch selector (Apple Silicon/Intel/Universal); native SQL/NoSQL client for 20+ DBs; notarized; versioned URL (Tablen-1.32.0-arm64.dmg) |
+| pasty | Swift | SwiftUI | pasty.dev | | pasty (cask) | | | | | | | | | | | | yes | | .dmg | | | | JS-gated dynamic download section; native Swift 120Hz clipboard manager with AES-256; $9.99 |
+| ego-lite | TypeScript/Rust | Tauri | lite.ego.app/download | | | | | | | | | | | | | | yes | | .dmg | | | | JS-gated auto arch detection with fallback link; AI agent browser |
+| devdash | TypeScript/React | Electron | devdash.dev | github.com/devdash/devdash | | | | | | | | | | | | | yes | | .dmg | | yes | | JS-gated React WebGL arch heuristic + GitHub API release fetch; developer metrics dashboard |
+| multica | TypeScript | Electron | multica.ai/download | github.com/multica-ai/multica | | | | | | | | | | | | | yes | | .dmg | | yes | | JS-gated client OS/arch detect + api.github.com/releases/latest fetch; managed AI agents platform |
+| superwhisper | Swift | AppKit | superwhisper.com | | | | | | | | | | | | | | yes | | .dmg | | | | JS-gated button click API invocation; local AI voice-to-text dictation; Sparkle updates |
+| heyhalo | Swift | SwiftUI | heyhalo.app | | | | | | | | | | | | | | yes | | .dmg | | | | JS-gated dynamic download URL on click event; AI desktop window & quick action assistant |
+| unpeel | Swift | Vision/AppKit | unpeel.com | | | | | | | | | | | | | | yes | | .dmg | | | | JS-gated arch detection button; on-device image background removal tool using Vision framework |
+| filenq | TypeScript | Electron | filenq.app | | | | | | | | | | | | | | yes | | .dmg | | | | JS-gated dynamic link; encrypted cloud drive & file transfer client |
+| aizen | Swift | AppKit | aizen.win | | | | | | | | | | | | | | yes | | .dmg | | | | JS-gated dynamic link based on user agent token; AI macOS workflow automation app |
+| togglepresent | Swift | AppKit | togglepresent.com | | | | | | | | | | | | | | yes | | .dmg | | | | One-click presentation mode (hide desktop, mute, DND); $4.99; direct download |
+| ghost-text-mac | Swift | Vision/AppKit | ghosttext.app | | | | | | | | | | | | | | yes | | .dmg | | | | OCR text extraction from screen regions using Vision framework; $4.99 |
+| smart-folder | Swift | AppKit | smartfolder.app | | | | | | | | | | | | | | yes | | .dmg | | | | Auto-organize Downloads folder by file type; free |
+| naturalmouse | Swift | AppKit | naturalmouse.app | | | | | | | | | | | | | | yes | | .dmg | | | | Separate scroll direction for trackpad vs mouse; free |
+| googly-eyes | Swift | AppKit | googlyeyes.app | | | | | | | | | | | | | | yes | | .dmg | | | | Animated menu bar eyes that follow mouse cursor; free |
+| echo-media | Swift | AppKit | theodorehq.com/echo | | | | | | | | | | | | | | yes | | .dmg | | | | Media memory — remembers everything played across desktop apps; $9.99 |
+| aldente-pro | Swift | AppKit | apphousekitchen.com | | | | | | | | | | | | | | yes | | .dmg | | | | MacBook battery charge limiter & battery health manager; Free/Pro |
+| betterdisplay | Swift | AppKit | betterdisplay.pro | | betterdisplay (cask) | | | | | | | | | | | | yes | | .dmg | | | | Monitor management, custom resolutions, HiDPI override |
+| disklens | Swift | AppKit | disklens.app | | | | | | | | | | | | | | yes | | .dmg | | | | Disk space usage analyzer with treemap visualization; free |
+| consul-app | Swift | AppKit | consul.app | | | | | | | | | | | | | | yes | | .dmg | | | | File converter — change file extension in Finder to convert; $19 |
+| compresto | Swift | AppKit | compresto.app | | | | | | | | | | | | | | yes | | .dmg | | | | Batch video, image, and PDF compression; Free/$49-69 |
+| sanebar | Swift | AppKit | sanebar.com | github.com/sane-apps/sanebar | sane-apps/tap/sanebar (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | Menu bar icon manager; MIT open source |
+| thaw-bar | Swift | AppKit | | github.com/stonerl/Thaw | thaw (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | Menu bar icon manager (Ice fork); GPL-3.0 |
+| netbar | Swift | AppKit | | github.com/mh-sudo/NetBar | | | | | | | | | | | | | yes | | .dmg | | yes | | Network speed monitor menu bar app; versioned URL (v1.2.1); MIT |
+| macmonitor | Swift | SwiftUI | | github.com/ryyansafar/MacMonitor | | | | | | | | | | | | | yes | | .dmg | | yes | | Apple Silicon system resource monitor; versioned URL (v2.0.2); MIT |
+| macthrottle | Swift | AppKit | | github.com/angristan/MacThrottle | angristan/tap/macthrottle (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | Thermal throttling monitor for Apple Silicon; MIT |
+| clipped-app | Swift | AppKit | | github.com/mcclowes/clipped | mcclowes/clipped/clipped (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | Clipboard history manager; versioned URL (v1.7.0); MIT |
+| orbit-launcher | Swift | AppKit | | github.com/yuzeguitarist/Orbit | | | | | | | | | | | | | yes | | .dmg | | yes | | Radial app switcher at cursor location; source-available |
+| ia-writer | Objective-C/Swift | AppKit | ia.net/writer | | ia-writer (cask) | | | | | | | | | | | | yes | | .dmg | | | | Distraction-free Markdown writing editor; $30 |
+| devonthink | Objective-C/Swift | AppKit | devontechnologies.com | | devonthink (cask) | | | | | | | | | | | | yes | | .dmg | | | | Document & knowledge base management; local databases; $99+ |
+| things-mac | Objective-C/Swift | AppKit | culturedcode.com/things | | | | | | | | | | | | | | yes | | .dmg | | | | Task manager for macOS & iOS; $49.99 |
+| resurf | Swift | AppKit | resurf.app | | | | | | | | | | | | | | yes | | .dmg | | | | Quick capture & personal knowledge library; $39-49 |
+| notemap | Swift | AppKit | notemap.app | | | | | | | | | | | | | | yes | | .dmg | | | | Mind mapping editor with local AI integration; Free/$30 |
+| refine-app | Swift | AppKit | refine.app | | | | | | | | | | | | | | yes | | .dmg | | | | Offline AI grammar & style checker; $38-59 |
+| canto-app | Swift | AppKit | canto.app | | | | | | | | | | | | | | yes | | .dmg | | | | Private AI notebook using local LLM models; Free/$14.99 |
+| tablepro | Swift | AppKit | tablepro.app | | | | | | | | | | | | | | yes | | .dmg | | | | Native Swift database management GUI; Free/$59-119 |
+| superconductor | Rust | Tauri | superconductor.dev | | | | | | | | | | | | | | yes | | .dmg | | | | Parallel AI coding agents workstation with Rust terminal; free |
+| t3code | TypeScript | Electron | t3code.com | | | | | | | | | | | | | | yes | | .dmg | | | | GUI workbench for AI coding agents bringing own API keys; free |
+| portdeck | TypeScript/Rust | Tauri | | github.com/JessePeplinski/portdeck | JessePeplinski/tap/portdeck@beta (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | Menu bar dev services monitor; versioned URL (v0.1.0-beta.16); MIT |
+| jan-ai | TypeScript/C++ | Electron | jan.ai | github.com/janhq/jan | | | | | | | | | | | | | yes | | .dmg | | yes | | Open-source local AI chat assistant with local GGUF models |
+| boltai | Swift | AppKit | boltai.com | | | | | | | | | | | | | | yes | | .dmg | | | | Native AI desktop client supporting local and cloud models; $55-99 |
+| snaply | Swift | AppKit | snaply.app | | | | | | | | | | | | | | yes | | .dmg | | | | On-device AI dictation, meeting notes, writing assistant; free |
+| aimeflux | Swift | AppKit | aimeflux.app | | | | | | | | | | | | | | yes | | .dmg | | | | Local-first dictation and speech transcription; $20 |
+| snippetbar | Swift | AppKit | snippetbar.app | | | | | | | | | | | | | | yes | | .dmg | | | | Run custom AI prompts on selected text from menu bar; $19 |
+| cotypist | Swift | AppKit | cotypist.app | | | | | | | | | | | | | | yes | | .dmg | | | | AI typing prediction using local models; Free/Plus/Pro |
+| skreen | Swift | SwiftUI | | github.com/levskiy0/skreenme | | | | | | | | | | | | | yes | | .dmg | | yes | | Screenshot beautifier with automated PII redaction; free beta |
+| screencharm | Swift | AppKit | screencharm.app | | | | | | | | | | | | | | yes | | .dmg | | | | Screen recorder with automated cursor zoom & pan; $79 |
+| recordly | Swift | SwiftUI | recordly.app | github.com/recordly/recordly | | | | | | | | | | | | | yes | | .dmg | | yes | | Open-source lightweight screen recorder |
+| cap-so | TypeScript/Rust | Tauri | cap.so | github.com/CapSoftware/Cap | cap (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | Open-source screen recording tool (Loom alternative); Free/$58 |
+| openvox | Swift | AppKit | openvox.app | | | | | | | | | | | | | | yes | | .dmg | | | | Text-to-speech engine with 300+ voices & voice cloning; Free/$19.99 |
+| zyp | Swift | AppKit | getzyp.com | | khaweryounas/zyp/zyp (cask) | | | | | | | | | | | | yes | | .dmg | | | | SFTP/FTP/WebDAV/S3 file transfer client; versioned URL (1.1.1); notarized |
+| harbor-dm | Go/Swift | AppKit | | github.com/thsnkhn/harbor | thsnkhn/harbor/harbor (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | Download manager for HTTP & BitTorrent; GPL-3.0 |
+| syncthing-menu | Swift | AppKit | | github.com/gtunes-dev/syncthing-menu | | | | | | | | | | | | | yes | | .dmg | | yes | | Syncthing menu bar wrapper downloading runtime daemon; MIT |
+| itsypin | Swift | SwiftUI | itsypin.app | github.com/nickustinov/itsypin | nickustinov/tap/itsypin (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | Pinned websites in menu bar floating bubbles; MIT |
+| tempo-app | Swift | AppKit | tempoapp.app/downloads | | | | | | | | | | | | | | yes | | .dmg | | | | Developer webhook receiver & monitoring event hub; versioned URL (v1.2) |
+| lookaway | Swift | AppKit | lookaway.app | | | | | | | | | | | | | | yes | | .dmg | | | | Smart break reminder to reduce eye strain; $19-29 |
+| chronoid | Swift | AppKit | chronoid.com | | | | | | | | | | | | | | yes | | .dmg | | | | AI-assisted time tracking & Pomodoro focus timer; $49-99 |
+| pieoneer | Swift | AppKit | pieoneer.app | | | | | | | | | | | | | | yes | | .dmg | | | | Radial pie menu application launcher; $9.99 |
+| carbon-copy-cloner | Objective-C/Swift | AppKit | bombich.com | | carbon-copy-cloner (cask) | | | | | | | | | | | | yes | | .dmg | | | | Bootable backup & disk cloning utility; $49.99 |
+| lattix-app | Swift | AppKit | lattix.app | | | | | | | | | | | | | | yes | | .dmg | | | | Workspace & window layout launcher across multi-monitors; $13.99-23.99 |
+| tusk-backup | Swift | AppKit | tusk.app | | | | | | | | | | | | | | yes | | .dmg | | | | Backup management tracking file safety across destinations; $49 |
+| systemeq | Swift | AudioUnit/AppKit | | github.com/denzam/SystemEQ-for-Mac | systemeq (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | System-wide audio equalizer; versioned URL (v1.0.5) |
