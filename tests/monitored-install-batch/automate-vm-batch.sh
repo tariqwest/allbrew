@@ -49,7 +49,7 @@ ${BOLD}Options:${NC}
   -t, --timeout <ms>     Timeout per installation in ms (default: ${TIMEOUT_MS})
   -p, --provision        Run VM setup/provisioning prior to starting the batch
   -r, --reset-locks      Purge host lockdirs & force-unlock guest Homebrew locks
-  -m, --monitor          Follow progress.json in real-time during execution
+  -m, --monitor          Follow state/progress.json in real-time during execution
   -d, --dry-run          Show env vars and command execution plan without running
   --local-only           Disable remote VM execution (LUME_REMOTE_ENABLED=false)
   -h, --help             Display this help menu
@@ -195,7 +195,7 @@ fi
 
 # --- Launch & Monitor ---
 if [[ "${MONITOR}" == true ]]; then
-  PROGRESS_FILE="${SCRIPT_DIR}/progress.json"
+  PROGRESS_FILE="${SCRIPT_DIR}/state/progress.json"
   echo -e "${GREEN}Starting background batch execution with real-time monitoring...${NC}"
   ${EXEC_CMD} &
   BATCH_PID=$!
@@ -219,7 +219,7 @@ fi
 
 echo -e "\n${GREEN}${BOLD}=== Batch Execution Complete ===${NC}"
 echo "Outcomes & Artifacts:"
-echo "  - Index:        ${SCRIPT_DIR}/index.jsonl"
-echo "  - Fix Index:    ${SCRIPT_DIR}/fix-index.jsonl"
-echo "  - Progress:     ${SCRIPT_DIR}/progress.json"
+echo "  - Index:        ${SCRIPT_DIR}/state/index.jsonl"
+echo "  - Fix Index:    ${SCRIPT_DIR}/state/fix-index.jsonl"
+echo "  - Progress:     ${SCRIPT_DIR}/state/progress.json"
 echo "  - Run Records:  ${REPO_DIR}/tests/monitored-install-runs/"

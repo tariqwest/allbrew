@@ -13,7 +13,7 @@ This skill provides comprehensive automation for provisioning Lume macOS testing
 
 ### 1. VM & Endpoint Layout
 - **Remote Endpoint (`homeserver`)**: Remote Lume VM (`vm-homeserver-macos-testing`) accessed via `app-user@homeserver.local` (`LUME_REMOTE_ENABLED=true`).
-- **Local Endpoint (`local`)**: Twin VM (`vm-local-macos-testing`) on local host (`LUME_REMOTE_ENABLED=false`).
+- **Local Endpoint (`local-1`, `local-2`)**: Twin VMs (`vm-local-macos-testing-1`, `vm-local-macos-testing-2`) on local host (`LUME_REMOTE_ENABLED=false`).
 - **Guest Workspace & User**: Dedicated non-root account `th-allbrew` with an exclusive mounted sparsebundle prefix at `/opt/homebrew`. (Note: JS helper `lib/batch-helpers.mjs` falls back to `["th-allbrew-w1", "th-allbrew-w2"]` if `TH_BATCH_WORKERS` is not set).
 
 ### 2. Lock & Concurrency Control
@@ -50,7 +50,7 @@ For every URL in `tests/monitored-install-batch/urls-shuffled.json`:
 5. **Phase 5: Hygiene & Record Finalization**
    - Uninstalls package (`allbrew uninstall --force <slug>`).
    - Finalizes canonical run record under `tests/monitored-install-runs/<timestamp>__<slug>/`.
-   - Updates `index.jsonl`, `fix-index.jsonl`, and `progress.json`.
+   - Updates `state/index.jsonl`, `state/fix-index.jsonl`, and `state/progress.json`.
 
 ---
 
@@ -65,7 +65,7 @@ The shell automation helper is located at `tests/monitored-install-batch/automat
 - `-t, --timeout <ms>`: Per-install timeout in milliseconds (default: `720000`).
 - `-p, --provision`: Run VM setup (`npm run vm:setup`) prior to batch.
 - `-r, --reset-locks`: Purge host mutex lockdirs and guest lock files.
-- `-m, --monitor`: Follow `progress.json` in real time.
+- `-m, --monitor`: Follow `state/progress.json` in real time.
 - `-d, --dry-run`: Validate environment configuration and execution plan without running.
 - `--local-only`: Restrict execution to local twin VM (`LUME_REMOTE_ENABLED=false`).
 
@@ -92,8 +92,8 @@ bun test tests/unit/automate-vm-batch.test.ts
 
 ## Artifact & Log Locations
 
-- **Batch Index**: `tests/monitored-install-batch/index.jsonl`
-- **Fix Index**: `tests/monitored-install-batch/fix-index.jsonl`
-- **Real-Time Progress**: `tests/monitored-install-batch/progress.json`
+- **Batch Index**: `tests/monitored-install-batch/state/index.jsonl`
+- **Fix Index**: `tests/monitored-install-batch/state/fix-index.jsonl`
+- **Real-Time Progress**: `tests/monitored-install-batch/state/progress.json`
 - **Canonical Run Records**: `tests/monitored-install-runs/<timestamp>__<slug>/`
 - **Host Lock Directories**: `tests/monitored-install-batch/logs/vm-mutex-*.lockdir`

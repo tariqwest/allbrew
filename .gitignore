@@ -5,6 +5,7 @@ node_modules/
 .fseventsd/
 .Trashes/
 *.log
+logs/
 .env
 tests/e2e-runs/
 test-harness-runs/
@@ -12,3 +13,23 @@ graphify-out/
 
 # Dogfood monitored allbrew install run records (local flat-file DB)
 tests/monitored-install-runs/
+tests/monitored-install-batch/runs/
+tests/monitored-install-batch/logs/
+tests/monitored-install-batch/state/
+tests/monitored-install-batch/summary/
+
+# Monitored install batch transient state and run output files
+# Note: Future refactor should relocate these transient outputs to ./tests/monitored-install-batch/state/
+tests/monitored-install-batch/*.pid
+tests/monitored-install-batch/progress.json
+tests/monitored-install-batch/bootstrap-status.json
+tests/monitored-install-batch/agent-queue.json
+tests/monitored-install-batch/agent-wave.json
+tests/monitored-install-batch/agent-index.jsonl
+tests/monitored-install-batch/index.jsonl
+tests/monitored-install-batch/fix-index.jsonl
+tests/monitored-install-batch/summary.json
+tests/monitored-install-batch/final-summary*.json
+tests/monitored-install-batch/retry-rate-limit-*
+tests/monitored-install-batch/urls-missing.txt
+tests/monitored-install-batch/urls-from-queue.json
