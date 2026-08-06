@@ -1,5 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectBinaryDirectPayload } from "../../../lib/generators/binary-direct.ts";
+import { collectBinaryDirectPayload, buildInstallBody, detectHomebrewStagePrefix } from "../../../lib/generators/binary-direct.ts";
 
 describe("collectBinaryDirectPayload", () => {
   beforeEach(() => {
@@ -84,5 +84,60 @@ describe("collectBinaryDirectPayload", () => {
   it("omits allbrew dependency", async () => {
     const payload = await collectBinaryDirectPayload(archiveInfo);
     expect(payload.allbrewDependency).toBe("");
+  });
+
+  it("strips versioned top-level archive dir for Homebrew stage (gitu)", async () => {
+    const gitu = {
+      ...archiveInfo,
+      downloadUrl:
+        "https://github.com/altsem/gitu/releases/download/v0.43.0/gitu-v0.43.0-aarch64-apple-darwin.zip",
+      binaries: ["gitu-v0.43.0-aarch64-apple-darwin/gitu"],
+      extras: {
+        licenses: ["gitu-v0.43.0-aarch64-apple-darwin/LICENSE"],
+      },
+    };
+    const payload = await collectBinaryDirectPayload(gitu);
+    expect(payload.installBody).toContain('bin.install "gitu"');
+    expect(payload.installBody).not.toContain("gitu-v0.43.0-aarch64-apple-darwin/");
+    expect(payload.installBody).toContain('share.install "LICENSE"');
+    expect(payload.testBinName).toBe("gitu");
+  });
+
+  it("keeps bin/ prefix when top-level is FHS bin", async () => {
+    const withPath = { ...archiveInfo, binaries: ["bin/mytool"] };
+    const payload = await collectBinaryDirectPayload(withPath);
+    expect(payload.installBody).toContain('bin.install "bin/mytool" => "mytool"');
+    expect(payload.testBinName).toBe("mytool");
+  });
+});
+
+describe("detectHomebrewStagePrefix", () => {
+  it("returns versioned wrapper prefix", () => {
+    expect(
+      detectHomebrewStagePrefix([
+        "gitu-v0.43.0-aarch64-apple-darwin/gitu",
+        "gitu-v0.43.0-aarch64-apple-darwin/LICENSE",
+      ]),
+    ).toBe("gitu-v0.43.0-aarch64-apple-darwin/");
+  });
+
+  it("returns null for flat paths", () => {
+    expect(detectHomebrewStagePrefix(["tool", "LICENSE"])).toBeNull();
+  });
+
+  it("returns null for FHS bin top-level", () => {
+    expect(detectHomebrewStagePrefix(["bin/mytool"])).toBeNull();
+  });
+});
+
+describe("buildInstallBody", () => {
+  it("strips common non-FHS wrapper from bins and licenses", () => {
+    const body = buildInstallBody(
+      ["pkg-1.0.0-darwin/bin/app"],
+      { licenses: ["pkg-1.0.0-darwin/LICENSE"] },
+    );
+    expect(body).toContain('bin.install "bin/app" => "app"');
+    expect(body).toContain('share.install "LICENSE"');
+    expect(body).not.toContain("pkg-1.0.0-darwin/");
   });
 });
