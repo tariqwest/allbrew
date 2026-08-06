@@ -327,6 +327,31 @@ export async function updateManagedPackage(
         recordedVersion: extractVersionFromTag(release.tagName),
       };
     }
+
+    case "homebrew-formula": {
+      const { generateHomebrewFormula } =
+        await import("./generators/homebrew-formula.ts");
+      const result = await generateHomebrewFormula(manifest.name, opts);
+      return {
+        name: result.name,
+        filePath: result.filePath,
+        kind: "formula",
+        recordedVersion: result.recordedVersion,
+      };
+    }
+
+    case "homebrew-cask": {
+      const { generateHomebrewCask } =
+        await import("./generators/homebrew-cask.ts");
+      const result = await generateHomebrewCask(manifest.name, opts);
+      return {
+        name: result.name,
+        filePath: result.filePath,
+        kind: "cask",
+        recordedVersion: result.recordedVersion,
+      };
+    }
+
     default:
       throw new Error(`Unknown generator: ${manifest.generator}`);
   }

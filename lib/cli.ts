@@ -109,6 +109,10 @@ async function dispatchClassification(classification: any, opts: any) {
       return await handleGemPackage(classification, opts);
     case "dotnet-package":
       return await handleDotnetPackage(classification, opts);
+    case "homebrew-formula":
+      return await handleHomebrewFormula(classification, opts);
+    case "homebrew-cask":
+      return await handleHomebrewCask(classification, opts);
     default:
       if (isNonInteractive(opts)) {
         throw new Error(
@@ -1254,6 +1258,22 @@ async function handleBashScript(url, opts) {
   return await generateWithConfirmation("install-script", { url }, opts);
 }
 
+async function handleHomebrewFormula(classification, opts) {
+  return await generateWithConfirmation(
+    "homebrew-formula",
+    { name: classification.name },
+    opts,
+  );
+}
+
+async function handleHomebrewCask(classification, opts) {
+  return await generateWithConfirmation(
+    "homebrew-cask",
+    { name: classification.name },
+    opts,
+  );
+}
+
 async function handleNpmPackage(classification, opts) {
   const packageName = opts.package || classification.packageName;
   if (!packageName) {
@@ -1418,6 +1438,7 @@ function isCaskGenerator(generatorName: string) {
     "cask-app-release",
     "cask-app-mas",
     "cask-app-setapp",
+    "homebrew-cask",
   ].includes(generatorName);
 }
 
@@ -1442,51 +1463,62 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
 
   if (isFormulaGenerator(generatorName)) {
     const preferred = toFormulaName(userOpts.name);
-    const altSources = [
-      params.packageName,
-      params.crateName,
-      params.gemName,
-      params.goModule,
-      opts.package,
-      opts.crateName,
-      opts.binName,
-      params.repoInfo?.name,
-    ];
-    const resolved = resolveNonCollidingFormulaName(preferred, altSources);
-    if (resolved.renamedFrom && resolved.name !== preferred) {
-      console.log(
-        chalk.yellow(
-          `  Formula name "${preferred}" collides with homebrew/core; using "${resolved.name}" instead`,
-        ),
-      );
-      if (!opts.binName && !userOpts.binName) {
-        userOpts.binName = preferred;
+    if (generatorName === "homebrew-formula") {
+      // Preserve the official homebrew/core token so the copied formula's
+      // class name and bottle block stay aligned with the file name.
+      userOpts.name = preferred;
+    } else {
+      const altSources = [
+        params.packageName,
+        params.crateName,
+        params.gemName,
+        params.goModule,
+        opts.package,
+        opts.crateName,
+        opts.binName,
+        params.repoInfo?.name,
+      ];
+      const resolved = resolveNonCollidingFormulaName(preferred, altSources);
+      if (resolved.renamedFrom && resolved.name !== preferred) {
+        console.log(
+          chalk.yellow(
+            `  Formula name "${preferred}" collides with homebrew/core; using "${resolved.name}" instead`,
+          ),
+        );
+        if (!opts.binName && !userOpts.binName) {
+          userOpts.binName = preferred;
+        }
+        userOpts.name = resolved.name;
       }
-      userOpts.name = resolved.name;
     }
   }
 
   if (isCaskGenerator(generatorName)) {
     const preferred = toCaskToken(userOpts.name);
-    const owner = params.repoInfo?.fullName?.split?.("/")?.[0];
-    const altSources = [
-      params.repoInfo?.fullName
-        ? String(params.repoInfo.fullName).replace("/", "-")
-        : null,
-      owner && params.repoInfo?.name ? `${params.repoInfo.name}-${owner}` : null,
-      owner ? `${preferred}-${owner}` : null,
-      opts.appName,
-      params.slug,
-      params.repoInfo?.name,
-    ];
-    const resolved = resolveNonCollidingCaskName(preferred, altSources);
-    if (resolved.renamedFrom && resolved.name !== preferred) {
-      console.log(
-        chalk.yellow(
-          `  Cask name "${preferred}" collides with homebrew/cask; using "${resolved.name}" instead`,
-        ),
-      );
-      userOpts.name = resolved.name;
+    if (generatorName === "homebrew-cask") {
+      // Preserve the official homebrew/cask token.
+      userOpts.name = preferred;
+    } else {
+      const owner = params.repoInfo?.fullName?.split?.("/")?.[0];
+      const altSources = [
+        params.repoInfo?.fullName
+          ? String(params.repoInfo.fullName).replace("/", "-")
+          : null,
+        owner && params.repoInfo?.name ? `${params.repoInfo.name}-${owner}` : null,
+        owner ? `${preferred}-${owner}` : null,
+        opts.appName,
+        params.slug,
+        params.repoInfo?.name,
+      ];
+      const resolved = resolveNonCollidingCaskName(preferred, altSources);
+      if (resolved.renamedFrom && resolved.name !== preferred) {
+        console.log(
+          chalk.yellow(
+            `  Cask name "${preferred}" collides with homebrew/cask; using "${resolved.name}" instead`,
+          ),
+        );
+        userOpts.name = resolved.name;
+      }
     }
   }
 
@@ -1505,7 +1537,7 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
     userOpts.desc = opts.desc;
   }
 
-  if (isFormulaGenerator(generatorName)) {
+  if (isFormulaGenerator(generatorName) && generatorName !== "homebrew-formula") {
     Object.assign(
       userOpts,
       await collectServiceOptions(params, opts, userOpts.name),
@@ -1666,6 +1698,21 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       );
       break;
     }
+
+    case "homebrew-formula": {
+      const { generateHomebrewFormula } =
+        await import("./generators/homebrew-formula.ts");
+      result = await generateHomebrewFormula(userOpts.name, mergedOpts);
+      break;
+    }
+
+    case "homebrew-cask": {
+      const { generateHomebrewCask } =
+        await import("./generators/homebrew-cask.ts");
+      result = await generateHomebrewCask(userOpts.name, mergedOpts);
+      break;
+    }
+
     default:
       spinner.fail(`Unknown generator: ${generatorName}`);
       process.exit(1);
@@ -1788,6 +1835,7 @@ function isFormulaGenerator(generatorName: string) {
     "dotnet-package",
     "gem-package",
     "mint-package",
+    "homebrew-formula",
   ].includes(generatorName);
 }
 
@@ -1927,6 +1975,7 @@ function resolveScriptInstallUrl(
 }
 
 function guessName(generatorName: any, params: any) {
+  if (params.name) return String(params.name).toLowerCase();
   if (params.slug) return String(params.slug).toLowerCase();
   if (params.repoInfo) return params.repoInfo.name.toLowerCase();
   if (params.packageName)
@@ -1944,6 +1993,7 @@ function guessName(generatorName: any, params: any) {
 }
 
 function guessDesc(generatorName: any, params: any) {
+  if (params.description) return String(params.description);
   if (params.repoInfo?.description) return params.repoInfo.description;
   if (params.archiveInfo?.downloadUrl)
     return `Install from ${params.archiveInfo.downloadUrl}`;

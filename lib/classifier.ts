@@ -14,6 +14,11 @@ const NUGET_PACKAGE_RE = /^https?:\/\/(?:www\.)?nuget\.org\/packages\/([^/]+)/;
 
 const CRATES_PACKAGE_RE = /^https?:\/\/(?:www\.)?crates\.io\/crates\/([^/]+)/;
 
+const HOMEBREW_FORMULA_RE =
+  /^https?:\/\/formulae\.brew\.sh\/formula\/([^/?#]+)/i;
+const HOMEBREW_CASK_RE =
+  /^https?:\/\/formulae\.brew\.sh\/cask\/([^/?#]+)/i;
+
 const SCRIPT_EXTENSIONS = ['.sh', '.bash'];
 const RAW_GITHUB_RE = /^https?:\/\/raw\.githubusercontent\.com\//;
 
@@ -58,6 +63,16 @@ export function classify(url) {
   const cratesMatch = url.match(CRATES_PACKAGE_RE);
   if (cratesMatch) {
     return { type: 'cargo-package', url, crateName: cratesMatch[1] };
+  }
+
+  const homebrewFormulaMatch = url.match(HOMEBREW_FORMULA_RE);
+  if (homebrewFormulaMatch) {
+    return { type: 'homebrew-formula', url, name: homebrewFormulaMatch[1] };
+  }
+
+  const homebrewCaskMatch = url.match(HOMEBREW_CASK_RE);
+  if (homebrewCaskMatch) {
+    return { type: 'homebrew-cask', url, name: homebrewCaskMatch[1] };
   }
 
   const ghMatch = url.match(GITHUB_REPO_RE);

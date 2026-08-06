@@ -135,6 +135,19 @@ function buildSource(
         setappUrl: params.url,
         appName: params.appName || null,
       };
+
+    case "homebrew-formula":
+      return withDiscoveryFields(
+        { name: params.name, source: "homebrew" },
+        opts,
+      );
+
+    case "homebrew-cask":
+      return withDiscoveryFields(
+        { name: params.name, source: "homebrew" },
+        opts,
+      );
+
     case "spm-package":
       return {
         fullName: repoInfo?.fullName,
@@ -170,7 +183,13 @@ function inferRecordedVersion(
   if (release?.tagName) {
     return extractVersionFromTag(String(release.tagName));
   }
-  if ((generatorName === "cask-app-mas" || generatorName === "cask-app-setapp") && params.version) {
+  if (
+    (generatorName === "cask-app-mas" ||
+      generatorName === "cask-app-setapp" ||
+      generatorName === "homebrew-formula" ||
+      generatorName === "homebrew-cask") &&
+    params.version
+  ) {
     return String(params.version);
   }
   return "";

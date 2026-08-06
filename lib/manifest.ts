@@ -18,6 +18,8 @@ export type GeneratorName =
   | "cask-app-release"
   | "cask-app-mas"
   | "cask-app-setapp"
+  | "homebrew-formula"
+  | "homebrew-cask"
   | "spm-package"
   | "dotnet-package"
   | "gem-package"
