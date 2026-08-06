@@ -11,7 +11,7 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
 ${p.installBody}  end
 
 ${p.serviceBlock}  test do
-    assert_match version.to_s, shell_output("#{bin}/${p.testBinName} --version")
+    ${p.isPython ? `assert_match /usage|Usage/i, shell_output("#{bin}/${p.testBinName} --help")` : `assert_match version.to_s, shell_output("#{bin}/${p.testBinName} --version")`}
   end
 end
 `;

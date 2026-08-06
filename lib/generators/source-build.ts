@@ -124,8 +124,9 @@ function getInstallBlock(system: string) {
     case "python":
       return (
         `    venv = virtualenv_create(libexec, "python3.13")\n` +
-        `    system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."\n` +
-        `    bin.install_symlink Dir["#{libexec}/bin/*"]\n`
+        `    venv.pip_install_and_link(buildpath)\n` +
+        `    primary = Dir[libexec/"bin/*"].max_by { |p| File.basename(p).length }\n` +
+        `    bin.install_symlink primary => name if primary\n`
       );
     default:
       return `    system "make", "PREFIX=#{prefix}", "install"\n`;

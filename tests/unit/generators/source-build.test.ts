@@ -288,6 +288,16 @@ describe("collectSourceBuildPayload — open-notebook (Python web app, no PyPI, 
     expect(payload.fullName).toBe("lfnovo/open-notebook");
     expect(payload.defaultBranch).toBe("main");
   });
+
+  it("uses pip_install_and_link for python source builds", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      release,
+      { system: "python" },
+    );
+    expect(payload.installBody).toContain("venv.pip_install_and_link(buildpath)");
+    expect(payload.installBody).toContain('bin.install_symlink primary => name if primary');
+  });
 });
 
 describe("collectSourceBuildPayload — Jockey (Tauri, no releases)", () => {
