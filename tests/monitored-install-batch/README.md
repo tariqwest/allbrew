@@ -2,6 +2,15 @@
 
 Runs allbrew against URLs from `urls-shuffled.json` inside the Lume e2e VM, with a loop closer to `.agents/skills/monitored-allbrew-install`.
 
+## Agent orchestration skill
+
+For a **parent agent** driving the queue with child agents (resume state, print-wave, mark-launched/done, nudge, finalize), use:
+
+**[`.agents/skills/monitored-install-batch/`](../../.agents/skills/monitored-install-batch/)** (`SKILL.md` + `README.md`)
+
+That path is harness-agnostic. This README covers the on-disk harness, deterministic workers, VM pool, and fix-package reconcile CLI.
+
+
 ## File Layout & State Storage
 
 - **Durable Code & Fixtures**: `run-batch.mjs`, `run-agent-batch.mjs`, `worker-loop.mjs`, `urls-shuffled.json`, etc.

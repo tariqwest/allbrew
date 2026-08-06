@@ -1,0 +1,23 @@
+{
+  "skill_name": "monitored-install-batch",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We're mid marathon on allbrew. Please pick up tests/monitored-install-batch/state/agent-queue.json, tell me what's running vs queued, and continue processing the queue with child agents until you need me. Use the monitored-install-batch skill.",
+      "expected_output": "Parent orients via --status and queue file, describes counts, reaps any completed RUN_DIRs, launches at most free slots with unique launchNames, mark-launched with agentNames, and states the monitor/nudge plan. Does not rebuild the queue or use host brew install as success.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Two child install agents look stuck: one lifecycle-blocked on a shell approval, one with no RUN_DIR activity for 10+ minutes. Nudge them correctly and say when you'd mark failed-agent-runtime.",
+      "expected_output": "Uses child run ids to nudge with playbook hints (e.g. Case J), caps at 3 nudges, explains 3-minute inactivity and stop policy, does not invent run ids, marks terminal after budget exhausted.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "A child finished generate_fail with fix-package under tests/monitored-install-runs/2026-08-06T16-24-08Z__trae-agent. Finalize queue state and outline post-process without releasing to main.",
+      "expected_output": "Reads outcome.json, mark-done with agentName/idx and failed (or matching status), mentions agent-index, describes batch:reconcile-fixes dry-run/worktree-only apply, no bun run release.",
+      "files": []
+    }
+  ]
+}
