@@ -27,6 +27,7 @@ import {
   acquireHomebrewPrefixDurable,
   releaseHomebrewPrefixDurable,
 } from "./lib/guest-ops.mjs";
+import { extractExitCode } from "./lib/batch-helpers.mjs";
 import {
   acquirePoolSlot,
   releaseEndpointMutex,
@@ -120,8 +121,7 @@ try {
   );
   installLog = fetch.stdout || result.stdout || "";
   writeFileSync(hostLog, installLog);
-  const m = installLog.match(/EXIT_CODE=(\d+)/);
-  exitCode = m ? Number(m[1]) : result.exitCode;
+  exitCode = extractExitCode(installLog, result.exitCode ?? 1) ?? 1;
 
   // package name heuristic
   const pm =

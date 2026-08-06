@@ -26,11 +26,45 @@ export async function guest(runAsProjectUser, session, cmd, description, opts = 
       timeout: opts.timeout,
       stream: opts.stream,
     });
-    return { exitCode: 0, stdout: stdout ?? "", stderr: "" };
+    // Prefer EXIT_CODE markers when the guest command intentionally exits 0
+    // after recording the real install status (see installCmd).
+    const fromOut = parseExitCodeLoose(stdout);
+    return { exitCode: fromOut ?? 0, stdout: stdout ?? "", stderr: "" };
   } catch (e) {
     const msg = String(e?.message || e);
-    return { exitCode: 1, stdout: msg, stderr: msg };
+    const code =
+      parseExitCodeLoose(msg) ??
+      parseExitCodeLoose(e?.stdout) ??
+      parseExitCodeLoose(e?.stderr) ??
+      (Number.isInteger(e?.exitCode) ? e.exitCode : null) ??
+      (Number.isInteger(e?.code) ? e.code : null) ??
+      1;
+    return { exitCode: code, stdout: msg, stderr: msg };
   }
+}
+
+function parseExitCodeLoose(text) {
+  if (text == null) return null;
+  const s = String(text);
+  const markers = [...s.matchAll(/\bEXIT_CODE=(\d{1,3})\b/g)];
+  if (markers.length) {
+    const n = Number(markers[markers.length - 1][1]);
+    if (Number.isInteger(n) && n >= 0 && n <= 255) return n;
+  }
+  const patterns = [
+    /Command failed with exit code\s+(\d{1,3})\b/i,
+    /exited with code\s+(\d{1,3})\b/i,
+    /exit code[:\s]+(\d{1,3})\b/i,
+    /\(exit code\s+(\d{1,3})\)/i,
+  ];
+  for (const p of patterns) {
+    const m = s.match(p);
+    if (m) {
+      const n = Number(m[1]);
+      if (Number.isInteger(n) && n >= 0 && n <= 255) return n;
+    }
+  }
+  return null;
 }
 
 export function brewEnvPreamble(mountPoint) {

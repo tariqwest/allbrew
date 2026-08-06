@@ -3,11 +3,11 @@ import {
   mkdirSync, writeFileSync, readFileSync, existsSync, appendFileSync,
   symlinkSync, lstatSync, unlinkSync, readdirSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, resolve, dirname } from "node:path";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 
 import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
 
 const currentDir = typeof import.meta.dir === "string" ? import.meta.dir : dirname(fileURLToPath(import.meta.url));
 
@@ -20,6 +20,8 @@ export const BATCH_LOGS = join(BATCH_DIR, "logs");
 export const BATCH_STATE = join(BATCH_DIR, "state");
 export const BATCH_INDEX = join(BATCH_STATE, "index.jsonl");
 export const FIX_INDEX = join(BATCH_STATE, "fix-index.jsonl");
+export const WORKTREES_ROOT = join(BATCH_DIR, "worktrees");
+export const AGENT_QUEUE_PATH = join(BATCH_DIR, "agent-queue.json");
 export const DEFAULT_WORKERS = ["th-allbrew-w1", "th-allbrew-w2"];
 
 export function envInt(name, fallback) {
@@ -145,6 +147,33 @@ export function buildAgentJudgment({ url, slug, name, source }) {
   };
 }
 
+export function extractExitCode(logText, fallback = null) {
+  const text = String(logText || "");
+  // Prefer last EXIT_CODE=N marker written by installCmd / guest install logs.
+  const markers = [...text.matchAll(/\bEXIT_CODE=(\d{1,3})\b/g)];
+  if (markers.length) {
+    const n = Number(markers[markers.length - 1][1]);
+    if (Number.isInteger(n) && n >= 0 && n <= 255) return n;
+  }
+  // Harness / shell error message shapes
+  const patterns = [
+    /Command failed with exit code\s+(\d{1,3})\b/i,
+    /exited with code\s+(\d{1,3})\b/i,
+    /exit code[:\s]+(\d{1,3})\b/i,
+    /\(exit code\s+(\d{1,3})\)/i,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) {
+      const n = Number(m[1]);
+      if (Number.isInteger(n) && n >= 0 && n <= 255) return n;
+    }
+  }
+  if (fallback === undefined || fallback === null || Number.isNaN(Number(fallback))) return null;
+  const fb = Number(fallback);
+  return Number.isInteger(fb) && fb >= 0 && fb <= 255 ? fb : null;
+}
+
 export function extractPackageName(logText, fallback) {
   const patterns=[
     /Wrote (?:formula|cask).*?\/([A-Za-z0-9][A-Za-z0-9@._+-]*)\.rb/i,
@@ -197,14 +226,88 @@ export function buildDeltas(judgment) {
   }
   return deltas;
 }
-export function writeFixPackage(runDir, { url, slug, failureClass, logText, verify, localRepro }) {
-  const fixDir=join(runDir,"fix-package");
-  mkdirSync(join(fixDir,"patches"),{recursive:true});
-  mkdirSync(join(fixDir,"files"),{recursive:true});
-  const logTail=(logText||"").split("\n").slice(-80).join("\n");
-  writeFileSync(join(fixDir,"FIX.md"), `# Fix package: ${slug}\n\n## URL\n${url}\n\n## Failure class\n\`${failureClass||"unknown"}\`\n\n## Log tail\n\`\`\`\n${logTail}\n\`\`\`\n\n## Verification\n\`\`\`json\n${JSON.stringify(verify||{},null,2)}\n\`\`\`\n\n## Local repro\n\`\`\`json\n${JSON.stringify(localRepro||{attempted:false},null,2)}\n\`\`\`\n\n## Residual risk\nBatch did not apply product code changes. Reconciliation required.\n`);
-  writeFileSync(join(fixDir,"tests-added.md"), `# Tests for ${slug}\n\n- Unit case for ${failureClass}\n`);
-  writeFileSync(join(fixDir,"validation.json"), JSON.stringify({ failureClass, localRepro:localRepro||null, verify:verify||null, createdAt:new Date().toISOString() },null,2)+"\n");
+export function sha256Hex(buf) {
+  return createHash("sha256").update(buf).digest("hex");
+}
+
+/**
+ * Write a fix-package under runDir.
+ * Backward compatible: existing callers produce mode=docs packages.
+ * Optional: patches/files arrays for machine-applyable packages.
+ *
+ * patches: [{ name?: string, content: string|Buffer }]
+ * files:   [{ target: string, content: string|Buffer, name?: string }]
+ * mode:    "docs" | "patch" (default: patch if any patches/files else docs)
+ */
+export function writeFixPackage(runDir, {
+  url, slug, failureClass, logText, verify, localRepro,
+  patches = [], files = [], mode, sourceRunId, baselineCommit,
+  manifestExtras = {}, validationHints = null,
+} = {}) {
+  const fixDir = join(runDir, "fix-package");
+  const patchesDir = join(fixDir, "patches");
+  const filesDir = join(fixDir, "files");
+  mkdirSync(patchesDir, { recursive: true });
+  mkdirSync(filesDir, { recursive: true });
+
+  const patchEntries = [];
+  for (let i = 0; i < (patches || []).length; i++) {
+    const p = patches[i];
+    const name = p.name || `${String(i + 1).padStart(4, "0")}-fix.patch`;
+    const rel = `patches/${name.replace(/^patches\//, "")}`;
+    const abs = join(fixDir, rel);
+    mkdirSync(dirname(abs), { recursive: true });
+    const content = typeof p.content === "string" ? p.content : Buffer.from(p.content || "");
+    writeFileSync(abs, content);
+    patchEntries.push({ path: rel, sha256: sha256Hex(content) });
+  }
+
+  const fileEntries = [];
+  for (let i = 0; i < (files || []).length; i++) {
+    const f = files[i];
+    const target = String(f.target || "").replace(/^\/+/, "");
+    if (!target) throw new Error("writeFixPackage: files[].target required");
+    const name = f.name || target;
+    const rel = `files/${name.replace(/^files\//, "")}`;
+    const abs = join(fixDir, rel);
+    mkdirSync(dirname(abs), { recursive: true });
+    const content = typeof f.content === "string" ? f.content : Buffer.from(f.content || "");
+    writeFileSync(abs, content);
+    fileEntries.push({ path: rel, target, sha256: sha256Hex(content) });
+  }
+
+  const resolvedMode = mode || ((patchEntries.length || fileEntries.length) ? "patch" : "docs");
+  const runId = sourceRunId || (typeof runDir === "string" ? runDir.split(/[\\/]/).filter(Boolean).pop() : null);
+
+  const manifest = {
+    schemaVersion: 1,
+    slug: slug || "pkg",
+    url: url || null,
+    failureClass: failureClass || null,
+    sourceRunId: runId,
+    baselineCommit: baselineCommit || null,
+    mode: resolvedMode,
+    patches: patchEntries,
+    files: fileEntries,
+    validationHints: validationHints || null,
+    ...manifestExtras,
+  };
+  writeFileSync(join(fixDir, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
+
+  const logTail = (logText || "").split("\n").slice(-80).join("\n");
+  const residual = resolvedMode === "docs"
+    ? "\n## Residual risk\nBatch did not apply product code changes. Reconciliation required.\n"
+    : "\n## Residual risk\nPatch package present; host-side reconcile applies only in disposable worktrees.\n";
+  writeFileSync(join(fixDir, "FIX.md"), `# Fix package: ${slug}\n\n## URL\n${url}\n\n## Failure class\n\`${failureClass || "unknown"}\`\n\n## Mode\n\`${resolvedMode}\`\n\n## Log tail\n\`\`\`\n${logTail}\n\`\`\`\n\n## Verification\n\`\`\`json\n${JSON.stringify(verify || {}, null, 2)}\n\`\`\`\n\n## Local repro\n\`\`\`json\n${JSON.stringify(localRepro || { attempted: false }, null, 2)}\n\`\`\`\n${residual}`);
+  writeFileSync(join(fixDir, "tests-added.md"), `# Tests for ${slug}\n\n- Unit case for ${failureClass}\n`);
+  writeFileSync(join(fixDir, "validation.json"), JSON.stringify({
+    failureClass,
+    localRepro: localRepro || null,
+    verify: verify || null,
+    createdAt: new Date().toISOString(),
+    mode: resolvedMode,
+    manifestPresent: true,
+  }, null, 2) + "\n");
   return fixDir;
 }
 export function appendFixIndex(entry){ appendFileSync(FIX_INDEX, JSON.stringify(entry)+"\n"); }

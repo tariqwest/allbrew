@@ -34,6 +34,7 @@ import {
   appendBatchIndex,
   envBool,
   BATCH_LOGS,
+  extractExitCode,
 } from "./lib/batch-helpers.mjs";
 import {
   loadHarness,
@@ -193,8 +194,7 @@ async function main() {
     writeFileSync(join(runDir, "allbrew-initial.log"), installLog);
     writeFileSync(join(BATCH_LOGS, `${batchRunId}.log`), installLog);
 
-    const exitMatch = installLog.match(/EXIT_CODE=(\d+)/);
-    exitCode = exitMatch ? Number(exitMatch[1]) : result.exitCode;
+    exitCode = extractExitCode(installLog, result.exitCode) ?? result.exitCode ?? 1;
 
     pkg = extractPackageName(installLog, slug);
 
