@@ -148,3 +148,55 @@ LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
 Host `brew install` / host `allbrew <url>` auto-install is **forbidden** as the success path (pollutes the workstation).
 
 Warpify note: Warp SSH warpify (tmux) can improve interactive remote shells; Lume access here is via `lume ssh` + harness helpers. Prefer `vm-install-one.mjs` for agent install cycles.
+
+
+## Fix packages (option A) & staged reconciliation
+
+Workers write an optional **fix package** under each run directory:
+
+```
+<runDir>/fix-package/
+  FIX.md              # human-readable diagnosis
+  manifest.json       # machine schema (mode, patches, files, checksums)
+  patches/*.patch     # optional unified diffs
+  files/**            # optional full-file replacements (target in manifest)
+  validation.json     # harness metadata
+  tests-added.md
+```
+
+### `manifest.json` (schemaVersion 1)
+
+- `mode`: `docs` (diagnosis only) or `patch` (machine-applyable)
+- `sourceRunId`, `url`, `slug`, `failureClass`, `baselineCommit`
+- `patches[]`: `{ path, sha256 }`
+- `files[]`: `{ path, target, sha256 }` — `target` must be relative and under `lib/`, `bin/`, `tests/`, `scripts/`, or `.agents/`
+- `validationHints`: optional host commands (advanced)
+
+### Reconcile CLI
+
+Host-side only. **Never** applies into the main checkout or default branch. Apply happens only inside disposable git worktrees under `worktrees/`.
+
+```bash
+# Discover pending fix-packages under runs roots
+bun run batch:reconcile-fixes -- --dry-run
+
+# Process one run or fix-package directory
+bun run batch:reconcile-fixes -- --path tests/monitored-install-runs/<id> --json
+
+# Promote path (after dry-run review): worktree apply → validate → local fix/* branch → linked retry
+bun run batch:reconcile-fixes -- --limit 5 --baseline HEAD
+```
+
+Flags: `--dry-run`, `--limit N`, `--path`/`--runDir`, `--skip-validation`, `--cleanup`/`--no-cleanup`, `--baseline`, `--queue`, `--json`.
+
+### Worktree & promote policy
+
+1. `git worktree add` under `tests/monitored-install-batch/worktrees/<id>-<rand>`
+2. Apply patches/`git apply` and copy `files[]` targets inside that worktree only
+3. Optional `validateBeforePromote` (skipped for docs or with `--skip-validation`)
+4. Commit on a **local** branch `fix/<slug>-<timestamp>`; do not push; do not touch `main`
+5. Append events to `state/fix-index.jsonl` (`validated`, `skipped_docs`, `applied`, `promoted`, `retry_enqueued`, failures)
+6. Enqueue linked retry on `agent-queue.json` for the same URL/slug with fix metadata
+7. Remove worktree when `--cleanup` (default)
+
+Docs-mode packages are recorded and skipped (`skipped_docs`) without apply/promote.

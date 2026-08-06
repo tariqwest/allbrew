@@ -33,3 +33,9 @@ tests/monitored-install-batch/final-summary*.json
 tests/monitored-install-batch/retry-rate-limit-*
 tests/monitored-install-batch/urls-missing.txt
 tests/monitored-install-batch/urls-from-queue.json
+
+tests/monitored-install-batch/worktrees/
+
+# Python bytecode from batch tooling
+tests/monitored-install-batch/__pycache__/
+tests/monitored-install-batch/*.bak-pre-catalog-regen

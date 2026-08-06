@@ -49,7 +49,8 @@
     "vm:ssh": "macos-test-harness ssh",
     "vm:sync": "macos-test-harness sync",
     "vm:clone": "macos-test-harness clone",
-    "vm:teardown": "macos-test-harness teardown"
+    "vm:teardown": "macos-test-harness teardown",
+    "batch:reconcile-fixes": "node tests/monitored-install-batch/reconcile-fix-packages.mjs"
   },
   "keywords": [
     "homebrew",
