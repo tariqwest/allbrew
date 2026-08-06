@@ -2,6 +2,10 @@ node_modules/
 .pnpm-store/
 .cursor/
 .DS_Store
+
+# Devin CLI local config and agent worktrees
+.devin/
+.worktrees/
 .fseventsd/
 .Trashes/
 *.log
