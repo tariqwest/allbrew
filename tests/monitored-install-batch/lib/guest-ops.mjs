@@ -204,44 +204,38 @@ export async function releaseHomebrewPrefixDurable(h, session) {
 export async function ensureAllbrew(h, session, mountPoint) {
   const { runAsProjectUser } = h;
   const brewBin = `${mountPoint}/bin`;
-  const check = await guest(
+  // Always refresh tap + upgrade so guest picks up freshly released allbrew
+  // (probe-only path left stale versions after patch releases).
+  const ensure = await guest(
     runAsProjectUser,
     session,
     `${brewEnvPreamble(mountPoint)}
 command -v brew; brew --version | head -1
-if command -v allbrew >/dev/null 2>&1; then allbrew --version; exit 0; fi
-if test -x ${brewBin}/allbrew; then ${brewBin}/allbrew --version; exit 0; fi
-exit 1
-`,
-    "probe-allbrew",
-  );
-  if (check.exitCode === 0 && check.stdout.trim()) return check.stdout.trim();
-
-  const inst = await guest(
-    runAsProjectUser,
-    session,
-    `${brewEnvPreamble(mountPoint)}
 brew tap tariqwest/tap 2>&1 || true
 brew trust tariqwest/tap 2>&1 || true
 brew trust --formula tariqwest/tap/allbrew 2>&1 || true
 brew update 2>&1 | tail -20
-brew install allbrew 2>&1
-command -v allbrew; allbrew --version 2>&1
+if command -v allbrew >/dev/null 2>&1 || test -x ${brewBin}/allbrew; then
+  brew upgrade allbrew 2>&1 || brew reinstall allbrew 2>&1
+else
+  brew install allbrew 2>&1
+fi
+if command -v allbrew >/dev/null 2>&1; then allbrew --version; exit 0; fi
+if test -x ${brewBin}/allbrew; then ${brewBin}/allbrew --version; exit 0; fi
+exit 1
 `,
-    "install-allbrew",
+    "ensure-allbrew-upgrade",
     { timeout: 600000, stream: true },
   );
-  const okVer = await guest(
-    runAsProjectUser,
-    session,
-    `${brewEnvPreamble(mountPoint)}allbrew --version`,
-    "allbrew-version-after-install",
-  );
-  if (okVer.exitCode !== 0 || !okVer.stdout.trim()) {
-    throw new Error(`failed to install allbrew:\n${inst.stdout}`);
+  if (ensure.exitCode !== 0 || !ensure.stdout.trim()) {
+    throw new Error(`failed to ensure/upgrade allbrew:\n${ensure.stdout}`);
   }
-  return okVer.stdout.trim();
+  // Prefer last non-empty line that looks like a version probe
+  const lines = ensure.stdout.trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const verLine = [...lines].reverse().find((l) => /allbrew|^\d+\.\d+\.\d+/.test(l)) || lines.at(-1);
+  return verLine;
 }
+
 
 export async function ensureTapConfigured(h, session, mountPoint, tapPath) {
   const { runAsProjectUser } = h;

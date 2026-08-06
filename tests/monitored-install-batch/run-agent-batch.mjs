@@ -215,8 +215,10 @@ function printWave() {
     status: "launching",
   }));
 
+  const profile = process.env.TH_AGENT_PROFILE || "subagent_general";
   const payload = {
     createdAt: new Date().toISOString(),
+    profile,
     concurrency,
     remaining: pending.length,
     waveSize: wave.length,

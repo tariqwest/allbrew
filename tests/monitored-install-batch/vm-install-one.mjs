@@ -124,9 +124,12 @@ try {
   exitCode = extractExitCode(installLog, result.exitCode ?? 1) ?? 1;
 
   // package name heuristic
+  // allbrew may print either "Wrote formula/cask: <token>" or
+  // "Generated: /path/to/(Formula|Casks)/<token>.rb". Cask token names can
+  // include hyphens after the first character (e.g. mountain-loop-yaak).
   const pm =
-    installLog.match(/Wrote (?:formula|cask).*?\/([A-Za-z0-9][A-Za-z0-9@._+-]*)\.rb/i) ||
-    installLog.match(/Generated (?:formula|cask): ([A-Za-z0-9][A-Za-z0-9@._+-]*)/i);
+    installLog.match(/(?:Wrote|Generated)\s+(?:formula|cask):?\s+([A-Za-z0-9][A-Za-z0-9@._+-]*)(?:\.rb)?\b/i) ||
+    installLog.match(/(?:Wrote|Generated)(?:\s+(?:formula|cask))?:?\s+.*?(?:Formula|Casks)\/([A-Za-z0-9][A-Za-z0-9@._+-]*)\.rb/i);
   if (pm) pkg = pm[1].split("/").pop();
 
   if (exitCode === 0) {
