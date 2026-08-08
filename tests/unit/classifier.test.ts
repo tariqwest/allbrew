@@ -124,9 +124,9 @@ describe("classify", () => {
       expect(result.type).toBe("archive");
     });
 
-    it("matches .pkg URL", () => {
+    it("matches .pkg URL as cask-dmg", () => {
       const result = classify("https://zoom.us/client/latest/Zoom.pkg");
-      expect(result.type).toBe("archive");
+      expect(result.type).toBe("cask-dmg");
     });
 
     it("matches .tgz URL", () => {
@@ -182,6 +182,20 @@ describe("classify", () => {
     it("returns unknown for bare domains without extensions", () => {
       const result = classify("https://get.volta.sh");
       expect(result.type).toBe("unknown");
+    });
+  });
+
+  describe("formulae.brew.sh official pages", () => {
+    it("classifies formula pages as homebrew-formula", () => {
+      const result = classify("https://formulae.brew.sh/formula/wget");
+      expect(result.type).toBe("homebrew-formula");
+      expect(result.name).toBe("wget");
+    });
+
+    it("classifies cask pages as homebrew-cask", () => {
+      const result = classify("https://formulae.brew.sh/cask/popclip");
+      expect(result.type).toBe("homebrew-cask");
+      expect(result.name).toBe("popclip");
     });
   });
 });

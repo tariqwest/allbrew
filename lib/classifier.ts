@@ -24,7 +24,7 @@ const RAW_GITHUB_RE = /^https?:\/\/raw\.githubusercontent\.com\//;
 
 const ARCHIVE_EXTENSIONS = [
   '.tar.gz', '.tgz', '.tar.bz2', '.tar.xz',
-  '.zip', '.pkg', '.gz', '.bz2', '.xz',
+  '.zip', '.gz', '.bz2', '.xz',
 ];
 
 export function classify(url) {
@@ -105,7 +105,8 @@ export function classify(url) {
     return { type: 'bash-script', url };
   }
 
-  if (path.endsWith('.dmg')) {
+  if (path.endsWith('.dmg') || path.endsWith('.pkg')) {
+    // .pkg is a first-class macOS installer (Homebrew cask artifact), not a source archive
     return { type: 'cask-dmg', url };
   }
 

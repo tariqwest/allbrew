@@ -115,6 +115,46 @@ it("detects npx as npm", () => {
     expect(result).toEqual({ method: "pip", package: "s-tui" });
   });
 
+  it("detects `> pip install` shell-prompt docs (visdom-style)", () => {
+    const result = detectInstallMethod(
+      "```bash\n> pip install visdom\n```",
+      "visdom",
+    );
+    expect(result).toEqual({ method: "pip", package: "visdom" });
+  });
+
+  it("prefers preferred PyPI package over optional dep pip install (visdom vs plotly)", () => {
+    const readme = `
+## Setup
+
+Install from pip
+
+\`\`\`bash
+> pip install visdom
+\`\`\`
+
+#### vis.plotlyplot
+
+> **Note** You must have the \`plotly\` Python package installed to use this function. It can typically be installed by running \`pip install plotly\`.
+`;
+    expect(detectInstallMethod(readme, "visdom")).toEqual({
+      method: "pip",
+      package: "visdom",
+    });
+    // Without preferred name, first pip install after prompt stripping is visdom.
+    expect(detectInstallMethod(readme)).toEqual({
+      method: "pip",
+      package: "visdom",
+    });
+  });
+
+  it("does not pick unrelated optional pip dep when preferred name is set and primary is missing", () => {
+    const readme =
+      "Optional: run `pip install plotly` for Plotly figures.\n";
+    // Preferred app is not documented as pip install — do not claim plotly.
+    expect(detectInstallMethod(readme, "visdom")).toBeNull();
+  });
+
   it("detects pip3 install as pip", () => {
     const result = detectInstallMethod("```bash\npip3 install toolong\n```");
     expect(result).toEqual({ method: "pip", package: "toolong" });
@@ -227,9 +267,44 @@ omnigent server --background
     expect(result).toEqual({ method: "cargo", package: "ripgrep" });
   });
 
-  it("detects go install with version", () => {
+  it("detects dotnet tool install -g as nuget global tool", () => {
+    const result = detectInstallMethod(
+      "```bash\ndotnet tool install -g csharprepl\n```",
+    );
+    expect(result).toEqual({ method: "dotnet", package: "csharprepl" });
+  });
+
+  it("detects dotnet tool install --global with package id", () => {
+    const result = detectInstallMethod(
+      "Install via:\n\n    $ dotnet tool install --global dotnet-monitor\n",
+    );
+    expect(result).toEqual({ method: "dotnet", package: "dotnet-monitor" });
+  });
+
+  it("detects gem install as ruby gem package", () => {
+    const result = detectInstallMethod(
+      "```sh\n$ gem install license_finder\n```",
+    );
+    expect(result).toEqual({ method: "gem", package: "license_finder" });
+  });
+
+  it("detects gem install with flags before package name", () => {
+    const result = detectInstallMethod(
+      "```bash\ngem install -N --user-install foo-bar\n```",
+    );
+    expect(result).toEqual({ method: "gem", package: "foo-bar" });
+  });
+
+  it("detects go install with version and strips tag for module path", () => {
     const result = detectInstallMethod("```bash\ngo install github.com/foo/bar@v1.2.3\n```");
-    expect(result).toEqual({ method: "go", package: "github.com/foo/bar@v1.2.3" });
+    expect(result).toEqual({ method: "go", package: "github.com/foo/bar" });
+  });
+
+  it("strips @latest from go install module path", () => {
+    const result = detectInstallMethod(
+      "```bash\ngo install github.com/ariasmn/ugm@latest\n```",
+    );
+    expect(result).toEqual({ method: "go", package: "github.com/ariasmn/ugm" });
   });
 
   it("detects curl | bash install one-liner as script", () => {
@@ -606,6 +681,51 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
     ].join("\n");
     expect(detectServiceConfig(readme, "turbo-fieldfare")).toBeNull();
   });
+
+  it("does not treat file-arg presentation CLIs with optional --port as services (reveal-md)", () => {
+    const readme = [
+      "# reveal-md",
+      "",
+      "```console",
+      "npm install -g reveal-md",
+      "```",
+      "",
+      "## Usage",
+      "",
+      "```console",
+      "reveal-md slides.md",
+      "```",
+      "",
+      "This starts a local server and opens any Markdown file as a reveal.js presentation.",
+      "",
+      "```console",
+      "docker run --rm -p 1948:1948 -v slides:/slides webpronl/reveal-md:latest",
+      "```",
+      "",
+      "The service is now running at http://localhost:1948",
+      "",
+      "### Directory Listing",
+      "",
+      "```console",
+      "reveal-md",
+      "```",
+      "",
+      "### Custom Port",
+      "",
+      "```console",
+      "reveal-md slides.md --port 8888",
+      "```",
+      "",
+      "```console",
+      "reveal-md slides.md --theme solarized",
+      "```",
+      "",
+      "```console",
+      "reveal-md slides.md --print slides.pdf",
+      "```",
+    ].join("\n");
+    expect(detectServiceConfig(readme, "reveal-md")).toBeNull();
+  });
 });
 
 describe("detectServiceConfigFromFiles", () => {
@@ -709,6 +829,22 @@ describe("detectBuildSystemFromFiles", () => {
 
   it("detects GNUmakefile", () => {
     expect(detectBuildSystemFromFiles(["GNUmakefile"])).toEqual({ method: "build", system: "make" });
+  });
+
+  it("detects root gemspec as gem package", () => {
+    expect(
+      detectBuildSystemFromFiles([
+        "license_finder.gemspec",
+        "Gemfile",
+        "README.md",
+      ]),
+    ).toEqual({ method: "gem", package: "license_finder" });
+  });
+
+  it("prefers gemspec over Makefile for Ruby gems", () => {
+    expect(
+      detectBuildSystemFromFiles(["Makefile", "license_finder.gemspec", "lib"]),
+    ).toEqual({ method: "gem", package: "license_finder" });
   });
 
   it("returns null when no build files are found", () => {

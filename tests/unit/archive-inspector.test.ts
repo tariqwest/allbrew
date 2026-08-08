@@ -4,7 +4,12 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { inspectArchive, listDmgAppNames, listZipEntries } from "../../lib/archive-inspector.ts";
+import {
+  inspectArchive,
+  listDmgAppNames,
+  listZipEntries,
+  pickPrimaryAppBundleName,
+} from "../../lib/archive-inspector.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -69,6 +74,25 @@ describe("inspectArchive", () => {
     await expect(
       inspectArchive("file:///ignored/test.7z", fakeDownloader(archivePath)),
     ).rejects.toThrow(/Unsupported archive format/);
+  });
+});
+
+describe("pickPrimaryAppBundleName", () => {
+  it("prefers product app over Updater/Metadata siblings (iA Writer class)", () => {
+    const paths = [
+      "Updater.app/Contents/Info.plist",
+      "Metadata.app/Contents/Info.plist",
+      "iA Writer.app/Contents/Info.plist",
+    ];
+    expect(pickPrimaryAppBundleName(paths)).toBe("iA Writer.app");
+  });
+
+  it("prefers top-level app over nested helper", () => {
+    const paths = [
+      "Foo.app/Contents/Frameworks/Sparkle.framework/Updater.app/Contents/Info.plist",
+      "Foo.app/Contents/Info.plist",
+    ];
+    expect(pickPrimaryAppBundleName(paths)).toBe("Foo.app");
   });
 });
 

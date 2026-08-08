@@ -68,7 +68,7 @@ async function extractArchive(archivePath, destDir) {
   }
 }
 
-async function listArchiveEntries(archivePath) {
+export async function listArchiveEntries(archivePath) {
   const lower = archivePath.toLowerCase();
 
   if (lower.endsWith('.zip')) {
@@ -113,14 +113,41 @@ async function listFilesRecursive(dir) {
   return results;
 }
 
+/** Helper apps shipped beside/inside product .app bundles (iA Writer, Sparkle, etc.). */
+const SECONDARY_APP_NAME_RE =
+  /^(Updater|Metadata|Uninstaller?|Uninstall|Helper|Agent|Service|CLI|crashpad_handler|Sparkle|Autosave)(\.app)?$/i;
+
+/**
+ * Choose the primary macOS app bundle among Info.plist paths.
+ * Prefer shallow top-level bundles; skip Updater/Metadata/helper names.
+ */
+export function pickPrimaryAppBundleName(relativePaths) {
+  const appPaths = relativePaths
+    .filter((f) => /\.app\/Contents\/Info\.plist$/i.test(f))
+    .map((f) => f.replace(/\/Contents\/Info\.plist$/i, "").replace(/^__MACOSX\//, ""))
+    .filter((p) => p && !p.includes("__MACOSX"));
+  if (!appPaths.length) return null;
+
+  const rank = (appPath) => {
+    const depth = appPath.split("/").filter(Boolean).length;
+    const base = appPath.split("/").pop() || "";
+    let score = 0;
+    score += Math.max(0, 50 - depth * 10);
+    if (SECONDARY_APP_NAME_RE.test(base)) score -= 100;
+    if (/\.app\//i.test(appPath.replace(/[^/]+\.app$/i, ""))) score -= 20;
+    if (base.length > 8) score += 5;
+    if (/\s/.test(base)) score += 8;
+    return score;
+  };
+
+  appPaths.sort((a, b) => rank(b) - rank(a) || a.localeCompare(b));
+  return appPaths[0].split("/").pop() || null;
+}
+
 async function classifyContents(extractDir, relativePaths) {
-  const hasApp = relativePaths.some(f => /\.app\/Contents\/Info\.plist$/i.test(f));
-  if (hasApp) {
-    const appPath = relativePaths
-      .find(f => /\.app\/Contents\/Info\.plist$/i.test(f))
-      .replace(/\/Contents\/Info\.plist$/, '');
-    const appName = appPath.split('/').pop();
-    return { type: 'app', appName };
+  const primaryApp = pickPrimaryAppBundleName(relativePaths);
+  if (primaryApp) {
+    return { type: 'app', appName: primaryApp };
   }
 
   const binaries = [];
