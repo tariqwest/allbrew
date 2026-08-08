@@ -36,6 +36,8 @@ export type PipPackagePayload = FormulaCommonFields & {
   licenseLine: string;
   livecheckBlock: string;
   resourcesBlock: string;
+  /** Full body line(s) inside `test do` (pre-indented). */
+  testDoBody: string;
 };
 
 export type CargoPackagePayload = FormulaCommonFields & {
@@ -45,6 +47,8 @@ export type CargoPackagePayload = FormulaCommonFields & {
   licenseLine: string;
   urlLines: string;
   livecheckBlock: string;
+  /** Pre-rendered `*std_cargo_args` or `*std_cargo_args(path: "…")` fragment. */
+  cargoInstallArgs: string;
 };
 
 export type GoPackagePayload = FormulaCommonFields & {
@@ -122,6 +126,8 @@ export type CaskAppReleasePayload = {
   appName: string;
   desc: string;
   homepage: string;
+  /** Pre-rendered stanza including trailing newline, or empty string. */
+  containerBlock: string;
   livecheckBlock: string;
   zapBlock: string;
 };

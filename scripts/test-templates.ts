@@ -134,6 +134,7 @@ function buildGithubReleaseCase(): Case {
     appName: "Foo.app",
     desc: "Foo cask",
     homepage: "https://github.com/x/foo",
+    containerBlock: "",
     livecheckBlock,
     zapBlock: zap,
   };
@@ -348,6 +349,8 @@ function buildPipPackageCase(): Case {
     resourcesBlock: resources,
     allbrewDependency: "",
     testBinName: "foo",
+    testDoBody:
+      `    assert_match version.to_s, shell_output("#{bin}/foo --version")`,
     serviceBlock: "",
   };
   const expected =

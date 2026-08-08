@@ -69,7 +69,7 @@ ${p.resourcesBlock}  def install
   end
 
 ${p.serviceBlock}  test do
-    assert_match version.to_s, shell_output("#{bin}/${p.testBinName} --version")
+${p.testDoBody}
   end
 end
 `;

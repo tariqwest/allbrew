@@ -84,6 +84,8 @@ describe("renderFormula", () => {
       resourcesBlock: resources,
       allbrewDependency: "",
       testBinName: "foo",
+      testDoBody:
+        `    assert_match version.to_s, shell_output("#{bin}/foo --version")`,
       serviceBlock: "",
     };
     const ruby = renderFormula(payload);
@@ -115,6 +117,7 @@ describe("renderFormula", () => {
       licenseLine: '  license "MIT"\n',
       urlLines: '  url "https://example.com/foo-1.0.tar.gz"\n  sha256 "cc"\n',
       livecheckBlock: livecheck,
+      cargoInstallArgs: "*std_cargo_args",
       allbrewDependency: "",
       testBinName: "foo",
       serviceBlock: "",

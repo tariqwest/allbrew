@@ -9,7 +9,7 @@ ${p.licenseLine}${p.urlLines}  head "https://github.com/${p.fullName}.git", bran
 ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "rust" => :build
 
   def install
-    system "cargo", "install", *std_cargo_args
+    system "cargo", "install", ${p.cargoInstallArgs}
   end
 
 ${p.serviceBlock}  test do
