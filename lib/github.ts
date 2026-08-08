@@ -102,26 +102,75 @@ export async function getRepoInfo(owner, repo) {
   };
 }
 
+function mapRelease(data: any) {
+  return {
+    tagName: data.tag_name,
+    name: data.name,
+    body: data.body,
+    draft: Boolean(data.draft),
+    prerelease: Boolean(data.prerelease),
+    assets: (data.assets || []).map((a: any) => ({
+      name: a.name,
+      url: a.browser_download_url,
+      size: a.size,
+      contentType: a.content_type,
+    })),
+    tarballUrl: data.tarball_url,
+    zipballUrl: data.zipball_url,
+  };
+}
+
 export async function getLatestRelease(owner, repo) {
   try {
     const { data } = await getOctokit().rest.repos.getLatestRelease({ owner, repo });
-    return {
-      tagName: data.tag_name,
-      name: data.name,
-      body: data.body,
-      assets: data.assets.map(a => ({
-        name: a.name,
-        url: a.browser_download_url,
-        size: a.size,
-        contentType: a.content_type,
-      })),
-      tarballUrl: data.tarball_url,
-      zipballUrl: data.zipball_url,
-    };
+    return mapRelease(data);
   } catch (err) {
     if (err.status === 404) return null;
     throw err;
   }
+}
+
+/**
+ * List recent releases (newest first). Used when the "latest" tag has no
+ * macOS app/binary assets but an older release still ships a .dmg/.app zip.
+ */
+export async function listReleases(
+  owner: string,
+  repo: string,
+  opts: { perPage?: number } = {},
+) {
+  const perPage = Math.min(Math.max(opts.perPage ?? 20, 1), 100);
+  try {
+    const { data } = await getOctokit().rest.repos.listReleases({
+      owner,
+      repo,
+      per_page: perPage,
+    });
+    return (data || []).map(mapRelease);
+  } catch (err) {
+    if (err.status === 404) return [];
+    throw err;
+  }
+}
+
+/**
+ * Prefer the newest non-draft release that has at least one app asset
+ * (DMG / macOS .app zip). Skips pure prereleases unless nothing else qualifies.
+ */
+export function pickReleaseWithAppAssets(
+  releases: ReturnType<typeof mapRelease>[],
+  isAppAssetFn: (name: string) => boolean,
+): ReturnType<typeof mapRelease> | null {
+  const usable = (releases || []).filter((r) => r && !r.draft);
+  const stable = usable.filter((r) => !r.prerelease);
+  for (const pool of [stable, usable]) {
+    for (const rel of pool) {
+      if ((rel.assets || []).some((a) => isAppAssetFn(a.name))) {
+        return rel;
+      }
+    }
+  }
+  return null;
 }
 
 export async function getReadme(owner, repo) {

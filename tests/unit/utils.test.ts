@@ -386,6 +386,17 @@ describe("matchAssetToArch", () => {
     expect(matchAssetToArch("foo-windows-x64.exe")).toBeNull();
     expect(matchAssetToArch("README.md")).toBeNull();
   });
+
+  it("matches goreleaser Darwin_all / macos_all fat binaries as macosUniversal", () => {
+    expect(matchAssetToArch("wander_1.1.0_Darwin_all.tar.gz")).toBe(
+      "macosUniversal",
+    );
+    expect(matchAssetToArch("foo_Darwin_all.tar.gz")).toBe("macosUniversal");
+    expect(matchAssetToArch("tool-macos-all.zip")).toBe("macosUniversal");
+    expect(matchAssetToArch("tool_all_darwin.tar.gz")).toBe("macosUniversal");
+    // Linux_all must not be treated as macOS
+    expect(matchAssetToArch("wander_1.1.0_Linux_all.tar.gz")).toBeNull();
+  });
 });
 
 describe("isAppAsset", () => {

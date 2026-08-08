@@ -125,10 +125,23 @@ export async function downloadAndHash(
     }
   }
 
+  const contentType = (response.headers.get("content-type") || "").toLowerCase();
+  const contentDisposition = response.headers.get("content-disposition") || "";
+  // Vendor version headers (e.g. Halo `x-halo-version: 0.6.0`)
+  const versionHeader =
+    response.headers.get("x-halo-version") ||
+    response.headers.get("x-version") ||
+    response.headers.get("x-app-version") ||
+    "";
+
   return {
     sha256: hash.digest("hex"),
     size: totalBytes,
     buffer: destPath ? null : Buffer.concat(chunks),
+    contentType,
+    contentDisposition,
+    versionHeader: versionHeader || null,
+    finalUrl: response.url || url,
   };
 }
 
@@ -137,19 +150,70 @@ export async function hashUrl(url: string) {
   return sha256;
 }
 
+/** Parse filename= from Content-Disposition (RFC 6266 / simple forms). */
+export function filenameFromContentDisposition(disp: string | null | undefined): string | null {
+  if (!disp) return null;
+  const utf8 = disp.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+  if (utf8?.[1]) {
+    try {
+      return decodeURIComponent(utf8[1].trim().replace(/^["']|["']$/g, ""));
+    } catch {
+      return utf8[1].trim().replace(/^["']|["']$/g, "");
+    }
+  }
+  const plain = disp.match(/filename\s*=\s*("?)([^";]+)\1/i);
+  if (plain?.[2]) return plain[2].trim();
+  return null;
+}
+
 export async function downloadToTemp(
   url: string,
   filename: string | null = null,
   timeoutMs: number = DEFAULT_DOWNLOAD_TIMEOUT_MS,
 ) {
   const tempDir = await mkdtemp(join(tmpdir(), "allbrew-"));
+  // Prefer caller filename; otherwise use a neutral name so extensionless APIs
+  // are not written as bare "latest" without a type suffix.
   const fname = filename || url.split("/").pop().split("?")[0] || "download";
   const destPath = join(tempDir, fname);
   const result = await downloadAndHash(url, destPath, timeoutMs);
+
+  // If the server told us the real filename (HaloMac-latest.dmg), rename for
+  // downstream detectors that key off path extensions.
+  let path = destPath;
+  const serverName = filenameFromContentDisposition(result.contentDisposition);
+  if (serverName && /\.(dmg|zip|pkg)$/i.test(serverName) && !filename) {
+    try {
+      const { rename } = await import("node:fs/promises");
+      const better = join(tempDir, serverName.replace(/[/\\]/g, "_"));
+      await rename(destPath, better);
+      path = better;
+    } catch {
+      /* keep destPath */
+    }
+  } else if (
+    !/\.(dmg|zip|pkg)$/i.test(fname) &&
+    (result.contentType || "").includes("application/x-apple-diskimage")
+  ) {
+    try {
+      const { rename } = await import("node:fs/promises");
+      const better = join(tempDir, `${fname}.dmg`);
+      await rename(destPath, better);
+      path = better;
+    } catch {
+      /* keep destPath */
+    }
+  }
 
   const cleanup = async () => {
     await rm(tempDir, { recursive: true, force: true });
   };
 
-  return { ...result, path: destPath, dir: tempDir, cleanup };
+  return {
+    ...result,
+    path,
+    dir: tempDir,
+    cleanup,
+    serverFilename: serverName,
+  };
 }
