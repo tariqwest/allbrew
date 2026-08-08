@@ -17,9 +17,9 @@ import { githubLatestLivecheckBlock } from "./livecheck.ts";
 import { templateReleaseUrl } from "./binary-release.ts";
 
 /** Prefer DMG, then host-arch zip, then first app asset. */
-export function pickBestAppReleaseAsset(appAssets: { name: string }[]): {
-  name: string;
-} {
+export function pickBestAppReleaseAsset<
+  T extends { name: string; url?: string },
+>(appAssets: T[]): T {
   if (appAssets.length === 0) {
     throw new Error("No .dmg or macOS .zip assets found in release");
   }

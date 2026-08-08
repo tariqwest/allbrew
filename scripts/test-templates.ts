@@ -263,6 +263,7 @@ function buildCargoPackageCase(): Case {
     licenseLine: '  license "MIT"\n',
     urlLines: '  url "https://example.com/foo-1.0.tar.gz"\n  sha256 "cc"\n',
     livecheckBlock: livecheck,
+    cargoInstallArgs: "*std_cargo_args",
     allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
