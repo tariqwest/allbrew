@@ -4,6 +4,7 @@ import ora from "ora";
 import { classifyWithHead } from "./classifier.ts";
 import {
   discoverPageDownloads,
+  findStoreDownloadGate,
   parseDiscoverMode,
   type DiscoverCandidate,
 } from "./page-discover.ts";
@@ -11,6 +12,8 @@ import {
   initOctokit,
   getRepoInfo,
   getLatestRelease,
+  listReleases,
+  pickReleaseWithAppAssets,
   getReadme,
   getRepoContents,
   getFileContent,
@@ -64,18 +67,48 @@ export async function run(url, opts: any = {}) {
 
   try {
     if (classification.type === "unknown") {
-      const discovered = await maybeDiscoverFromUnknownPage(url, opts);
-      if (discovered) {
-        classification = discovered.classification;
-        opts = {
-          ...opts,
-          sourceUrl: url,
-          resolvedUrl: discovered.resolvedUrl,
-          discoverMethod: discovered.method,
-        };
-        console.log(
-          `  Resolved download via discovery (${chalk.cyan(discovered.method)}): ${chalk.bold(classification.type)} → ${chalk.cyan(discovered.resolvedUrl)}`,
+      // Case C: product homepage already shipped on homebrew/cask with matching
+      // homepage domain → adopt official cask (avoid MAS storefront / *-tap).
+      try {
+        const { matchOfficialCaskByHomepage } = await import(
+          "./generators/homebrew-cask.ts"
         );
+        const matched = await matchOfficialCaskByHomepage(url, opts.name);
+        if (matched?.token) {
+          classification = {
+            type: "homebrew-cask",
+            url: `https://formulae.brew.sh/cask/${matched.token}`,
+            name: matched.token,
+          };
+          opts = {
+            ...opts,
+            // Official cask token wins over batch --name slugs (refine-app → refine).
+            name: matched.token,
+            sourceUrl: url,
+            discoverMethod: "homebrew-cask-homepage",
+          };
+          console.log(
+            `  Matched official homebrew/cask ${chalk.bold(matched.token)} via homepage domain`,
+          );
+        }
+      } catch {
+        /* optional path */
+      }
+
+      if (classification.type === "unknown") {
+        const discovered = await maybeDiscoverFromUnknownPage(url, opts);
+        if (discovered) {
+          classification = discovered.classification;
+          opts = {
+            ...opts,
+            sourceUrl: url,
+            resolvedUrl: discovered.resolvedUrl,
+            discoverMethod: discovered.method,
+          };
+          console.log(
+            `  Resolved download via discovery (${chalk.cyan(discovered.method)}): ${chalk.bold(classification.type)} → ${chalk.cyan(discovered.resolvedUrl)}`,
+          );
+        }
       }
     }
 
@@ -109,6 +142,8 @@ async function dispatchClassification(classification: any, opts: any) {
       return await handleGemPackage(classification, opts);
     case "dotnet-package":
       return await handleDotnetPackage(classification, opts);
+    case "cargo-package":
+      return await handleCargoPackage(classification, opts);
     case "homebrew-formula":
       return await handleHomebrewFormula(classification, opts);
     case "homebrew-cask":
@@ -155,6 +190,7 @@ async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
     const result = await discoverPageDownloads(url, {
       mode,
       verbose: Boolean(opts.verbose),
+      nameHint: typeof opts.name === "string" ? opts.name : undefined,
       log: (msg) => {
         if (opts.verbose) console.log(chalk.dim(`  ${msg}`));
       },
@@ -184,15 +220,30 @@ async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
     let chosen: DiscoverCandidate | null = result.chosen;
     if (!chosen) {
       const usable = result.candidates.filter(
-        (c) => c.kind !== "unknown" || /\.(dmg|pkg|zip|tgz|tar\.gz|sh|bash)(?:\?|#|$)/i.test(c.url),
+        (c) =>
+          c.kind !== "store-download-gate" &&
+          (c.kind !== "unknown" ||
+            /\.(dmg|pkg|zip|tgz|tar\.gz|sh|bash)(?:\?|#|$)/i.test(c.url)),
       );
       if (isNonInteractive(opts)) {
         // Never hang automation on ambiguous HTML noise.
         chosen = usable[0] || null;
         if (!chosen) {
-          spinner.warn(
-            "No high-confidence download candidate in non-interactive mode",
-          );
+          const gate = findStoreDownloadGate(result.candidates);
+          if (gate) {
+            spinner.warn(
+              `Download is behind a store gate (no direct .dmg/.zip URL): ${gate.url}`,
+            );
+            console.log(
+              chalk.dim(
+                "  Gumroad/itch-style product pages require checkout before a file URL is issued; allbrew cannot build a cask without a stable direct artifact URL.",
+              ),
+            );
+          } else {
+            spinner.warn(
+              "No high-confidence download candidate in non-interactive mode",
+            );
+          }
           return null;
         }
         console.log(
@@ -831,9 +882,34 @@ async function handleGithubRepo(classification, opts) {
     );
 
     const appAssets = release.assets.filter((a) => isAppAsset(a.name));
-    const binAssets = release.assets.filter(
+    // Platform-tagged binaries. Homebrew on macOS needs at least one macOS
+    // asset; Linux-only releases (e.g. ugm, gpg-tui) must fall through to README
+    // install methods (go, cargo, source-build) instead of binary-release.
+    const allBinAssets = release.assets.filter(
       (a) => isBinaryAsset(a.name) && matchAssetToArch(a.name),
     );
+    const binAssetsRaw = allBinAssets.filter((a) => {
+      const arch = matchAssetToArch(a.name);
+      return (
+        arch === "macosArm" ||
+        arch === "macosIntel" ||
+        arch === "macosUniversal"
+      );
+    });
+    // Intel-only macOS assets (no arm64/universal) produce formulas with only
+    // `on_intel` URLs. On Apple Silicon Homebrew then fails with
+    // "formula requires at least a URL". Fall through to README methods
+    // (cargo/go/source) so arm64 hosts get a buildable formula (e.g. tickrs).
+    const hasMacosArmOrUniversal = binAssetsRaw.some((a) => {
+      const arch = matchAssetToArch(a.name);
+      return arch === "macosArm" || arch === "macosUniversal";
+    });
+    const intelOnlyMacosBinAssets =
+      binAssetsRaw.length > 0 && !hasMacosArmOrUniversal;
+    const binAssets = intelOnlyMacosBinAssets ? [] : binAssetsRaw;
+    const linuxOnlyBinAssets =
+      binAssetsRaw.length === 0 && allBinAssets.length > 0;
+    const intelOnlyMacosSkipped = intelOnlyMacosBinAssets;
 
     if (appAssets.length > 0 && binAssets.length > 0) {
       console.log();
@@ -903,9 +979,57 @@ async function handleGithubRepo(classification, opts) {
       );
     }
 
-    console.log(
-      chalk.dim("  No recognized binary or app assets, checking README..."),
-    );
+    if (linuxOnlyBinAssets) {
+      console.log(
+        chalk.dim(
+          `  Release has Linux-only binary assets (${allBinAssets.map((a) => a.name).join(", ")}); no macOS bottle path — checking older releases / README...`,
+        ),
+      );
+    } else if (intelOnlyMacosSkipped) {
+      console.log(
+        chalk.dim(
+          `  Release has Intel-only macOS binary assets (${binAssetsRaw.map((a) => a.name).join(", ")}); no arm64/universal bottle — checking older releases / README...`,
+        ),
+      );
+    } else {
+      console.log(
+        chalk.dim(
+          "  No recognized binary or app assets on latest release, checking older releases...",
+        ),
+      );
+    }
+
+    // Latest often ships Linux/Windows only (e.g. manuskript 0.17.0) while an
+    // older tag still has osx.dmg — walk recent releases before README/source.
+    try {
+      const recent = await listReleases(owner, repo, { perPage: 30 });
+      const olderWithApp = pickReleaseWithAppAssets(recent, isAppAsset);
+      if (
+        olderWithApp &&
+        olderWithApp.tagName &&
+        olderWithApp.tagName !== release.tagName
+      ) {
+        const names = olderWithApp.assets
+          .filter((a) => isAppAsset(a.name))
+          .map((a) => a.name);
+        console.log(
+          `  Found macOS app assets on older release ${chalk.bold(olderWithApp.tagName)}: ${names.join(", ")}`,
+        );
+        return await generateWithConfirmation(
+          "cask-app-release",
+          { repoInfo, release: olderWithApp },
+          opts,
+        );
+      }
+    } catch (err) {
+      if (opts.verbose) {
+        console.log(
+          chalk.dim(
+            `  Older-release scan failed: ${err?.message || err}; continuing...`,
+          ),
+        );
+      }
+    }
   } else {
     releaseSpinner.info("No releases found, checking README...");
   }
@@ -935,16 +1059,28 @@ async function handleGithubRepo(classification, opts) {
       console.log(`  Detected command: ${chalk.cyan(brewInfo.installCommand)}`);
       console.log();
 
-      const choice = await select({
-        message: "What would you like to do?",
-        choices: [
-          {
-            name: `Run "${brewInfo.installCommand}" directly`,
-            value: "brew-install",
-          },
-          { name: "Generate a custom formula anyway", value: "continue" },
-        ],
-      });
+      // Non-interactive/batch: keep generating a formula/cask instead of hanging
+      // on select() or auto-running host `brew install` (no tap/manifest).
+      let choice: "brew-install" | "continue" = "continue";
+      if (isNonInteractive(opts)) {
+        console.log(
+          chalk.dim(
+            `  Non-interactive: generating custom formula anyway (Homebrew also has: ${brewInfo.installCommand})`,
+          ),
+        );
+        choice = "continue";
+      } else {
+        choice = await select({
+          message: "What would you like to do?",
+          choices: [
+            {
+              name: `Run "${brewInfo.installCommand}" directly`,
+              value: "brew-install",
+            },
+            { name: "Generate a custom formula anyway", value: "continue" },
+          ],
+        });
+      }
 
       if (choice === "brew-install") {
         console.log();
@@ -1050,7 +1186,84 @@ async function handleGithubRepo(classification, opts) {
             },
             opts,
           );
-        case "build":
+        case "dotnet":
+          console.log(
+            chalk.yellow(
+              "Note: the dotnet/NuGet generator is experimental and not yet fully verified end-to-end.",
+            ),
+          );
+          return await generateWithConfirmation(
+            "dotnet-package",
+            {
+              packageName: opts.package || method.package,
+              repoInfo,
+              serviceConfig: serviceConfigFromReadme,
+            },
+            opts,
+          );
+        case "gem":
+          return await generateWithConfirmation(
+            "gem-package",
+            {
+              gemName: opts.gemName || opts.package || method.package,
+              repoInfo,
+              serviceConfig: serviceConfigFromReadme,
+            },
+            opts,
+          );
+        case "build": {
+          // README `make all` often wraps a language package manager. Prefer
+          // Cargo.toml / go.mod markers over a non-PREFIX-aware Makefile.
+          const cargoTomlForBuild = await getFileContent(
+            owner,
+            repo,
+            "Cargo.toml",
+          );
+          if (cargoTomlForBuild) {
+            const resolved = await resolveCargoGithubInstall(
+              owner,
+              repo,
+              repoInfo,
+              cargoTomlForBuild,
+              opts,
+            );
+            console.log(
+              chalk.dim(
+                `  Preferring cargo over README build (${method.system || "make"}): Cargo.toml present` +
+                  (resolved.cargoPath && resolved.cargoPath !== "."
+                    ? ` (path ${resolved.cargoPath})`
+                    : ""),
+              ),
+            );
+            return await generateWithConfirmation(
+              "cargo-package",
+              {
+                repoInfo,
+                release,
+                crateName: resolved.crateName,
+                cargoPath: resolved.cargoPath,
+                serviceConfig: serviceConfigFromReadme,
+              },
+              opts,
+            );
+          }
+          const goModForBuild = await getFileContent(owner, repo, "go.mod");
+          if (goModForBuild) {
+            console.log(
+              chalk.dim(
+                `  Preferring go over README build (${method.system || "make"}): go.mod present`,
+              ),
+            );
+            return await generateWithConfirmation(
+              "go-package",
+              {
+                repoInfo,
+                release,
+                serviceConfig: serviceConfigFromReadme,
+              },
+              opts,
+            );
+          }
           return await generateWithConfirmation(
             "source-build",
             {
@@ -1061,6 +1274,7 @@ async function handleGithubRepo(classification, opts) {
             },
             opts,
           );
+        }
         case "script": {
           const scriptUrl = resolveScriptInstallUrl(
             method,
@@ -1187,10 +1401,22 @@ async function handleGithubRepo(classification, opts) {
         );
       case "cargo": {
         const cargoToml = await getFileContent(owner, repo, "Cargo.toml");
-        const crateName = parseCargoPackageName(cargoToml) || repoInfo.name;
+        const resolved = await resolveCargoGithubInstall(
+          owner,
+          repo,
+          repoInfo,
+          cargoToml,
+          opts,
+        );
         return await generateWithConfirmation(
           "cargo-package",
-          { repoInfo, release, crateName: opts.crateName || crateName, serviceConfig },
+          {
+            repoInfo,
+            release,
+            crateName: resolved.crateName,
+            cargoPath: resolved.cargoPath,
+            serviceConfig,
+          },
           opts,
         );
       }
@@ -1198,6 +1424,20 @@ async function handleGithubRepo(classification, opts) {
         return await generateWithConfirmation(
           "go-package",
           { repoInfo, release, serviceConfig },
+          opts,
+        );
+      case "gem":
+        return await generateWithConfirmation(
+          "gem-package",
+          {
+            gemName:
+              opts.gemName ||
+              opts.package ||
+              buildSystem.package ||
+              repoInfo.name,
+            repoInfo,
+            serviceConfig,
+          },
           opts,
         );
       case "swift": {
@@ -1327,6 +1567,21 @@ async function handleDotnetPackage(classification, opts) {
   );
 }
 
+async function handleCargoPackage(classification, opts) {
+  const crateName =
+    opts.crateName || opts.package || classification.crateName;
+  if (!crateName) {
+    throw new Error(
+      "crates.io crate name required (use --package or a crates.io URL)",
+    );
+  }
+  return await generateWithConfirmation(
+    "cargo-package",
+    { repoInfo: null, release: null, crateName },
+    opts,
+  );
+}
+
 async function handleCaskDmg(url, opts) {
   return await generateWithConfirmation("cask-app", { url }, opts);
 }
@@ -1394,6 +1649,11 @@ async function handleArchive(url: string, opts: any) {
 
     default:
       console.log(chalk.yellow("  Could not determine archive contents"));
+      if (isNonInteractive(opts)) {
+        throw new Error(
+          `Unable to classify archive contents in non-interactive mode: ${url}`,
+        );
+      }
       const choice = await select({
         message: "How should this archive be treated?",
         choices: [
@@ -1598,6 +1858,7 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       result = await generateCargoPackage(params.repoInfo, params.release, {
         ...mergedOpts,
         crateName: params.crateName || mergedOpts.crateName,
+        cargoPath: params.cargoPath || mergedOpts.cargoPath,
       });
       break;
     }
@@ -1906,24 +2167,95 @@ async function collectServiceOptions(params: any, opts: any, formulaName: any) {
   };
 }
 
-function parseCargoPackageName(cargoToml: string | null) {
-  if (!cargoToml) return null;
+async function resolveCargoGithubInstall(
+  owner: string,
+  repo: string,
+  repoInfo: any,
+  cargoToml: string | null,
+  opts: any,
+): Promise<{ crateName: string; cargoPath: string }> {
+  const {
+    parseCargoPackageName,
+    parseCargoWorkspaceMembers,
+    isCargoWorkspaceRoot,
+  } = await import("./generators/cargo-package.ts");
 
-  let inPackageSection = false;
-  for (const line of cargoToml.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    const section = trimmed.match(/^\[([^\]]+)\]/);
-    if (section) {
-      inPackageSection = section[1] === "package";
-      continue;
-    }
+  const rootName = parseCargoPackageName(cargoToml);
+  let crateName =
+    opts.crateName || opts.package || rootName || repoInfo?.name || repo;
+  let cargoPath = ".";
 
-    if (!inPackageSection) continue;
-    const name = trimmed.match(/^name\s*=\s*["']([^"']+)["']/);
-    if (name) return name[1];
+  if (rootName) {
+    return { crateName: opts.crateName || opts.package || rootName, cargoPath };
   }
 
-  return null;
+  if (!isCargoWorkspaceRoot(cargoToml)) {
+    return { crateName, cargoPath };
+  }
+
+  const members = parseCargoWorkspaceMembers(cargoToml);
+  const preferred =
+    String(opts.crateName || opts.package || repoInfo?.name || repo || "")
+      .toLowerCase()
+      .replace(/_/g, "-");
+
+  let fallbackPath: string | null = null;
+  let fallbackName: string | null = null;
+
+  for (const member of members) {
+    const memberToml = await getFileContent(
+      owner,
+      repo,
+      `${member.replace(/\/$/, "")}/Cargo.toml`,
+    );
+    const pkgName = parseCargoPackageName(memberToml);
+    if (!pkgName) continue;
+    const norm = pkgName.toLowerCase().replace(/_/g, "-");
+    if (norm === preferred || preferred.endsWith(norm) || norm.endsWith(preferred)) {
+      return {
+        crateName: opts.crateName || opts.package || pkgName,
+        cargoPath: member.replace(/\/$/, ""),
+      };
+    }
+    // Prefer a member whose package name equals the repo slug when scanning.
+    if (!fallbackPath && (norm === String(repo).toLowerCase() || norm === String(repoInfo?.name || "").toLowerCase())) {
+      fallbackPath = member.replace(/\/$/, "");
+      fallbackName = pkgName;
+    }
+    // Else keep first binary-ish member as last-resort (path with "all-in-one", "cli", "bin")
+    if (
+      !fallbackPath &&
+      /(?:^|\/)(?:cli|bin|app|all-in-one|main)(?:\/|$)/i.test(member)
+    ) {
+      fallbackPath = member.replace(/\/$/, "");
+      fallbackName = pkgName;
+    }
+  }
+
+  if (fallbackPath) {
+    return {
+      crateName: opts.crateName || opts.package || fallbackName || crateName,
+      cargoPath: fallbackPath,
+    };
+  }
+
+  // First member with a [package] name
+  for (const member of members) {
+    const memberToml = await getFileContent(
+      owner,
+      repo,
+      `${member.replace(/\/$/, "")}/Cargo.toml`,
+    );
+    const pkgName = parseCargoPackageName(memberToml);
+    if (pkgName) {
+      return {
+        crateName: opts.crateName || opts.package || pkgName,
+        cargoPath: member.replace(/\/$/, ""),
+      };
+    }
+  }
+
+  return { crateName, cargoPath };
 }
 
 async function resolveSpmBinOptions(
