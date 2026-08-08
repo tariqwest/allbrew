@@ -123,6 +123,29 @@ Harness locks store a **host PID** in the guest VM. Per-URL acquire/release caus
 
 Both use 4 CPU / 4GB / 65GB, user `th-allbrew`, exclusive `/opt/homebrew` sparsebundle. Local has allbrew 0.0.22 installed.
 
+### Guest health probe
+
+Before or during a batch, check whether each guest is actually installable (mutex free, VM running, `lume ssh` works, optional disk/lock warnings):
+
+```bash
+bun run batch:vm-health
+# or
+bun tests/monitored-install-batch/vm-guest-health.mjs
+bun tests/monitored-install-batch/vm-guest-health.mjs --endpoint local-1 --deep
+bun tests/monitored-install-batch/vm-guest-health.mjs --json --write-snapshot
+bun tests/monitored-install-batch/vm-guest-health.mjs --clear-stale   # drop host mutex if holder PID is dead
+```
+
+| status | meaning |
+|--------|---------|
+| `healthy` / `healthy_with_warnings` | guest SSH OK + free mutex (usable for a new install) |
+| `busy` | guest SSH OK but mutex held by a live `vm-install-one` |
+| `ssh_unavailable` | VM may be running but `lume ssh` fails (Remote Login / SSH) |
+| `vm_stopped` / `vm_missing` | Lume VM not running or not found |
+| `remote_unreachable` | cannot SSH to homeserver host |
+
+Library: `lib/guest-health.mjs` (`probePool`, `probeEndpoint`, `pickHealthyEndpoint`, `formatHealthReport`). Read-only — does **not** acquire exclusive Homebrew.
+
 ```bash
 # force an endpoint
 bun tests/monitored-install-batch/vm-install-one.mjs --url URL --name slug --endpoint local

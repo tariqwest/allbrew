@@ -68,7 +68,9 @@ export function isEndpointLocked(endpoint) {
   if (!existsSync(dir)) return false;
   try {
     const holder = readFileSync(join(dir, "owner"), "utf8").trim();
-    const pid = Number(String(holder).split("\t")[0]);
+    // owner: "pid\towner\tid\tiso" (preferred) or legacy "pidOwnerEndpointIso"
+    const pidMatch = String(holder).match(/^(\d+)/);
+    const pid = pidMatch ? Number(pidMatch[1]) : Number(String(holder).split("\t")[0]);
     if (pid && !isAlive(pid)) {
       rmSync(dir, { recursive: true, force: true });
       return false;
