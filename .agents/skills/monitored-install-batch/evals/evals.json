@@ -9,8 +9,14 @@
     },
     {
       "id": 2,
-      "prompt": "Two child install agents look stuck: one lifecycle-blocked on a shell approval, one with no RUN_DIR activity for 10+ minutes. Nudge them correctly and say when you'd mark failed-agent-runtime.",
-      "expected_output": "Uses child run ids to nudge with playbook hints (e.g. Case J), caps at 3 nudges, explains 3-minute inactivity and stop policy, does not invent run ids, marks terminal after budget exhausted.",
+      "prompt": "Two child install agents look stuck: one lifecycle-blocked on a shell approval, one with no RUN_DIR activity for 10+ minutes. Nudge them correctly and say when you'd mark failed-agent-runtime. Also explain the 15-minute wall-clock rule for a still-active heavy pip install.",
+      "expected_output": "Uses child run ids to nudge with playbook hints (e.g. Case J), caps at 3 nudges, explains 3-minute inactivity and stop policy, does not invent run ids, marks terminal after budget exhausted. For wall clock: ~15 min hard cap; legitimately still-active heavy work → skipped (too_heavy); stalled → failed/failed-timeout.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "A child has been running 16 minutes: vm-install-one is still downloading resources and RUN_DIR logs are updating. What do you mark and why?",
+      "expected_output": "Marks skipped (too_heavy / wall_clock_cap), stops the child, frees the slot, does not requeue automatically; distinguishes from stalled failed-timeout.",
       "files": []
     },
     {

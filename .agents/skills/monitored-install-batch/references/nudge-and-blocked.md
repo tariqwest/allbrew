@@ -56,6 +56,42 @@ Do not wait on the user.
 
 Stop the item (mark done, free slot) when any hold:
 
-1. Three nudges without completion
-2. ~45 minutes wall clock since launch with no terminal outcome
-3. Harness reports the child run is gone and no RUN_DIR finalize is in progress
+1. Three nudges without completion → `--mark-done … failed` (or `failed-agent-runtime`)
+2. **~15 minutes wall clock** since `launchedAt` (hard cap; see below)
+3. Harness reports the child run is gone and no RUN_DIR finalize is in progress → `failed-agent-runtime` / `failed`
+
+### Wall-clock hard cap (~15 min)
+
+Default: **`TH_BATCH_ITEM_WALL_MS=900000`** (15 minutes) from `launchedAt` (or first mark-launched time).
+
+At the cap the parent **must** stop the child and free the slot. Choose terminal status by activity:
+
+| At ~15 min the job is… | Mark as | Notes |
+|------------------------|---------|--------|
+| **Legitimately still active** | **`skipped`** | Heavy but healthy work still progressing (e.g. large pip graph brew install mid-download, VM helper still writing logs, child still advancing phases). Free the slot so the marathon can move on. Prefer index note `skipReason: too_heavy` or `wall_clock_cap`. |
+| **Stalled / hung / no progress** | **`failed`** or **`failed-timeout`** | No meaningful RUN_DIR progress, dead `vm-install-one`, thrashing the same error, approval hang after nudges, or child runtime dead. |
+
+**Legitimately still active** (all of these support `skipped`):
+
+- RUN_DIR mtimes or log tails advanced within the last ~2–3 minutes, **or**
+- A live `vm-install-one` / guest brew process owned by this slug, **or**
+- Child harness still turning tools with new RUN_DIR artifacts
+
+**Not** “active” (do not use `skipped` — use fail):
+
+- Idle agent with no FS progress past the 3-min nudge window
+- Waiting forever on VM mutex / stopped VM with no alternate path
+- Same failing command loop without a new root cause
+
+### Parent actions at the 15-minute cap
+
+1. Classify active vs stalled (table above).
+2. Message the child once if still reachable: stop VM work, finalize partial RUN_DIR if cheap (<60s), then exit — **do not** wait for a full fix-package marathon.
+3. Kill the child run if it does not exit promptly; release or clear **stale** VM mutex only when the owner PID is dead (never steal a live peer’s lock).
+4. `--mark-done <agentName|idx> skipped` **or** `failed` / `failed-timeout`.
+5. Append `agent-index.jsonl` with `skipReason` / `failureClass` when useful (`too_heavy`, `wall_clock_cap`, `timeout`).
+6. Refill the free slot from the queue.
+
+Do **not** requeue `skipped` automatically in the same wave. User may later promote heavy packages to a long-timeout profile or a dedicated VM night run.
+
+`skipped` is **terminal** for this marathon pass (like success/failed): it frees concurrency and is not pending.

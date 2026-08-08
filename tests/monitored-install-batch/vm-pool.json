@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-08-03T14:42:00Z",
+  "updatedAt": "2026-08-07T16:25:40.178Z",
   "strategy": "least-busy",
-  "notes": "Initial OS setup phase uses 4 CPU / 4GB RAM. Actual test runs use 2 CPU / 3.5GB RAM.",
+  "notes": "Initial OS setup phase uses 4 CPU / 4GB RAM. Actual test runs use 2 CPU / 3.5GB RAM. Rebooted vm-local-macos-testing-2 2026-08-07T16:25:40.179Z",
   "endpoints": [
     {
       "id": "homeserver",

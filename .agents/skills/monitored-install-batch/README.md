@@ -22,7 +22,7 @@ monitored-install-batch/
   references/
     orchestrator-loop.md   # wave math, prompts, one-turn order
     state-and-queue.md     # queue / wave / index / RUN_DIR schemas
-    nudge-and-blocked.md   # 3-min / 3-nudge / stop policy
+    nudge-and-blocked.md   # 3-min / 3-nudge / 15-min wall / skipped-vs-failed
     child-contract.md      # what each child must do
   assets/
     child-agent-privileges.DRAFT.toml  # required child privileges + sample patterns
@@ -67,11 +67,12 @@ Then start children with unique **launchName**s, shared base prompt (isolation +
 
 | Rule | Detail |
 |------|--------|
-| Concurrency | `TH_BATCH_CONCURRENCY` (default 4); don’t oversubscribe free slots |
+| Concurrency | `TH_BATCH_CONCURRENCY` (default **6**); 3 exclusive VM installs max, extra agents judge/fix in parallel |
 | Installs | Only via `LUME_REMOTE_ENABLED=true …/vm-install-one.mjs` |
 | Host brew | Never the success path |
 | Fixes | Option A `fix-package/` in disposable worktrees; no auto-release |
 | Stale | ~3 min no RUN_DIR progress → nudge (max 3) → mark failed |
+| Wall clock | **~15 min** per item: if still legitimately active → `skipped` (too heavy); if stalled → `failed` / `failed-timeout` |
 | Names | `agentName` for queue CLI; unique `launchName` per wave for child runs |
 
 ## Deterministic vs agent path

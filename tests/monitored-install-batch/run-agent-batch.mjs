@@ -12,7 +12,7 @@
  *   bun tests/monitored-install-batch/run-agent-batch.mjs --status
  *
  * Env:
- *   TH_BATCH_CONCURRENCY=4
+ *   TH_BATCH_CONCURRENCY=6
  *   TH_BATCH_URLS=...
  *   TH_BATCH_START=0
  *   TH_BATCH_LIMIT=
@@ -205,7 +205,7 @@ Start now.`;
 }
 
 function printWave() {
-  const concurrency = Math.max(1, envInt("TH_BATCH_CONCURRENCY", 4));
+  const concurrency = Math.max(1, envInt("TH_BATCH_CONCURRENCY", 6));
   const items = loadQueue();
   const pending = items.filter(
     (i) => i.status === "queued" || i.status === "retry",

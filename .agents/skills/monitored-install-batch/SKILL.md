@@ -13,7 +13,7 @@ description: >
   scripting whenever orchestration, concurrency, or child-agent lifecycle is
   involved — even if the user only says "keep going" after a prior batch session.
 metadata:
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Monitored-install batch (orchestrator)
@@ -26,10 +26,10 @@ This skill is **harness-agnostic**. It assumes only that the parent can (1) run 
 
 ## Goals
 
-1. Keep concurrency filled (`TH_BATCH_CONCURRENCY`, default **4**).
+1. Keep concurrency filled (`TH_BATCH_CONCURRENCY`, default **6** — above the 3 VM endpoints so judgment/fix work does not leave installs idle).
 2. Never treat **host** `brew install` / host tap auto-install as success (VM only).
 3. Mark completions from child messages + RUN_DIR artifacts; refill until the queue is empty (or only intentionally deferred retries remain).
-4. Nudge stalled children; stop after 3 failed nudges; post-process fix-packages without auto-release unless the user asks.
+4. Nudge stalled children; stop after 3 failed nudges **or ~15 min wall clock** (see stale policy); post-process fix-packages without auto-release unless the user asks.
 
 ## Layout (source of truth)
 
@@ -120,7 +120,7 @@ bun tests/monitored-install-batch/run-agent-batch.mjs <cmd> …
 | `--mark-done <agentName\|idx> <status>` | Terminal status + append `agent-index.jsonl` |
 | `--rebuild-queue` | Rebuild from `urls-shuffled.json` (rare; destructive to hand-edits) |
 
-**Env:** `TH_BATCH_CONCURRENCY` (default 4), `TH_BATCH_URLS`, `TH_BATCH_START`, `TH_BATCH_LIMIT`, `TH_BATCH_ONLY_FAILED` (default skip prior successes), `TH_BATCH_FIX_MODE=docs`.
+**Env:** `TH_BATCH_CONCURRENCY` (default **6**), `TH_BATCH_ITEM_WALL_MS` (default **900000** = 15 min per item wall clock), `TH_BATCH_URLS`, `TH_BATCH_START`, `TH_BATCH_LIMIT`, `TH_BATCH_ONLY_FAILED` (default skip prior successes), `TH_BATCH_FIX_MODE=docs`.
 
 ### Script version drift
 
@@ -146,9 +146,11 @@ After launch, `--mark-launched` with **agentName** (not only launchName) so the 
 | `failed` | Terminal fail (see RUN_DIR `failureClass`) |
 | `failed-fix-applied` | Fix landed + verified |
 | `failed-agent-runtime` | Parent stopped child / harness runtime death |
+| `failed-timeout` | Hit wall-clock cap while **stalled** / hung |
+| `skipped` | Hit wall-clock cap while **legitimately still active** (too heavy for the 15‑min budget); free the slot |
 | `blocked` | Rate-limit or wait (not always terminal) |
 
-Common **failureClass** values: `generate_fail`, `brew_fail`, `env_fail`, `prompt_hang`, `service_mismatch`, `github_rate_limit`, …
+Common **failureClass** / skip notes: `generate_fail`, `brew_fail`, `env_fail`, `prompt_hang`, `service_mismatch`, `github_rate_limit`, `too_heavy`, `wall_clock_cap`, …
 
 Mark from child `outcome.json` when present. `failed` for generate_fail-with-fix-package is fine when that is what children report.
 
@@ -184,7 +186,7 @@ Triggers: structured child completion message; lifecycle/status `succeeded`/`fai
 3. Duplicate `agent-index.jsonl` lines are OK if the child already appended; **queue** correctness matters most.
 4. Late true success after a premature `failed` mark: **re-mark** to the real terminal status.
 
-### 3. Stale / blocked policy
+### 3. Stale / blocked / wall-clock policy
 
 | Signal | Action |
 |--------|--------|
@@ -192,7 +194,10 @@ Triggers: structured child completion message; lifecycle/status `succeeded`/`fai
 | Child status `blocked` | Nudge: report blocked action, bypass interactive approval gates, finalize partial if stuck >60s |
 | Runtime error / dead child | Mark `failed-agent-runtime` (or `failed`); do not infinite-relaunch the same launchName |
 | **3 nudges**, no completion | `--mark-done … failed` (or `failed-agent-runtime`); free the slot |
-| Wall-clock **~45 min** on one item | Same stop policy |
+| Wall-clock **~15 min** since launch, **legitimately still active** (log/process progress, heavy install mid-flight) | Stop child; `--mark-done … skipped` (`skipReason: too_heavy` / `wall_clock_cap`); free the slot — do **not** burn more concurrency on multi-hour installs |
+| Wall-clock **~15 min**, **stalled / hung** (no progress) | Stop child; `--mark-done … failed` or `failed-timeout`; free the slot |
+
+Default wall budget: **15 minutes** (`TH_BATCH_ITEM_WALL_MS=900000` if set in policy/env). Full decision table: `references/nudge-and-blocked.md`.
 
 Message the child via its **run id**. Include launchName, slug, and the escape hatch (e.g. Case C formulae.brew.sh short-circuit, Case J approval bypass).
 
@@ -201,6 +206,8 @@ Children must not wait on interactive command-approval UI. Ensure the child priv
 ### 4. Launch a wave
 
 Preconditions: `running + launching < concurrency`, pending exists.
+
+**Pre-filter (do not launch):** URLs matching `https://formulae.brew.sh/formula/*` (Homebrew core formula pages). Bulk-mark them `skipped` with `skipReason: formulae_brew_sh_formula` and free the slot — prefer upstream GitHub/registry URLs or core `brew install` outside this marathon. Cask pages (`/cask/`) are **not** covered by this rule unless the user extends it.
 
 ```bash
 bun tests/monitored-install-batch/run-agent-batch.mjs --print-wave
@@ -219,7 +226,7 @@ After the harness returns run ids:
 2. `--mark-launched <agentName…>`.
 3. Optionally write run ids onto queue items if the CLI does not.
 
-Do not oversubscribe free slots. VM Homebrew mutexes often allow only 1–2 concurrent `vm-install-one` calls; extra children can still judge/generate in parallel.
+Do not oversubscribe free agent slots (cap = `TH_BATCH_CONCURRENCY`, default 6). Exclusive Homebrew allows at most one `vm-install-one` per endpoint (3 pool VMs); extra children judge/generate/fix so free VMs are claimed quickly.
 
 ### 5. Wait / monitor
 
@@ -260,6 +267,8 @@ Apply only under `tests/monitored-install-batch/worktrees/`. Never promote to `m
 | `env_fail` (VM lock/attach) | Mark `failed` or requeue **once** if hygiene is clear |
 | `prompt_hang` | Mark `failed`; expect noninteractive fix-package |
 | formulae.brew.sh core/cask (Case C) | Short-circuit / fail-closed — not monorepo source-build |
+| Wall clock, still active (heavy) | Mark **`skipped`** (`too_heavy` / `wall_clock_cap`); free slot |
+| Wall clock, stalled | Mark **`failed-timeout`** or `failed` |
 
 ## Anti-patterns
 
@@ -279,15 +288,16 @@ Apply only under `tests/monitored-install-batch/worktrees/`. Never promote to `m
 |------|------|
 | Wave JSON, launch math, message templates | `references/orchestrator-loop.md` |
 | State schemas, status enums, index rows | `references/state-and-queue.md` |
-| Nudge text, 3-strike stop | `references/nudge-and-blocked.md` |
+| Nudge text, 3-strike stop, 15-min wall, `skipped` vs fail | `references/nudge-and-blocked.md` |
 | Child isolation + completion schema | `references/child-contract.md` |
 | Child privileges + sample allow/deny patterns | `assets/child-agent-privileges.DRAFT.toml` |
 | Single-URL phases | `.agents/skills/monitored-allbrew-install/SKILL.md` |
 
 ## Done criteria
 
-- No `queued`/`retry` left (or only deferred retries)
+- No `queued`/`retry` left (or only deferred retries; `skipped` heavy items stay terminal unless the user requeues)
 - No `running`/`launching` without a live child id or a terminal mark
+- No `running` item past the **15 min** wall without a parent decision (`skipped` vs fail)
 - Queue + index reflect recent completions
 - Optional dry-run reconcile for outstanding fix-packages
-- Brief user report: counts, notable fixes, residual risks
+- Brief user report: counts, notable fixes, residual risks, skipped-as-too-heavy list

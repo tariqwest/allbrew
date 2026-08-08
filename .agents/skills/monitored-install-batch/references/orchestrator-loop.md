@@ -79,7 +79,15 @@ free = CONCURRENCY - count(status in running, launching)
 waveSize = min(free, count(pending))
 ```
 
-Never start `waveSize=0`. Prefer not to exceed VM pool size (often 1–2 exclusive Homebrew endpoints) even if CONCURRENCY is 4 — installs serialize on `vm-install-one` mutexes; extra children can still judge/generate in parallel.
+Before launch (and on resume), **auto-skip** pending items whose URL matches `https://formulae.brew.sh/formula/*`:
+
+```text
+--mark-done … skipped   # skipReason: formulae_brew_sh_formula
+```
+
+Do not spend children or VM time on core formula pages; they are already in Homebrew. Cask pages are not auto-skipped by default.
+
+Never start `waveSize=0`. Default CONCURRENCY is **6** with **3** exclusive Homebrew VM endpoints — installs serialize on `vm-install-one` mutexes; extra children judge/generate/fix so a free VM is claimed as soon as one drops.
 
 ## Completion fields (parent parser)
 
@@ -96,10 +104,13 @@ Expect:
 
 1. Drain child messages.
 2. Mark clear terminals.
-3. Nudge blocked/stale (cap 3).
-4. If free slots: prepare wave → start children → mark-launched.
-5. Short user status (counts + who is running).
-6. Wait for the next child event (or end turn).
+3. Enforce **15-min wall clock** on every `running` item (`launchedAt` → now ≥ 15m):
+   - still progressing (logs/process) → stop child, `--mark-done … skipped` (`too_heavy` / `wall_clock_cap`)
+   - stalled → stop child, `--mark-done … failed` or `failed-timeout`
+4. Nudge blocked/stale (cap 3) for items still under the wall budget.
+5. If free slots: prepare wave → start children → mark-launched.
+6. Short user status (counts + who is running).
+7. Wait for the next child event (or end turn).
 
 ## Reconcile
 

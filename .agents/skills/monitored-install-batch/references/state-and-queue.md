@@ -36,7 +36,10 @@ Minimal CLI guarantees: `idx`, `name`, `url`, `slug`, `agentName`, `status` (+ t
 - **Pending:** `queued`, `retry`
 - **Active:** `running`, `launching`
 - **Terminal OK:** `success`, `success-not-fixed`, `fixed_success`, `failed-fix-applied`, `done`
+- **Terminal skip:** `skipped` — wall-clock cap (~15 min) while work was still legitimately active (too heavy for the marathon budget); not a product failure, not requeued automatically
 - **Terminal fail:** `failed`, `failed-agent-runtime`, `failed-timeout`, other `failed*` except fix-applied labels
+
+Optional fields when marking `skipped` / timeout: `skipReason` (`too_heavy`, `wall_clock_cap`), `failureClass` (`timeout`).
 
 ## `state/agent-wave.json`
 
