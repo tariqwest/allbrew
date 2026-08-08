@@ -1,0 +1,16 @@
+{
+  "slug": "deno",
+  "url": "https://github.com/denoland/deno",
+  "failureClass": "brew_fail",
+  "generatorExpected": "binary-release",
+  "generatorObservedBroken": "binary-release-libdenort",
+  "generatorObservedFixedLocal": "binary-release",
+  "packageNameFixed": "deno-tap",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "vmHelperUsed": true,
+  "released": false,
+  "unitTestsPass": true,
+  "localGenerateFixedOk": true,
+  "fixSummary": "scoreBinaryReleaseAsset prefers deno-*.zip over denort/libdenort; skip .bsdiff deltas"
+}

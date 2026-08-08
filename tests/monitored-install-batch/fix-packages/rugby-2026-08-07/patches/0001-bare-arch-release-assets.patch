@@ -1,0 +1,51 @@
+diff --git a/lib/utils.ts b/lib/utils.ts
+index 28ec1c1..a639f6f 100644
+--- a/lib/utils.ts
++++ b/lib/utils.ts
+@@ -546,6 +546,8 @@ export function archPatterns() {
+       /aarch64.*darwin/i,
+       /aarch64.*apple/i,
+       /apple.*silicon/i,
++      // Bare arch asset names (e.g. Rugby arm64.zip) — macOS-first CLIs
++      /^(?:arm64|aarch64)(?:[-_.]|$)/i,
+     ],
+     macosIntel: [
+       /darwin.*amd64/i,
+@@ -556,11 +558,15 @@ export function archPatterns() {
+       /macos.*x64/i,
+       /x86_64.*darwin/i,
+       /x86_64.*macos/i,
++      // Bare arch: x86_64.zip, amd64.tar.gz
++      /^(?:x86_64|amd64|x64)(?:[-_.]|$)/i,
+     ],
+     macosUniversal: [
+       /macos[-_.]?universal/i,
+       /universal[-_.]?macos/i,
+       /darwin[-_.]?universal/i,
++      // Bare universal.zip (Rugby-style multi-arch fat binary)
++      /^universal(?:[-_.]|$)/i,
+     ],
+     linuxArm: [
+       /linux.*arm64/i,
+diff --git a/tests/unit/utils.test.ts b/tests/unit/utils.test.ts
+index 4f9f82d..affc29f 100644
+--- a/tests/unit/utils.test.ts
++++ b/tests/unit/utils.test.ts
+@@ -386,6 +386,17 @@ describe("matchAssetToArch", () => {
+     expect(matchAssetToArch("foo-windows-x64.exe")).toBeNull();
+     expect(matchAssetToArch("README.md")).toBeNull();
+   });
++
++  it("classifies bare arch zip names (Rugby-style arm64.zip)", () => {
++    expect(matchAssetToArch("arm64.zip")).toBe("macosArm");
++    expect(matchAssetToArch("aarch64.zip")).toBe("macosArm");
++    expect(matchAssetToArch("x86_64.zip")).toBe("macosIntel");
++    expect(matchAssetToArch("amd64.tar.gz")).toBe("macosIntel");
++    expect(matchAssetToArch("universal.zip")).toBe("macosUniversal");
++    expect(matchAssetToArch("linux-arm64.tar.gz")).toBe("linuxArm");
++    expect(isBinaryAsset("arm64.zip")).toBe(true);
++    expect(isBinaryAsset("universal.zip")).toBe(true);
++  });
+ });
+ 
+ describe("isAppAsset", () => {

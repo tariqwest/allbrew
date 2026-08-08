@@ -1,0 +1,17 @@
+{
+  "url": "https://github.com/tarkah/tickrs",
+  "slug": "tickrs",
+  "failureClass": "brew_fail",
+  "expectedGenerator": "cargo-package",
+  "expectedService": false,
+  "expectedFormulaName": "tickrs",
+  "packageVersion": "0.15.0",
+  "localGenerateOk": true,
+  "vmInstallOk": null,
+  "patches": [
+    "patches/0001-cli-skip-intel-only-macos-binaries.patch"
+  ],
+  "localGeneratePackage": "tickrs",
+  "localGenerateVersion": "0.15.0",
+  "notes": "Intel-only macOS release assets → fall through to cargo"
+}

@@ -1,0 +1,24 @@
+{
+  "slug": "homebrew",
+  "url": "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh",
+  "mode": "docs",
+  "status": "oos_reject",
+  "failureClass": "brew_fail",
+  "installPossible": false,
+  "generatorExpected": "install-script",
+  "generatorObserved": "install-script",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "rootCause": "Official Homebrew bootstrap is system-wide/meta-recursive; install-script generator emits non-viable Cellar formula",
+  "fixSummary": "Add install-script-analyze OOS guard for Homebrew/install + wire assert before formula write",
+  "unitTests": ["tests/homebrew-install-script.test.ts"],
+  "patches": [],
+  "files": ["files/install-script-analyze.ts", "files/install-script.ts.snippet.md"],
+  "vmHelperUsed": true,
+  "vmOutcome": "env_fail_ssh_lock; product failure proven on host temp-tap",
+  "hostTempTap": {
+    "classified": "bash-script",
+    "formulaWritten": true,
+    "brewInstall": "failed"
+  }
+}

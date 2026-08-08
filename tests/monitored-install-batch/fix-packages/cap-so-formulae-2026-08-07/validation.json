@@ -1,0 +1,48 @@
+{
+  "slug": "cap-so",
+  "url": "https://formulae.brew.sh/cask/cap",
+  "launchName": "u0476-cap-so-20260807T201700Z",
+  "agentName": "url-0476-cap-so",
+  "failureClass": "generate_fail",
+  "caseC": true,
+  "expectedGenerator": "homebrew-cask",
+  "service": false,
+  "headCommitWithFix": "5e7a04e",
+  "bottleVersionTested": "0.0.24",
+  "bottleHasFix": false,
+  "tests": [
+    {
+      "command": "bun -e 'import { classify } from \"./lib/classifier.ts\"; console.log(classify(\"https://formulae.brew.sh/cask/cap\"))'",
+      "result": "type homebrew-cask name cap"
+    }
+  ],
+  "localGenerate": {
+    "ok": true,
+    "signals": [
+      "Classified as: homebrew-cask",
+      "Generated: Casks/cap.rb",
+      "app Cap.app version 0.5.8"
+    ]
+  },
+  "vmBottle": {
+    "version": "0.0.24",
+    "ok": false,
+    "endpoint": "homeserver",
+    "signals": [
+      "Classified as: unknown",
+      "Resolved download via discovery → github-repo Homebrew/homebrew-cask",
+      "defaulting to source-build",
+      "Generated Formula/cap-so.rb",
+      "brew install failed"
+    ]
+  },
+  "files": [
+    "lib/classifier.ts",
+    "lib/generators/homebrew-cask.ts",
+    "lib/generators/homebrew-formula.ts",
+    "lib/cli.ts",
+    "lib/build-manifest.ts",
+    "lib/manifest.ts",
+    "lib/package-updater.ts"
+  ]
+}

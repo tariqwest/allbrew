@@ -1,0 +1,107 @@
+diff --git a/tests/unit/page-discover.test.ts b/tests/unit/page-discover.test.ts
+index a12db0d..a98d084 100644
+--- a/tests/unit/page-discover.test.ts
++++ b/tests/unit/page-discover.test.ts
+@@ -11,6 +11,9 @@ import {
+   scoreCandidateUrl,
+   enrichGithubReleaseAssets,
+   parseGithubRepoHome,
++  isImplausibleArtifactUrl,
++  isDownloadHubPath,
++  enrichDownloadHubPages,
+ } from "../../lib/page-discover.ts";
+ import { assertSafePublicFetchUrl } from "../../lib/utils.ts";
+ 
+@@ -148,6 +151,92 @@ describe("mergeCandidates", () => {
+   });
+ });
+ 
++describe("isImplausibleArtifactUrl / download hubs (superconductor)", () => {
++  it("rejects comma-separated extension allowlist paths from SPA bundles", () => {
++    const bad =
++      "https://www.superconductor.com/.7z,.aac,.apk,.avi,.bmp,.bz2,.css,.csv,.deb,.dmg,.doc,.docx,.exe,.gif,.gz,.heic,.heif,.ico,.iso,.jpeg,.jpg,.js,.json,.m4a,.mkv,.mov,.mp3,.mp4,.mpeg,.mpg,.msi,.ogg,.ogv,.pdf,.pkg,.png,.ppt,.pptx,.rar,.rtf,.svg,.tar,.tif,.tiff,.txt,.wav,.webm,.webp,.wma,.wmv,.xls,.xlsx,.xml,.zip";
++    expect(isImplausibleArtifactUrl(bad)).toBe(true);
++    expect(isImplausibleArtifactUrl("https://cdn.example.com/App.dmg")).toBe(false);
++    expect(
++      isImplausibleArtifactUrl(
++        "https://github.com/superconductor/desktop-releases/releases/latest/download/Superconductor-mac-arm64.dmg",
++      ),
++    ).toBe(false);
++  });
++
++  it("detects download hub paths", () => {
++    expect(isDownloadHubPath("https://www.superconductor.com/download")).toBe(true);
++    expect(isDownloadHubPath("https://www.superconductor.com/pricing")).toBe(false);
++    expect(isDownloadHubPath("https://cdn.example.com/App.dmg")).toBe(false);
++  });
++
++  it("follows same-site /download hub to pick macOS DMG", async () => {
++    const home =
++      `<html><body><nav><a href="/download">Download</a><a href="/pricing">Pricing</a></nav></body></html>`;
++    const hub = `<html><body>
++      <a href="https://github.com/superconductor/desktop-releases/releases/latest/download/Superconductor-mac-arm64.dmg">Apple Silicon</a>
++      <a href="https://github.com/superconductor/desktop-releases/releases/latest/download/Superconductor-mac-x64.dmg">Intel</a>
++      <a href="https://apps.apple.com/us/app/superconductor/id6749349238">App Store</a>
++    </body></html>`;
++    const result = await discoverPageDownloads("https://superconductor.dev/", {
++      mode: "static",
++      htmlFixture: { body: home, finalUrl: "https://superconductor.dev/" },
++      fetchHubHtml: async (url: string) => {
++        if (url.includes("/download")) return { body: hub, finalUrl: url };
++        return { body: "", finalUrl: url };
++      },
++    });
++    expect(result.chosen?.kind).toBe("cask-dmg");
++    expect(result.chosen?.url).toMatch(/Superconductor-mac-arm64\.dmg|Superconductor-mac-x64\.dmg/);
++  });
++
++  it("enrichDownloadHubPages merges hub DMG candidates", async () => {
++    const page = "https://example.com/";
++    const landing = extractCandidatesFromHtml(
++      `<a href="/download">Download</a><a href="/about">About</a>`,
++      page,
++    );
++    const merged = await enrichDownloadHubPages(landing, page, `<a href="/download">Download</a>`, {
++      fetchHtml: async () => ({
++        body: `<a href="https://cdn.example.com/App-mac.dmg">dmg</a>`,
++        finalUrl: "https://example.com/download",
++      }),
++    });
++    expect(merged.some((c) => c.url.endsWith(".dmg"))).toBe(true);
++    expect(pickAutoCandidate(merged)?.url).toContain(".dmg");
++  });
++});
++
++describe("discoverFromScriptBundles relative SPA artifacts", () => {
++  it("resolves quoted relative .dmg paths from JS bundles against page origin", async () => {
++    const { discoverFromScriptBundles } = await import("../../lib/page-discover.ts");
++    const pageUrl = "https://avelio.example/unfatten";
++    const html = `<!doctype html><html><head>
++      <script type="module" src="/assets/app.js"></script>
++    </head><body><div id="root"></div></body></html>`;
++    const origFetch = globalThis.fetch;
++    globalThis.fetch = (async (input: RequestInfo | URL) => {
++      const u = String(input);
++      if (u.includes("/assets/app.js")) {
++        return new Response(
++          `y.jsx("a",{href:"/download/Unfatten16.dmg",children:"Download"});href:"/download/Unfatten.zip"`,
++          { status: 200, headers: { "content-type": "application/javascript" } },
++        );
++      }
++      return new Response("not found", { status: 404 });
++    }) as typeof fetch;
++    try {
++      const cands = await discoverFromScriptBundles(pageUrl, html);
++      expect(cands.some((c) => c.url === "https://avelio.example/download/Unfatten16.dmg")).toBe(true);
++      expect(cands.some((c) => c.url.endsWith(".dmg") && c.kind === "cask-dmg")).toBe(true);
++      const top = pickAutoCandidate(cands);
++      expect(top?.url).toContain("Unfatten16.dmg");
++    } finally {
++      globalThis.fetch = origFetch;
++    }
++  });
++});
++
+ 
+ describe("extractArtifactUrlsFromJson", () => {
+   it("finds nested dmg urls and prefers them in discovery scoring", () => {

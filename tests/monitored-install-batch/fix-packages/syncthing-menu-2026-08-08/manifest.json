@@ -1,0 +1,9 @@
+{
+  "url": "https://github.com/gtunes-dev/syncthing-menu",
+  "name": "syncthing-menu",
+  "agentName": "url-0733-syncthing-menu",
+  "launchName": "u0733-syncthing-menu-20260808T071400Z",
+  "idx": 733,
+  "failureClass": "generate_fail",
+  "fixKind": "isAppAsset-versioned-product-zip"
+}

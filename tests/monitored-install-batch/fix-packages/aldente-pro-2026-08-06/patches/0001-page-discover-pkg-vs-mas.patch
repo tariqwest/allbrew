@@ -1,0 +1,144 @@
+diff --git a/lib/page-discover.ts b/tmp/allbrew-wt-aldente-pro-12039/lib/page-discover.ts
+index f9c7e37..0c456ba 100644
+--- a/lib/page-discover.ts
++++ b/tmp/allbrew-wt-aldente-pro-12039/lib/page-discover.ts
+@@ -89,7 +89,7 @@ function pathLooksLinuxOnly(url: string): boolean {
+ }
+ 
+ function pathLooksMac(url: string): boolean {
+-  return /darwin|macos|osx|(?:^|[^a-z])mac(?:[^a-z]|$)|universal|\.dmg/i.test(url);
++  return /darwin|macos|osx|(?:^|[^a-z])mac(?:[^a-z]|$)|universal|\.(?:dmg|pkg)(?:\?|#|$)/i.test(url);
+ }
+ 
+ /**
+@@ -115,8 +115,14 @@ export function scoreCandidateUrl(
+       ev.push("classifier:bash-script");
+       break;
+     case "archive":
+-      score += 70;
+-      ev.push("classifier:archive");
++      // macOS installer packages are first-class cask artifacts, not source tarballs
++      if (/\.pkg(?:\?|#|$)/i.test(url)) {
++        score += 100;
++        ev.push("classifier:archive", "mac-pkg-installer");
++      } else {
++        score += 70;
++        ev.push("classifier:archive");
++      }
+       break;
+     case "github-repo":
+       score += 75;
+@@ -194,7 +200,7 @@ function guessKindFromUrl(url: string): string {
+       return url.toLowerCase();
+     }
+   })();
+-  if (path.endsWith(".dmg")) return "cask-dmg";
++  if (path.endsWith(".dmg") || path.endsWith(".pkg")) return "cask-dmg";
+   if (path.endsWith(".sh") || path.endsWith(".bash")) return "bash-script";
+   if (ARCHIVE_EXTS.some((e) => path.endsWith(e))) return "archive";
+   return "unknown";
+@@ -300,6 +306,79 @@ export function pickAutoCandidate(
+   return top;
+ }
+ 
++/** Tokenize a formula/cask name for path matching (aldente-pro → aldente, pro). */
++export function nameHintTokens(name: string | undefined | null): string[] {
++  if (!name) return [];
++  return String(name)
++    .toLowerCase()
++    .split(/[^a-z0-9]+/i)
++    .filter((t) => t.length >= 3);
++}
++
++function isDirectMacInstaller(c: DiscoverCandidate): boolean {
++  return (
++    c.kind === "cask-dmg" ||
++    /\.(?:dmg|pkg)(?:\?|#|$)/i.test(c.url)
++  );
++}
++
++function isStorefrontCandidate(c: DiscoverCandidate): boolean {
++  return (
++    c.kind === "mac-app-store" ||
++    c.kind === "setapp-app" ||
++    /apps\.apple\.com|itunes\.apple\.com|setapp\.com/i.test(c.url)
++  );
++}
++
++/**
++ * Prefer same-site (or any) direct .dmg/.pkg over Mac App Store / Setapp when both
++ * appear on multi-product marketing pages. Optionally boost path tokens matching
++ * the user-requested package name.
++ */
++export function rankCandidatesForPage(
++  candidates: DiscoverCandidate[],
++  pageUrl: string,
++  preferredName?: string | null,
++): DiscoverCandidate[] {
++  if (!candidates.length) return candidates;
++  const hasDirect = candidates.some(isDirectMacInstaller);
++  const tokens = nameHintTokens(preferredName);
++  const ranked = candidates.map((c) => {
++    let score = c.score;
++    const evidence = [...c.evidence];
++    if (hasDirect && isStorefrontCandidate(c) && !isDirectMacInstaller(c)) {
++      score -= 40;
++      evidence.push("storefront-demote-vs-direct");
++    }
++    if (tokens.length) {
++      try {
++        const path = new URL(c.url).pathname.toLowerCase();
++        const hay = `${path} ${c.url.toLowerCase()}`;
++        const hits = tokens.filter((t) => hay.includes(t));
++        if (hits.length) {
++          score += 10 + hits.length * 8;
++          evidence.push(`name-hint:${hits.join(",")}`);
++        } else if (isStorefrontCandidate(c)) {
++          // Unrelated store listing on a multi-product page
++          const storeSlug = path.replace(/[^a-z0-9]+/g, " ");
++          if (tokens.every((t) => !storeSlug.includes(t))) {
++            score -= 15;
++            evidence.push("name-hint-miss-storefront");
++          }
++        }
++      } catch {
++        /* ignore */
++      }
++    }
++    if (isDirectMacInstaller(c) && sameSite(c.url, pageUrl)) {
++      score += 8;
++      evidence.push("same-site-direct-installer");
++    }
++    return { ...c, score, evidence };
++  });
++  return ranked.sort((a, b) => b.score - a.score);
++}
++
+ const GITHUB_REPO_URL_RE =
+   /^https?:\/\/(?:www\.)?github\.com\/([^/\s]+)\/([^/\s#?]+)\/?$/i;
+ 
+@@ -410,6 +489,8 @@ export type DiscoverOptions = {
+   mode?: DiscoverMode;
+   verbose?: boolean;
+   log?: (msg: string) => void;
++  /** Formula/cask name hint used to rank multi-product page candidates. */
++  preferredName?: string | null;
+   /** Injected for tests: skip network and parse this HTML as the page body. */
+   htmlFixture?: { body: string; finalUrl?: string; contentType?: string };
+   /** Injected for tests / callers: webview discover implementation. */
+@@ -681,6 +762,7 @@ export async function discoverPageDownloads(
+     /* ignore release enrichment errors */
+   }
+ 
++  candidates = rankCandidatesForPage(candidates, finalPageUrl, opts.preferredName);
+   const top = pickAutoCandidate(candidates);
+   const hasStrong = Boolean(top && top.score >= 70 && top.kind !== "unknown");
+   const needWebview =
+@@ -726,6 +808,7 @@ export async function discoverPageDownloads(
+     }
+   }
+ 
++  candidates = rankCandidatesForPage(candidates, finalPageUrl, opts.preferredName);
+   const chosen = pickAutoCandidate(candidates);
+   return {
+     pageUrl,

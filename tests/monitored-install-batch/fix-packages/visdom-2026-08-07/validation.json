@@ -1,0 +1,12 @@
+{
+  "slug": "visdom",
+  "url": "https://github.com/fossasia/visdom",
+  "failureClass": "generate_fail",
+  "rootCause": "pip install parser missed shell-prompt docs and preferred optional dep plotly over visdom",
+  "fixFiles": ["lib/analyzer.ts", "tests/unit/analyzer.test.ts"],
+  "localGenerateOk": true,
+  "localPackageName": "visdom",
+  "localService": true,
+  "vmExpectedWithoutRelease": "plotly-mispackage",
+  "unitTests": "tests/unit/analyzer.test.ts visdom-style cases"
+}

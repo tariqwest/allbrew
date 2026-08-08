@@ -1,0 +1,10 @@
+{
+  "slug": "thaw-bar",
+  "url": "https://github.com/stonerl/Thaw",
+  "mode": "patch",
+  "localGenerateOk": true,
+  "generator": "cask-app-release",
+  "version": "2.0.0-rc.2.1",
+  "service": false,
+  "notes": "Relocation + older-release DMG. Local worktree generate OK. Bottle 0.0.24 still fails."
+}

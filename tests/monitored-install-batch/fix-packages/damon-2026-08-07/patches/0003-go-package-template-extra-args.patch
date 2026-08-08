@@ -1,0 +1,26 @@
+diff --git a/lib/template-payload.ts b/lib/template-payload.ts
+index da8b65c..d2fd21a 100644
+--- a/lib/template-payload.ts
++++ b/lib/template-payload.ts
+@@ -54,6 +54,8 @@ export type GoPackagePayload = FormulaCommonFields & {
+   licenseLine: string;
+   urlLines: string;
+   livecheckBlock: string;
++  /** Extra args after std_go_args, e.g. `, "./cmd/damon"` (pre-rendered). */
++  goBuildExtraArgs?: string;
+ };
+ 
+ export type SourceBuildPayload = FormulaCommonFields & {
+diff --git a/lib/templates/formula/go-package.ts b/lib/templates/formula/go-package.ts
+index b3bb680..98c0bb8 100644
+--- a/lib/templates/formula/go-package.ts
++++ b/lib/templates/formula/go-package.ts
+@@ -9,7 +9,7 @@ ${p.licenseLine}${p.urlLines}  head "https://github.com/${p.fullName}.git", bran
+ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "go" => :build
+ 
+   def install
+-    system "go", "build", *std_go_args(ldflags: "-s -w")
++    system "go", "build", *std_go_args(ldflags: "-s -w")${p.goBuildExtraArgs || ""}
+   end
+ 
+ ${p.serviceBlock}  test do

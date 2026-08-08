@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/hashicorp/damon",
+  "slug": "damon",
+  "failureClass": "brew_fail",
+  "rootCause": "GO_INSTALL_RE requires @version so README go install ./cmd/damon ignored; make build → make install HEAD formula with no install target",
+  "fixFiles": [
+    "lib/analyzer.ts",
+    "lib/cli.ts",
+    "lib/generators/go-package.ts",
+    "lib/templates/formula/go-package.ts",
+    "lib/template-payload.ts",
+    "tests/unit/analyzer.test.ts"
+  ],
+  "tests": [
+    "tests/unit/analyzer.test.ts"
+  ],
+  "localGenerateOk": true,
+  "localGenerateMode": "offline-payload-render",
+  "rubySyntaxOk": true,
+  "vmVerifyOk": false,
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "released": false,
+  "mode": "patch"
+}

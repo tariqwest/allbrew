@@ -1,0 +1,29 @@
+{
+  "mode": "patch",
+  "slug": "supersonic",
+  "url": "https://github.com/dweymouth/supersonic",
+  "failureClass": "generate_fail",
+  "rootCause": "isAppAsset_rejects_mac_arch_desktop_zips",
+  "patches": ["patches/001-isAppAsset-short-mac-arch.patch"],
+  "unitTests": {
+    "command": "bun test tests/unit/utils.test.ts --test-name-pattern 'isAppAsset|matchAssetToArch'",
+    "pass": true
+  },
+  "localGenerate": {
+    "generator": "cask-app-release",
+    "exit": 0,
+    "formulaPath": "Casks/supersonic.rb",
+    "app": "Supersonic.app",
+    "version": "0.22.0"
+  },
+  "vm": {
+    "endpoint": "local-2",
+    "allbrewVersion": "0.0.24",
+    "exitCode": 1,
+    "verifyOk": false,
+    "observed": "binary-release only saw linux tar.xz; No macOS binary assets"
+  },
+  "serviceExpectation": false,
+  "agentServiceDecision": false,
+  "allbrewServiceDecision": false
+}

@@ -1,0 +1,104 @@
+diff --git a/lib/analyzer.ts b/lib/analyzer.ts
+index e028df4..7c561c8 100644
+--- a/lib/analyzer.ts
++++ b/lib/analyzer.ts
+@@ -356,6 +356,59 @@ export function detectServiceConfig(readmeText, packageName = "") {
+   };
+ }
+ 
++/**
++ * File/path-driven CLIs (e.g. `reveal-md slides.md`, `tool dir/`) often document
++ * optional `--port` and open a browser, but they are not brew-services daemons:
++ * the user supplies content per invocation and the process is not an always-on service.
++ */
++function isFileArgDrivenPackageCli(readmeText, packageName) {
++  if (!packageName || !readmeText) return false;
++
++  const pkg = escapeRegExp(packageName);
++  const lineRe = new RegExp(
++    `(?:^|[\\n\\\`])\\s*(?:\\$\\s*)?(${pkg})((?:[ \\t]+[^\\n\\\`]+)?)`,
++    "gim",
++  );
++  let total = 0;
++  let withPathArg = 0;
++  let match;
++  while ((match = lineRe.exec(readmeText)) !== null) {
++    const rest = String(match[2] || "").trim();
++    // Skip install lines and env-prefixed non-invocations elsewhere.
++    if (/^(?:install|i|add)\b/i.test(rest)) continue;
++    total += 1;
++    if (!rest) continue;
++    const tokens = rest.split(/\s+/).filter(Boolean);
++    const positional = tokens.filter(
++      (t) =>
++        !t.startsWith("-") &&
++        !/^(?:PORT=\d+|https?:\/\/)/i.test(t) &&
++        !/[=]/.test(t) &&
++        // Port numbers / host bind targets are not file paths.
++        !/^\d+$/.test(t) &&
++        !/^(?:0\.0\.0\.0|127\.0\.0\.1|localhost|\[::1\])$/i.test(t),
++    );
++    if (
++      positional.some(
++        (t) =>
++          // Relative/absolute paths and filenames (slides.md, dir/, ./foo)
++          /[\/]/.test(t) ||
++          /^\.{1,2}(?:\/|$)/.test(t) ||
++          /\.(?:md|markdown|html?|pdf|txt|adoc|rst|tex|json|ya?ml|toml)$/i.test(
++            t,
++          ),
++      )
++    ) {
++      withPathArg += 1;
++    }
++  }
++
++  if (total === 0) return false;
++  // Majority of documented invocations take a path/file positional.
++  if (total === 1) return withPathArg === 1;
++  return withPathArg / total >= 0.5;
++}
++
+ /**
+  * Long-running package binaries documented with PORT= / --port / --host without
+  * an explicit localhost URL (e.g. LiteLLM proxies: `PORT=8080 acp-router`).
+@@ -363,6 +416,9 @@ export function detectServiceConfig(readmeText, packageName = "") {
+ function detectPortBoundPackageService(readmeText, packageName) {
+   if (!packageName || !readmeText) return null;
+ 
++  // File-arg CLIs documenting optional `--port` are not supervised daemons.
++  if (isFileArgDrivenPackageCli(readmeText, packageName)) return null;
++
+   const hasPortBinding =
+     /\bPORT\s*=\s*\d+/i.test(readmeText) ||
+     /(?:^|[\s`])(?:--port|--host)(?:\s+|=)\S+/im.test(readmeText) ||
+@@ -376,7 +432,7 @@ function detectPortBoundPackageService(readmeText, packageName) {
+     );
+   if (!hasProxyContext) return null;
+ 
+-// Require the package binary to appear as a documented run command — never invent it.
++  // Require the package binary to appear as a documented run command — never invent it.
+   const command = findPackageRunCommand(readmeText, packageName);
+   if (!command) return null;
+ 
+@@ -408,6 +464,11 @@ function detectLocalWebService(readmeText, packageName) {
+   const endpoints = [...readmeText.matchAll(LOCAL_ENDPOINT_RE)];
+   if (endpoints.length === 0) return null;
+ 
++  // File-driven preview CLIs (open browser for a slides file) are not services.
++  if (packageName && isFileArgDrivenPackageCli(readmeText, packageName)) {
++    return null;
++  }
++
+   const hasWebServiceContext = endpoints.some((endpoint) => {
+     const index = endpoint.index || 0;
+     const nearby = readmeText.slice(Math.max(0, index - 180), index + 220);
+@@ -429,7 +490,7 @@ function detectLocalWebService(readmeText, packageName) {
+     near ||
+     whole;
+ 
+-// Do not invent `packageName` alone from a localhost URL — that over-fires on
++  // Do not invent `packageName` alone from a localhost URL — that over-fires on
+   // CLI tools with optional `serve` docs. Require a real runnable command.
+   if (!command) return null;
+ 

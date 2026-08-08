@@ -1,0 +1,20 @@
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..a625721 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -1446,7 +1446,14 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
+   console.log();
+ 
+   const userOpts: any = {};
+-  if (!opts.name) {
++  // For official Homebrew formula/cask pages, the URL token is authoritative.
++  // Do not let a catalog --name slug (e.g. clipped-app) override core API lookup.
++  if (
++    (generatorName === "homebrew-formula" || generatorName === "homebrew-cask") &&
++    params?.name
++  ) {
++    userOpts.name = params.name;
++  } else if (!opts.name) {
+     const defaultName = guessName(generatorName, params);
+     if (isNonInteractive(opts)) {
+       userOpts.name = defaultName;

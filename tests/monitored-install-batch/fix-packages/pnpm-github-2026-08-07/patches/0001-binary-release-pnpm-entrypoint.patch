@@ -1,0 +1,123 @@
+--- /Users/tariqwest/Developer/allbrew/lib/generators/binary-release.ts	2026-08-06 23:10:48
++++ /tmp/allbrew-wt-pnpm-57783/lib/generators/binary-release.ts	2026-08-07 06:29:29
+@@ -59,7 +59,7 @@
+ export function pickArchiveEntrypoint(
+   members: string[],
+   formulaName: string,
+-  options: { binName?: string } = {},
++  options: { binName?: string; repoName?: string } = {},
+ ): { sourcePath: string; binName: string } | null {
+   const files = members
+     .map((m) => m.replace(/\\/g, "/").replace(/^\.\//, ""))
+@@ -69,6 +69,8 @@
+     const base = m.split("/").pop() || "";
+     if (!base || base.startsWith(".")) return false;
+     if (/\.(txt|md|json|sha256|sig|asc|1|html|sample|dylib|so|a)$/i.test(base)) return false;
++    // Never treat nested dependency trees as CLI entrypoints.
++    if (/(^|\/)node_modules\//.test(m)) return false;
+     // Prefer bin/ layout; also allow root-level binaries and files one directory
+     // deep (common for release archives with a top-level wrapper directory like
+     // `project-arch/binary`).
+@@ -81,36 +83,59 @@
+ 
+   if (candidates.length === 0) return null;
+ 
++  // Core-collision renames use `<name>-tap`; strip that so we still match
++  // release binaries named after the upstream package (e.g. pnpm-tap → pnpm).
++  const baseFormula =
++    formulaName.replace(/-tap\d*$/i, "") || formulaName;
++
+   const preferredNames = [
+     options.binName,
++    options.repoName,
+     formulaName,
++    baseFormula,
++    baseFormula.replace(/-/g, ""),
+     formulaName.replace(/-/g, ""),
+     // Common short aliases for "open-interpreter" style packages.
+     formulaName.endsWith("-interpreter") ? "interpreter" : "",
++    baseFormula.endsWith("-interpreter") ? "interpreter" : "",
+     formulaName.startsWith("open-") ? formulaName.slice(5) : "",
++    baseFormula.startsWith("open-") ? baseFormula.slice(5) : "",
+   ].filter(Boolean) as string[];
+ 
+   const score = (path: string): number => {
+     const base = path.split("/").pop() || "";
++    const depth = path.split("/").length - 1;
+     let s = 0;
+     if (/(^|\/)bin\//.test(path)) s += 50;
++    // Root-level files beat nested helpers (SEA binaries like ./pnpm + dist/).
++    if (depth === 0) s += 35;
+     const prefIdx = preferredNames.findIndex((n) => n.toLowerCase() === base.toLowerCase());
+     if (prefIdx >= 0) s += 40 - prefIdx;
+-    // Deprioritize helper hosts / path tools.
+-    if (/host|rg$|zsh|node|python/i.test(base)) s -= 20;
++    // Deprioritize helper hosts / path tools / dependency CLIs.
++    if (/host|rg$|zsh|node|python|nopt|semver|which|node-gyp/i.test(base)) s -= 20;
+     if (base.length === 1) s -= 5; // e.g. "i"
+     // Boost binary-like files (no extension or known non-doc) over
+     // documentation/license files (common in release archives).
+     const DOC_PATTERNS = /^(license|licence|readme|changelog|changes|authors|contributing|copying|notice|authors|install|todo)\b/i;
+     if (DOC_PATTERNS.test(base)) s -= 10;
+-    else if (!base.includes(".")) s += 5;
++    else if (!base.includes(".")) s += 15;
++    // Prefer extensionless / native-looking names over .mjs/.js wrappers when
++    // both sit near the root (pnpm SEA binary vs dist/pnpm.mjs).
++    if (/\.(mjs|cjs|js)$/i.test(base) && depth <= 1) s -= 10;
+     return s;
+   };
+ 
+   const ranked = [...candidates].sort((a, b) => score(b) - score(a));
+   const best = ranked[0];
+-  const base = best.split("/").pop() || formulaName;
+-  const binName = options.binName || preferredNames[0] || base;
++  // Keep formula name as the installed bin name (Homebrew class/name), unless
++  // caller overrides. Core-collision `-tap` renames still install as upstream
++  // CLI name so `pnpm --version` works after brew link.
++  const binName =
++    options.binName ||
++    (formulaName.endsWith("-tap") || /-tap\d+$/i.test(formulaName)
++      ? baseFormula
++      : formulaName) ||
++    baseFormula;
+   return { sourcePath: best, binName };
+ }
+ 
+@@ -135,6 +160,12 @@
+   // Nested package archives (e.g. open-interpreter-package-*/bin/interpreter + resources).
+   if (archiveEntrypoint) {
+     const src = archiveEntrypoint.replace(/\\/g, "/");
++    // Root-level single file (common SEA / Go release tarballs that also ship
++    // a dist/ tree of helpers): install only the binary, not the whole tree.
++    if (!src.includes("/")) {
++      if (src === binName) return `bin.install ${rubyString(src)}`;
++      return `bin.install ${rubyString(src)} => ${rubyString(binName)}`;
++    }
+     const lines = [
+       `libexec.install Dir["*"]`,
+       `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(binName)}`,
+@@ -236,7 +267,10 @@
+         hashes[arch] = { url: asset.url, sha256: dl.sha256, name: asset.name };
+         try {
+           const members = await listArchiveMembersFromPath(dl.path);
+-          const picked = pickArchiveEntrypoint(members, name, options);
++          const picked = pickArchiveEntrypoint(members, name, {
++            ...options,
++            repoName: options.repoName || repoInfo?.name,
++          });
+           if (picked) {
+             archiveEntrypoint = picked.sourcePath;
+             archiveBinName = picked.binName;
+@@ -316,11 +350,7 @@
+       replacement = "#{version}";
+     }
+     out = out.split(tag).join(replacement);
+-  }
+-
+-  // Also rewrite remaining bare version segments (asset basenames often omit the
+-  // leading "v": .../v#{version}/Supersonic-0.22.0-mac-arm64.zip).
+-  if (ver && out.includes(ver)) {
++  } else if (ver && out.includes(ver)) {
+     out = out.split(ver).join("#{version}");
+   }
+ 

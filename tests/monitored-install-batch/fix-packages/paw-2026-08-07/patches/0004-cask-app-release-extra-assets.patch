@@ -1,0 +1,48 @@
+diff --git a/lib/generators/cask-app-release.ts b/lib/generators/cask-app-release.ts
+index 0fa412d..6e051e5 100644
+--- a/lib/generators/cask-app-release.ts
++++ b/lib/generators/cask-app-release.ts
+@@ -3,6 +3,7 @@ import {
+   extractVersionFromTag,
+   rubyEscape,
+   isAppAsset,
++  matchAssetToArch,
+ } from "../utils.ts";
+ import { downloadToTemp } from "../sha256.ts";
+ import { listDmgAppNames, listZipEntries } from "../archive-inspector.ts";
+@@ -17,15 +18,32 @@ export async function collectCaskAppReleasePayload(
+ ): Promise<CaskAppReleasePayload> {
+   const version = extractVersionFromTag(release.tagName);
+ 
+-  const appAssets = release.assets.filter((a: any) => isAppAsset(a.name));
++  const extraNames = new Set(
++    (options.extraAppAssetNames as string[] | undefined) || [],
++  );
++  const appAssets = release.assets.filter(
++    (a: any) => isAppAsset(a.name) || extraNames.has(a.name),
++  );
+   if (appAssets.length === 0) {
+     throw new Error("No .dmg or macOS .zip assets found in release");
+   }
+ 
+-  const dmgAsset = appAssets.find((a: any) =>
++  // Prefer host-arch when arch-tagged mac app zips are present (e.g. paw/go2tv).
++  const hostArch =
++    process.arch === "arm64"
++      ? "macosArm"
++      : process.arch === "x64"
++        ? "macosIntel"
++        : null;
++  let bestAsset = appAssets.find((a: any) =>
+     a.name.toLowerCase().endsWith(".dmg"),
+   );
+-  const bestAsset = dmgAsset || appAssets[0];
++  if (!bestAsset && hostArch) {
++    bestAsset = appAssets.find(
++      (a: any) => matchAssetToArch(a.name) === hostArch,
++    );
++  }
++  if (!bestAsset) bestAsset = appAssets[0];
+ 
+   let appName = options.appName;
+ 

@@ -1,0 +1,44 @@
+diff --git a/lib/utils.ts b/lib/utils.ts
+index 28ec1c1..174b2b1 100644
+--- a/lib/utils.ts
++++ b/lib/utils.ts
+@@ -268,6 +268,39 @@ export function resolveNonCollidingCaskName(
+   };
+ }
+ 
++/**
++ * Case C short-circuit: when a product homepage/unknown URL is paired with a
++ * name that already exists in homebrew/core or homebrew/cask, prefer adopting
++ * the official package instead of minting a tap duplicate or failing discovery.
++ * Prefer formula when both exist for the same bare token (CLI path).
++ */
++export function resolveExistingHomebrewClassification(
++  name: string | null | undefined,
++): { type: "homebrew-formula" | "homebrew-cask"; name: string; url: string } | null {
++  const raw = String(name || "").trim();
++  if (!raw) return null;
++
++  const formulaName = toFormulaName(raw);
++  if (formulaName && isHomebrewCoreFormulaName(formulaName)) {
++    return {
++      type: "homebrew-formula",
++      name: formulaName,
++      url: `https://formulae.brew.sh/formula/${formulaName}`,
++    };
++  }
++
++  const caskToken = toCaskToken(raw);
++  if (caskToken && isHomebrewCaskToken(caskToken)) {
++    return {
++      type: "homebrew-cask",
++      name: caskToken,
++      url: `https://formulae.brew.sh/cask/${caskToken}`,
++    };
++  }
++
++  return null;
++}
++
+ /** Prefer cask when a GitHub release ships both app bundles and CLI binaries. */
+ export function chooseReleaseArtifactKind(
+   appAssetCount: number,

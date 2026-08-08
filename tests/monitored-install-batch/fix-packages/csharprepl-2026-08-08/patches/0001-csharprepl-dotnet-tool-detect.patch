@@ -1,0 +1,129 @@
+--- a/lib/analyzer.ts
++++ b/lib/analyzer.ts
+@@ -31,6 +31,10 @@
+ const GO_INSTALL_RE =
+   /(?:^|[`\n])\s*(?:\$\s*)?go[ \t]+install[ \t]+([\w./-]+@[\w.]+)/i;
+ 
++// e.g. `dotnet tool install -g csharprepl` / `dotnet tool install --global Foo.Bar`
++const DOTNET_TOOL_INSTALL_RE =
++  /(?:^|[`\n])\s*(?:\$\s*)?dotnet[ \t]+tool[ \t]+install(?:[ \t]+(?:-[a-zA-Z]|--[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
++
+ // curl|bash / wget|sh install one-liners and direct .sh/.bash install URLs
+ const CURL_PIPE_SHELL_RE =
+   /(?:curl|wget)\b[^\n`]*?(https?:\/\/[^\s;|&"'`\)\]]+)[^\n`]*?\|[ \t]*(?:sudo[ \t]+)?(?:bash|sh)\b/i;
+@@ -70,7 +74,7 @@
+ const WEB_SERVICE_CONTEXT_RE =
+   /\b(?:api|dashboard|web\s*ui|ui|server|serve|gateway|proxy|endpoint|base\s+url|listens?|listening|available\s+at|runs?\s+at|open\s+in\s+(?:a\s+)?browser)\b/i;
+ const NON_RUN_COMMAND_RE =
+-  /^(?:brew|launchctl|sudo|systemctl|make|curl|wget|git|docker|podman|export|cp|mkdir|cd|echo|cat|bash|sh|zsh|fish|pwsh|powershell|cmd|swift|npm|pnpm|yarn|bun|deno|cargo|go|python[3]?|pip[3]?|uv|uvx)\b/i;
++  /^(?:brew|launchctl|sudo|systemctl|make|curl|wget|git|docker|podman|export|cp|mkdir|cd|echo|cat|bash|sh|zsh|fish|pwsh|powershell|cmd|swift|npm|pnpm|yarn|bun|deno|cargo|go|dotnet|python[3]?|pip[3]?|uv|uvx)\b/i;
+ const INSTALL_COMMAND_RE =
+   /^(?:(?:npm|pnpm|yarn|bun)[ \t]+(?:install|i|add)\b|yarn[ \t]+global[ \t]+add\b|(?:pip|pip3|pipx)[ \t]+install\b|uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)\b|uvx\b|cargo[ \t]+install\b|go[ \t]+install\b|deno[ \t]+install\b|swift[ \t]+(?:run|build|test|package)\b)/i;
+ // Language-toolchain "run" is not a supervised daemon (swift run, npm run, cargo run, …).
+@@ -202,6 +206,12 @@
+ 
+   match = readmeText.match(GO_INSTALL_RE);
+   if (match) return { method: "go", package: match[1] };
++
++  match = readmeText.match(DOTNET_TOOL_INSTALL_RE);
++  if (match) {
++    const pkg = String(match[1] || "").trim();
++    if (pkg) return { method: "dotnet", package: pkg };
++  }
+ 
+   match = readmeText.match(DENO_INSTALL_RE);
+   if (match)
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -1046,6 +1046,21 @@
+               repoInfo,
+               release,
+               goModule: opts.goModule || method.package,
++              serviceConfig: serviceConfigFromReadme,
++            },
++            opts,
++          );
++        case "dotnet":
++          console.log(
++            chalk.yellow(
++              "Note: the dotnet/NuGet generator is experimental and not yet fully verified end-to-end.",
++            ),
++          );
++          return await generateWithConfirmation(
++            "dotnet-package",
++            {
++              packageName: opts.package || method.package,
++              repoInfo,
+               serviceConfig: serviceConfigFromReadme,
+             },
+             opts,
+--- a/lib/templates/formula/dotnet-package.ts
++++ b/lib/templates/formula/dotnet-package.ts
+@@ -1,21 +1,38 @@
+ import type { DotnetPackagePayload } from "../../template-payload.ts";
+ 
+ export default function renderDotnetPackage(p: DotnetPackagePayload): string {
+-  return `class ${p.className} < Formula
++  const ri = (expr: string) => "#" + "{" + expr + "}";
++  return (
++    `class ${p.className} < Formula
+   desc "${p.desc}"
+   homepage "${p.homepage}"
+ ${p.licenseLine}${p.urlLines}
+ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "dotnet"
+ 
+   def install
+-    (buildpath/"nupkg").install cached_download
+-    system "dotnet", "tool", "install", ${p.packageName}, "--tool-path", "#{bin}", "--version", version.to_s, "--add-source", buildpath/"nupkg"
+-    bin.env_script_all_files(libexec, DOTNET_ROOT: Formula["dotnet"].opt_libexec)
++    # NuGet local sources require <id>.<version>.nupkg naming.
++    nupkg_dir = buildpath/"nupkg"
++    nupkg_dir.mkpath
++    package_id = ${p.packageName}
++    nupkg = nupkg_dir/"${ri("package_id")}.${ri("version")}.nupkg"
++    cp cached_download, nupkg
++
++    # Install into libexec so the apphost and .store/ stay co-located.
++    # Using bin + env_script_all_files moves only the shim and leaves .store in
++    # bin, which breaks the apphost with "application to execute does not exist".
++    system "dotnet", "tool", "install", package_id,
++           "--tool-path", libexec,
++           "--version", version.to_s,
++           "--add-source", nupkg_dir
++
++    (bin/"${p.testBinName}").write_env_script libexec/"${p.testBinName}",
++                                              DOTNET_ROOT: Formula["dotnet"].opt_libexec
+   end
+ 
+ ${p.serviceBlock}  test do
+-    assert_match version.to_s, shell_output("#{bin}/${p.testBinName} --version")
++    assert_match version.to_s, shell_output("${ri("bin")}/${p.testBinName} --version")
+   end
+ end
+-`;
++`
++  );
+ }
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -227,6 +227,20 @@
+     expect(result).toEqual({ method: "cargo", package: "ripgrep" });
+   });
+ 
++  it("detects dotnet tool install -g as nuget global tool", () => {
++    const result = detectInstallMethod(
++      "```bash\ndotnet tool install -g csharprepl\n```",
++    );
++    expect(result).toEqual({ method: "dotnet", package: "csharprepl" });
++  });
++
++  it("detects dotnet tool install --global with package id", () => {
++    const result = detectInstallMethod(
++      "Install via:\n\n    $ dotnet tool install --global dotnet-monitor\n",
++    );
++    expect(result).toEqual({ method: "dotnet", package: "dotnet-monitor" });
++  });
++
+   it("detects go install with version", () => {
+     const result = detectInstallMethod("```bash\ngo install github.com/foo/bar@v1.2.3\n```");
+     expect(result).toEqual({ method: "go", package: "github.com/foo/bar@v1.2.3" });

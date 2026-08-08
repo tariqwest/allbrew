@@ -1,0 +1,31 @@
+{
+  "slug": "tokenbar",
+  "url": "https://tokenbar.site/get-started",
+  "failureClass": "generate_fail",
+  "expected": {
+    "generator": "cask-app",
+    "appName": "TokenBar.app",
+    "service": false,
+    "version": "0.37.6",
+    "artifactUrl": "https://www.tokenbar.site/api/download/latest",
+    "sha256": "bd546729da88124813d76a931b3ecd1315d44fb396edeb20230a6f6dc0f06976"
+  },
+  "broken": {
+    "notes": "SPA filename TokenBar-latest.dmg 404 OR bottle 0.0.24 no high-confidence candidate"
+  },
+  "fixed": {
+    "cask": "formula.rb",
+    "discovery": "api/download/latest HEAD probe beats placeholder dmg",
+    "unitTests": ["tests/unit/page-discover.test.ts TokenBar-class SPA"]
+  },
+  "patches": [
+    "patches/0001-page-discover-tokenbar-api-download.patch",
+    "patches/0002-cask-app-latest-filename-and-version.patch",
+    "patches/0003-sha256-redirect-version.patch",
+    "patches/0004-page-discover-tokenbar-tests.patch"
+  ],
+  "vmBottleVersion": "0.0.24",
+  "vmResultWithoutFix": "generate_fail_no_candidate",
+  "localFixedGenerate": true,
+  "release": false
+}

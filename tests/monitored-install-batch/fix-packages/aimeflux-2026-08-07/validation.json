@@ -1,0 +1,29 @@
+{
+  "slug": "aimeflux",
+  "url": "https://aimeflux.app",
+  "canonicalUrl": "https://aimeflux.com",
+  "failureClass": "generate_fail",
+  "agentServiceExpectation": false,
+  "expectedGenerator": "cask-app",
+  "fixApplied": true,
+  "released": false,
+  "unitTests": {
+    "command": "bun test tests/unit/page-discover.test.ts",
+    "pass": true,
+    "count": 19
+  },
+  "localGenerateAfterFix": {
+    "url": "https://aimeflux.app",
+    "tldRecovery": true,
+    "recoveredTo": "https://aimeflux.com/",
+    "installOk": false,
+    "reason": "Cloudflare managed challenge blocks download discovery (only cloudflare.com candidates)"
+  },
+  "vmInstall": {
+    "endpoint": "homeserver",
+    "exitCode": 1,
+    "verifyOk": false,
+    "allbrewVersion": "0.0.24"
+  },
+  "residualRisk": "Cloudflare bot challenge on aimeflux.com; catalog TLD .app is dead; commercial closed-source DMG not on GitHub"
+}

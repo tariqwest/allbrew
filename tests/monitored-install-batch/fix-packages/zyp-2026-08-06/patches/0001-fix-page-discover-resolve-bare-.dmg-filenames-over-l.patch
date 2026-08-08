@@ -1,0 +1,100 @@
+From 886af0ef6354e7c72c5cea306b032d282bdcd2ae Mon Sep 17 00:00:00 2001
+From: Tariq West <tariqwest@gmail.com>
+Date: Thu, 6 Aug 2026 19:52:34 -0400
+Subject: [PATCH] fix(page-discover): resolve bare .dmg filenames over linux
+ tar.gz (zyp)
+
+---
+ lib/page-discover.ts             | 40 +++++++++++++++++++++++++++++++-
+ tests/unit/page-discover.test.ts | 17 ++++++++++++++
+ 2 files changed, 56 insertions(+), 1 deletion(-)
+
+diff --git a/lib/page-discover.ts b/lib/page-discover.ts
+index f9c7e37..c7b9a99 100644
+--- a/lib/page-discover.ts
++++ b/lib/page-discover.ts
+@@ -252,6 +252,31 @@ export function extractCandidatesFromHtml(
+     }
+   }
+ 
++  // Relative site paths that look like download artifacts (href may omit them when
++  // the UI routes through a thanks/redirect page, e.g. getzyp.com).
++  const relArtifactRe =
++    /(?:^|["'\s>(])(\/(?:download|downloads|releases?|files?|dist|get)(?:\/[^\s"'<>#?]*)?\.(?:dmg|pkg|zip|tgz|tar\.gz|AppImage|deb|rpm))(?=["'\s<),·|]|$)/gi;
++  while ((m = relArtifactRe.exec(html)) !== null) {
++    add(m[1], "relative-artifact-path");
++  }
++
++  // Bare artifact filenames in visible text (e.g. "Zyp-1.3.0-arm64.dmg · 109 MB").
++  // Resolve against common download path prefixes on the same origin.
++  const bareFileRe =
++    /(?:^|[\"'\s>(])([A-Za-z0-9][\w.+-]*\.(?:dmg|pkg))(?=[\"'\s<),·|]|$)/gi;
++  const bareFiles = new Set<string>();
++  while ((m = bareFileRe.exec(html)) !== null) {
++    bareFiles.add(m[1]);
++  }
++  if (bareFiles.size > 0) {
++    const prefixes = ["/download/", "/downloads/", "/releases/", "/files/", "/dist/", "/"];
++    for (const file of bareFiles) {
++      for (const prefix of prefixes) {
++        add(prefix + file, "bare-filename");
++      }
++    }
++  }
++
+   // curl|bash and other install commands via analyzer
+   const text = html
+     .replace(/<script[\s\S]*?<\/script>/gi, "\n")
+@@ -260,7 +285,20 @@ export function extractCandidatesFromHtml(
+   const script = detectScriptInstall(text);
+   if (script?.url) add(script.url, "install-command");
+ 
+-  return [...found.values()].sort((a, b) => b.score - a.score);
++  // Prefer macOS desktop artifacts when the page clearly advertises a .dmg
++  // but static hrefs only expose linux portables (tar.gz / AppImage / deb).
++  const list = [...found.values()];
++  const hasDmg = list.some((c) => c.kind === "cask-dmg" || /\.dmg(?:\?|#|$)/i.test(c.url));
++  if (hasDmg) {
++    for (const c of list) {
++      if (/\.tar\.gz(?:\?|#|$)/i.test(c.url) && !pathLooksMac(c.url) && !/darwin|macos|osx/i.test(c.url)) {
++        c.score -= 35;
++        c.evidence.push("linux-portable-tar-penalty");
++      }
++    }
++  }
++
++  return list.sort((a, b) => b.score - a.score);
+ }
+ 
+ export function mergeCandidates(
+diff --git a/tests/unit/page-discover.test.ts b/tests/unit/page-discover.test.ts
+index a12db0d..0fea50c 100644
+--- a/tests/unit/page-discover.test.ts
++++ b/tests/unit/page-discover.test.ts
+@@ -60,6 +60,23 @@ describe("extractCandidatesFromHtml", () => {
+     expect(script).toBeTruthy();
+     expect(script!.kind).toBe("bash-script");
+   });
++
++  it("resolves getzyp-style bare dmg filenames over linux tar.gz hrefs", () => {
++    const html = `
++      <a href="/thanks.html?arch=arm64">Download macOS ARM</a>
++      <div class="dl-file">Zyp-1.3.0-arm64.dmg · 109 MB</div>
++      <div class="dl-file">Zyp-1.3.0-x64.dmg · 116 MB</div>
++      <a href="/download/Zyp-1.3.0-arm64.tar.gz">portable</a>
++      <a href="/download/Zyp-1.3.0-x64.AppImage">AppImage</a>
++    `;
++    const cands = extractCandidatesFromHtml(html, "https://getzyp.com/");
++    expect(cands.some((c) => c.url.includes("Zyp-1.3.0-arm64.dmg"))).toBe(true);
++    const chosen = pickAutoCandidate(cands);
++    expect(chosen?.kind).toBe("cask-dmg");
++    expect(chosen?.url).toMatch(/Zyp-1\.3\.0-(arm64|x64)\.dmg/);
++    // linux portable should lose to dmg
++    expect(chosen!.url).not.toMatch(/\.tar\.gz/);
++  });
+ });
+ 
+ describe("scoreCandidateUrl / pickAutoCandidate", () => {
+-- 
+2.55.0
+

@@ -1,0 +1,18 @@
+{
+  "url": "https://crates.io/crates/oatmeal",
+  "slug": "oatmeal",
+  "failureClass": "generate_fail",
+  "generatorExpected": "cargo-package",
+  "serviceExpected": false,
+  "formulaName": "oatmeal",
+  "binName": "oatmeal",
+  "packageVersion": "0.13.0",
+  "unitTests": [
+    "tests/unit/generators/cargo-package.test.ts",
+    "tests/unit/generators/cargo-package-oatmeal.test.ts"
+  ],
+  "unitTestsPass": 33,
+  "localGenerateOk": true,
+  "vmInstallWithReleasedAllbrew": false,
+  "notes": "dispatchClassification missing cargo-package; crates.io registry path on generator"
+}

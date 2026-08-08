@@ -1,0 +1,11 @@
+{
+  "slug": "ugm",
+  "url": "https://github.com/ariasmn/ugm",
+  "patches": ["patches/0001-ugm-linux-only-go-module-strip.patch"],
+  "files": {
+    "lib/cli.ts": "files/cli.ts",
+    "lib/analyzer.ts": "files/analyzer.ts",
+    "lib/generators/go-package.ts": "files/go-package.ts",
+    "tests/unit/analyzer.test.ts": "tests/analyzer.test.ts"
+  }
+}

@@ -1,0 +1,13 @@
+diff --git a/lib/template-payload.ts b/lib/template-payload.ts
+index da8b65c..3d7810e 100644
+--- a/lib/template-payload.ts
++++ b/lib/template-payload.ts
+@@ -54,6 +54,8 @@ export type GoPackagePayload = FormulaCommonFields & {
+   licenseLine: string;
+   urlLines: string;
+   livecheckBlock: string;
++  /** Pre-rendered extra args after std_go_args, e.g. `, "./cmd/dashbrew"`. */
++  goBuildExtraArgs?: string;
+ };
+ 
+ export type SourceBuildPayload = FormulaCommonFields & {

@@ -1,0 +1,249 @@
+diff --git a/lib/generators/cask-app-mas.ts b/lib/generators/cask-app-mas.ts
+index 8b100ca..dba9a5d 100644
+--- a/lib/generators/cask-app-mas.ts
++++ b/lib/generators/cask-app-mas.ts
+@@ -14,6 +14,9 @@ export async function collectCaskAppMasPayload(
+ 
+   const metadata = await fetchAppMetadata(appId);
+ 
++  // iTunes `kind` is "mac-software" for Mac App Store; "software" is typically iOS/iPadOS.
++  assertMacAppStoreListing(metadata, appId);
++
+   const name = options.name || toCaskToken(metadata.trackName);
+   const appName = metadata.trackName;
+   const desc =
+@@ -37,6 +40,29 @@ export async function collectCaskAppMasPayload(
+   };
+ }
+ 
++/** Reject iPhone/iPad-only listings that cannot be installed via Homebrew `mas`. */
++export function assertMacAppStoreListing(metadata: any, appId: string): void {
++  const kind = String(metadata?.kind || "");
++  if (kind === "mac-software") return;
++
++  const devices: string[] = Array.isArray(metadata?.supportedDevices)
++    ? metadata.supportedDevices.map(String)
++    : [];
++  const onlyMobile =
++    devices.length > 0 &&
++    devices.every((d) => /iphone|ipad|ipod|watch|appletv|vision/i.test(d));
++
++  if (kind === "software" || onlyMobile) {
++    const name = metadata?.trackName || `id${appId}`;
++    throw new Error(
++      `App Store listing "${name}" (id${appId}) is not a Mac app` +
++        (kind ? ` (kind=${kind})` : "") +
++        "; Homebrew casks via mas only support Mac App Store software",
++    );
++  }
++  // Unknown kind with no device list: allow (older API shapes / universal apps).
++}
++
+ function buildZapBlock(appName: string, bundleId: string | null) {
+   let block = "  zap trash: [\n";
+   if (bundleId) {
+diff --git a/lib/page-discover.ts b/lib/page-discover.ts
+index f9c7e37..ae12bd2 100644
+--- a/lib/page-discover.ts
++++ b/lib/page-discover.ts
+@@ -92,6 +92,15 @@ function pathLooksMac(url: string): boolean {
+   return /darwin|macos|osx|(?:^|[^a-z])mac(?:[^a-z]|$)|universal|\.dmg/i.test(url);
+ }
+ 
++/** True when URL is a concrete App Store listing with numeric app id. */
++export function hasAppStoreAppId(url: string): boolean {
++  try {
++    return /\/id\d+/i.test(new URL(url).pathname);
++  } catch {
++    return /\/id\d+/i.test(url);
++  }
++}
++
+ /**
+  * Score a URL for macOS install usefulness. Higher is better.
+  */
+@@ -131,6 +140,15 @@ export function scoreCandidateUrl(
+       ev.push(`classifier:${classified.type}`);
+       break;
+     case "mac-app-store":
++      // Prefer concrete /idNNNN listings; bare apps.apple.com (dns-prefetch) is noise.
++      if (hasAppStoreAppId(url)) {
++        score += 95;
++        ev.push("classifier:mac-app-store", "app-store-id");
++      } else {
++        score -= 40;
++        ev.push("classifier:mac-app-store", "app-store-no-id-penalty");
++      }
++      break;
+     case "setapp-app":
+       score += 90;
+       ev.push(`classifier:${classified.type}`);
+@@ -237,7 +255,9 @@ export function extractCandidatesFromHtml(
+   }
+ 
+   // bare absolute URLs
+-  const bareRe = /https?:\/\/[^\s"'<>)\\]]+/gi;
++  // Character class: stop at whitespace/quotes/brackets. Put `]` first after `^`
++  // so it is a literal exclude (a trailing `]` previously closed the class early).
++  const bareRe = /https?:\/\/[^\]\s"'<>)]+/gi;
+   while ((m = bareRe.exec(html)) !== null) {
+     const cleaned = m[0].replace(/[),.;]+$/g, "");
+     // Only keep likely installable bare URLs to limit noise
+@@ -252,6 +272,56 @@ export function extractCandidatesFromHtml(
+     }
+   }
+ 
++  // JSON-LD / embedded structured data: downloadUrl, sameAs App Store links
++  const jsonLdRe =
++    /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
++  while ((m = jsonLdRe.exec(html)) !== null) {
++    const body = m[1].trim();
++    if (!body) continue;
++    try {
++      const data = JSON.parse(body);
++      const urls: string[] = [];
++      const walk = (v: unknown) => {
++        if (typeof v === "string") {
++          if (/^https?:\/\//i.test(v)) urls.push(v);
++          return;
++        }
++        if (Array.isArray(v)) {
++          for (const x of v) walk(x);
++          return;
++        }
++        if (v && typeof v === "object") {
++          for (const x of Object.values(v as Record<string, unknown>)) walk(x);
++        }
++      };
++      walk(data);
++      for (const u of urls) {
++        if (
++          /apps\.apple\.com|itunes\.apple\.com/i.test(u) ||
++          /\.(dmg|pkg|zip)(?:\?|#|$)/i.test(u)
++        ) {
++          add(u, "json-ld");
++        }
++      }
++    } catch {
++      // ignore malformed JSON-LD
++    }
++  }
++
++  // <meta name="apple-itunes-app" content="app-id=123456789,...">
++  const itunesMetaRe =
++    /<meta[^>]+name\s*=\s*["']apple-itunes-app["'][^>]*content\s*=\s*["']([^"']+)["'][^>]*>/gi;
++  const itunesMetaReAlt =
++    /<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]*name\s*=\s*["']apple-itunes-app["'][^>]*>/gi;
++  for (const re of [itunesMetaRe, itunesMetaReAlt]) {
++    while ((m = re.exec(html)) !== null) {
++      const idMatch = m[1].match(/app-id\s*=\s*(\d+)/i);
++      if (idMatch) {
++        add(`https://apps.apple.com/app/id${idMatch[1]}`, "apple-itunes-app-meta");
++      }
++    }
++  }
++
+   // curl|bash and other install commands via analyzer
+   const text = html
+     .replace(/<script[\s\S]*?<\/script>/gi, "\n")
+diff --git a/tests/unit/generators/cask-app-mas.test.ts b/tests/unit/generators/cask-app-mas.test.ts
+index 21ea4df..20b8d0a 100644
+--- a/tests/unit/generators/cask-app-mas.test.ts
++++ b/tests/unit/generators/cask-app-mas.test.ts
+@@ -105,6 +105,57 @@ describe("collectCaskAppMasPayload", () => {
+     ).rejects.toThrow("Could not extract App Store ID");
+   });
+ 
++  it("throws for iOS-only App Store listings", async () => {
++    global.fetch = mock(() =>
++      Promise.resolve({
++        ok: true,
++        json: () =>
++          Promise.resolve({
++            results: [
++              {
++                trackName: "MetricSync - Nutrition Tracker",
++                kind: "software",
++                bundleId: "com.ranvirsingh.MetricSync",
++                version: "1.0",
++                description: "iPhone nutrition tracker",
++                supportedDevices: ["iPhone5s-iPhone5s", "iPadAir-iPadAir"],
++              },
++            ],
++          }),
++      }),
++    ) as any;
++    await expect(
++      collectCaskAppMasPayload(
++        "https://apps.apple.com/us/app/metricsync/id6746950963",
++      ),
++    ).rejects.toThrow(/not a Mac app/);
++  });
++
++  it("accepts mac-software kind from iTunes", async () => {
++    global.fetch = mock(() =>
++      Promise.resolve({
++        ok: true,
++        json: () =>
++          Promise.resolve({
++            results: [
++              {
++                trackName: "Bear",
++                kind: "mac-software",
++                bundleId: "net.shinyfrog.bear",
++                version: "2.2.5",
++                description: "Write beautifully",
++                sellerUrl: "https://bear.app",
++              },
++            ],
++          }),
++      }),
++    ) as any;
++    const payload = await collectCaskAppMasPayload(
++      "https://apps.apple.com/us/app/bear/id1091189122",
++    );
++    expect(payload.appId).toBe("1091189122");
++  });
++
+   it("throws when iTunes API returns empty results", async () => {
+     global.fetch = mock(() =>
+       Promise.resolve({
+diff --git a/tests/unit/page-discover.test.ts b/tests/unit/page-discover.test.ts
+index a12db0d..d754dd1 100644
+--- a/tests/unit/page-discover.test.ts
++++ b/tests/unit/page-discover.test.ts
+@@ -60,6 +60,34 @@ describe("extractCandidatesFromHtml", () => {
+     expect(script).toBeTruthy();
+     expect(script!.kind).toBe("bash-script");
+   });
++
++  it("prefers App Store id listing over bare apps.apple.com dns-prefetch", () => {
++    const html = `
++<!doctype html><html><head>
++<link rel="dns-prefetch" href="https://apps.apple.com"/>
++<meta name="apple-itunes-app" content="app-id=6746950963"/>
++<script type="application/ld+json">
++{"@type":"MobileApplication","downloadUrl":"https://apps.apple.com/us/app/metricsync/id6746950963",
++ "sameAs":["https://apps.apple.com/us/app/metricsync/id6746950963"]}
++</script>
++</head><body>MetricSync iPhone nutrition tracker</body></html>`;
++    const cands = extractCandidatesFromHtml(html, "https://www.metricsync.download/");
++    const top = cands[0];
++    expect(top).toBeTruthy();
++    expect(top!.kind).toBe("mac-app-store");
++    expect(top!.url).toMatch(/id6746950963/);
++    expect(top!.score).toBeGreaterThan(
++      scoreCandidateUrl("https://apps.apple.com/", "https://www.metricsync.download/").score,
++    );
++    const bare = cands.find((c) => c.url === "https://apps.apple.com/" || c.url === "https://apps.apple.com");
++    if (bare) expect(bare.score).toBeLessThan(top!.score);
++  });
++
++  it("extracts bare App Store URLs from JSON text (regex must not require trailing ])", () => {
++    const html = `{"downloadUrl":"https://apps.apple.com/us/app/foo/id1234567890"}`;
++    const cands = extractCandidatesFromHtml(html, "https://example.com/");
++    expect(cands.some((c) => c.url.includes("id1234567890"))).toBe(true);
++  });
+ });
+ 
+ describe("scoreCandidateUrl / pickAutoCandidate", () => {

@@ -1,0 +1,15 @@
+{
+  "slug": "go2tv",
+  "url": "https://github.com/alexballas/go2tv",
+  "failureClass": "generate_fail",
+  "expectedGenerator": "cask-app-release",
+  "expectedService": false,
+  "localGenerateOk": true,
+  "caskPath": "Casks/go2tv.rb",
+  "appName": "go2tv.app",
+  "version": "2.5.0",
+  "sha256Arm": "13772ffefefd5d12a9da01e1ea1f71c534128e3249c083ab0513f46e0bae504d",
+  "vmInstallOk": false,
+  "vmNote": "requires released allbrew; batch mode is fix-package only",
+  "officialCask": "homebrew/cask/go2tv"
+}

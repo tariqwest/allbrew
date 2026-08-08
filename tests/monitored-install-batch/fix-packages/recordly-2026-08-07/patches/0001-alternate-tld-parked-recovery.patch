@@ -1,0 +1,231 @@
+diff --git a/lib/page-discover.ts b/lib/page-discover.ts
+index f9c7e37..5c510f2 100644
+--- a/lib/page-discover.ts
++++ b/lib/page-discover.ts
+@@ -414,6 +414,8 @@ export type DiscoverOptions = {
+   htmlFixture?: { body: string; finalUrl?: string; contentType?: string };
+   /** Injected for tests / callers: webview discover implementation. */
+   webviewDiscover?: (pageUrl: string) => Promise<DiscoverCandidate[]>;
++  /** Internal: prevent recursive alternate-TLD recovery. */
++  skipAlternateTldRecovery?: boolean;
+ };
+ 
+ /**
+@@ -600,6 +602,95 @@ export async function discoverFromScriptBundles(
+ }
+ 
+ 
++
++/** Common marketing-site TLD swaps when the assigned host is wrong or parked. */
++const ALT_TLDS = ["com", "app", "io", "dev", "co", "net", "org", "sh", "so"] as const;
++
++/**
++ * Build alternate homepage URLs by swapping the public suffix for a single-label host.
++ * e.g. https://recordly.app → https://recordly.dev (catalog often uses wrong TLD).
++ * Returns [] for multi-label hosts (foo.bar.com) or IPs.
++ */
++export function alternateTldUrls(pageUrl: string): string[] {
++  let u: URL;
++  try {
++    u = new URL(pageUrl);
++  } catch {
++    return [];
++  }
++  const host = u.hostname.toLowerCase().replace(/^www\./, "");
++  const parts = host.split(".");
++  // only brand.tld (optional www) — not sub.domain.tld
++  if (parts.length !== 2) return [];
++  const [label, tld] = parts;
++  if (!label || !/^[a-z0-9-]+$/i.test(label)) return [];
++  if (/^\d+$/.test(label)) return [];
++
++  const out: string[] = [];
++  for (const alt of ALT_TLDS) {
++    if (alt === tld) continue;
++    const nu = new URL(u.toString());
++    nu.hostname = label + "." + alt;
++    out.push(nu.toString());
++  }
++  return out;
++}
++
++function isDnsOrHostLookupError(err: unknown): boolean {
++  const msg = String((err as any)?.message || err || "").toLowerCase();
++  const code = String((err as any)?.code || "").toUpperCase();
++  if (code === "ENOTFOUND" || code === "EAI_AGAIN" || code === "EHOSTUNREACH") return true;
++  return (
++    msg.includes("enotfound") ||
++    msg.includes("getaddrinfo") ||
++    msg.includes("nodename nor servname") ||
++    msg.includes("name or service not known") ||
++    msg.includes("typo in the url") ||
++    msg.includes("could not resolve") ||
++    msg.includes("failed to lookup")
++  );
++}
++
++/** Detect domain-for-sale / parking pages that resolve but have no real product. */
++export function looksLikeParkedOrForSale(
++  html: string,
++  finalPageUrl: string,
++  candidates: DiscoverCandidate[] = [],
++): boolean {
++  const hay = `${html}\n${finalPageUrl}`.toLowerCase();
++  if (
++    /forsale\.godaddy\.com/.test(hay) ||
++    /godaddy\.com\/forsale\//.test(hay) ||
++    /hugedomains\.com/.test(hay) ||
++    /sedo\.com/.test(hay) ||
++    /dan\.com\/buy-domain/.test(hay) ||
++    /parkingcrew\.net/.test(hay) ||
++    /this domain (is|may be) for sale/.test(hay) ||
++    /domain is for sale/.test(hay) ||
++    /buy this domain/.test(hay)
++  ) {
++    return true;
++  }
++  // WebView often surfaces only same-site lander + forsale navigations
++  const hosts = candidates
++    .map((c) => {
++      try {
++        return new URL(c.url).hostname.toLowerCase();
++      } catch {
++        return "";
++      }
++    })
++    .filter(Boolean);
++  if (hosts.some((h) => h.includes("forsale.godaddy.com") || h.includes("hugedomains.com"))) {
++    return true;
++  }
++  return false;
++}
++
++function hasStrongDownloadCandidate(chosen: DiscoverCandidate | null | undefined): boolean {
++  return Boolean(chosen && chosen.score >= 70 && chosen.kind !== "unknown");
++}
++
+ export async function discoverPageDownloads(
+   pageUrl: string,
+   opts: DiscoverOptions = {},
+@@ -635,14 +726,35 @@ export async function discoverPageDownloads(
+       finalPageUrl = fetched.url;
+       contentType = fetched.contentType;
+     } catch (err: any) {
+-      return {
+-        pageUrl,
+-        finalPageUrl: pageUrl,
+-        method: "none",
+-        candidates: [],
+-        chosen: null,
+-        reason: `fetch failed: ${err?.message || err}`,
+-      };
++      // Catalog/homepage typos often use the wrong TLD (.app vs .com/.dev). On DNS
++      // failures, retry a small set of alternate public suffixes for brand.tld hosts.
++      let recovered = false;
++      if (!opts.skipAlternateTldRecovery && isDnsOrHostLookupError(err)) {
++        for (const alt of alternateTldUrls(pageUrl)) {
++          try {
++            assertSafePublicFetchUrl(alt);
++            const fetched = await fetchTextLimited(alt);
++            body = fetched.body;
++            finalPageUrl = fetched.url;
++            contentType = fetched.contentType;
++            log(`Host lookup failed for ${pageUrl}; recovered via ${alt}`);
++            recovered = true;
++            break;
++          } catch {
++            /* try next alternate TLD */
++          }
++        }
++      }
++      if (!recovered) {
++        return {
++          pageUrl,
++          finalPageUrl: pageUrl,
++          method: "none",
++          candidates: [],
++          chosen: null,
++          reason: `fetch failed: ${err?.message || err}`,
++        };
++      }
+     }
+   }
+ 
+@@ -726,7 +838,76 @@ export async function discoverPageDownloads(
+     }
+   }
+ 
+-  const chosen = pickAutoCandidate(candidates);
++  let chosen = pickAutoCandidate(candidates);
++
++  // Parked/for-sale or empty discovery: try alternate brand.tld hosts (e.g. .app → .dev).
++  // Evaluate *all* alts and pick the strongest artifact (a first-hit .com may be a
++  // different dead product vs the real open-source .dev with GitHub DMGs).
++  if (
++    !opts.skipAlternateTldRecovery &&
++    !opts.htmlFixture &&
++    !hasStrongDownloadCandidate(chosen)
++  ) {
++    const parked = looksLikeParkedOrForSale(body, finalPageUrl, candidates);
++    if (parked || !hasStrongDownloadCandidate(chosen)) {
++      let best: DiscoverResult | null = null;
++      for (const alt of alternateTldUrls(pageUrl)) {
++        try {
++          assertSafePublicFetchUrl(alt);
++          log(
++            parked
++              ? `Parked/for-sale page at ${pageUrl}; trying alternate TLD ${alt}`
++              : `No strong download candidate at ${pageUrl}; trying alternate TLD ${alt}`,
++          );
++          // Prefer static-first on alternate hosts (avoids multi-TLD WebView thrash).
++          let altResult = await discoverPageDownloads(alt, {
++            ...opts,
++            mode: "static",
++            skipAlternateTldRecovery: true,
++            htmlFixture: undefined,
++          });
++          if (!hasStrongDownloadCandidate(altResult.chosen) && (opts.mode ?? "auto") !== "static") {
++            altResult = await discoverPageDownloads(alt, {
++              ...opts,
++              skipAlternateTldRecovery: true,
++              htmlFixture: undefined,
++            });
++          }
++          if (!hasStrongDownloadCandidate(altResult.chosen)) continue;
++          const score = altResult.chosen!.score;
++          const bestScore = best?.chosen?.score ?? -1;
++          // Prefer direct install artifacts over MAS/store pages when scores tie-ish
++          const kindBoost = (k: string) =>
++            k === "cask-dmg" || k === "archive" || k === "binary"
++              ? 50
++              : k === "github-repo"
++                ? 10
++                : k === "mac-app-store"
++                  ? -20
++                  : 0;
++          const adj = score + kindBoost(altResult.chosen!.kind);
++          const bestAdj = bestScore + (best ? kindBoost(best.chosen!.kind) : 0);
++          if (!best || adj > bestAdj) {
++            best = altResult;
++          }
++        } catch (err: any) {
++          log(`Alternate TLD ${alt} failed: ${err?.message || err}`);
++        }
++      }
++      if (best && hasStrongDownloadCandidate(best.chosen)) {
++        log(`Recovered downloads via ${best.finalPageUrl} (${best.chosen!.kind})`);
++        return {
++          pageUrl,
++          finalPageUrl: best.finalPageUrl,
++          method: best.method,
++          candidates: best.candidates,
++          chosen: best.chosen,
++          reason: best.reason,
++        };
++      }
++    }
++  }
++
+   return {
+     pageUrl,
+     finalPageUrl,

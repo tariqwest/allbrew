@@ -1,0 +1,16 @@
+{
+  "slug": "nix",
+  "url": "https://formulae.brew.sh/formula/nix",
+  "status": "blocked",
+  "failureClass": "generate_fail",
+  "rootCause": "formulae.brew.sh token nix is not in homebrew/core (API 404). Catalog in_homebrew is stale; Nix is installed via official nixos.org installer, not brew.",
+  "fixSummary": "Clearer homebrew-formula API 404 + formatBottleCellar; do not invent source-build",
+  "tests": ["tests/unit/homebrew-formula-nix-404.test.ts"],
+  "patches": ["patches/homebrew-formula.ts", "patches/homebrew-formula.diff"],
+  "localGenerate": {
+    "before": "Error: HTTP 404 for https://formulae.brew.sh/api/formula/nix.json",
+    "after": "Homebrew core has no formula \"nix\" (API 404…)"
+  },
+  "installPossible": false,
+  "case": "C"
+}

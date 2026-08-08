@@ -1,0 +1,122 @@
+diff --git a/lib/utils.ts b/lib/utils.ts
+index 28ec1c1..80db2ca 100644
+--- a/lib/utils.ts
++++ b/lib/utils.ts
+@@ -592,17 +592,85 @@ export function isAppAsset(assetName) {
+   if (!lower.endsWith(".zip")) return false;
+   // Explicit app-bundle archives
+   if (lower.includes(".app")) return true;
++
++  // Non-mac desktop/OS tags never count as macOS app assets
++  if (
++    /(?:^|[^a-z])(?:linux|windows|win32|android|freebsd|openbsd)(?:[^a-z]|$)/i.test(
++      lower,
++    )
++  ) {
++    return false;
++  }
++
+   const hasMacToken = /(?:^|[^a-z])(?:mac|macos|osx|darwin)(?:[^a-z]|$)/i.test(
+     lower,
+   );
+-  if (!hasMacToken) return false;
+-  // Arch-tagged darwin/macos zips are almost always CLI binaries (e.g. gogs_*_darwin_amd64.zip),
+-  // not .app bundles. Desktop app zips usually omit cpu arch or use "universal" with .app.
++  // Arch-tagged darwin/macos/osx zips are almost always CLI binaries
++  // (e.g. gogs_*_darwin_amd64.zip). Desktop app zips usually omit cpu arch
++  // or use "universal" with .app, or use short "mac"+arch (Electron).
+   const hasCpuArch =
+     /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(
+       lower,
+     );
+-  if (hasCpuArch) return false;
++
++  if (hasMacToken) {
++    if (hasCpuArch) {
++      const usesDarwinMacosOsx =
++        /(?:^|[^a-z])(?:darwin|macos|osx)(?:[^a-z]|$)/i.test(lower);
++      if (usesDarwinMacosOsx) return false;
++      // short platform token "mac" + cpu arch → desktop app zip
++      return /(?:^|[^a-z])mac(?:[^a-z]|$)/i.test(lower);
++    }
++    return true;
++  }
++
++  // No mac token: versioned product zips without cpu arch (e.g. NetBar-1.2.1.zip)
++  // or bare PascalCase product zips (e.g. Clipped.zip) are commonly single-platform
++  // macOS .app distributions. cask-app-release still peeks inside for a real .app.
++  if (!hasCpuArch) {
++    if (isVersionedProductZipName(lower)) return true;
++    if (isBareProductAppZipName(assetName, lower)) return true;
++  }
++  return false;
++}
++
++/** Foo-1.2.3.zip / Foo_1.2.3.zip product release names (no platform/arch tags). */
++function isVersionedProductZipName(lowerName: string): boolean {
++  if (!lowerName.endsWith(".zip")) return false;
++  if (
++    /(?:^|[^a-z])(?:src|source|sources|checksums?)(?:[^a-z]|$)/i.test(lowerName)
++  ) {
++    return false;
++  }
++  const base = lowerName.slice(0, -".zip".length);
++  if (!/^[a-z]/.test(base)) return false;
++  // Require a dotted version segment (1.2 or 1.2.3…); reject bare "foo.zip"
++  if (!/(?:^|[^0-9])\d+\.\d+(?:\.[\w]+)*(?:[^a-z0-9]|$)/.test(base)) {
++    return false;
++  }
++  return true;
++}
++
++/** Clipped.zip / MyApp.zip — branded product name without platform tags. */
++function isBareProductAppZipName(assetName: string, lowerName: string): boolean {
++  if (!lowerName.endsWith(".zip")) return false;
++  if (
++    /(?:^|[^a-z])(?:src|source|sources|checksums?)(?:[^a-z]|$)/i.test(lowerName)
++  ) {
++    return false;
++  }
++  const baseOrig = assetName.slice(0, -".zip".length);
++  // Product zips almost always use Title/PascalCase branding
++  if (!/^[A-Z]/.test(baseOrig)) return false;
++  if (!/^[A-Za-z][A-Za-z0-9._-]*$/.test(baseOrig)) return false;
++  // Reject if name embeds platform/cpu tokens
++  if (
++    /(?:^|[^a-z])(?:linux|windows|win32|android|freebsd|openbsd|arm64|aarch64|amd64|x86_64|x64|i386|darwin|macos|osx)(?:[^a-z]|$)/i.test(
++      lowerName,
++    )
++  ) {
++    return false;
++  }
+   return true;
+ }
+ 
+diff --git a/tests/unit/utils.test.ts b/tests/unit/utils.test.ts
+index 4f9f82d..0d7a2bd 100644
+--- a/tests/unit/utils.test.ts
++++ b/tests/unit/utils.test.ts
+@@ -410,6 +410,23 @@ describe("isAppAsset", () => {
+     expect(isAppAsset("foo-linux-x64.zip")).toBe(false);
+   });
+ 
++  it("matches versioned product zips without mac token (NetBar-style)", () => {
++    expect(isAppAsset("NetBar-1.2.1.zip")).toBe(true);
++    expect(isAppAsset("MyApp_2.0.0.zip")).toBe(true);
++    expect(isAppAsset("Foo-1.0.zip")).toBe(true);
++  });
++
++  it("matches bare PascalCase product zips (Clipped.zip)", () => {
++    expect(isAppAsset("Clipped.zip")).toBe(true);
++    expect(isAppAsset("MyApp.zip")).toBe(true);
++  });
++
++  it("rejects bare lowercase and source zips", () => {
++    expect(isAppAsset("foo.zip")).toBe(false);
++    expect(isAppAsset("project-src-1.2.3.zip")).toBe(false);
++    expect(isAppAsset("sources-1.0.0.zip")).toBe(false);
++  });
++
+   it("rejects non-archive files", () => {
+     expect(isAppAsset("README.md")).toBe(false);
+   });

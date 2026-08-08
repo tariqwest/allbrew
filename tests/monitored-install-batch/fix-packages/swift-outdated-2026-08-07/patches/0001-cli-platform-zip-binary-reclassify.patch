@@ -1,0 +1,309 @@
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..8a3b90b 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -27,6 +27,7 @@ import {
+   matchAssetToArch,
+   isAppAsset,
+   isBinaryAsset,
++  isReclassifiablePlatformCliZip,
+   chooseReleaseArtifactKind,
+   resolveNonCollidingFormulaName,
+   resolveNonCollidingCaskName,
+@@ -881,17 +882,77 @@ async function handleGithubRepo(classification, opts) {
+       }
+     }
+ 
+-    if (appAssets.length > 0) {
++    // Dual-platform CLI releases often ship tool-1.0-macos.zip + tool-1.0-linux.zip
++    // with no CPU arch and no .app. isAppAsset() flags the mac zip as a cask, then
++    // cask-app-release fails ("No .app bundle found"). Prefer binary-release.
++    const hasDmgApp = appAssets.some((a) =>
++      a.name.toLowerCase().endsWith(".dmg"),
++    );
++    const hasExplicitAppZip = appAssets.some((a) =>
++      a.name.toLowerCase().includes(".app"),
++    );
++    const reclassifiableCliZips = release.assets.filter((a) =>
++      isReclassifiablePlatformCliZip(a.name),
++    );
++    const hasLinuxPlatformArchive = release.assets.some((a) => {
++      const n = a.name.toLowerCase();
++      return (
++        /(?:^|[^a-z])linux(?:[^a-z]|$)/.test(n) &&
++        (n.endsWith(".zip") ||
++          n.endsWith(".tar.gz") ||
++          n.endsWith(".tgz") ||
++          n.endsWith(".tar.xz"))
++      );
++    });
++    if (
++      appAssets.length > 0 &&
++      binAssets.length === 0 &&
++      !hasDmgApp &&
++      !hasExplicitAppZip &&
++      reclassifiableCliZips.length > 0 &&
++      hasLinuxPlatformArchive
++    ) {
+       console.log(
+-        `  Detected ${chalk.cyan("macOS app")} assets: ${appAssets.map((a) => a.name).join(", ")}`,
++        `  Detected ${chalk.cyan("CLI platform")} archives (macos/linux, no .app): ${reclassifiableCliZips.map((a) => a.name).join(", ")}`,
+       );
+       return await generateWithConfirmation(
+-        "cask-app-release",
++        "binary-release",
+         { repoInfo, release },
+-        opts,
++        { ...opts, reclassifyPlatformZips: true },
+       );
+     }
+ 
++    if (appAssets.length > 0) {
++      console.log(
++        `  Detected ${chalk.cyan("macOS app")} assets: ${appAssets.map((a) => a.name).join(", ")}`,
++      );
++      try {
++        return await generateWithConfirmation(
++          "cask-app-release",
++          { repoInfo, release },
++          opts,
++        );
++      } catch (err: any) {
++        const msg = String(err?.message || err || "");
++        if (
++          /No \.app bundle found/i.test(msg) &&
++          reclassifiableCliZips.length > 0
++        ) {
++          console.log(
++            chalk.yellow(
++              "  No .app in release zip; falling back to CLI binary formula",
++            ),
++          );
++          return await generateWithConfirmation(
++            "binary-release",
++            { repoInfo, release },
++            { ...opts, reclassifyPlatformZips: true },
++          );
++        }
++        throw err;
++      }
++    }
++
+     if (binAssets.length > 0) {
+       console.log(
+         `  Detected ${chalk.cyan("binary")} assets: ${binAssets.map((a) => a.name).join(", ")}`,
+@@ -935,16 +996,25 @@ async function handleGithubRepo(classification, opts) {
+       console.log(`  Detected command: ${chalk.cyan(brewInfo.installCommand)}`);
+       console.log();
+ 
+-      const choice = await select({
+-        message: "What would you like to do?",
+-        choices: [
+-          {
+-            name: `Run "${brewInfo.installCommand}" directly`,
+-            value: "brew-install",
+-          },
+-          { name: "Generate a custom formula anyway", value: "continue" },
+-        ],
+-      });
++      let choice: "brew-install" | "continue" = "continue";
++      if (isNonInteractive(opts)) {
++        console.log(
++          chalk.dim(
++            "  Non-interactive: generating custom formula (skipping upstream brew offer).",
++          ),
++        );
++      } else {
++        choice = await select({
++          message: "What would you like to do?",
++          choices: [
++            {
++              name: `Run "${brewInfo.installCommand}" directly`,
++              value: "brew-install",
++            },
++            { name: "Generate a custom formula anyway", value: "continue" },
++          ],
++        });
++      }
+ 
+       if (choice === "brew-install") {
+         console.log();
+diff --git a/lib/generators/binary-release.ts b/lib/generators/binary-release.ts
+index d6eb00f..e013a25 100644
+--- a/lib/generators/binary-release.ts
++++ b/lib/generators/binary-release.ts
+@@ -5,9 +5,11 @@ import {
+   toClassName,
+   extractVersionFromTag,
+   matchAssetToArch,
++  matchLoosePlatformArch,
+   isBinaryAsset,
+   isBareBinaryAsset,
+   isArchiveBinaryAsset,
++  isReclassifiablePlatformCliZip,
+   rubyString,
+   rubyEscape,
+   guessLicenseIdentifier,
+@@ -135,15 +137,22 @@ export function buildBinaryReleaseInstallBody(
+   // Nested package archives (e.g. open-interpreter-package-*/bin/interpreter + resources).
+   if (archiveEntrypoint) {
+     const src = archiveEntrypoint.replace(/\\/g, "/");
++    // Top-level dirs often embed the version (swift-outdated-0.15.3-macos/…).
++    // Substitute dotted versions with #{version} so livecheck rewrites stay valid.
++    const templatedSrc = src.replace(/\d+\.\d+(?:\.\d+)*/g, "#{version}");
++    const useInterp = templatedSrc !== src && templatedSrc.includes("#{version}");
++    const pathExpr = useInterp
++      ? `"${templatedSrc.replace(/"/g, '\\"')}"`
++      : rubyString(src);
+     const lines = [
+       `libexec.install Dir["*"]`,
+-      `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(binName)}`,
++      `bin.install_symlink libexec/${pathExpr} => ${rubyString(binName)}`,
+     ];
+     // Also expose the upstream entrypoint basename when it differs (interpreter vs open-interpreter).
+     const upstreamBase = src.split("/").pop() || "";
+     if (upstreamBase && upstreamBase !== binName) {
+       lines.push(
+-        `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(upstreamBase)}`,
++        `bin.install_symlink libexec/${pathExpr} => ${rubyString(upstreamBase)}`,
+       );
+     }
+     return lines.join("\n    ");
+@@ -196,10 +205,22 @@ export async function collectBinaryReleasePayload(
+   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
+ 
+   const archAssets: Record<string, any> = {};
++  const reclassifyPlatformZips = Boolean(options.reclassifyPlatformZips);
+   for (const asset of release.assets) {
+-    if (!isBinaryAsset(asset.name)) continue;
+-    const arch = matchAssetToArch(asset.name);
+-    if (arch) archAssets[arch] = asset;
++    if (isBinaryAsset(asset.name)) {
++      const arch = matchAssetToArch(asset.name);
++      if (arch) archAssets[arch] = asset;
++      continue;
++    }
++    // CLI dual-platform releases often ship `tool-1.0-macos.zip` without CPU arch;
++    // isAppAsset flags those as casks, but they contain a bare executable not .app.
++    if (
++      reclassifyPlatformZips &&
++      isReclassifiablePlatformCliZip(asset.name)
++    ) {
++      const arch = matchLoosePlatformArch(asset.name);
++      if (arch) archAssets[arch] = asset;
++    }
+   }
+ 
+   if (archAssets.macosUniversal) {
+@@ -227,7 +248,9 @@ export async function collectBinaryReleasePayload(
+   for (const arch of orderedArchs) {
+     const asset = archAssets[arch];
+     const shouldInspect =
+-      !inspectedArchive && isArchiveBinaryAsset(asset.name);
++      !inspectedArchive &&
++      (isArchiveBinaryAsset(asset.name) ||
++        (reclassifyPlatformZips && isReclassifiablePlatformCliZip(asset.name)));
+ 
+     if (shouldInspect) {
+       inspectedArchive = true;
+diff --git a/lib/utils.ts b/lib/utils.ts
+index 28ec1c1..2c50fa4 100644
+--- a/lib/utils.ts
++++ b/lib/utils.ts
+@@ -592,6 +592,9 @@ export function isAppAsset(assetName) {
+   if (!lower.endsWith(".zip")) return false;
+   // Explicit app-bundle archives
+   if (lower.includes(".app")) return true;
++  // SwiftPM binary target / plugin distributions (e.g. Foo-macos.artifactbundle.zip)
++  // are CLI toolchains, not desktop .app casks.
++  if (lower.includes("artifactbundle")) return false;
+   const hasMacToken = /(?:^|[^a-z])(?:mac|macos|osx|darwin)(?:[^a-z]|$)/i.test(
+     lower,
+   );
+@@ -606,6 +609,45 @@ export function isAppAsset(assetName) {
+   return true;
+ }
+ 
++/**
++ * Loose platform match for release archives that only tag OS (not CPU), e.g.
++ * `swift-outdated-0.15.3-macos.zip` / `…-linux.zip`. Used when reclassifying
++ * false-positive isAppAsset zips into binary-release formulas.
++ */
++export function matchLoosePlatformArch(assetName) {
++  const strict = matchAssetToArch(assetName);
++  if (strict) return strict;
++  const lower = String(assetName || "").toLowerCase();
++  if (!lower) return null;
++  if (/(?:^|[^a-z])(?:linux)(?:[^a-z]|$)/i.test(lower)) {
++    return "linuxIntel";
++  }
++  if (
++    /(?:^|[^a-z])(?:mac|macos|osx|darwin)(?:[^a-z]|$)/i.test(lower) &&
++    !/(?:^|[^a-z])(?:windows|win32|android)(?:[^a-z]|$)/i.test(lower)
++  ) {
++    return "macosUniversal";
++  }
++  return null;
++}
++
++/**
++ * Zip/tarball that isAppAsset() flags (macos token, no CPU arch) but is often a
++ * prebuilt CLI, not a .app — especially when the release also ships a linux zip.
++ */
++export function isReclassifiablePlatformCliZip(assetName) {
++  const lower = String(assetName || "").toLowerCase();
++  if (!lower.endsWith(".zip") && !lower.endsWith(".tar.gz") && !lower.endsWith(".tgz")) {
++    return false;
++  }
++  if (lower.includes(".app") || lower.includes("artifactbundle")) return false;
++  if (lower.endsWith(".dmg")) return false;
++  if (!isAppAsset(assetName) && matchAssetToArch(assetName) != null) return false;
++  // Must look like an app-misclassified mac zip OR an untagged platform archive
++  if (isAppAsset(assetName)) return true;
++  return matchLoosePlatformArch(assetName) != null && isArchiveBinaryAsset(assetName);
++}
++
+ const ARCHIVE_BINARY_EXTS = [".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".zip"];
+ const BARE_BINARY_SKIP_SUFFIXES = [
+   ".sha256",
+diff --git a/tests/unit/utils.test.ts b/tests/unit/utils.test.ts
+index 4f9f82d..86ef4f3 100644
+--- a/tests/unit/utils.test.ts
++++ b/tests/unit/utils.test.ts
+@@ -10,6 +10,8 @@ import {
+   matchAssetToArch,
+   isAppAsset,
+   isBinaryAsset,
++  matchLoosePlatformArch,
++  isReclassifiablePlatformCliZip,
+   assertSafeFetchUrl,
+   resolveNonCollidingFormulaName,
+   resolveNonCollidingCaskName,
+@@ -457,3 +459,27 @@ describe("isBinaryAsset", () => {
+     expect(isBinaryAsset("afm_0.1.0_checksums.txt")).toBe(false);
+   });
+ });
++
++describe("matchLoosePlatformArch / isReclassifiablePlatformCliZip", () => {
++  it("maps untagged macos/linux zips to loose arches", () => {
++    expect(matchLoosePlatformArch("swift-outdated-0.15.3-macos.zip")).toBe(
++      "macosUniversal",
++    );
++    expect(matchLoosePlatformArch("swift-outdated-0.15.3-linux.zip")).toBe(
++      "linuxIntel",
++    );
++    expect(matchLoosePlatformArch("Foo-darwin-arm64.zip")).toBe("macosArm");
++  });
++
++  it("flags macos-only CLI zips for reclassify (false app assets)", () => {
++    expect(isAppAsset("swift-outdated-0.15.3-macos.zip")).toBe(true);
++    expect(isReclassifiablePlatformCliZip("swift-outdated-0.15.3-macos.zip")).toBe(
++      true,
++    );
++    expect(isReclassifiablePlatformCliZip("swift-outdated-0.15.3-linux.zip")).toBe(
++      true,
++    );
++    expect(isReclassifiablePlatformCliZip("MyApp.app.zip")).toBe(false);
++    expect(isReclassifiablePlatformCliZip("Foo.dmg")).toBe(false);
++  });
++});

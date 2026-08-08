@@ -1,0 +1,12 @@
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -80,7 +80,8 @@
+           };
+           opts = {
+             ...opts,
+-            name: opts.name || matched.token,
++            // Official cask token wins over batch --name slugs (refine-app → refine).
++            name: matched.token,
+             sourceUrl: url,
+             discoverMethod: "homebrew-cask-homepage",
+           };

@@ -1,0 +1,18 @@
+{
+  "url": "https://github.com/FlineDev/BartyCrouch",
+  "slug": "bartycrouch",
+  "failureClass": "prompt_hang",
+  "patchFiles": ["lib/cli.ts"],
+  "localGenerateOk": true,
+  "localInstallOk": null,
+  "vmInstallOk": false,
+  "expectedGenerator": "spm-package",
+  "expectedService": false,
+  "observedAfterFix": {
+    "generator": "spm-package",
+    "formulaName": "bartycrouch-tap",
+    "service": false,
+    "nonInteractiveLog": "Non-interactive: generating custom formula (skipping upstream brew offer)."
+  },
+  "notes": "VM guest allbrew 0.0.24 lacks patch; batch mode no release."
+}

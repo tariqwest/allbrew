@@ -1,0 +1,26 @@
+{
+  "slug": "atuin",
+  "url": "https://github.com/atuinsh/atuin",
+  "mode": "patch",
+  "worktree": "worktrees/atuin-2026-08-07",
+  "failureClass": "brew_fail",
+  "rootCause": "binary-release last-wins per-arch asset selection preferred atuin-server over atuin client",
+  "expected": {
+    "generator": "binary-release",
+    "packageName": "atuin-tap",
+    "binName": "atuin",
+    "service": false,
+    "assetPattern": "atuin-*-apple-darwin.tar.gz",
+    "notAssetPattern": "atuin-server-*"
+  },
+  "files": [
+    "lib/generators/binary-release.ts",
+    "tests/unit/generators/binary-release-atuin-score.test.ts"
+  ],
+  "unitTests": [
+    "tests/unit/generators/binary-release-atuin-score.test.ts"
+  ],
+  "localGenerateOk": true,
+  "vmValidated": false,
+  "releaseRequired": true
+}

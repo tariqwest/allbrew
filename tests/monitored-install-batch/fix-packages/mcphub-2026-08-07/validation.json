@@ -1,0 +1,11 @@
+{
+  "slug": "mcphub",
+  "url": "https://github.com/samanhappy/mcphub",
+  "failureClass": "service_mismatch",
+  "fixedCommand": "mcphub",
+  "brokenCommand": "mcphub servers add fetch --type stdio --command uvx --arg mcp-server-fetch",
+  "tests": ["tests/unit/analyzer.test.ts"],
+  "unitPass": true,
+  "generator": "npm-package",
+  "packageVersion": "1.0.27"
+}

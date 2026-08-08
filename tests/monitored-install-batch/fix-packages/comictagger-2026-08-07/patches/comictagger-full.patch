@@ -1,0 +1,78 @@
+diff --git a/lib/generators/cask-app-release.ts b/lib/generators/cask-app-release.ts
+index 0fa412d..3022d24 100644
+--- a/lib/generators/cask-app-release.ts
++++ b/lib/generators/cask-app-release.ts
+@@ -9,6 +9,7 @@ import { listDmgAppNames, listZipEntries } from "../archive-inspector.ts";
+ import type { CaskAppReleasePayload } from "../template-payload.ts";
+ import { writeRenderedCask } from "../template-renderer.ts";
+ import { githubLatestLivecheckBlock } from "./livecheck.ts";
++import { templateReleaseUrl } from "./binary-release.ts";
+ 
+ export async function collectCaskAppReleasePayload(
+   repoInfo: any,
+@@ -56,9 +57,10 @@ export async function collectCaskAppReleasePayload(
+   const homepage = options.homepage || repoInfo.homepage || repoInfo.htmlUrl;
+   const displayName = appName.replace(/\.app$/i, "");
+ 
+-  const urlTemplate = bestAsset.url
+-    .replace(version, "#{version}")
+-    .replace(release.tagName, "v#{version}");
++  // Use shared templateReleaseUrl so bare tags (tag == version) replace ALL
++  // occurrences without inventing a spurious "v" prefix in the asset basename
++  // (e.g. ComicTagger-1.5.5-osx-….app.zip must not become ComicTagger-v#{version}-…).
++  const urlTemplate = templateReleaseUrl(bestAsset.url, version, release.tagName);
+ 
+   const zapPaths = [
+     `~/Library/Application Support/${displayName}`,
+diff --git a/tests/unit/generators/cask-app-release.test.ts b/tests/unit/generators/cask-app-release.test.ts
+index bc4033a..bfb807a 100644
+--- a/tests/unit/generators/cask-app-release.test.ts
++++ b/tests/unit/generators/cask-app-release.test.ts
+@@ -1068,3 +1068,47 @@ describe("collectCaskAppReleasePayload — MCPSM (Rust .app.zip only)", () => {
+     expect(payload.sha256).toBeTruthy();
+   });
+ });
++
++describe("collectCaskAppReleasePayload — ComicTagger (bare tag, version in asset name)", () => {
++  beforeEach(() => {
++    mock.restore();
++    mockArchiveInspector({ zip: ["ComicTagger.app/"] });
++  });
++
++  const repoInfo = {
++    name: "comictagger",
++    fullName: "comictagger/comictagger",
++    description: "A multi-platform app for writing metadata to digital comics",
++    homepage: "https://github.com/comictagger/comictagger",
++    htmlUrl: "https://github.com/comictagger/comictagger",
++    license: "Apache-2.0",
++  };
++
++  const release = {
++    // GitHub release tag is bare "1.5.5" (no v prefix); asset basename also embeds 1.5.5
++    tagName: "1.5.5",
++    assets: [
++      {
++        name: "ComicTagger-1.5.5-osx-10.15.7-x86_64.app.zip",
++        url: "https://github.com/comictagger/comictagger/releases/download/1.5.5/ComicTagger-1.5.5-osx-10.15.7-x86_64.app.zip",
++      },
++      {
++        name: "comictagger-1.5.5-py3-none-any.whl",
++        url: "https://github.com/comictagger/comictagger/releases/download/1.5.5/comictagger-1.5.5-py3-none-any.whl",
++      },
++    ],
++  };
++
++  it("templates bare tag without injecting v into asset basename", async () => {
++    const payload = await collectCaskAppReleasePayload(repoInfo, release, {
++      name: "comictagger-comictagger",
++    });
++    expect(payload.template).toBe("cask_app_release");
++    expect(payload.version).toBe("1.5.5");
++    expect(payload.url).toBe(
++      "https://github.com/comictagger/comictagger/releases/download/#{version}/ComicTagger-#{version}-osx-10.15.7-x86_64.app.zip",
++    );
++    expect(payload.url).not.toContain("ComicTagger-v#{version}");
++    expect(payload.appName).toBe("ComicTagger.app");
++  });
++});

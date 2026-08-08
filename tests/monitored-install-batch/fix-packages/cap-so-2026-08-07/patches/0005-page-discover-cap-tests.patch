@@ -1,0 +1,112 @@
+diff --git a/tests/unit/page-discover.test.ts b/tests/unit/page-discover.test.ts
+index a12db0d..6e6fb43 100644
+--- a/tests/unit/page-discover.test.ts
++++ b/tests/unit/page-discover.test.ts
+@@ -10,6 +10,8 @@ import {
+   pickAutoCandidate,
+   scoreCandidateUrl,
+   enrichGithubReleaseAssets,
++  enrichPlatformDownloadRedirects,
++  isMacPlatformDownloadPath,
+   parseGithubRepoHome,
+ } from "../../lib/page-discover.ts";
+ import { assertSafePublicFetchUrl } from "../../lib/utils.ts";
+@@ -219,3 +221,98 @@ describe("enrichGithubReleaseAssets", () => {
+   });
+ });
+ 
++
++
++describe("Cap-style platform download paths (cap.so)", () => {
++  it("detects /download/apple-silicon platform paths", () => {
++    expect(isMacPlatformDownloadPath("https://cap.so/download/apple-silicon")).toBe(true);
++    expect(isMacPlatformDownloadPath("https://cap.so/download/apple-intel")).toBe(true);
++    expect(isMacPlatformDownloadPath("https://cap.so/features")).toBe(false);
++    expect(isMacPlatformDownloadPath("https://cap.so/download")).toBe(false);
++  });
++
++  it("scores platform download path above bare github without full redirect", () => {
++    const page = "https://cap.so/";
++    const plat = scoreCandidateUrl("https://cap.so/download/apple-silicon", page, ["html-attr"]);
++    const gh = scoreCandidateUrl("https://github.com/CapSoftware/Cap", page, ["html-attr"]);
++    // Soft boost alone may not beat github+trusted; redirect enrich is required for auto-pick.
++    expect(plat.evidence).toContain("mac-platform-download-path");
++    expect(plat.score).toBeGreaterThan(30);
++    expect(gh.kind).toBe("github-repo");
++  });
++
++  it("promotes crabnebula redirect target over github-repo", async () => {
++    const page = "https://cap.so/";
++    const html = `
++      <a href="https://github.com/CapSoftware/Cap">GitHub</a>
++      <a href="/download/apple-silicon">Download for free</a>
++      <a href="/download/apple-intel">Intel</a>
++      <a href="/download/windows">Windows</a>
++    `;
++    const staticCands = extractCandidatesFromHtml(html, page);
++    expect(staticCands.some((c) => c.url.includes("download/apple-silicon"))).toBe(true);
++
++    const enriched = await enrichPlatformDownloadRedirects(staticCands, page, {
++      resolve: async (url) => {
++        if (url.includes("apple-silicon")) {
++          return {
++            finalUrl:
++              "https://cdn.crabnebula.app/asset/01KZ8Q4FEW4JAGFQ3NQPR5XTX3?from=%7B%22publicPlatform%22%3A%22dmg-aarch64%22%7D",
++            filename: "Cap_0.5.8_aarch64.dmg",
++            contentType: "application/octet-stream",
++            looksLikeMacApp: true,
++          };
++        }
++        return null;
++      },
++    });
++    const chosen = pickAutoCandidate(enriched);
++    expect(chosen).toBeTruthy();
++    expect(chosen!.kind).toBe("cask-dmg");
++    expect(chosen!.url).toContain("crabnebula.app");
++    expect(chosen!.evidence.some((e) => e.includes("platform-download-redirect") || e.includes("content-disposition"))).toBe(true);
++  });
++
++  it("enrichGithubReleaseAssets reads CDN links from release body when assets empty", async () => {
++    const page = "https://cap.so/";
++    const cands = [
++      scoreCandidateUrl("https://github.com/CapSoftware/Cap", page, ["html-attr"]),
++    ];
++    const enriched = await enrichGithubReleaseAssets(cands, page, {
++      getLatestRelease: async () => ({
++        tag_name: "cap-v0.5.7",
++        assets: [],
++        body: `## Downloads
++* [macOS (Apple Silicon)](https://cdn.crabnebula.app/asset/01KY04BZQ3P3893VS6HCK9310E)
++* [macOS (Intel)](https://cdn.crabnebula.app/asset/01KY046NNEAS9K0XR28RYRJK24)
++* [Windows](https://cdn.crabnebula.app/asset/01KY07H6Y3QXMYMNQC740SZ300)
++`,
++      }),
++    });
++    const mac = enriched.filter((c) => c.url.includes("crabnebula"));
++    expect(mac.length).toBeGreaterThanOrEqual(2);
++    expect(mac.some((c) => c.kind === "cask-dmg")).toBe(true);
++    expect(mac[0].score).toBeGreaterThan(cands[0].score);
++  });
++
++  it("discoverPageDownloads fixture extracts Cap platform path (no live network)", async () => {
++    const html = `
++      <html><body>
++      <a href="https://github.com/CapSoftware/Cap">Open source</a>
++      <a href="/download/apple-silicon">Download Cap</a>
++      </body></html>
++    `;
++    const staticCands = extractCandidatesFromHtml(html, "https://cap.so/");
++    expect(staticCands.some((c) => /apple-silicon/i.test(c.url))).toBe(true);
++    const withRedirect = await enrichPlatformDownloadRedirects(staticCands, "https://cap.so/", {
++      resolve: async () => ({
++        finalUrl: "https://cdn.crabnebula.app/asset/x?publicPlatform=dmg-aarch64",
++        filename: "Cap_0.5.8_aarch64.dmg",
++        contentType: "application/octet-stream",
++        looksLikeMacApp: true,
++      }),
++    });
++    const chosen = pickAutoCandidate(withRedirect);
++    expect(chosen?.kind).toBe("cask-dmg");
++  });
++});

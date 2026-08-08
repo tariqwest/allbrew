@@ -1,0 +1,19 @@
+{
+  "slug": "bun",
+  "url": "https://formulae.brew.sh/formula/bun",
+  "failureClass": "brew_fail",
+  "generatorExpected": "homebrew-formula",
+  "generatorObservedReleased": "source-build-via-page-discover-homebrew-core",
+  "generatorObservedMain": "homebrew-formula",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "vmHelperUsed": true,
+  "vmEndpoint": "homeserver",
+  "vmExitCode": 0,
+  "vmVerifyOkSpurious": true,
+  "vmFalsePositiveReason": "brew installed homebrew/core bun; generated formula was monorepo HEAD source-build",
+  "unitTestsPass": true,
+  "localGenerateFixedOk": true,
+  "released": false,
+  "fixSummary": "Bottle cellar path/symbol formatting; map homebrew-core Formula blobs to homebrew-formula; monorepo discovery penalty"
+}

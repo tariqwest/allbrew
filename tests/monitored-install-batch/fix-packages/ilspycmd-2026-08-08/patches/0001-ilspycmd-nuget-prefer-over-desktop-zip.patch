@@ -1,0 +1,274 @@
+diff --git a/lib/analyzer.ts b/lib/analyzer.ts
+index e028df4..ff0a0fa 100644
+--- a/lib/analyzer.ts
++++ b/lib/analyzer.ts
+@@ -30,6 +30,9 @@ const CARGO_INSTALL_RE =
+   /(?:^|[`\n])\s*(?:\$\s*)?cargo[ \t]+install[ \t]+(?:--locked[ \t]+|--force[ \t]+)?(?!--path\b|--git\b|--)([a-zA-Z][a-zA-Z0-9_-]*)/i;
+ const GO_INSTALL_RE =
+   /(?:^|[`\n])\s*(?:\$\s*)?go[ \t]+install[ \t]+([\w./-]+@[\w.]+)/i;
++// e.g. `dotnet tool install -g csharprepl` / `dotnet tool install --global Foo.Bar`
++const DOTNET_TOOL_INSTALL_RE =
++  /(?:^|[`\n])\s*(?:\$\s*)?dotnet[ \t]+tool[ \t]+install(?:[ \t]+(?:-[a-zA-Z]|--[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
+ 
+ // curl|bash / wget|sh install one-liners and direct .sh/.bash install URLs
+ const CURL_PIPE_SHELL_RE =
+@@ -152,6 +155,41 @@ export type InstallMethodHint = {
+   script?: string;
+ };
+ 
++/** NuGet package ids referenced via nuget.org/packages/<id> links in docs. */
++export function extractNugetPackageIds(readmeText: string): string[] {
++  if (!readmeText) return [];
++  const ids: string[] = [];
++  const re = /nuget\.org\/packages\/([A-Za-z0-9._-]+)/gi;
++  let match: RegExpExecArray | null;
++  while ((match = re.exec(readmeText)) !== null) {
++    const id = String(match[1] || "").trim();
++    if (id) ids.push(id);
++  }
++  return [...new Set(ids)];
++}
++
++/**
++ * Prefer a NuGet package id that matches the caller's preferred name when the
++ * README only links to nuget.org (no `dotnet tool install` shell line).
++ */
++export function pickPreferredNugetPackage(
++  readmeText: string,
++  preferredPackageName = "",
++): string | null {
++  const ids = extractNugetPackageIds(readmeText);
++  if (ids.length === 0) return null;
++  const preferred = String(preferredPackageName || "")
++    .trim()
++    .toLowerCase();
++  if (!preferred) return null;
++  const preferredLast = preferred.split("/").pop() || preferred;
++  const hit = ids.find((id) => {
++    const lower = id.toLowerCase();
++    return lower === preferred || lower === preferredLast;
++  });
++  return hit || null;
++}
++
+ export function detectInstallMethod(
+   readmeText,
+   preferredPackageName = "",
+@@ -203,6 +241,20 @@ export function detectInstallMethod(
+   match = readmeText.match(GO_INSTALL_RE);
+   if (match) return { method: "go", package: match[1] };
+ 
++  match = readmeText.match(DOTNET_TOOL_INSTALL_RE);
++  if (match) {
++    const pkg = String(match[1] || "").trim();
++    if (pkg) return { method: "dotnet", package: pkg };
++  }
++
++  // Markdown links like [dotnet tool install](https://www.nuget.org/packages/ilspycmd/)
++  // without a shell one-liner (common for monorepo frontends, e.g. ILSpy → ilspycmd).
++  const nugetFromLink = pickPreferredNugetPackage(
++    readmeText,
++    preferredPackageName,
++  );
++  if (nugetFromLink) return { method: "dotnet", package: nugetFromLink };
++
+   match = readmeText.match(DENO_INSTALL_RE);
+   if (match)
+     return {
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..d606d40 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -835,6 +835,53 @@ async function handleGithubRepo(classification, opts) {
+       (a) => isBinaryAsset(a.name) && matchAssetToArch(a.name),
+     );
+ 
++    // Prefer a published NuGet global tool when --name/--package targets a tool
++    // that is not the monorepo desktop release (e.g. ILSpy → ilspycmd). Desktop
++    // app zips are often arch-tagged and mis-classified as binary-release.
++    const preferredTool = String(opts.package || opts.name || "").trim();
++    if (preferredTool) {
++      const readmeForTool = await getReadme(owner, repo);
++      const methodForTool = readmeForTool
++        ? detectInstallMethod(readmeForTool, preferredTool)
++        : null;
++      let nugetPkg =
++        methodForTool?.method === "dotnet"
++          ? methodForTool.package || preferredTool
++          : null;
++      if (!nugetPkg) {
++        const repoName = String(repoInfo?.name || "").toLowerCase();
++        const nameDiffers = preferredTool.toLowerCase() !== repoName;
++        if (nameDiffers) {
++          const { nugetPackageExists } = await import(
++            "./generators/dotnet-package.ts"
++          );
++          if (await nugetPackageExists(preferredTool)) {
++            nugetPkg = preferredTool;
++          }
++        }
++      }
++      if (nugetPkg) {
++        console.log(
++          chalk.dim(
++            `  Preferring NuGet global tool "${nugetPkg}" over release assets (name/package override)`,
++          ),
++        );
++        console.log(
++          chalk.yellow(
++            "Note: the dotnet/NuGet generator is experimental and not yet fully verified end-to-end.",
++          ),
++        );
++        return await generateWithConfirmation(
++          "dotnet-package",
++          {
++            packageName: nugetPkg,
++            repoInfo,
++          },
++          opts,
++        );
++      }
++    }
++
+     if (appAssets.length > 0 && binAssets.length > 0) {
+       console.log();
+       console.log(
+@@ -1050,6 +1097,21 @@ async function handleGithubRepo(classification, opts) {
+             },
+             opts,
+           );
++        case "dotnet":
++          console.log(
++            chalk.yellow(
++              "Note: the dotnet/NuGet generator is experimental and not yet fully verified end-to-end.",
++            ),
++          );
++          return await generateWithConfirmation(
++            "dotnet-package",
++            {
++              packageName: opts.package || method.package,
++              repoInfo,
++              serviceConfig: serviceConfigFromReadme,
++            },
++            opts,
++          );
+         case "build":
+           return await generateWithConfirmation(
+             "source-build",
+diff --git a/lib/generators/dotnet-package.ts b/lib/generators/dotnet-package.ts
+index ea87807..3e30357 100644
+--- a/lib/generators/dotnet-package.ts
++++ b/lib/generators/dotnet-package.ts
+@@ -62,6 +62,19 @@ export async function generateDotnetPackage(
+   return writeRenderedFormula(payload, options.tapPath);
+ }
+ 
++/** True when the package id has at least one version on the NuGet flat container. */
++export async function nugetPackageExists(
++  packageName: string,
++): Promise<boolean> {
++  if (!packageName || !String(packageName).trim()) return false;
++  try {
++    const data = await fetchNugetData(packageName);
++    return Boolean(data?.version);
++  } catch {
++    return false;
++  }
++}
++
+ async function fetchNugetData(packageName: string) {
+   const base = process.env.NUGET_FLAT_URL || process.env.NUGET_URL || "https://api.nuget.org";
+   const url = `${base}/v3-flatcontainer/${encodeURIComponent(packageName.toLowerCase())}/index.json`;
+diff --git a/lib/templates/formula/dotnet-package.ts b/lib/templates/formula/dotnet-package.ts
+index db378f0..8c60b3c 100644
+--- a/lib/templates/formula/dotnet-package.ts
++++ b/lib/templates/formula/dotnet-package.ts
+@@ -1,21 +1,38 @@
+ import type { DotnetPackagePayload } from "../../template-payload.ts";
+ 
+ export default function renderDotnetPackage(p: DotnetPackagePayload): string {
+-  return `class ${p.className} < Formula
++  const ri = (expr: string) => "#" + "{" + expr + "}";
++  return (
++    `class ${p.className} < Formula
+   desc "${p.desc}"
+   homepage "${p.homepage}"
+ ${p.licenseLine}${p.urlLines}
+ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "dotnet"
+ 
+   def install
+-    (buildpath/"nupkg").install cached_download
+-    system "dotnet", "tool", "install", ${p.packageName}, "--tool-path", "#{bin}", "--version", version.to_s, "--add-source", buildpath/"nupkg"
+-    bin.env_script_all_files(libexec, DOTNET_ROOT: Formula["dotnet"].opt_libexec)
++    # NuGet local sources require <id>.<version>.nupkg naming.
++    nupkg_dir = buildpath/"nupkg"
++    nupkg_dir.mkpath
++    package_id = ${p.packageName}
++    nupkg = nupkg_dir/"${ri("package_id")}.${ri("version")}.nupkg"
++    cp cached_download, nupkg
++
++    # Install into libexec so the apphost and .store/ stay co-located.
++    # Using bin + env_script_all_files moves only the shim and leaves .store in
++    # bin, which breaks the apphost with "application to execute does not exist".
++    system "dotnet", "tool", "install", package_id,
++           "--tool-path", libexec,
++           "--version", version.to_s,
++           "--add-source", nupkg_dir
++
++    (bin/"${p.testBinName}").write_env_script libexec/"${p.testBinName}",
++                                              DOTNET_ROOT: Formula["dotnet"].opt_libexec
+   end
+ 
+ ${p.serviceBlock}  test do
+-    assert_match version.to_s, shell_output("#{bin}/${p.testBinName} --version")
++    assert_match version.to_s, shell_output("${ri("bin")}/${p.testBinName} --version")
+   end
+ end
+-`;
++`
++  );
+ }
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..0fff723 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -6,6 +6,8 @@ import {
+   detectServiceConfigFromFiles,
+   detectBuildSystemFromFiles,
+   detectBuildSystemFromArchive,
++  extractNugetPackageIds,
++  pickPreferredNugetPackage,
+ } from "../../lib/analyzer.ts";
+ 
+ // ─── A5: Analyzer unit suite ─────────────────────────────────────────────
+@@ -785,3 +787,30 @@ describe("detectBuildSystemFromArchive", () => {
+     expect(detectBuildSystemFromArchive(["foo-1.0/LICENSE"])).toBeNull();
+   });
+ });
++
++
++describe("NuGet package link detection", () => {
++  it("extracts package ids from nuget.org links and prefers matching name", () => {
++    const readme = `
++* Our dotnet tool - [dotnet tool install](https://www.nuget.org/packages/ilspycmd/)
++* Library: https://www.nuget.org/packages/ICSharpCode.Decompiler/
++`;
++    expect(extractNugetPackageIds(readme).sort()).toEqual(
++      ["ICSharpCode.Decompiler", "ilspycmd"].sort(),
++    );
++    expect(pickPreferredNugetPackage(readme, "ilspycmd")).toBe("ilspycmd");
++    expect(pickPreferredNugetPackage(readme, "ILSpy")).toBeNull();
++    expect(detectInstallMethod(readme, "ilspycmd")).toEqual({
++      method: "dotnet",
++      package: "ilspycmd",
++    });
++  });
++
++  it("detects shell `dotnet tool install -g` commands", () => {
++    const readme = "```bash\ndotnet tool install -g csharprepl\n```";
++    expect(detectInstallMethod(readme)).toEqual({
++      method: "dotnet",
++      package: "csharprepl",
++    });
++  });
++});

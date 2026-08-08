@@ -1,0 +1,149 @@
+diff --git a/lib/generators/binary-release.ts b/lib/generators/binary-release.ts
+index d6eb00f..a813baa 100644
+--- a/lib/generators/binary-release.ts
++++ b/lib/generators/binary-release.ts
+@@ -23,6 +23,61 @@ const execFileAsync = promisify(execFile);
+ 
+ type ArchHash = { url: string; sha256: string; name: string };
+ 
++/**
++ * Rank competing release assets for the same arch.
++ * Prefer primary product archives (e.g. atuin-*-darwin.tar.gz, deno-*) over
++ * secondary tools (atuin-server, denort), libs, profile/android/musl, and deltas.
++ */
++export function scoreBinaryReleaseAsset(
++  assetName: string,
++  productHints: string[] = [],
++): number {
++  const lower = (assetName || "").toLowerCase();
++  let s = 0;
++
++  if (/\.(bsdiff|delta|patch)$/i.test(lower) || /\.from-\d/i.test(lower)) {
++    s -= 200;
++  }
++  if (/(?:^|[^a-z])android(?:[^a-z]|$)/i.test(lower)) s -= 100;
++  if (/(?:^|[^a-z])(?:profile|debug|symbols)(?:[^a-z]|$)/i.test(lower)) s -= 50;
++  if (/(?:^|[^a-z])baseline(?:[^a-z]|$)/i.test(lower)) s -= 20;
++  if (/(?:^|[^a-z])musl(?:[^a-z]|$)/i.test(lower)) s -= 10;
++  // Companion daemons / self-host servers shipped next to the main CLI.
++  if (/(?:^|[^a-z])(?:server|daemon)(?:[^a-z]|$)/i.test(lower)) s -= 60;
++
++  const base = lower.split("/").pop() || lower;
++  if (/^lib[a-z0-9]/i.test(base)) s -= 80;
++
++  const stem = base
++    .replace(/\.(tar\.gz|tgz|tar\.bz2|tar\.xz|zip|exe)$/i, "")
++    .replace(
++      /[-_.]?(darwin|macos|osx|linux|windows|win32|apple|unknown)[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal|gnu|musl)?/gi,
++      "",
++    )
++    .replace(/[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal)/gi, "")
++    .replace(/[-_.]+$/g, "");
++
++  const hints = productHints
++    .map((h) =>
++      String(h || "")
++        .toLowerCase()
++        .replace(/-tap\d*$/i, "")
++        .trim(),
++    )
++    .filter(Boolean);
++
++  for (const h of hints) {
++    if (stem === h) s += 100;
++    // Secondary tools that share a product prefix (atuin-server, denort)
++    else if (stem.startsWith(h) && stem.length > h.length) s -= 40;
++  }
++
++  if (isArchiveBinaryAsset(assetName)) s += 5;
++  s -= Math.min(stem.length, 20) * 0.01;
++
++  return s;
++}
++
+ /**
+  * Homebrew stages a bare binary URL as a file named after the asset basename.
+  * Archives unpack and typically expose a binary named like the formula.
+@@ -84,6 +139,8 @@ export function pickArchiveEntrypoint(
+   const preferredNames = [
+     options.binName,
+     formulaName,
++    // Collision renames (atuin → atuin-tap) should still prefer upstream binary name.
++    String(formulaName || "").replace(/-tap\d*$/i, ""),
+     formulaName.replace(/-/g, ""),
+     // Common short aliases for "open-interpreter" style packages.
+     formulaName.endsWith("-interpreter") ? "interpreter" : "",
+@@ -96,8 +153,9 @@ export function pickArchiveEntrypoint(
+     if (/(^|\/)bin\//.test(path)) s += 50;
+     const prefIdx = preferredNames.findIndex((n) => n.toLowerCase() === base.toLowerCase());
+     if (prefIdx >= 0) s += 40 - prefIdx;
+-    // Deprioritize helper hosts / path tools.
++    // Deprioritize helper hosts / path tools / companion servers.
+     if (/host|rg$|zsh|node|python/i.test(base)) s -= 20;
++    if (/(?:^|-)(?:server|daemon)$/i.test(base)) s -= 30;
+     if (base.length === 1) s -= 5; // e.g. "i"
+     // Boost binary-like files (no extension or known non-doc) over
+     // documentation/license files (common in release archives).
+@@ -133,14 +191,34 @@ export function buildBinaryReleaseInstallBody(
+   }
+ 
+   // Nested package archives (e.g. open-interpreter-package-*/bin/interpreter + resources).
++  // When the entry path embeds arch/platform (atuin-aarch64-apple-darwin/atuin),
++  // discover by basename so one install body works for every platform URL.
+   if (archiveEntrypoint) {
+     const src = archiveEntrypoint.replace(/\\/g, "/");
++    const upstreamBase = src.split("/").pop() || binName;
++    const archSpecific =
++      /(?:^|\/)[^/]*(?:aarch64|arm64|x86_64|amd64|darwin|linux|apple|unknown)[^/]*\//i.test(
++        src,
++      ) || /(?:aarch64|arm64|x86_64|amd64)/i.test(src.split("/")[0] || "");
++
++    if (archSpecific) {
++      const findName = upstreamBase || binName;
++      return [
++        `libexec.install Dir["*"]`,
++        `bin_path = Dir[libexec/"**/${findName}"].find { |f| File.file?(f) }`,
++        `odie "No binary ${findName} found in archive" unless bin_path`,
++        `bin.install_symlink bin_path => ${rubyString(binName)}`,
++        ...(upstreamBase && upstreamBase !== binName
++          ? [`bin.install_symlink bin_path => ${rubyString(upstreamBase)}`]
++          : []),
++      ].join("\n    ");
++    }
++
+     const lines = [
+       `libexec.install Dir["*"]`,
+       `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(binName)}`,
+     ];
+     // Also expose the upstream entrypoint basename when it differs (interpreter vs open-interpreter).
+-    const upstreamBase = src.split("/").pop() || "";
+     if (upstreamBase && upstreamBase !== binName) {
+       lines.push(
+         `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(upstreamBase)}`,
+@@ -195,11 +273,25 @@ export async function collectBinaryReleasePayload(
+   const license = guessLicenseIdentifier(repoInfo.license);
+   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
+ 
++  const productHints = [
++    options.binName,
++    repoInfo?.name,
++    String(name || "").replace(/-tap\d*$/i, ""),
++  ].filter(Boolean) as string[];
++
+   const archAssets: Record<string, any> = {};
+   for (const asset of release.assets) {
+     if (!isBinaryAsset(asset.name)) continue;
+     const arch = matchAssetToArch(asset.name);
+-    if (arch) archAssets[arch] = asset;
++    if (!arch) continue;
++    const existing = archAssets[arch];
++    if (
++      !existing ||
++      scoreBinaryReleaseAsset(asset.name, productHints) >
++        scoreBinaryReleaseAsset(existing.name, productHints)
++    ) {
++      archAssets[arch] = asset;
++    }
+   }
+ 
+   if (archAssets.macosUniversal) {

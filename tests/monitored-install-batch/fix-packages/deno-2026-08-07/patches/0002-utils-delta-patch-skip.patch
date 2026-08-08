@@ -1,0 +1,37 @@
+diff --git a/lib/utils.ts b/lib/utils.ts
+index 28ec1c1..7f9d09e 100644
+--- a/lib/utils.ts
++++ b/lib/utils.ts
+@@ -629,6 +629,9 @@ const BARE_BINARY_SKIP_SUFFIXES = [
+   ".appimage",
+   ".msi",
+   ".app",
++  ".bsdiff",
++  ".delta",
++  ".patch",
+ ];
+ const BARE_BINARY_SKIP_NAMES = new Set([
+   "sha256.txt",
+@@ -646,6 +649,15 @@ export function isArchiveBinaryAsset(assetName) {
+   );
+ }
+ 
++/** Binary-delta / patch release assets (e.g. deno-*.from-2.9.4.bsdiff) — never installable. */
++export function isDeltaPatchAsset(assetName: string): boolean {
++  const lower = (assetName || "").toLowerCase();
++  if (!lower) return false;
++  if (/\.(bsdiff|delta|patch)$/i.test(lower)) return true;
++  if (/\.from-\d/i.test(lower)) return true;
++  return false;
++}
++
+ /** Extensionless (or .exe) platform-tagged release binaries, e.g. csctf-macos-arm64.
+  * Also accepts versioned bare names like afm_0.1.0_macOS_universal (dots only in versions).
+  */
+@@ -680,5 +692,6 @@ export function isBareBinaryAsset(assetName) {
+ }
+ 
+ export function isBinaryAsset(assetName) {
++  if (isDeltaPatchAsset(assetName)) return false;
+   return isArchiveBinaryAsset(assetName) || isBareBinaryAsset(assetName);
+ }

@@ -1,0 +1,15 @@
+{
+  "slug": "paste",
+  "url": "https://paste.app",
+  "mode": "patch",
+  "summary": "Brand-compatible homebrew/cask homepage match for paste.app → paste",
+  "files": [
+    "lib/generators/homebrew-cask.ts",
+    "lib/cli.ts",
+    "tests/unit/generators/homebrew-cask-homepage.test.ts"
+  ],
+  "patches": [
+    "patches/0001-homebrew-cask-brand-match.patch",
+    "patches/0002-cli-case-c-homepage-match.patch"
+  ]
+}

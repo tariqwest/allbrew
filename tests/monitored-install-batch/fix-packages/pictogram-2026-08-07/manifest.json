@@ -1,0 +1,18 @@
+{
+  "slug": "pictogram",
+  "url": "https://pictogramapp.com",
+  "mode": "patch",
+  "summary": "Adopt official homebrew/cask when product homepage domain matches cask homepage (Case C). Fixes pictogram.com non-interactive generate_fail on 0.0.24.",
+  "files": {
+    "lib/generators/homebrew-cask.ts": "files/homebrew-cask.ts",
+    "lib/cli.ts": "files/cli.ts",
+    "tests/unit/generators/homebrew-cask-homepage.test.ts": "files/homebrew-cask-homepage.test.ts"
+  },
+  "patches": [
+    "patches/0001-matchOfficialCaskByHomepage.patch",
+    "patches/0002-cli-case-c-homebrew-cask-homepage.patch",
+    "patches/0003-homebrew-cask-homepage-unit-test.patch"
+  ],
+  "failureClass": "generate_fail",
+  "rootCause": "Marketing homepage classifies as unknown; page-discover misses form action=Pictogram.zip; released allbrew lacks matchOfficialCaskByHomepage so non-interactive throws."
+}

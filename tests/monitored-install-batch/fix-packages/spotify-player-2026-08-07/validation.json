@@ -1,0 +1,21 @@
+{
+  "url": "https://formulae.brew.sh/formula/spotify_player",
+  "slug": "spotify-player",
+  "failureClass": "generate_fail",
+  "rootCause": "toFormulaName converts spotify_player → spotify-player; formulae.brew.sh API 404. Also bottle cellar double-colon latent.",
+  "fixFiles": [
+    "lib/generators/homebrew-formula.ts",
+    "lib/cli.ts"
+  ],
+  "tests": [
+    "tests/unit/homebrew-formula-spotify-player.test.ts"
+  ],
+  "localGenerateOk": true,
+  "rubySyntaxOk": true,
+  "hostBrewInstallObserved": true,
+  "hostBrewNotSuccessCriterion": true,
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "released": false,
+  "relatedFixPackages": ["md-tui-2026-08-07", "kubetui-2026-08-07", "termscp-2026-08-07"]
+}

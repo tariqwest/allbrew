@@ -1,0 +1,27 @@
+{
+  "slug": "zyp",
+  "url": "https://getzyp.com",
+  "failureClass": "generate_fail",
+  "expectedGenerator": "cask-app",
+  "expectedService": false,
+  "expectedArtifact": "https://getzyp.com/download/Zyp-1.3.0-arm64.dmg",
+  "unitTests": {
+    "command": "bun test tests/unit/page-discover.test.ts",
+    "pass": true,
+    "count": 17,
+    "worktree": "tests/monitored-install-batch/worktrees/zyp-fix-1793"
+  },
+  "localGenerate": {
+    "unfixed": "archive → Zyp-1.3.0-arm64.tar.gz → cmake Formula",
+    "fixedDiscovery": "cask-dmg → https://getzyp.com/download/Zyp-1.3.0-arm64.dmg (score 155)",
+    "fullHashDownload": "skipped_wall_budget_109MB"
+  },
+  "batchMode": true,
+  "released": false,
+  "vmInstall": {
+    "endpoint": "local-1 then homeserver-retry",
+    "allbrewVersion": "0.0.24",
+    "helperUsed": true,
+    "note": "Released CLI lacks fix; expect generate_fail until release"
+  }
+}

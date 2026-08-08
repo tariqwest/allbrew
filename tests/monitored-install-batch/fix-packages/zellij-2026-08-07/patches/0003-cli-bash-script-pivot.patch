@@ -1,0 +1,60 @@
+--- lib/cli.ts	2026-08-06 17:07:45
++++ /Users/tariqwest/Developer/allbrew/tests/monitored-install-batch/worktrees/zellij-2026-08-07/lib/cli.ts	2026-08-07 06:41:10
+@@ -1255,6 +1255,57 @@
+ }
+ 
+ async function handleBashScript(url, opts) {
++  // Prefer durable packaging when the "install" script is really a thin
++  // GitHub-release binary bootstrap (zellij.dev/launch, similar try-now scripts).
++  // install-script with PREFIX is wrong for those — they write under /tmp and exec.
++  try {
++    const { assertSafeFetchUrl } = await import("./utils.ts");
++    assertSafeFetchUrl(url);
++    const res = await fetch(url, {
++      redirect: "follow",
++      headers: { "User-Agent": "allbrew/1.0" },
++      signal: AbortSignal.timeout(30_000),
++    });
++    if (res.ok) {
++      const scriptText = await res.text();
++      const { detectGithubBinaryReleaseFromScript } = await import(
++        "./analyzer.ts"
++      );
++      const pivot = detectGithubBinaryReleaseFromScript(scriptText);
++      if (pivot && (pivot.confidence === "high" || pivot.confidence === "medium")) {
++        console.log(
++          chalk.dim(
++            `  Install script downloads GitHub release binary for ${pivot.owner}/${pivot.repo}; using binary-release`,
++          ),
++        );
++        return await handleGithubRepo(
++          {
++            type: "github-repo",
++            url: `https://github.com/${pivot.owner}/${pivot.repo}`,
++            owner: pivot.owner,
++            repo: pivot.repo,
++          },
++          {
++            ...opts,
++            // Force binary-release path when both app+bin exist we still want CLI.
++            // handleGithubRepo respects opts.type.
++            type: opts.type || "binary-release",
++            // Keep original launch URL as homepage when user did not override.
++            homepage: opts.homepage || url,
++          },
++        );
++      }
++    }
++  } catch (err: any) {
++    if (opts.verbose) {
++      console.log(
++        chalk.dim(
++          `  Install-script probe skipped: ${err?.message || err}`,
++        ),
++      );
++    }
++  }
++
+   return await generateWithConfirmation("install-script", { url }, opts);
+ }
+ 

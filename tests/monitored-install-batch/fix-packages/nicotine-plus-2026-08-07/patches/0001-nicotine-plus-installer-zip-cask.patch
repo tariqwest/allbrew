@@ -1,0 +1,657 @@
+diff --git a/lib/generators/cask-app-release.ts b/lib/generators/cask-app-release.ts
+index 0fa412d..0c34b86 100644
+--- a/lib/generators/cask-app-release.ts
++++ b/lib/generators/cask-app-release.ts
+@@ -3,12 +3,47 @@ import {
+   extractVersionFromTag,
+   rubyEscape,
+   isAppAsset,
++  matchAssetToArch,
+ } from "../utils.ts";
+ import { downloadToTemp } from "../sha256.ts";
+-import { listDmgAppNames, listZipEntries } from "../archive-inspector.ts";
++import {
++  listDmgAppNames,
++  listZipEntries,
++  listArchiveEntries,
++} from "../archive-inspector.ts";
+ import type { CaskAppReleasePayload } from "../template-payload.ts";
+ import { writeRenderedCask } from "../template-renderer.ts";
+ import { githubLatestLivecheckBlock } from "./livecheck.ts";
++import { templateReleaseUrl } from "./binary-release.ts";
++
++/** Prefer DMG, then host-arch zip, then first app asset. */
++export function pickBestAppReleaseAsset(appAssets: { name: string }[]): {
++  name: string;
++} {
++  if (appAssets.length === 0) {
++    throw new Error("No .dmg or macOS .zip assets found in release");
++  }
++  const dmgAsset = appAssets.find((a) => a.name.toLowerCase().endsWith(".dmg"));
++  if (dmgAsset) return dmgAsset;
++
++  const hostArch =
++    process.arch === "arm64"
++      ? "macosArm"
++      : process.arch === "x64"
++        ? "macosIntel"
++        : null;
++  if (hostArch) {
++    const archMatch = appAssets.find(
++      (a) => matchAssetToArch(a.name) === hostArch,
++    );
++    if (archMatch) return archMatch;
++  }
++  const universal = appAssets.find(
++    (a) => matchAssetToArch(a.name) === "macosUniversal",
++  );
++  if (universal) return universal;
++  return appAssets[0];
++}
+ 
+ export async function collectCaskAppReleasePayload(
+   repoInfo: any,
+@@ -22,18 +57,16 @@ export async function collectCaskAppReleasePayload(
+     throw new Error("No .dmg or macOS .zip assets found in release");
+   }
+ 
+-  const dmgAsset = appAssets.find((a: any) =>
+-    a.name.toLowerCase().endsWith(".dmg"),
+-  );
+-  const bestAsset = dmgAsset || appAssets[0];
++  const bestAsset = pickBestAppReleaseAsset(appAssets);
+ 
+   let appName = options.appName;
++  let nestedContainer: string | null = null;
+ 
+   const { sha256, cleanup, path } = await downloadToTemp(bestAsset.url, bestAsset.name);
+   try {
+-    if (!appName) {
+-      appName = await detectAppNameFromAsset(bestAsset, path);
+-    }
++    const detected = await detectAppAndNestedFromAsset(bestAsset, path);
++    if (!appName) appName = detected.appName;
++    nestedContainer = detected.nestedContainer;
+   } finally {
+     await cleanup();
+   }
+@@ -56,9 +89,21 @@ export async function collectCaskAppReleasePayload(
+   const homepage = options.homepage || repoInfo.homepage || repoInfo.htmlUrl;
+   const displayName = appName.replace(/\.app$/i, "");
+ 
+-  const urlTemplate = bestAsset.url
+-    .replace(version, "#{version}")
+-    .replace(release.tagName, "v#{version}");
++  // Use shared templateReleaseUrl so bare tags (tag == version) replace ALL
++  // occurrences without inventing a spurious "v" prefix in the asset basename
++  // (e.g. ComicTagger-1.5.5-osx-….app.zip must not become ComicTagger-v#{version}-…).
++  const urlTemplate = templateReleaseUrl(bestAsset.url, version, release.tagName);
++
++  // Nested DMG basenames often embed the version (nicotine+-3.3.10.dmg).
++  let containerBlock = "";
++  if (nestedContainer) {
++    const nestedTemplated = templateReleaseUrl(
++      nestedContainer,
++      version,
++      release.tagName,
++    );
++    containerBlock = `  container nested: "${rubyEscape(nestedTemplated)}"\n`;
++  }
+ 
+   const zapPaths = [
+     `~/Library/Application Support/${displayName}`,
+@@ -76,6 +121,7 @@ export async function collectCaskAppReleasePayload(
+     appName: rubyEscape(appName),
+     desc: rubyEscape(desc),
+     homepage: rubyEscape(homepage),
++    containerBlock,
+     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
+     zapBlock: buildZapBlock(zapPaths),
+   };
+@@ -103,20 +149,29 @@ export async function generateCaskAppRelease(
+   return writeRenderedCask(payload, options.tapPath);
+ }
+ 
+-async function detectAppNameFromAsset(asset: any, localPath?: string) {
++/** @deprecated Prefer detectAppAndNestedFromAsset; kept for unit tests. */
++export async function detectAppNameFromAsset(asset: any, localPath?: string) {
++  const r = await detectAppAndNestedFromAsset(asset, localPath);
++  return r.appName;
++}
++
++export async function detectAppAndNestedFromAsset(
++  asset: any,
++  localPath?: string,
++): Promise<{ appName: string | null; nestedContainer: string | null }> {
+   const lower = asset.name.toLowerCase();
+ 
+   if (lower.endsWith(".dmg")) {
+     try {
+       if (localPath) {
+         const apps = await listDmgAppNames(localPath);
+-        if (apps.length > 0) return apps[0];
++        if (apps.length > 0) return { appName: apps[0], nestedContainer: null };
+       } else {
+         const { downloadToTemp } = await import("../sha256.ts");
+         const { path, cleanup } = await downloadToTemp(asset.url, asset.name);
+         try {
+           const apps = await listDmgAppNames(path);
+-          if (apps.length > 0) return apps[0];
++          if (apps.length > 0) return { appName: apps[0], nestedContainer: null };
+         } finally {
+           await cleanup();
+         }
+@@ -130,26 +185,75 @@ async function detectAppNameFromAsset(asset: any, localPath?: string) {
+       .replace(/[-_](?:aarch64|arm64|x64|amd64|universal)$/i, "")
+       .replace(/-[\d.]+$/, "")
+       .replace(/_[\d.]+$/, "");
+-    return base + ".app";
++    return { appName: base + ".app", nestedContainer: null };
+   }
+ 
+-  if (lower.endsWith(".zip")) {
++  if (
++    lower.endsWith(".zip") ||
++    lower.endsWith(".tar.gz") ||
++    lower.endsWith(".tgz") ||
++    lower.endsWith(".tar.bz2") ||
++    lower.endsWith(".tar.xz") ||
++    lower.endsWith(".tar")
++  ) {
+     try {
+-      if (localPath) {
+-        const entries = await listZipEntries(localPath);
+-        const appEntry = entries.find((e) => /\.app\/?$/i.test(e.trim()));
+-        if (appEntry) {
+-          return appEntry.trim().replace(/\/$/, "").split("/").pop();
++      const listEntries = async (p: string) => {
++        if (lower.endsWith(".zip")) return listZipEntries(p);
++        return listArchiveEntries(p);
++      };
++      const findApp = (entries: string[]) => {
++        const appDir = entries.find((e) => /\.app\/?$/i.test(e.trim()));
++        if (appDir) {
++          return appDir.trim().replace(/\/$/, "").split("/").pop();
++        }
++        // tar listings often only show nested files under .app/
++        const nested = entries.find((e) => /\.app\//i.test(e));
++        if (nested) {
++          const m = nested.match(/([^/]+\.app)\//i);
++          if (m) return m[1];
+         }
++        return null;
++      };
++      const findNestedDmg = (entries: string[]) => {
++        const dmg = entries.find((e) => /\.dmg$/i.test(e.trim()));
++        return dmg ? dmg.trim().replace(/^\.\//, "").split("/").pop()! : null;
++      };
++
++      const inspectPath = async (p: string) => {
++        const entries = await listEntries(p);
++        const name = findApp(entries);
++        if (name) return { appName: name, nestedContainer: null as string | null };
++
++        const nestedDmg = findNestedDmg(entries);
++        if (nestedDmg && lower.endsWith(".zip")) {
++          const { mkdtemp, rm } = await import("node:fs/promises");
++          const { tmpdir } = await import("node:os");
++          const { join } = await import("node:path");
++          const { execFile } = await import("node:child_process");
++          const { promisify } = await import("node:util");
++          const execFileAsync = promisify(execFile);
++          const dir = await mkdtemp(join(tmpdir(), "allbrew-nested-dmg-"));
++          try {
++            await execFileAsync("unzip", ["-o", "-q", p, nestedDmg, "-d", dir]);
++            const dmgPath = join(dir, nestedDmg);
++            const apps = await listDmgAppNames(dmgPath);
++            if (apps.length > 0) {
++              return { appName: apps[0], nestedContainer: nestedDmg };
++            }
++          } finally {
++            await rm(dir, { recursive: true, force: true });
++          }
++        }
++        return { appName: null as string | null, nestedContainer: null as string | null };
++      };
++
++      if (localPath) {
++        return await inspectPath(localPath);
+       } else {
+         const { downloadToTemp } = await import("../sha256.ts");
+         const { path, cleanup } = await downloadToTemp(asset.url, asset.name);
+         try {
+-          const entries = await listZipEntries(path);
+-          const appEntry = entries.find((e) => /\.app\/?$/i.test(e.trim()));
+-          if (appEntry) {
+-            return appEntry.trim().replace(/\/$/, "").split("/").pop();
+-          }
++          return await inspectPath(path);
+         } finally {
+           await cleanup();
+         }
+@@ -159,5 +263,5 @@ async function detectAppNameFromAsset(asset: any, localPath?: string) {
+     }
+   }
+ 
+-  return null;
++  return { appName: null, nestedContainer: null };
+ }
+diff --git a/lib/template-payload.ts b/lib/template-payload.ts
+index da8b65c..d7c28a9 100644
+--- a/lib/template-payload.ts
++++ b/lib/template-payload.ts
+@@ -122,6 +122,8 @@ export type CaskAppReleasePayload = {
+   appName: string;
+   desc: string;
+   homepage: string;
++  /** Pre-rendered stanza including trailing newline, or empty string. */
++  containerBlock: string;
+   livecheckBlock: string;
+   zapBlock: string;
+ };
+diff --git a/lib/templates/cask/cask-app-release.ts b/lib/templates/cask/cask-app-release.ts
+index 7e7d41d..79f32d3 100644
+--- a/lib/templates/cask/cask-app-release.ts
++++ b/lib/templates/cask/cask-app-release.ts
+@@ -12,7 +12,7 @@ export default function renderCaskAppRelease(
+   desc "${p.desc}"
+   homepage "${p.homepage}"
+ 
+-  app "${p.appName}"
++${p.containerBlock}  app "${p.appName}"
+ 
+ ${p.livecheckBlock}${p.zapBlock}end
+ `;
+diff --git a/lib/utils.ts b/lib/utils.ts
+index 28ec1c1..81f0f68 100644
+--- a/lib/utils.ts
++++ b/lib/utils.ts
+@@ -541,6 +541,8 @@ export function archPatterns() {
+     macosArm: [
+       /darwin.*arm64/i,
+       /macos.*arm64/i,
++      // short platform token "mac" (Electron/Fyne): Supersonic-0.22.0-mac-arm64.zip
++      /(?:^|[^a-z])mac[-_.]?arm64/i,
+       /arm64.*darwin/i,
+       /arm64.*macos/i,
+       /aarch64.*darwin/i,
+@@ -554,6 +556,7 @@ export function archPatterns() {
+       /macos.*x86_64/i,
+       /darwin.*x64/i,
+       /macos.*x64/i,
++      /(?:^|[^a-z])mac[-_.]?(?:x64|x86_64|amd64)/i,
+       /x86_64.*darwin/i,
+       /x86_64.*macos/i,
+     ],
+@@ -561,6 +564,7 @@ export function archPatterns() {
+       /macos[-_.]?universal/i,
+       /universal[-_.]?macos/i,
+       /darwin[-_.]?universal/i,
++      /(?:^|[^a-z])mac[-_.]?universal/i,
+     ],
+     linuxArm: [
+       /linux.*arm64/i,
+@@ -586,23 +590,115 @@ export function matchAssetToArch(assetName) {
+   return null;
+ }
+ 
++/**
++ * Whether a release asset is a CLI binary installable on the current host OS/CPU.
++ * Used to decide auto binary-release vs fall through to source/go/cargo generators.
++ * (Formulas may still list multi-arch URLs; host must have at least one matching mac/linux block.)
++ */
++export function isHostCompatibleBinaryAsset(
++  assetName,
++  host: { platform?: string; arch?: string } = {},
++) {
++  const archKey = matchAssetToArch(assetName);
++  if (!archKey) return false;
++  const platform = host.platform ?? process.platform;
++  const cpu = host.arch ?? process.arch;
++  if (platform === "darwin") {
++    if (cpu === "arm64") {
++      return archKey === "macosArm" || archKey === "macosUniversal";
++    }
++    return archKey === "macosIntel" || archKey === "macosUniversal";
++  }
++  if (platform === "linux") {
++    if (cpu === "arm64") return archKey === "linuxArm";
++    return archKey === "linuxIntel";
++  }
++  return false;
++}
++
++/** True if any asset is a host-compatible CLI binary. */
++export function releaseHasHostCompatibleBinary(
++  assets: Array<{ name?: string } | string>,
++  host: { platform?: string; arch?: string } = {},
++) {
++  return assets.some((a) => {
++    const name = typeof a === "string" ? a : a?.name;
++    return name ? isHostCompatibleBinaryAsset(name, host) : false;
++  });
++}
++
+ export function isAppAsset(assetName) {
+   const lower = assetName.toLowerCase();
+   if (lower.endsWith(".dmg")) return true;
+-  if (!lower.endsWith(".zip")) return false;
++
++  const isZip = lower.endsWith(".zip");
++  const isTarGz =
++    lower.endsWith(".tar.gz") ||
++    lower.endsWith(".tgz") ||
++    lower.endsWith(".tar.bz2") ||
++    lower.endsWith(".tar.xz");
++  if (!isZip && !isTarGz) return false;
++
+   // Explicit app-bundle archives
+   if (lower.includes(".app")) return true;
++
++  // Product-style tar archives (spaces as dots): Mission.Control.Plus.tgz
++  // No platform/arch tags — Homebrew casks often use this shape for macOS apps.
++  if (isTarGz && isDottedProductAppArchive(lower)) return true;
++
+   const hasMacToken = /(?:^|[^a-z])(?:mac|macos|osx|darwin)(?:[^a-z]|$)/i.test(
+     lower,
+   );
+   if (!hasMacToken) return false;
+-  // Arch-tagged darwin/macos zips are almost always CLI binaries (e.g. gogs_*_darwin_amd64.zip),
+-  // not .app bundles. Desktop app zips usually omit cpu arch or use "universal" with .app.
++
++  // Explicit installer archives (often zip-wrapped DMGs) are app packages even
++  // when tagged with macos + cpu arch, e.g. macos-arm64-installer.zip.
++  if (/(?:^|[^a-z])installer(?:[^a-z]|$)/i.test(lower)) return true;
++
++  // Arch-tagged darwin/macos/osx archives are almost always CLI binaries
++  // (e.g. gogs_*_darwin_amd64.zip, tool-macos-x64.zip), not .app bundles.
++  // Short platform token "mac" + cpu arch is common for desktop apps
++  // (Electron/Fyne), e.g. Supersonic-0.22.0-mac-arm64.zip — treat those as apps.
+   const hasCpuArch =
+     /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(
+       lower,
+     );
+-  if (hasCpuArch) return false;
++  if (hasCpuArch) {
++    const usesDarwinMacosOsx =
++      /(?:^|[^a-z])(?:darwin|macos|osx)(?:[^a-z]|$)/i.test(lower);
++    if (usesDarwinMacosOsx) return false;
++    // remaining mac token is short "mac" only
++    return /(?:^|[^a-z])mac(?:[^a-z]|$)/i.test(lower);
++  }
++  return true;
++}
++
++/** Word.Word(.Word)*.tgz product names without platform/arch (macOS .app tarballs). */
++function isDottedProductAppArchive(lowerName: string): boolean {
++  if (
++    /(?:^|[^a-z])(?:linux|windows|win32|android|freebsd|openbsd)(?:[^a-z]|$)/i.test(
++      lowerName,
++    )
++  ) {
++    return false;
++  }
++  if (
++    /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386|darwin|macos|osx)(?:[^a-z]|$)/i.test(
++      lowerName,
++    )
++  ) {
++    return false;
++  }
++  const base = lowerName
++    .replace(/\.tar\.gz$/, "")
++    .replace(/\.tar\.bz2$/, "")
++    .replace(/\.tar\.xz$/, "")
++    .replace(/\.tgz$/, "");
++  // At least two dots → three alpha segments (Mission.Control.Plus)
++  if (!/^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*){2,}$/i.test(base)) return false;
++  const parts = base.split(".");
++  // Reject version-like segments (all digits)
++  if (parts.some((p) => /^\d+$/.test(p))) return false;
+   return true;
+ }
+ 
+diff --git a/scripts/test-templates.ts b/scripts/test-templates.ts
+index 01f7838..d7d459e 100644
+--- a/scripts/test-templates.ts
++++ b/scripts/test-templates.ts
+@@ -134,6 +134,7 @@ function buildGithubReleaseCase(): Case {
+     appName: "Foo.app",
+     desc: "Foo cask",
+     homepage: "https://github.com/x/foo",
++    containerBlock: "",
+     livecheckBlock,
+     zapBlock: zap,
+   };
+diff --git a/tests/unit/generators/cask-app-release.test.ts b/tests/unit/generators/cask-app-release.test.ts
+index bc4033a..c4a50e7 100644
+--- a/tests/unit/generators/cask-app-release.test.ts
++++ b/tests/unit/generators/cask-app-release.test.ts
+@@ -15,6 +15,7 @@ mock.module("../../../lib/sha256.ts", () => ({
+ 
+ mock.module("../../../lib/archive-inspector.ts", () => ({
+   listZipEntries: mock().mockResolvedValue(["TestApp.app/"]),
++  listArchiveEntries: mock().mockResolvedValue(["TestApp.app/"]),
+   listDmgAppNames: mock().mockResolvedValue([]),
+ }));
+ 
+@@ -22,6 +23,7 @@ mock.module("../../../lib/archive-inspector.ts", () => ({
+ function mockArchiveInspector(opts: { zip?: string[]; dmg?: string[] } = {}) {
+   mock.module("../../../lib/archive-inspector.ts", () => ({
+     listZipEntries: mock().mockResolvedValue(opts.zip ?? ["TestApp.app/"]),
++    listArchiveEntries: mock().mockResolvedValue(opts.zip ?? ["TestApp.app/"]),
+     listDmgAppNames: mock().mockResolvedValue(opts.dmg ?? []),
+   }));
+ }
+@@ -111,6 +113,71 @@ describe("collectCaskAppReleasePayload", () => {
+     expect(payload.displayName).toBe("MCP Router");
+   });
+ 
++  it("detects .app inside zip-wrapped DMG and emits container nested (Nicotine+)", async () => {
++    const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
++    const { tmpdir } = await import("node:os");
++    const { join } = await import("node:path");
++    const { execFile } = await import("node:child_process");
++    const { promisify } = await import("node:util");
++    const execFileAsync = promisify(execFile);
++
++    const dir = await mkdtemp(join(tmpdir(), "allbrew-np-zip-"));
++    const dmgName = "nicotine+-3.3.10.dmg";
++    const zipPath = join(dir, "macos-arm64-installer.zip");
++    try {
++      await writeFile(join(dir, dmgName), "not-a-real-dmg");
++      await execFileAsync("zip", ["-j", "-q", zipPath, join(dir, dmgName)]);
++
++      mock.module("../../../lib/sha256.ts", () => ({
++        hashUrl: mock().mockResolvedValue("cask_sha256_mock"),
++        downloadAndHash: mock().mockResolvedValue({
++          sha256: "np_sha256_64chars_pad_abcdef0123456789abcdef0123456789abcd",
++        }),
++        downloadToTemp: mock().mockResolvedValue({
++          path: zipPath,
++          sha256: "np_sha256_64chars_pad_abcdef0123456789abcdef0123456789abcd",
++          cleanup: mock(),
++        }),
++      }));
++      mockArchiveInspector({
++        zip: [dmgName],
++        dmg: ["Nicotine+.app"],
++      });
++
++      const npRelease = {
++        tagName: "3.3.10",
++        assets: [
++          {
++            name: "macos-arm64-installer.zip",
++            url: "https://github.com/nicotine-plus/nicotine-plus/releases/download/3.3.10/macos-arm64-installer.zip",
++          },
++          {
++            name: "macos-x86_64-installer.zip",
++            url: "https://github.com/nicotine-plus/nicotine-plus/releases/download/3.3.10/macos-x86_64-installer.zip",
++          },
++        ],
++      };
++      const payload = await collectCaskAppReleasePayload(
++        {
++          name: "nicotine-plus",
++          fullName: "nicotine-plus/nicotine-plus",
++          description: "Graphical client for the Soulseek peer-to-peer network",
++          homepage: "https://nicotine-plus.org",
++          htmlUrl: "https://github.com/nicotine-plus/nicotine-plus",
++        },
++        npRelease,
++      );
++      expect(payload.template).toBe("cask_app_release");
++      expect(payload.appName).toBe("Nicotine+.app");
++      expect(payload.displayName).toBe("Nicotine+");
++      expect(payload.containerBlock).toContain("container nested:");
++      expect(payload.containerBlock).toContain("nicotine+-#{version}.dmg");
++      expect(payload.url).toContain("macos-arm64-installer.zip");
++    } finally {
++      await rm(dir, { recursive: true, force: true });
++    }
++  });
++
+   it("uses repo description", async () => {
+     const payload = await collectCaskAppReleasePayload(repoInfo, release);
+     expect(payload.desc).toBe("Modern SQL client");
+@@ -1068,3 +1135,47 @@ describe("collectCaskAppReleasePayload — MCPSM (Rust .app.zip only)", () => {
+     expect(payload.sha256).toBeTruthy();
+   });
+ });
++
++describe("collectCaskAppReleasePayload — ComicTagger (bare tag, version in asset name)", () => {
++  beforeEach(() => {
++    mock.restore();
++    mockArchiveInspector({ zip: ["ComicTagger.app/"] });
++  });
++
++  const repoInfo = {
++    name: "comictagger",
++    fullName: "comictagger/comictagger",
++    description: "A multi-platform app for writing metadata to digital comics",
++    homepage: "https://github.com/comictagger/comictagger",
++    htmlUrl: "https://github.com/comictagger/comictagger",
++    license: "Apache-2.0",
++  };
++
++  const release = {
++    // GitHub release tag is bare "1.5.5" (no v prefix); asset basename also embeds 1.5.5
++    tagName: "1.5.5",
++    assets: [
++      {
++        name: "ComicTagger-1.5.5-osx-10.15.7-x86_64.app.zip",
++        url: "https://github.com/comictagger/comictagger/releases/download/1.5.5/ComicTagger-1.5.5-osx-10.15.7-x86_64.app.zip",
++      },
++      {
++        name: "comictagger-1.5.5-py3-none-any.whl",
++        url: "https://github.com/comictagger/comictagger/releases/download/1.5.5/comictagger-1.5.5-py3-none-any.whl",
++      },
++    ],
++  };
++
++  it("templates bare tag without injecting v into asset basename", async () => {
++    const payload = await collectCaskAppReleasePayload(repoInfo, release, {
++      name: "comictagger-comictagger",
++    });
++    expect(payload.template).toBe("cask_app_release");
++    expect(payload.version).toBe("1.5.5");
++    expect(payload.url).toBe(
++      "https://github.com/comictagger/comictagger/releases/download/#{version}/ComicTagger-#{version}-osx-10.15.7-x86_64.app.zip",
++    );
++    expect(payload.url).not.toContain("ComicTagger-v#{version}");
++    expect(payload.appName).toBe("ComicTagger.app");
++  });
++});
+diff --git a/tests/unit/utils.test.ts b/tests/unit/utils.test.ts
+index 4f9f82d..acd3bda 100644
+--- a/tests/unit/utils.test.ts
++++ b/tests/unit/utils.test.ts
+@@ -8,6 +8,8 @@ import {
+   rubyEscape,
+   guessLicenseIdentifier,
+   matchAssetToArch,
++  isHostCompatibleBinaryAsset,
++  releaseHasHostCompatibleBinary,
+   isAppAsset,
+   isBinaryAsset,
+   assertSafeFetchUrl,
+@@ -388,6 +390,36 @@ describe("matchAssetToArch", () => {
+   });
+ });
+ 
++describe("isHostCompatibleBinaryAsset", () => {
++  it("requires darwin arm64 or universal on Apple Silicon", () => {
++    const host = { platform: "darwin", arch: "arm64" };
++    expect(isHostCompatibleBinaryAsset("tdash-darwin-amd64", host)).toBe(false);
++    expect(isHostCompatibleBinaryAsset("tdash-linux-arm64", host)).toBe(false);
++    expect(isHostCompatibleBinaryAsset("tdash-darwin-arm64", host)).toBe(true);
++    expect(isHostCompatibleBinaryAsset("tool-macos-universal", host)).toBe(true);
++  });
++
++  it("requires darwin amd64 or universal on Intel Mac", () => {
++    const host = { platform: "darwin", arch: "x64" };
++    expect(isHostCompatibleBinaryAsset("tdash-darwin-amd64", host)).toBe(true);
++    expect(isHostCompatibleBinaryAsset("tdash-darwin-arm64", host)).toBe(false);
++  });
++
++  it("releaseHasHostCompatibleBinary for tdash-like releases", () => {
++    const assets = [
++      "tdash-darwin-amd64",
++      "tdash-linux-amd64",
++      "tdash-linux-arm64",
++    ];
++    expect(
++      releaseHasHostCompatibleBinary(assets, { platform: "darwin", arch: "arm64" }),
++    ).toBe(false);
++    expect(
++      releaseHasHostCompatibleBinary(assets, { platform: "darwin", arch: "x64" }),
++    ).toBe(true);
++  });
++});
++
+ describe("isAppAsset", () => {
+   it("matches .dmg files", () => {
+     expect(isAppAsset("Foo.dmg")).toBe(true);
+@@ -406,6 +438,23 @@ describe("isAppAsset", () => {
+     expect(isAppAsset("tool-macos-x64.zip")).toBe(false);
+   });
+ 
++  it("matches macOS installer zips even when arch-tagged (zip-wrapped DMG)", () => {
++    // Nicotine+: macos-arm64-installer.zip contains nicotine+-X.Y.Z.dmg
++    expect(isAppAsset("macos-arm64-installer.zip")).toBe(true);
++    expect(isAppAsset("macos-x86_64-installer.zip")).toBe(true);
++    expect(isAppAsset("Foo-macos-arm64-installer.zip")).toBe(true);
++    expect(isBinaryAsset("macos-arm64-installer.zip")).toBe(false);
++  });
++
++  it("matches short mac+arch desktop app zips (Electron/Fyne)", () => {
++    // Supersonic releases: Product-version-mac-arm64.zip contains Supersonic.app
++    expect(isAppAsset("Supersonic-0.22.0-mac-arm64.zip")).toBe(true);
++    expect(isAppAsset("Supersonic-0.22.0-mac-x64.zip")).toBe(true);
++    expect(isAppAsset("MyApp-1.0.0-mac-arm64.zip")).toBe(true);
++    expect(matchAssetToArch("Supersonic-0.22.0-mac-arm64.zip")).toBe("macosArm");
++    expect(matchAssetToArch("Supersonic-0.22.0-mac-x64.zip")).toBe("macosIntel");
++  });
++
+   it("rejects non-mac .zip files", () => {
+     expect(isAppAsset("foo-linux-x64.zip")).toBe(false);
+   });
+@@ -413,6 +462,17 @@ describe("isAppAsset", () => {
+   it("rejects non-archive files", () => {
+     expect(isAppAsset("README.md")).toBe(false);
+   });
++
++  it("matches product-style macOS .tgz app archives (Mission Control Plus)", () => {
++    expect(isAppAsset("Mission.Control.Plus.tgz")).toBe(true);
++    expect(isAppAsset("Foo.Bar.Baz.tar.gz")).toBe(true);
++    expect(isAppAsset("MyApp.app.tgz")).toBe(true);
++  });
++
++  it("rejects platform-tagged CLI tarballs as app assets", () => {
++    expect(isAppAsset("foo-darwin-arm64.tgz")).toBe(false);
++    expect(isAppAsset("foo-linux-amd64.tar.gz")).toBe(false);
++  });
+ });
+ 
+ describe("isBinaryAsset", () => {

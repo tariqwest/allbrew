@@ -1,0 +1,17 @@
+{
+  "localGenerate": {
+    "ok": true,
+    "generator": "cargo/source-build-via-cargo",
+    "formulaPath": "formula-gobang-cargo-expected.rb",
+    "hasService": false,
+    "dependsOnRust": true
+  },
+  "vmInstall": {
+    "ok": false,
+    "allbrewVersion": "0.0.24",
+    "error": "gobang: formula requires at least a URL",
+    "generatorObserved": "binary-release",
+    "endpoint": "homeserver"
+  },
+  "notes": "Intel-only macOS release assets → fall through to cargo; patch not in released bottle"
+}

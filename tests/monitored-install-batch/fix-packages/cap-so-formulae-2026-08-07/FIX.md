@@ -1,0 +1,52 @@
+# FIX: cap-so (https://formulae.brew.sh/cask/cap)
+
+## Failure class
+**generate_fail** (wrong generator) → **brew_fail**
+
+On allbrew **0.0.24** (released bottle used in VM):
+
+1. Classifies `https://formulae.brew.sh/cask/cap` as **`unknown`** (no `HOMEBREW_CASK_RE`).
+2. Page-discover scores the GitHub blob link to `Homebrew/homebrew-cask` monorepo highest.
+3. Treats monorepo as **source-build**, generates `Formula/cap-so.rb` from tag `v0.60.1` (homebrew-cask release), not Cap.app.
+4. `brew install` fails / installs the wrong thing.
+
+## Case C
+Official cask already exists: `brew install --cask cap` (token `cap`, version `0.5.8`, `Cap.app`, auto_updates, CrabNebula CDN). Prefer **homebrew-cask** mirror path — never monorepo source-build.
+
+## Root cause
+`feat(generator): add homebrew-formula and homebrew-cask generators` (`5e7a04e`) is on **main** but **not released**. Bottle 0.0.24 predates that commit.
+
+Distinct from homepage assignment (`https://cap.so` / CapSoftware/Cap) which needs page-discover + CrabNebula DMG path; this URL is already a formulae.brew.sh cask page and only needs the homebrew-cask classifier + generator.
+
+## Expected
+- **agent_service_expectation:** `false` (GUI `.app` cask)
+- **generator:** `homebrew-cask`
+- **package/app:** `cap` / `Cap.app`
+- **not:** source-build of `Homebrew/homebrew-cask`
+
+## Fix (batch mode — fix-package only, no release)
+Already on HEAD as `5e7a04e`:
+
+1. **`lib/classifier.ts`**: `HOMEBREW_CASK_RE` → `{ type: 'homebrew-cask', name }`
+2. **`lib/generators/homebrew-cask.ts`**: fetch official cask Ruby from homebrew/cask API + raw source
+3. Wire through CLI, manifest, package-updater
+
+Patch: `patches/0001-homebrew-cask-formula-generators.patch` (shared with devonthink-formulae)
+
+## Validation
+```bash
+bun -e 'import { classify } from "./lib/classifier.ts"; console.log(classify("https://formulae.brew.sh/cask/cap"))'
+# → { type: "homebrew-cask", name: "cap", ... }
+
+CI=1 ALLBREW_NONINTERACTIVE=1 bun run bin/allbrew.ts \
+  "https://formulae.brew.sh/cask/cap" --name cap --tap "$(mktemp -d)" --verbose
+# Classified as: homebrew-cask
+# Generated: .../Casks/cap.rb
+```
+
+## VM (allbrew 0.0.24 bottle)
+Fails as above until release/upgrade past `5e7a04e`. Host brew install intentionally not used as success path.
+
+## Related
+- `cap-so-2026-08-07/` targets CapSoftware/Cap / cap.so marketing discovery (cask-app CrabNebula).
+- Keep both; this package is formulae-only Case C.

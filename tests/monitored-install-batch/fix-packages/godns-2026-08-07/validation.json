@@ -1,0 +1,34 @@
+{
+  "package": "godns",
+  "url": "https://github.com/TimothyYe/godns",
+  "failureClass": "service_mismatch",
+  "generator": "binary-release",
+  "formulaName": "godns-tap",
+  "binName": "godns",
+  "version": "3.4.3",
+  "agentServiceExpectation": true,
+  "stockAllbrewServiceDecision": false,
+  "fixedAllbrewServiceDecision": true,
+  "fixedServiceCommand": "opt_bin/\"godns\"",
+  "unitTests": {
+    "command": "bun test tests/unit/analyzer.test.ts",
+    "result": "102 pass / 0 fail (worktree)"
+  },
+  "localGenerateFixed": {
+    "ok": true,
+    "signals": [
+      "Detected binary assets",
+      "Detected service/launchagent hint (high confidence)",
+      "Formula name \"godns\" collides with homebrew/core; using \"godns-tap\"",
+      "service do / run opt_bin/\"godns\" / keep_alive true"
+    ]
+  },
+  "released": false,
+  "batchMode": "option_A_fix_package_only",
+  "patches": [
+    "patches/0001-detect-systemd-daemon-service.patch",
+    "patches/0002-early-binary-release-service-config.patch",
+    "patches/0003-service-binname-fallback.patch",
+    "patches/0004-analyzer-godns-service-tests.patch"
+  ]
+}

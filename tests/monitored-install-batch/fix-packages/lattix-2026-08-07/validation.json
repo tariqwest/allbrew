@@ -1,0 +1,39 @@
+{
+  "slug": "lattix",
+  "url": "https://lattix.app",
+  "launchName": "u0505-lattix-20260807T204400Z",
+  "agentName": "url-0505-lattix",
+  "failureClass": "brew_fail",
+  "caseC": false,
+  "expectedGenerator": "cask-app",
+  "service": false,
+  "headCommitWithFix": null,
+  "bottleVersionTested": "0.0.24",
+  "bottleHasFix": false,
+  "rootCause": "cask missing version line for unversioned DMG → brew install undefined method latest? for nil",
+  "localGenerate": {
+    "ok": true,
+    "signals": [
+      "Classified as: unknown",
+      "Resolved download via discovery (static): cask-dmg → Lattix.dmg",
+      "Generated: Casks/lattix.rb",
+      "version \"1.0.0\"",
+      "app \"Lattix.app\"",
+      "sha256 da8bd39f647cc546443b1160645f54b18a6da209de41718fb8789eaa9d6bc626"
+    ]
+  },
+  "vmBottle": {
+    "version": "0.0.24",
+    "ok": false,
+    "endpoint": "homeserver",
+    "signals": [
+      "Generated Casks/lattix.rb without version",
+      "brew install failed: undefined method 'latest?' for nil",
+      "VERIFY_OK=false EXIT_CODE=1"
+    ]
+  },
+  "files": [
+    "lib/generators/cask-app.ts",
+    "tests/unit/generators/cask-app.test.ts"
+  ]
+}

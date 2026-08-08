@@ -1,0 +1,18 @@
+{
+  "slug": "sanebar",
+  "url": "https://sanebar.com",
+  "failureClass": "brew_fail",
+  "rootCause": "archive-inspector picks nested Sparkle Updater.app over outer SaneBar.app",
+  "fixFiles": ["lib/archive-inspector.ts"],
+  "mode": "patch",
+  "localGenerateOk": true,
+  "localAppName": "SaneBar.app",
+  "packageVersion": "2.1.89",
+  "serviceExpected": false,
+  "serviceDetected": false,
+  "vmHelperUsed": true,
+  "vmInstallOk": false,
+  "vmNotes": "local-1 SSH down; homeserver sparsebundle attach fail; local-2 busy",
+  "relatedFixPackages": ["popclip-2026-08-07"],
+  "helper": "tests/monitored-install-batch/vm-install-one.mjs"
+}

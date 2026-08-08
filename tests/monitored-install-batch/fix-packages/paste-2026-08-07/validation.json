@@ -1,0 +1,5 @@
+{
+  "unitTests": {"file": "tests/unit/generators/homebrew-cask-homepage.test.ts", "pass": 5, "fail": 0},
+  "localGenerate": {"exitCode": 0, "cask": "paste", "version": "6.6.6", "log": "allbrew-fixed-local.log"},
+  "vmStockExpected": "generate_fail until fix reconciled"
+}

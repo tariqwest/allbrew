@@ -1,0 +1,35 @@
+--- /dev/null
++++ b/tests/unit/generators/homebrew-cask-homepage.test.ts
+@@ -0,0 +1,32 @@
++import { describe, expect, it } from "bun:test";
++import { matchOfficialCaskByHomepage } from "../../../lib/generators/homebrew-cask.ts";
++
++describe("matchOfficialCaskByHomepage", () => {
++  it("matches superwhisper.com to official homebrew/cask token", async () => {
++    const m = await matchOfficialCaskByHomepage(
++      "https://superwhisper.com",
++      "superwhisper",
++    );
++    expect(m).not.toBeNull();
++    expect(m!.token).toBe("superwhisper");
++    expect(m!.homepage).toMatch(/superwhisper\.com/i);
++  });
++
++  it("returns null when preferred token is unrelated to page domain", async () => {
++    const m = await matchOfficialCaskByHomepage(
++      "https://example.com/product",
++      "superwhisper",
++    );
++    expect(m).toBeNull();
++  });
++
++  it("matches pictogramapp.com to official homebrew/cask pictogram", async () => {
++    const m = await matchOfficialCaskByHomepage(
++      "https://pictogramapp.com",
++      "pictogram",
++    );
++    expect(m).not.toBeNull();
++    expect(m!.token).toBe("pictogram");
++    expect(m!.homepage).toMatch(/pictogramapp\.com/i);
++  });
++});

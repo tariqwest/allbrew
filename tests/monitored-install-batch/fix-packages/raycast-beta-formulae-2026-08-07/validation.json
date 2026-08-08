@@ -1,0 +1,22 @@
+{
+  "slug": "raycast-beta",
+  "url": "https://formulae.brew.sh/cask/raycast",
+  "failureClass": "generate_fail",
+  "rootCause": "homebrew-cask used --name slug raycast-beta for formulae.brew.sh API token instead of URL token raycast",
+  "expectedGenerator": "homebrew-cask",
+  "expectedService": false,
+  "expectedPackageName": "raycast",
+  "expectedApp": "Raycast.app",
+  "files": ["lib/cli.ts"],
+  "patches": ["patches/0001-homebrew-cask-official-token-from-url.patch"],
+  "tests": ["tests/homebrew-cask-name-token.test.ts"],
+  "localValidate": {
+    "command": "CI=1 ALLBREW_NONINTERACTIVE=1 bun run bin/allbrew.ts 'https://formulae.brew.sh/cask/raycast' --name raycast-beta --tap TMP --verbose",
+    "okSignals": ["Classified as: homebrew-cask", "Casks/raycast.rb", "Installed: raycast"]
+  },
+  "vm": {
+    "helper": "tests/monitored-install-batch/vm-install-one.mjs",
+    "notes": "Bottle may lag; fix is Option A fix-package until release"
+  },
+  "mode": "patch"
+}

@@ -1,0 +1,145 @@
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..1724e9c 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -27,6 +27,7 @@ import {
+   matchAssetToArch,
+   isAppAsset,
+   isBinaryAsset,
++  isHostCompatibleBinaryAsset,
+   chooseReleaseArtifactKind,
+   resolveNonCollidingFormulaName,
+   resolveNonCollidingCaskName,
+@@ -109,6 +110,10 @@ async function dispatchClassification(classification: any, opts: any) {
+       return await handleGemPackage(classification, opts);
+     case "dotnet-package":
+       return await handleDotnetPackage(classification, opts);
++    case "cargo-package":
++      return await handleCargoPackage(classification, opts);
++    case "go-package":
++      return await handleGoPackage(classification, opts);
+     case "homebrew-formula":
+       return await handleHomebrewFormula(classification, opts);
+     case "homebrew-cask":
+@@ -831,7 +836,13 @@ async function handleGithubRepo(classification, opts) {
+     );
+ 
+     const appAssets = release.assets.filter((a) => isAppAsset(a.name));
++    // Only auto-select binary-release when a binary for *this* host OS/CPU exists.
++    // e.g. darwin-amd64-only releases must not produce formulas that fail on Apple Silicon
++    // with "formula requires at least a URL" (no on_arm url). Fall through to go/cargo/source.
+     const binAssets = release.assets.filter(
++      (a) => isBinaryAsset(a.name) && isHostCompatibleBinaryAsset(a.name),
++    );
++    const anyPlatformBinAssets = release.assets.filter(
+       (a) => isBinaryAsset(a.name) && matchAssetToArch(a.name),
+     );
+ 
+@@ -903,9 +914,22 @@ async function handleGithubRepo(classification, opts) {
+       );
+     }
+ 
+-    console.log(
+-      chalk.dim("  No recognized binary or app assets, checking README..."),
+-    );
++    if (anyPlatformBinAssets.length > 0) {
++      console.log(
++        chalk.dim(
++          `  Release has binary assets but none for this host (${process.platform}/${process.arch}): ${anyPlatformBinAssets.map((a) => a.name).join(", ")}`,
++        ),
++      );
++      console.log(
++        chalk.dim(
++          "  Skipping binary-release; checking README / repo files for source install...",
++        ),
++      );
++    } else {
++      console.log(
++        chalk.dim("  No recognized binary or app assets, checking README..."),
++      );
++    }
+   } else {
+     releaseSpinner.info("No releases found, checking README...");
+   }
+@@ -1327,6 +1351,67 @@ async function handleDotnetPackage(classification, opts) {
+   );
+ }
+ 
++async function handleCargoPackage(classification, opts) {
++  const crateName = opts.crateName || classification.crateName;
++  if (!crateName) {
++    throw new Error(
++      "crates.io crate name required (use --crate-name or a crates.io URL)",
++    );
++  }
++  const { fetchCratesIoCrate, repoInfoFromCratesMeta } = await import(
++    "./generators/cargo-package.ts"
++  );
++  const spinner = ora(`Fetching crates.io metadata for ${crateName}...`).start();
++  let cratesMeta;
++  try {
++    cratesMeta = await fetchCratesIoCrate(crateName);
++    spinner.succeed(
++      `crates.io: ${chalk.cyan(cratesMeta.crateName)}@${chalk.cyan(cratesMeta.version)}`,
++    );
++  } catch (err) {
++    spinner.fail(`crates.io lookup failed: ${err.message}`);
++    throw err;
++  }
++  const repoInfo = repoInfoFromCratesMeta(cratesMeta);
++  return await generateWithConfirmation(
++    "cargo-package",
++    {
++      repoInfo,
++      release: null,
++      crateName: cratesMeta.crateName,
++      cratesMeta,
++    },
++    { ...opts, crateName: cratesMeta.crateName },
++  );
++}
++
++async function handleGoPackage(classification, opts) {
++  const goModule = opts.goModule || classification.goModule;
++  if (!goModule) {
++    throw new Error(
++      "Go module path required (use --go-module or a pkg.go.dev URL)",
++    );
++  }
++  // Generator resolves source via the Go module proxy when release is null.
++  const nameHint = goModule.split("/").pop() || "go-module";
++  const repoInfo = {
++    name: nameHint,
++    fullName: goModule.replace(/^github\.com\//, ""),
++    description: null,
++    homepage: `https://${goModule}`,
++    htmlUrl: goModule.startsWith("github.com/")
++      ? `https://${goModule}`
++      : `https://pkg.go.dev/${goModule}`,
++    defaultBranch: "main",
++    license: null,
++  };
++  return await generateWithConfirmation(
++    "go-package",
++    { repoInfo, release: null, goModule },
++    { ...opts, goModule },
++  );
++}
++
+ async function handleCaskDmg(url, opts) {
+   return await generateWithConfirmation("cask-app", { url }, opts);
+ }
+@@ -1598,6 +1683,13 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
+       result = await generateCargoPackage(params.repoInfo, params.release, {
+         ...mergedOpts,
+         crateName: params.crateName || mergedOpts.crateName,
++        cratesMeta: params.cratesMeta || mergedOpts.cratesMeta,
++        fromCratesIo: Boolean(
++          params.cratesMeta ||
++            mergedOpts.cratesMeta ||
++            params.fromCratesIo ||
++            mergedOpts.fromCratesIo,
++        ),
+       });
+       break;
+     }

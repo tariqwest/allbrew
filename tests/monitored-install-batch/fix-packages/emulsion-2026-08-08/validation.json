@@ -1,0 +1,23 @@
+{
+  "url": "https://crates.io/crates/emulsion",
+  "slug": "emulsion",
+  "failureClass": "generate_fail",
+  "rootCause": "dispatchClassification missing cargo-package case on allbrew 0.0.24",
+  "generator": "cargo-package",
+  "packageVersion": "12.0.0",
+  "serviceExpected": false,
+  "serviceObservedAfterFix": false,
+  "localGenerateOk": true,
+  "unitTestsOk": true,
+  "vmInstallOk": false,
+  "vmBlockedBy": "released allbrew 0.0.24 without cargo dispatch; no release per Option A",
+  "patches": [
+    "0001-cli-handle-cargo-package-dispatch.patch",
+    "0002-cargo-package-crates-io-registry-path.patch"
+  ],
+  "relatedFixPackages": [
+    "oatmeal-2026-08-07",
+    "aichat-2026-08-07",
+    "nostui-2026-08-07"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "slug": "wander",
+  "url": "https://github.com/robinovitch61/wander",
+  "mode": "patch",
+  "files": [
+    "lib/utils.ts",
+    "lib/generators/binary-release.ts",
+    "tests/unit/utils.test.ts"
+  ],
+  "patch": "patches/0001-darwin-all-macos-universal.patch",
+  "summary": "Recognize goreleaser Darwin_all/macos_all release assets as macosUniversal"
+}

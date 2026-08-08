@@ -1,0 +1,164 @@
+diff --git a/lib/generators/npm-package.ts b/lib/generators/npm-package.ts
+index ce95f2a..9fa95d7 100644
+--- a/lib/generators/npm-package.ts
++++ b/lib/generators/npm-package.ts
+@@ -57,6 +57,9 @@ export async function collectNpmPackagePayload(
+ 
+   const binName = options.binName || extractNpmBinName(versionData, packageName) || name;
+ 
++  const needsBun = npmPackageNeedsBun(versionData);
++  const runtimeDependsLines = needsBun ? `  depends_on "bun"\n` : "";
++
+   return {
+     template: "npm_package",
+     name,
+@@ -70,6 +73,7 @@ export async function collectNpmPackagePayload(
+     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
+     livecheckBlock: npmLivecheckBlock(packageName),
+     serviceBlock: buildServiceBlock(service, name),
++    runtimeDependsLines,
+   };
+ }
+ 
+@@ -111,6 +115,20 @@ export function extractNpmBinName(versionData: any, packageName: string): string
+   return null;
+ }
+ 
++
++/**
++ * True when the package declares a Bun runtime requirement via engines.bun
++ * (and does not also declare a Node engines floor that is the primary runtime).
++ * Bun-first packages often ship shebangs of `#!/usr/bin/env bun` and fail under Node.
++ */
++export function npmPackageNeedsBun(versionData: any): boolean {
++  const engines = versionData?.engines;
++  if (!engines || typeof engines !== "object") return false;
++  if (engines.bun == null || engines.bun === "") return false;
++  // If node is also required, still add bun when bun is present — runtime shebang may be bun.
++  return true;
++}
++
+ export async function generateNpmPackage(
+   packageName: string,
+   repoInfo: any = null,
+diff --git a/lib/template-payload.ts b/lib/template-payload.ts
+index da8b65c..15c0a3c 100644
+--- a/lib/template-payload.ts
++++ b/lib/template-payload.ts
+@@ -27,6 +27,8 @@ export type NpmPackagePayload = FormulaCommonFields & {
+   sha256: string;
+   licenseLine: string;
+   livecheckBlock: string;
++  /** Extra depends_on lines after node (e.g. bun when engines.bun is set). */
++  runtimeDependsLines?: string;
+ };
+ 
+ export type PipPackagePayload = FormulaCommonFields & {
+diff --git a/lib/templates/formula/npm-package.ts b/lib/templates/formula/npm-package.ts
+index 8fbf723..237aa8e 100644
+--- a/lib/templates/formula/npm-package.ts
++++ b/lib/templates/formula/npm-package.ts
+@@ -8,7 +8,7 @@ export default function renderNpmPackage(p: NpmPackagePayload): string {
+   sha256 "${p.sha256}"
+ ${p.licenseLine}
+ ${p.livecheckBlock}  depends_on "node"
+-${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}
++${p.runtimeDependsLines || ""}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}
+   def install
+     system "npm", "install", *std_npm_args, "--min-release-age=0"
+     bin.install_symlink libexec.glob("bin/*")
+diff --git a/tests/fixtures/npm/hehehai-buke.json b/tests/fixtures/npm/hehehai-buke.json
+new file mode 100644
+index 0000000..4707911
+--- /dev/null
++++ b/tests/fixtures/npm/hehehai-buke.json
+@@ -0,0 +1,28 @@
++{
++  "name": "@hehehai/buke",
++  "description": "Pake-like Electrobun CLI for wrapping websites into lightweight desktop apps",
++  "dist-tags": {
++    "latest": "0.2.4"
++  },
++  "versions": {
++    "0.2.4": {
++      "name": "@hehehai/buke",
++      "version": "0.2.4",
++      "description": "Pake-like Electrobun CLI for wrapping websites into lightweight desktop apps",
++      "license": "Apache-2.0",
++      "bin": {
++        "buke": "dist/index.js"
++      },
++      "engines": {
++        "bun": ">=1.3.0"
++      },
++      "homepage": "https://github.com/hehehai/buke",
++      "dist": {
++        "tarball": "https://registry.npmjs.org/@hehehai/buke/-/buke-0.2.4.tgz",
++        "shasum": "09a6024a394963f67ac8b4cb8a7d994ab36e8958"
++      }
++    }
++  },
++  "homepage": "https://github.com/hehehai/buke",
++  "license": "Apache-2.0"
++}
+diff --git a/tests/unit/generators/npm-package.test.ts b/tests/unit/generators/npm-package.test.ts
+index 6306b78..5913ae1 100644
+--- a/tests/unit/generators/npm-package.test.ts
++++ b/tests/unit/generators/npm-package.test.ts
+@@ -1,5 +1,5 @@
+ import { describe, it, expect, mock, beforeEach } from "bun:test";
+-import { collectNpmPackagePayload } from "../../../lib/generators/npm-package.ts";
++import { collectNpmPackagePayload, npmPackageNeedsBun, extractNpmBinName } from "../../../lib/generators/npm-package.ts";
+ import maildevFixture from "../../fixtures/npm/maildev.json";
+ import diracCliFixture from "../../fixtures/npm/dirac-cli.json";
+ import clineFixture from "../../fixtures/npm/cline.json";
+@@ -10,6 +10,7 @@ import samanhappyMcphubFixture from "../../fixtures/npm/samanhappy-mcphub.json";
+ import augmentcodeAuggieFixture from "../../fixtures/npm/augmentcode-auggie.json";
+ import smitheryCliFixture from "../../fixtures/npm/smithery-cli.json";
+ import officecliFixture from "../../fixtures/npm/officecli.json";
++import hehehaiBukeFixture from "../../fixtures/npm/hehehai-buke.json";
+ 
+ mock.module("../../../lib/sha256.ts", () => ({
+   hashUrl: mock().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
+@@ -724,3 +725,41 @@ describe("collectNpmPackagePayload — @officecli/officecli", () => {
+     expect(payload.serviceBlock).toBe("");
+   });
+ });
++
++describe("npmPackageNeedsBun", () => {
++  it("returns true when engines.bun is set", () => {
++    expect(npmPackageNeedsBun({ engines: { bun: ">=1.3.0" } })).toBe(true);
++  });
++
++  it("returns false when engines is missing or empty", () => {
++    expect(npmPackageNeedsBun({})).toBe(false);
++    expect(npmPackageNeedsBun({ engines: {} })).toBe(false);
++    expect(npmPackageNeedsBun({ engines: { node: ">=18" } })).toBe(false);
++  });
++});
++
++describe("collectNpmPackagePayload — @hehehai/buke (engines.bun)", () => {
++  beforeEach(() => {
++    mock.restore();
++    global.fetch = mock((url: string) => {
++      if (String(url).includes("hehehai")) {
++        return Promise.resolve({
++          ok: true,
++          json: () => Promise.resolve(hehehaiBukeFixture),
++        });
++      }
++      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
++    });
++  });
++
++  it("depends on bun when engines.bun is declared", async () => {
++    const payload = await collectNpmPackagePayload("@hehehai/buke");
++    expect(payload.runtimeDependsLines).toContain('depends_on "bun"');
++    expect(payload.testBinName).toBe("buke");
++  });
++
++  it("extracts bin name buke from scoped package", () => {
++    expect(extractNpmBinName(hehehaiBukeFixture.versions["0.2.4"], "@hehehai/buke")).toBe("buke");
++  });
++});
++

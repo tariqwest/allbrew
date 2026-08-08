@@ -1,0 +1,17 @@
+diff --git a/tests/unit/generators/binary-release.test.ts b/tests/unit/generators/binary-release.test.ts
+index 1b44375..ac0d134 100644
+--- a/tests/unit/generators/binary-release.test.ts
++++ b/tests/unit/generators/binary-release.test.ts
+@@ -202,6 +202,12 @@ describe("collectBinaryReleasePayload", () => {
+     expect(templateReleaseUrl(tagged, "2.12.2", "v2.12.2")).toBe(
+       "https://github.com/o/r/releases/download/v#{version}/wakapi_v#{version}_darwin_arm64.tar.gz",
+     );
++    // Tag path uses v{ver}; asset basename uses bare {ver} (NetBar-1.2.1.zip)
++    const bareInAsset =
++      "https://github.com/mh-sudo/NetBar/releases/download/v1.2.1/NetBar-1.2.1.zip";
++    expect(templateReleaseUrl(bareInAsset, "1.2.1", "v1.2.1")).toBe(
++      "https://github.com/mh-sudo/NetBar/releases/download/v#{version}/NetBar-#{version}.zip",
++    );
+   });
+ 
+   it("detects versioned bare universal binaries (afm_0.1.0_macOS_universal)", async () => {

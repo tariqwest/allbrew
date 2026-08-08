@@ -1,0 +1,39 @@
+diff --git a/lib/classifier.ts b/lib/classifier.ts
+index 97cba82..d3cb04b 100644
+--- a/lib/classifier.ts
++++ b/lib/classifier.ts
+@@ -24,7 +24,7 @@ const RAW_GITHUB_RE = /^https?:\/\/raw\.githubusercontent\.com\//;
+ 
+ const ARCHIVE_EXTENSIONS = [
+   '.tar.gz', '.tgz', '.tar.bz2', '.tar.xz',
+-  '.zip', '.pkg', '.gz', '.bz2', '.xz',
++  '.zip', '.gz', '.bz2', '.xz',
+ ];
+ 
+ export function classify(url) {
+@@ -105,7 +105,8 @@ export function classify(url) {
+     return { type: 'bash-script', url };
+   }
+ 
+-  if (path.endsWith('.dmg')) {
++  if (path.endsWith('.dmg') || path.endsWith('.pkg')) {
++    // .pkg is a first-class macOS installer (Homebrew cask artifact), not a source archive
+     return { type: 'cask-dmg', url };
+   }
+ 
+diff --git a/tests/unit/classifier.test.ts b/tests/unit/classifier.test.ts
+index 1837f08..5b2ceec 100644
+--- a/tests/unit/classifier.test.ts
++++ b/tests/unit/classifier.test.ts
+@@ -124,9 +124,9 @@ describe("classify", () => {
+       expect(result.type).toBe("archive");
+     });
+ 
+-    it("matches .pkg URL", () => {
++    it("matches .pkg URL as cask-dmg", () => {
+       const result = classify("https://zoom.us/client/latest/Zoom.pkg");
+-      expect(result.type).toBe("archive");
++      expect(result.type).toBe("cask-dmg");
+     });
+ 
+     it("matches .tgz URL", () => {

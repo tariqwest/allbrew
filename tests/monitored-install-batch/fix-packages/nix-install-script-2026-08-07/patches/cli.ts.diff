@@ -1,0 +1,209 @@
+--- lib/cli.ts	2026-08-07 07:49:55
++++ /Users/tariqwest/Developer/allbrew/tests/monitored-install-batch/worktrees/nix-2026-08-07/lib/cli.ts	2026-08-07 07:49:19
+@@ -27,7 +27,6 @@
+   matchAssetToArch,
+   isAppAsset,
+   isBinaryAsset,
+-  isHostCompatibleBinaryAsset,
+   chooseReleaseArtifactKind,
+   resolveNonCollidingFormulaName,
+   resolveNonCollidingCaskName,
+@@ -110,10 +109,6 @@
+       return await handleGemPackage(classification, opts);
+     case "dotnet-package":
+       return await handleDotnetPackage(classification, opts);
+-    case "cargo-package":
+-      return await handleCargoPackage(classification, opts);
+-    case "go-package":
+-      return await handleGoPackage(classification, opts);
+     case "homebrew-formula":
+       return await handleHomebrewFormula(classification, opts);
+     case "homebrew-cask":
+@@ -836,13 +831,7 @@
+     );
+ 
+     const appAssets = release.assets.filter((a) => isAppAsset(a.name));
+-    // Only auto-select binary-release when a binary for *this* host OS/CPU exists.
+-    // e.g. darwin-amd64-only releases must not produce formulas that fail on Apple Silicon
+-    // with "formula requires at least a URL" (no on_arm url). Fall through to go/cargo/source.
+     const binAssets = release.assets.filter(
+-      (a) => isBinaryAsset(a.name) && isHostCompatibleBinaryAsset(a.name),
+-    );
+-    const anyPlatformBinAssets = release.assets.filter(
+       (a) => isBinaryAsset(a.name) && matchAssetToArch(a.name),
+     );
+ 
+@@ -914,22 +903,9 @@
+       );
+     }
+ 
+-    if (anyPlatformBinAssets.length > 0) {
+-      console.log(
+-        chalk.dim(
+-          `  Release has binary assets but none for this host (${process.platform}/${process.arch}): ${anyPlatformBinAssets.map((a) => a.name).join(", ")}`,
+-        ),
+-      );
+-      console.log(
+-        chalk.dim(
+-          "  Skipping binary-release; checking README / repo files for source install...",
+-        ),
+-      );
+-    } else {
+-      console.log(
+-        chalk.dim("  No recognized binary or app assets, checking README..."),
+-      );
+-    }
++    console.log(
++      chalk.dim("  No recognized binary or app assets, checking README..."),
++    );
+   } else {
+     releaseSpinner.info("No releases found, checking README...");
+   }
+@@ -959,26 +935,16 @@
+       console.log(`  Detected command: ${chalk.cyan(brewInfo.installCommand)}`);
+       console.log();
+ 
+-      let choice: "brew-install" | "continue";
+-      if (isNonInteractive(opts)) {
+-        choice = "continue";
+-        console.log(
+-          chalk.dim(
+-            "  Non-interactive: generating custom formula (skipping upstream brew offer).",
+-          ),
+-        );
+-      } else {
+-        choice = await select({
+-          message: "What would you like to do?",
+-          choices: [
+-            {
+-              name: `Run "${brewInfo.installCommand}" directly`,
+-              value: "brew-install",
+-            },
+-            { name: "Generate a custom formula anyway", value: "continue" },
+-          ],
+-        });
+-      }
++      const choice = await select({
++        message: "What would you like to do?",
++        choices: [
++          {
++            name: `Run "${brewInfo.installCommand}" directly`,
++            value: "brew-install",
++          },
++          { name: "Generate a custom formula anyway", value: "continue" },
++        ],
++      });
+ 
+       if (choice === "brew-install") {
+         console.log();
+@@ -1289,6 +1255,28 @@
+ }
+ 
+ async function handleBashScript(url, opts) {
++  // Pre-flight: reject system-wide installers (e.g. official Nix multi-user)
++  // that cannot land in the Cellar as PREFIX install-scripts.
++  try {
++    const { fetchTextLimited } = await import("./utils.ts");
++    const { assertInstallScriptInScope } = await import("./install-script-analyze.ts");
++    const fetched = await fetchTextLimited(url, { maxBytes: 512_000, timeoutMs: 30_000 });
++    assertInstallScriptInScope(fetched.url || url, fetched.body);
++  } catch (err: any) {
++    // Re-throw intentional out-of-scope / network errors from analyze
++    if (
++      err?.message?.includes("out of scope") ||
++      err?.message?.includes("system-wide") ||
++      err?.message?.includes("multi-user") ||
++      err?.message?.includes("Homebrew core also has no formula")
++    ) {
++      throw err;
++    }
++    // Soft-fail analysis on transient fetch issues; generator still hashes the URL.
++    if (opts?.verbose) {
++      console.log(`  install-script preflight skipped: ${err?.message || err}`);
++    }
++  }
+   return await generateWithConfirmation("install-script", { url }, opts);
+ }
+ 
+@@ -1358,67 +1346,6 @@
+     "dotnet-package",
+     { packageName, repoInfo: null },
+     opts,
+-  );
+-}
+-
+-async function handleCargoPackage(classification, opts) {
+-  const crateName = opts.crateName || classification.crateName;
+-  if (!crateName) {
+-    throw new Error(
+-      "crates.io crate name required (use --crate-name or a crates.io URL)",
+-    );
+-  }
+-  const { fetchCratesIoCrate, repoInfoFromCratesMeta } = await import(
+-    "./generators/cargo-package.ts"
+-  );
+-  const spinner = ora(`Fetching crates.io metadata for ${crateName}...`).start();
+-  let cratesMeta;
+-  try {
+-    cratesMeta = await fetchCratesIoCrate(crateName);
+-    spinner.succeed(
+-      `crates.io: ${chalk.cyan(cratesMeta.crateName)}@${chalk.cyan(cratesMeta.version)}`,
+-    );
+-  } catch (err) {
+-    spinner.fail(`crates.io lookup failed: ${err.message}`);
+-    throw err;
+-  }
+-  const repoInfo = repoInfoFromCratesMeta(cratesMeta);
+-  return await generateWithConfirmation(
+-    "cargo-package",
+-    {
+-      repoInfo,
+-      release: null,
+-      crateName: cratesMeta.crateName,
+-      cratesMeta,
+-    },
+-    { ...opts, crateName: cratesMeta.crateName },
+-  );
+-}
+-
+-async function handleGoPackage(classification, opts) {
+-  const goModule = opts.goModule || classification.goModule;
+-  if (!goModule) {
+-    throw new Error(
+-      "Go module path required (use --go-module or a pkg.go.dev URL)",
+-    );
+-  }
+-  // Generator resolves source via the Go module proxy when release is null.
+-  const nameHint = goModule.split("/").pop() || "go-module";
+-  const repoInfo = {
+-    name: nameHint,
+-    fullName: goModule.replace(/^github\.com\//, ""),
+-    description: null,
+-    homepage: `https://${goModule}`,
+-    htmlUrl: goModule.startsWith("github.com/")
+-      ? `https://${goModule}`
+-      : `https://pkg.go.dev/${goModule}`,
+-    defaultBranch: "main",
+-    license: null,
+-  };
+-  return await generateWithConfirmation(
+-    "go-package",
+-    { repoInfo, release: null, goModule },
+-    { ...opts, goModule },
+   );
+ }
+ 
+@@ -1693,13 +1620,6 @@
+       result = await generateCargoPackage(params.repoInfo, params.release, {
+         ...mergedOpts,
+         crateName: params.crateName || mergedOpts.crateName,
+-        cratesMeta: params.cratesMeta || mergedOpts.cratesMeta,
+-        fromCratesIo: Boolean(
+-          params.cratesMeta ||
+-            mergedOpts.cratesMeta ||
+-            params.fromCratesIo ||
+-            mergedOpts.fromCratesIo,
+-        ),
+       });
+       break;
+     }

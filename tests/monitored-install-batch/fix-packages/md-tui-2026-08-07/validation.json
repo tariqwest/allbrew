@@ -1,0 +1,24 @@
+{
+  "url": "https://formulae.brew.sh/formula/md-tui",
+  "slug": "md-tui",
+  "failureClass": "brew_fail",
+  "secondaryFailure": "generate_path_wrong_on_0.0.24_binary_release",
+  "rootCause": "0.0.24: unknown→page-discover→binary-release (not homebrew-formula); main: bottle cellar double-colon ::any_skip_relocation",
+  "fixFiles": [
+    "lib/generators/homebrew-formula.ts"
+  ],
+  "tests": [
+    "tests/unit/homebrew-formula-bottle.test.ts"
+  ],
+  "localGenerateOk": true,
+  "rubySyntaxOk": true,
+  "hostBrewInstallOkWithFix": true,
+  "vmExitCode": 1,
+  "vmVerifyOk": false,
+  "vmAllbrewVersion": "0.0.24",
+  "vmGenerator": "binary-release",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "released": false,
+  "relatedFixPackages": ["dnote-2026-08-07", "pug-2026-08-06", "bun-2026-08-06"]
+}

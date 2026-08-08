@@ -1,0 +1,77 @@
+diff --git a/tests/unit/utils.test.ts b/tests/unit/utils.test.ts
+index 4f9f82d..014ab1e 100644
+--- a/tests/unit/utils.test.ts
++++ b/tests/unit/utils.test.ts
+@@ -19,6 +19,7 @@ import {
+   setHomebrewCachePrefixForTests,
+   setHomebrewCaskTokenOverrideForTests,
+   isHomebrewCoreFormulaName,
++  resolveExistingHomebrewClassification,
+   isHomebrewCaskToken,
+ } from "../../lib/utils.ts";
+ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+@@ -198,6 +199,64 @@ describe("resolveNonCollidingCaskName", () => {
+   });
+ });
+ 
++
++describe("resolveExistingHomebrewClassification", () => {
++  let coreRoot: string;
++  let caskRoot: string;
++
++  beforeEach(() => {
++    coreRoot = mkdtempSync(join(tmpdir(), "allbrew-core-"));
++    caskRoot = mkdtempSync(join(tmpdir(), "allbrew-cask-hb-"));
++    mkdirSync(join(coreRoot, "Formula", "t"), { recursive: true });
++    writeFileSync(
++      join(coreRoot, "Formula", "t", "tailscale.rb"),
++      "class Tailscale < Formula\nend\n",
++    );
++    mkdirSync(join(caskRoot, "Casks", "t"), { recursive: true });
++    writeFileSync(
++      join(caskRoot, "Casks", "t", "tailscale-app.rb"),
++      'cask "tailscale-app" do\nend\n',
++    );
++    setHomebrewCorePrefixForTests(coreRoot);
++    setHomebrewCaskPrefixForTests(caskRoot);
++    setHomebrewCaskTokenOverrideForTests(undefined);
++  });
++
++  afterEach(() => {
++    setHomebrewCorePrefixForTests(undefined);
++    setHomebrewCaskPrefixForTests(undefined);
++    setHomebrewCaskTokenOverrideForTests(undefined);
++    rmSync(coreRoot, { recursive: true, force: true });
++    rmSync(caskRoot, { recursive: true, force: true });
++  });
++
++  it("maps bare tailscale name to homebrew/core formula (Case C)", () => {
++    const hit = resolveExistingHomebrewClassification("tailscale");
++    expect(hit).toEqual({
++      type: "homebrew-formula",
++      name: "tailscale",
++      url: "https://formulae.brew.sh/formula/tailscale",
++    });
++  });
++
++  it("maps cask-only token to homebrew-cask", () => {
++    const hit = resolveExistingHomebrewClassification("tailscale-app");
++    expect(hit).toEqual({
++      type: "homebrew-cask",
++      name: "tailscale-app",
++      url: "https://formulae.brew.sh/cask/tailscale-app",
++    });
++  });
++
++  it("returns null for unknown names", () => {
++    expect(resolveExistingHomebrewClassification("not-a-real-package-xyz")).toBe(
++      null,
++    );
++    expect(resolveExistingHomebrewClassification("")).toBe(null);
++    expect(resolveExistingHomebrewClassification(null)).toBe(null);
++  });
++});
++
+ describe("chooseReleaseArtifactKind", () => {
+   it("prefers cask when both app and binary assets exist", () => {
+     expect(chooseReleaseArtifactKind(2, 3)).toBe("cask");

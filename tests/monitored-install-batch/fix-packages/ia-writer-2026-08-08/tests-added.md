@@ -1,0 +1,2 @@
+- `matchOfficialCaskByHomepage` → null for `https://ia.net/writer` + `ia-writer` (no false adopt of ia-markdown-dictionary)
+- `matchOfficialCaskByHomepage` → `ia-presenter` for `https://ia.net/presenter`

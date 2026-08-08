@@ -1,0 +1,19 @@
+{
+  "slug": "croc",
+  "url": "https://getcroc.schollz.com",
+  "status": "fixed_local",
+  "failureClass": "generate_fail",
+  "rootCause": "UA negotiation HTML vs bash installer; sponsors misclassified as repo; 64bit asset tokens; croc-web companion preferred",
+  "fixSummary": "curl-UA shebang classify + GitHub-release pivot from install script + 64bit arch + primary asset scoring",
+  "tests": ["tests/unit/croc-install-script.test.ts"],
+  "localGenerate": {
+    "before": "Classified unknown → sponsors repo Not Found",
+    "after": "bash-script → github-repo binary-release croc-tap 11.0.2 with croc_v* macOS/Linux assets"
+  },
+  "installPossible": true,
+  "packageName": "croc-tap",
+  "packageVersion": "11.0.2",
+  "generator": "binary-release",
+  "agentServiceExpectation": false,
+  "allbrewServiceDecision": false
+}

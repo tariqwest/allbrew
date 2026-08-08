@@ -1,0 +1,29 @@
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..60d59aa 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -1464,9 +1464,9 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
+   if (isFormulaGenerator(generatorName)) {
+     const preferred = toFormulaName(userOpts.name);
+     if (generatorName === "homebrew-formula") {
+-      // Preserve the official homebrew/core token so the copied formula's
+-      // class name and bottle block stay aligned with the file name.
+-      userOpts.name = preferred;
++      // Official API token is the formulae.brew.sh path (params.name), never
++      // a catalog --name slug (e.g. raycast-beta) that would 404 the API.
++      userOpts.name = toFormulaName(params.name || preferred);
+     } else {
+       const altSources = [
+         params.packageName,
+@@ -1496,8 +1496,9 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
+   if (isCaskGenerator(generatorName)) {
+     const preferred = toCaskToken(userOpts.name);
+     if (generatorName === "homebrew-cask") {
+-      // Preserve the official homebrew/cask token.
+-      userOpts.name = preferred;
++      // Official API token is the formulae.brew.sh path (params.name), never
++      // a catalog --name slug (e.g. raycast-beta) that would 404 the API.
++      userOpts.name = toCaskToken(params.name || preferred);
+     } else {
+       const owner = params.repoInfo?.fullName?.split?.("/")?.[0];
+       const altSources = [

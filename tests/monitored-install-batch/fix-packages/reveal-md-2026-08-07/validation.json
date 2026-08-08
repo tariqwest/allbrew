@@ -1,0 +1,14 @@
+{
+  "slug": "reveal-md",
+  "url": "https://github.com/webpro/reveal-md",
+  "failureClass": "service_mismatch",
+  "mode": "patch",
+  "packageName": "reveal-md-tap",
+  "packageVersion": "6.1.4",
+  "generator": "npm-package",
+  "agentServiceExpectation": false,
+  "allbrewServiceDecisionBefore": true,
+  "allbrewServiceDecisionAfter": false,
+  "tests": ["tests/unit/analyzer.test.ts"],
+  "notes": "homebrew/core already ships reveal-md; allbrew uses -tap suffix. Host brew install must not be the success path."
+}

@@ -1,0 +1,82 @@
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..6b09070 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -1255,6 +1255,77 @@ async function handleGithubRepo(classification, opts) {
+ }
+ 
+ async function handleBashScript(url, opts) {
++  // Vendor install scripts often write $HOME dirs or open App Store / distro PMs
++  // (e.g. https://sh.rustup.rs, https://get.sdkman.io). Prefer Case C official
++  // Homebrew packages over minting Empty-installation PREFIX formulas.
++  let body = "";
++  try {
++    const res = await fetch(url, {
++      headers: { "User-Agent": "allbrew/1.0" },
++      signal: AbortSignal.timeout(30_000),
++      redirect: "follow",
++    });
++    if (res.ok) body = await res.text();
++  } catch {
++    /* fall through to generator */
++  }
++
++  if (body) {
++    const { analyzeInstallScript } = await import("./install-script-analyze.ts");
++    const { resolveExistingHomebrewClassification } = await import("./utils.ts");
++    const analysis = analyzeInstallScript(url, body);
++    if (
++      analysis.kind === "appstore-macos-only" ||
++      analysis.kind === "system-wide-out-of-scope" ||
++      analysis.kind === "home-dir-installer"
++    ) {
++      const nameCandidates = [
++        opts.name,
++        opts.package,
++        analysis.packageHint,
++      ].filter(Boolean);
++      for (const candidate of nameCandidates) {
++        const brewHit = resolveExistingHomebrewClassification(String(candidate));
++        if (brewHit) {
++          console.log(
++            chalk.yellow(
++              `  Install script is not Cellar-PREFIX compatible (${analysis.kind}); ` +
++                `using existing Homebrew ${
++                  brewHit.type === "homebrew-formula" ? "formula" : "cask"
++                } "${brewHit.name}" (Case C)`,
++            ),
++          );
++          opts = {
++            ...opts,
++            name: opts.name || brewHit.name,
++            sourceUrl: url,
++            discoverMethod: "install-script-case-c",
++          };
++          return await dispatchClassification(brewHit, opts);
++        }
++      }
++
++      if (analysis.kind === "appstore-macos-only" && analysis.appStoreId) {
++        const masUrl = `https://apps.apple.com/app/id${analysis.appStoreId}`;
++        console.log(
++          chalk.yellow(
++            `  Install script opens Mac App Store; generating MAS cask for id${analysis.appStoreId}`,
++          ),
++        );
++        return await handleMacAppStore(masUrl, {
++          ...opts,
++          sourceUrl: url,
++          discoverMethod: "install-script-appstore",
++        });
++      }
++
++      throw new Error(
++        analysis.reason ||
++          `Install script at ${url} cannot be packaged as a Homebrew PREFIX install-script`,
++      );
++    }
++  }
++
+   return await generateWithConfirmation("install-script", { url }, opts);
+ }
+ 

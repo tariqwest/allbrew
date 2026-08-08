@@ -1,0 +1,287 @@
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..0a237ed 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -4,6 +4,7 @@ import ora from "ora";
+ import { classifyWithHead } from "./classifier.ts";
+ import {
+   discoverPageDownloads,
++  findStoreDownloadGate,
+   parseDiscoverMode,
+   type DiscoverCandidate,
+ } from "./page-discover.ts";
+@@ -184,15 +185,30 @@ async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
+     let chosen: DiscoverCandidate | null = result.chosen;
+     if (!chosen) {
+       const usable = result.candidates.filter(
+-        (c) => c.kind !== "unknown" || /\.(dmg|pkg|zip|tgz|tar\.gz|sh|bash)(?:\?|#|$)/i.test(c.url),
++        (c) =>
++          c.kind !== "store-download-gate" &&
++          (c.kind !== "unknown" ||
++            /\.(dmg|pkg|zip|tgz|tar\.gz|sh|bash)(?:\?|#|$)/i.test(c.url)),
+       );
+       if (isNonInteractive(opts)) {
+         // Never hang automation on ambiguous HTML noise.
+         chosen = usable[0] || null;
+         if (!chosen) {
+-          spinner.warn(
+-            "No high-confidence download candidate in non-interactive mode",
+-          );
++          const gate = findStoreDownloadGate(result.candidates);
++          if (gate) {
++            spinner.warn(
++              `Download is behind a store gate (no direct .dmg/.zip URL): ${gate.url}`,
++            );
++            console.log(
++              chalk.dim(
++                "  Gumroad/itch-style product pages require checkout before a file URL is issued; allbrew cannot build a cask without a stable direct artifact URL.",
++              ),
++            );
++          } else {
++            spinner.warn(
++              "No high-confidence download candidate in non-interactive mode",
++            );
++          }
+           return null;
+         }
+         console.log(
+diff --git a/lib/page-discover-webview.ts b/lib/page-discover-webview.ts
+index aa11691..fe8b338 100644
+--- a/lib/page-discover-webview.ts
++++ b/lib/page-discover-webview.ts
+@@ -236,11 +236,19 @@ export async function discoverWithWebView(
+           }
+           try {
+             const u = new URL(url);
++            // Drop pure page assets early (css/js/fonts/images).
++            if (
++              /\.(?:png|jpe?g|gif|svg|webp|ico|css|js|mjs|map|woff2?|ttf|otf|eot|mp4|webm|mp3|json|webmanifest)(?:\?|#|$)/i.test(
++                u.pathname,
++              )
++            ) {
++              return;
++            }
+             const p = new URL(pageUrl);
+             if (
+               u.origin === p.origin &&
+               !looksLikeArtifactUrl(url) &&
+-              !/github\.com|raw\.githubusercontent|npmjs|pypi|crates|rubygems|nuget|apps\.apple|setapp/i.test(
++              !/github\.com|raw\.githubusercontent|npmjs|pypi|crates|rubygems|nuget|apps\.apple|setapp|gumroad\.com|gum\.co|itch\.io/i.test(
+                 url,
+               )
+             ) {
+@@ -257,6 +265,10 @@ export async function discoverWithWebView(
+             scored.score += 40;
+             scored.evidence.push("network-intercept");
+           }
++          // Store gates never become auto-install artifacts via network boost alone.
++          if (scored.kind === "store-download-gate" && scored.score > 65) {
++            scored.score = 65;
++          }
+           candidates.push(scored);
+         };
+ 
+diff --git a/lib/page-discover.ts b/lib/page-discover.ts
+index f9c7e37..9d1c9e2 100644
+--- a/lib/page-discover.ts
++++ b/lib/page-discover.ts
+@@ -92,6 +92,30 @@ function pathLooksMac(url: string): boolean {
+   return /darwin|macos|osx|(?:^|[^a-z])mac(?:[^a-z]|$)|universal|\.dmg/i.test(url);
+ }
+ 
++const STATIC_ASSET_PATH_RE =
++  /\.(?:png|jpe?g|gif|svg|webp|ico|css|js|mjs|map|woff2?|ttf|otf|eot|mp4|webm|mp3|json|webmanifest)(?:\?|#|$)/i;
++
++/** True when URL is a digital-store product page that typically gates the real file. */
++export function isStoreDownloadGateUrl(url: string): boolean {
++  try {
++    const u = new URL(url);
++    const host = u.hostname.toLowerCase();
++    const path = u.pathname;
++    if (
++      (/(?:^|\.)gumroad\.com$/i.test(host) && /\/l\/[a-z0-9_-]+/i.test(path)) ||
++      (/^(?:www\.)?gum\.co$/i.test(host) && path.length > 1)
++    ) {
++      return true;
++    }
++    if (/\.itch\.io$/i.test(host) && !STATIC_ASSET_PATH_RE.test(path)) {
++      return true;
++    }
++    return false;
++  } catch {
++    return false;
++  }
++}
++
+ /**
+  * Score a URL for macOS install usefulness. Higher is better.
+  */
+@@ -103,7 +127,21 @@ export function scoreCandidateUrl(
+   const classified = classify(url);
+   let score = 0;
+   const ev = [...evidence];
+-  const kind = classified.type === "unknown" ? guessKindFromUrl(url) : classified.type;
++  let kind = classified.type === "unknown" ? guessKindFromUrl(url) : classified.type;
++
++  try {
++    if (STATIC_ASSET_PATH_RE.test(new URL(url).pathname)) {
++      return {
++        url,
++        kind: "unknown",
++        score: -50,
++        evidence: [...evidence, "static-asset-penalty"],
++        source: "static",
++      };
++    }
++  } catch {
++    /* keep scoring */
++  }
+ 
+   switch (classified.type) {
+     case "cask-dmg":
+@@ -177,6 +215,22 @@ export function scoreCandidateUrl(
+     ev.push("trusted-host");
+   }
+ 
++  // Store product pages (Gumroad PWYW, etc.): better than random same-site nav,
++  // but never high enough to auto-pick as a cask URL (file is behind checkout).
++  if (isStoreDownloadGateUrl(url)) {
++    score += 35;
++    kind = "store-download-gate";
++    ev.push("store-download-gate");
++  }
++
++  if (
++    kind === "store-download-gate" &&
++    evidence.some((e) => /download|get\s+(the\s+)?app|early\s+access/i.test(e))
++  ) {
++    score += 8;
++    ev.push("download-cta");
++  }
++
+   return {
+     url,
+     kind,
+@@ -186,6 +240,16 @@ export function scoreCandidateUrl(
+   };
+ }
+ 
++/** Best store-gate candidate when no direct artifact is available. */
++export function findStoreDownloadGate(
++  candidates: DiscoverCandidate[],
++): DiscoverCandidate | null {
++  const gates = candidates
++    .filter((c) => c.kind === "store-download-gate" || isStoreDownloadGateUrl(c.url))
++    .sort((a, b) => b.score - a.score);
++  return gates[0] || null;
++}
++
+ function guessKindFromUrl(url: string): string {
+   const path = (() => {
+     try {
+@@ -246,12 +310,44 @@ export function extractCandidatesFromHtml(
+       /github\.com\/[^/]+\/[^/\s"'<>]+/i.test(cleaned) ||
+       /(?:npmjs\.com\/package|pypi\.org\/project|crates\.io\/crates|rubygems\.org\/gems|nuget\.org\/packages|setapp\.com\/apps|apps\.apple\.com)\//i.test(
+         cleaned,
+-      )
++      ) ||
++      isStoreDownloadGateUrl(cleaned)
+     ) {
+       add(cleaned, "bare-url");
+     }
+   }
+ 
++  // schema.org SoftwareApplication installUrl / downloadUrl (often JSON-LD)
++  const jsonLdRe =
++    /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
++  while ((m = jsonLdRe.exec(html)) !== null) {
++    try {
++      const data = JSON.parse(m[1]);
++      const stack = Array.isArray(data) ? [...data] : [data];
++      while (stack.length) {
++        const node = stack.pop();
++        if (!node || typeof node !== "object") continue;
++        if (Array.isArray(node["@graph"])) stack.push(...node["@graph"]);
++        for (const key of ["installUrl", "downloadUrl", "url"] as const) {
++          const v = (node as Record<string, unknown>)[key];
++          if (typeof v === "string" && isStoreDownloadGateUrl(v)) {
++            add(v, "json-ld");
++          } else if (
++            typeof v === "string" &&
++            /\.(dmg|pkg|zip|tgz|tar\.gz)(?:\?|#|$)/i.test(v)
++          ) {
++            add(v, "json-ld");
++          }
++        }
++        for (const val of Object.values(node)) {
++          if (val && typeof val === "object") stack.push(val);
++        }
++      }
++    } catch {
++      /* ignore invalid JSON-LD */
++    }
++  }
++
+   // curl|bash and other install commands via analyzer
+   const text = html
+     .replace(/<script[\s\S]*?<\/script>/gi, "\n")
+diff --git a/tests/unit/page-discover.test.ts b/tests/unit/page-discover.test.ts
+index a12db0d..9968a95 100644
+--- a/tests/unit/page-discover.test.ts
++++ b/tests/unit/page-discover.test.ts
+@@ -5,6 +5,8 @@ import {
+   discoverPageDownloads,
+   extractArtifactUrlsFromJson,
+   extractCandidatesFromHtml,
++  findStoreDownloadGate,
++  isStoreDownloadGateUrl,
+   mergeCandidates,
+   parseDiscoverMode,
+   pickAutoCandidate,
+@@ -85,6 +87,46 @@ describe("scoreCandidateUrl / pickAutoCandidate", () => {
+     const list = [scoreCandidateUrl("https://example.com/about", page)];
+     expect(pickAutoCandidate(list)).toBeNull();
+   });
++
++  it("scores Gumroad product pages as store-download-gate above nav noise", () => {
++    const page = "https://filenq.app";
++    const gumroad = scoreCandidateUrl(
++      "https://webseidon.gumroad.com/l/jrvyrv",
++      page,
++      ["post-click:Download free early access"],
++    );
++    const about = scoreCandidateUrl("https://filenq.app/features", page);
++    const css = scoreCandidateUrl(
++      "https://filenq.app/_next/static/chunks/app.css",
++      page,
++    );
++    expect(isStoreDownloadGateUrl(gumroad.url)).toBe(true);
++    expect(gumroad.kind).toBe("store-download-gate");
++    expect(gumroad.score).toBeGreaterThan(about.score);
++    expect(css.score).toBeLessThan(0);
++    // Must not auto-pick: file is behind checkout, not a stable cask URL.
++    expect(pickAutoCandidate([gumroad, about].sort((a, b) => b.score - a.score))).toBeNull();
++    expect(findStoreDownloadGate([about, gumroad])?.url).toContain("gumroad.com");
++  });
++
++  it("extracts Gumroad installUrl from JSON-LD without webview", () => {
++    const html = `<!doctype html><html><head>
++<script type="application/ld+json">${JSON.stringify({
++      "@context": "https://schema.org",
++      "@graph": [
++        {
++          "@type": "SoftwareApplication",
++          "name": "FilenQ",
++          "installUrl": "https://webseidon.gumroad.com/l/jrvyrv",
++          "downloadUrl": "https://webseidon.gumroad.com/l/jrvyrv",
++        },
++      ],
++    })}</script></head><body><a href="/features">Features</a></body></html>`;
++    const list = extractCandidatesFromHtml(html, "https://filenq.app/");
++    const gate = findStoreDownloadGate(list);
++    expect(gate?.url).toBe("https://webseidon.gumroad.com/l/jrvyrv");
++    expect(gate?.evidence.some((e) => e.includes("json-ld") || e === "bare-url")).toBe(true);
++  });
+ });
+ 
+ describe("discoverPageDownloads with fixtures", () => {

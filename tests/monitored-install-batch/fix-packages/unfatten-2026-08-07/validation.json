@@ -1,0 +1,33 @@
+{
+  "slug": "unfatten",
+  "url": "https://avelio.tech/unfatten",
+  "failureClass": "brew_fail",
+  "mode": "patch",
+  "agentServiceExpectation": false,
+  "expectedGenerator": "cask-app",
+  "artifactUrl": "https://avelio.tech/download/Unfatten16.dmg",
+  "packageVersion": "1.6",
+  "localGenerate": {
+    "ok": true,
+    "chosen": "https://avelio.tech/download/Unfatten16.dmg",
+    "output": "Casks/unfatten.rb",
+    "version": "1.6",
+    "hostBrewInstallNote": "succeeded with patched source then uninstalled (isolation cleanup)"
+  },
+  "vmInstall": {
+    "ok": false,
+    "helper": "tests/monitored-install-batch/vm-install-one.mjs",
+    "endpoint": "local-2",
+    "allbrewVersion": "0.0.24",
+    "error": "undefined method 'latest?' for nil (missing cask version)",
+    "VERIFY_OK": false
+  },
+  "patches": [
+    "patches/page-discover-and-cask-version.diff",
+    "patches/page-discover-relative-artifacts.diff"
+  ],
+  "files": [
+    "files/page-discover.ts",
+    "files/cask-app.ts"
+  ]
+}

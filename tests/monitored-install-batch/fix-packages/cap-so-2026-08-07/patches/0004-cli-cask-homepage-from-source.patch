@@ -1,0 +1,21 @@
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..58877a0 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -1328,7 +1328,15 @@ async function handleDotnetPackage(classification, opts) {
+ }
+ 
+ async function handleCaskDmg(url, opts) {
+-  return await generateWithConfirmation("cask-app", { url }, opts);
++  return await generateWithConfirmation(
++    "cask-app",
++    { url },
++    {
++      ...opts,
++      // Marketing/page-discover source URL becomes cask homepage when not set.
++      homepage: opts.homepage || opts.sourceUrl,
++    },
++  );
+ }
+ 
+ async function handleArchive(url: string, opts: any) {

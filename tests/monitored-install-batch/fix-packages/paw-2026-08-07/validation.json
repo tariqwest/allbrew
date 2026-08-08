@@ -1,0 +1,18 @@
+{
+  "slug": "paw",
+  "url": "https://github.com/lucor/paw",
+  "failureClass": "generate_fail",
+  "generatorExpected": "cask-app-release",
+  "generatorObservedReleased": "binary-release-with-minisig-urls",
+  "generatorObservedFixed": "cask-app-release",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "vmHelperUsed": true,
+  "vmEndpoint": "homeserver",
+  "vmAcquireFailed": true,
+  "vmNote": "homeserver sparsebundle attach failed once; retry failed from wrong cwd/node_modules",
+  "unitTestsPass": true,
+  "localGenerateFixedOk": true,
+  "released": false,
+  "fixSummary": "Reject minisig bare assets; reclassify arch-tagged zips containing .app as cask-app-release"
+}

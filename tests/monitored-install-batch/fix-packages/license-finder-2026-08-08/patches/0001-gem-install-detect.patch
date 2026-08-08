@@ -1,0 +1,1090 @@
+diff --git a/lib/analyzer.ts b/lib/analyzer.ts
+index e028df4..58d38ce 100644
+--- a/lib/analyzer.ts
++++ b/lib/analyzer.ts
+@@ -3,33 +3,48 @@ const BREW_TAP_RE = /brew\s+tap\s+([^\s;|&\n]+)/gi;
+ const BREW_CASK_RE =
+   /brew\s+(?:cask\s+install|install\s+--cask)\s+([^\s;|&\n]+)/gi;
+ 
++// Optional shell prompt chars: $, #, %, > (docs often show `> pip install foo`)
++const SHELL_PROMPT = "(?:[$#%>]\\s*)?";
+ const NPM_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?npm[ \t]+(?:install|i)[ \t]+(?:-g[ \t]+)?([^\s;|&\n`]+)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}npm[ \\t]+(?:install|i)[ \\t]+(?:-g[ \\t]+)?([^\\s;|&\\n\`]+)`, "i");
+ const PNPM_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?pnpm[ \t]+(?:install|add)[ \t]+(?:-g[ \t]+)?([^\s;|&\n`]+)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pnpm[ \\t]+(?:install|add)[ \\t]+(?:-g[ \\t]+)?([^\\s;|&\\n\`]+)`, "i");
+ const YARN_GLOBAL_ADD_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?yarn[ \t]+global[ \t]+add[ \t]+([^\s;|&\n`]+)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}yarn[ \\t]+global[ \\t]+add[ \\t]+([^\\s;|&\\n\`]+)`, "i");
+ const BUN_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?bun[ \t]+(?:install|add)[ \t]+(?:-g[ \t]+|--global[ \t]+)?([^\s;|&\n`]+)/i;
+-const NPX_RE = /(?:^|[`\n])\s*(?:\$\s*)?npx[ \t]+([^\s;|&\n`]+)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}bun[ \\t]+(?:install|add)[ \\t]+(?:-g[ \\t]+|--global[ \\t]+)?([^\\s;|&\\n\`]+)`, "i");
++const NPX_RE =
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}npx[ \\t]+([^\\s;|&\\n\`]+)`, "i");
+ const PIP_FLAGS =
+   "(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n]*)?)*";
+ const PIP_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?pip[3]?[ \t]+install(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pip[3]?[ \\t]+install(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+ const PIPX_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?pipx[ \t]+install(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pipx[ \\t]+install(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+ const UV_TOOL_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}uv[ \\t]+(?:tool[ \\t]+install|pip[ \\t]+install)(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+ const UVX_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?uvx(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}uvx(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+ const DENO_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?deno[ \t]+install\b[^\n`]*(?:\s(?:--name|-n)[ =]([^\s;|&\n`]+)|\s([\w./:@-]+))(?:[^\n`]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}deno[ \\t]+install\\b[^\\n\`]*(?:\\s(?:--name|-n)[ =]([^\\s;|&\\n\`]+)|\\s([\\w./:@-]+))(?:[^\\n\`]*)`, "i");
+ const SWIFT_RUN_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?swift[ \t]+run(?:[ \t]+(?:-c|--configuration)[ \t]+\w+)?(?:[ \t]+([^\s;|&\n`]+))?/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}swift[ \\t]+run(?:[ \\t]+(?:-c|--configuration)[ \\t]+\\w+)?(?:[ \\t]+([^\\s;|&\\n\`]+))?`, "i");
+ const CARGO_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?cargo[ \t]+install[ \t]+(?:--locked[ \t]+|--force[ \t]+)?(?!--path\b|--git\b|--)([a-zA-Z][a-zA-Z0-9_-]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}cargo[ \\t]+install[ \\t]+(?:--locked[ \\t]+|--force[ \\t]+)?(?!--path\\b|--git\\b|--)([a-zA-Z][a-zA-Z0-9_-]*)`, "i");
+ const GO_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?go[ \t]+install[ \t]+([\w./-]+@[\w.]+)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}go[ \\t]+install[ \\t]+([\\w./-]+@[\\w.]+)`, "i");
++// e.g. `dotnet tool install -g csharprepl` / `dotnet tool install --global Foo.Bar`
++const DOTNET_TOOL_INSTALL_RE =
++  new RegExp(
++    `(?:^|[\`\\n])\\s*${SHELL_PROMPT}dotnet[ \\t]+tool[ \\t]+install(?:[ \\t]+(?:-[a-zA-Z]|--[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`,
++    "i",
++  );
++// e.g. `gem install license_finder` / `gem install -N foo`
++const GEM_INSTALL_RE =
++  new RegExp(
++    `(?:^|[\`\\n])\\s*${SHELL_PROMPT}gem[ \\t]+install(?:[ \\t]+(?:-[a-zA-Z]|--[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`,
++    "i",
++  );
+ 
+ // curl|bash / wget|sh install one-liners and direct .sh/.bash install URLs
+ const CURL_PIPE_SHELL_RE =
+@@ -72,10 +87,10 @@ const WEB_SERVICE_CONTEXT_RE =
+ const NON_RUN_COMMAND_RE =
+   /^(?:brew|launchctl|sudo|systemctl|make|curl|wget|git|docker|podman|export|cp|mkdir|cd|echo|cat|bash|sh|zsh|fish|pwsh|powershell|cmd|swift|npm|pnpm|yarn|bun|deno|cargo|go|python[3]?|pip[3]?|uv|uvx)\b/i;
+ const INSTALL_COMMAND_RE =
+-  /^(?:(?:npm|pnpm|yarn|bun)[ \t]+(?:install|i|add)\b|yarn[ \t]+global[ \t]+add\b|(?:pip|pip3|pipx)[ \t]+install\b|uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)\b|uvx\b|cargo[ \t]+install\b|go[ \t]+install\b|deno[ \t]+install\b|swift[ \t]+(?:run|build|test|package)\b)/i;
++  /^(?:(?:npm|pnpm|yarn|bun)[ \t]+(?:install|i|add)\b|yarn[ \t]+global[ \t]+add\b|(?:pip|pip3|pipx)[ \t]+install\b|uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)\b|uvx\b|cargo[ \t]+install\b|go[ \t]+install\b|deno[ \t]+install\b|dotnet[ \t]+tool[ \t]+install\b|swift[ \t]+(?:run|build|test|package)\b)/i;
+ // Language-toolchain "run" is not a supervised daemon (swift run, npm run, cargo run, …).
+ const LANGUAGE_RUNNER_RE =
+-  /^(?:swift|npm|pnpm|yarn|bun|deno|cargo|go|python[3]?|pip[3]?|uv|uvx)\s+run\b/i;
++  /^(?:swift|npm|pnpm|yarn|bun|deno|cargo|go|dotnet|python[3]?|pip[3]?|uv|uvx)\s+run\b/i;
+ const STATUS_LINE_RE =
+   /^(?:api|dashboard|endpoint|listening|server|ui|web\s*ui)\s+(?:at|on|is|available|running)\b/i;
+ 
+@@ -163,46 +178,32 @@ export function detectInstallMethod(
+   const npmPackage = pickPreferredNpmPackage(readmeText, preferredPackageName);
+   if (npmPackage) return { method: "npm", package: npmPackage };
+ 
+-  match = readmeText.match(PIP_INSTALL_RE);
+-  if (match) {
+-    // Editable/local installs (pip install -e .) are source builds, not PyPI packages.
+-    if (isLocalPipInstallTarget(match[1])) {
+-      return { method: "build", system: "python" };
+-    }
+-    const pkg = cleanPipPackageSpec(match[1]);
+-    if (pkg) return { method: "pip", package: pkg };
+-  }
++  const pipHint = pickPreferredPipPackage(readmeText, preferredPackageName);
++  if (pipHint) return pipHint;
++
++  match = readmeText.match(CARGO_INSTALL_RE);
++  if (match) return { method: "cargo", package: match[1] };
+ 
+-  match = readmeText.match(PIPX_INSTALL_RE);
++  match = readmeText.match(GO_INSTALL_RE);
+   if (match) {
+-    if (isLocalPipInstallTarget(match[1])) {
+-      return { method: "build", system: "python" };
+-    }
+-    const pkg = cleanPipPackageSpec(match[1]);
+-    if (pkg) return { method: "pip", package: pkg };
++    // go install path@version → strip version for module identity
++    // (e.g. github.com/ariasmn/ugm@latest → github.com/ariasmn/ugm)
++    const goMod = String(match[1] || "").replace(/@[\w.+\-]+$/, "");
++    return { method: "go", package: goMod || match[1] };
+   }
+ 
+-  match = readmeText.match(UV_TOOL_INSTALL_RE);
++  match = readmeText.match(DOTNET_TOOL_INSTALL_RE);
+   if (match) {
+-    if (isLocalPipInstallTarget(match[1])) {
+-      return { method: "build", system: "python" };
+-    }
+-    const pkg = cleanPipPackageSpec(match[1]);
+-    if (pkg) return { method: "pip", package: pkg };
++    const pkg = String(match[1] || "").trim();
++    if (pkg) return { method: "dotnet", package: pkg };
+   }
+ 
+-  match = readmeText.match(UVX_RE);
++  match = readmeText.match(GEM_INSTALL_RE);
+   if (match) {
+-    const pkg = cleanPipPackageSpec(match[1]);
+-    if (pkg) return { method: "pip", package: pkg };
++    const pkg = String(match[1] || "").trim();
++    if (pkg) return { method: "gem", package: pkg };
+   }
+ 
+-  match = readmeText.match(CARGO_INSTALL_RE);
+-  if (match) return { method: "cargo", package: match[1] };
+-
+-  match = readmeText.match(GO_INSTALL_RE);
+-  if (match) return { method: "go", package: match[1] };
+-
+   match = readmeText.match(DENO_INSTALL_RE);
+   if (match)
+     return {
+@@ -356,6 +357,59 @@ export function detectServiceConfig(readmeText, packageName = "") {
+   };
+ }
+ 
++/**
++ * File/path-driven CLIs (e.g. `reveal-md slides.md`, `tool dir/`) often document
++ * optional `--port` and open a browser, but they are not brew-services daemons:
++ * the user supplies content per invocation and the process is not an always-on service.
++ */
++function isFileArgDrivenPackageCli(readmeText, packageName) {
++  if (!packageName || !readmeText) return false;
++
++  const pkg = escapeRegExp(packageName);
++  const lineRe = new RegExp(
++    `(?:^|[\\n\\\`])\\s*(?:\\$\\s*)?(${pkg})((?:[ \\t]+[^\\n\\\`]+)?)`,
++    "gim",
++  );
++  let total = 0;
++  let withPathArg = 0;
++  let match;
++  while ((match = lineRe.exec(readmeText)) !== null) {
++    const rest = String(match[2] || "").trim();
++    // Skip install lines and env-prefixed non-invocations elsewhere.
++    if (/^(?:install|i|add)\b/i.test(rest)) continue;
++    total += 1;
++    if (!rest) continue;
++    const tokens = rest.split(/\s+/).filter(Boolean);
++    const positional = tokens.filter(
++      (t) =>
++        !t.startsWith("-") &&
++        !/^(?:PORT=\d+|https?:\/\/)/i.test(t) &&
++        !/[=]/.test(t) &&
++        // Port numbers / host bind targets are not file paths.
++        !/^\d+$/.test(t) &&
++        !/^(?:0\.0\.0\.0|127\.0\.0\.1|localhost|\[::1\])$/i.test(t),
++    );
++    if (
++      positional.some(
++        (t) =>
++          // Relative/absolute paths and filenames (slides.md, dir/, ./foo)
++          /[\/]/.test(t) ||
++          /^\.{1,2}(?:\/|$)/.test(t) ||
++          /\.(?:md|markdown|html?|pdf|txt|adoc|rst|tex|json|ya?ml|toml)$/i.test(
++            t,
++          ),
++      )
++    ) {
++      withPathArg += 1;
++    }
++  }
++
++  if (total === 0) return false;
++  // Majority of documented invocations take a path/file positional.
++  if (total === 1) return withPathArg === 1;
++  return withPathArg / total >= 0.5;
++}
++
+ /**
+  * Long-running package binaries documented with PORT= / --port / --host without
+  * an explicit localhost URL (e.g. LiteLLM proxies: `PORT=8080 acp-router`).
+@@ -363,6 +417,9 @@ export function detectServiceConfig(readmeText, packageName = "") {
+ function detectPortBoundPackageService(readmeText, packageName) {
+   if (!packageName || !readmeText) return null;
+ 
++  // File-arg CLIs documenting optional `--port` are not supervised daemons.
++  if (isFileArgDrivenPackageCli(readmeText, packageName)) return null;
++
+   const hasPortBinding =
+     /\bPORT\s*=\s*\d+/i.test(readmeText) ||
+     /(?:^|[\s`])(?:--port|--host)(?:\s+|=)\S+/im.test(readmeText) ||
+@@ -376,7 +433,7 @@ function detectPortBoundPackageService(readmeText, packageName) {
+     );
+   if (!hasProxyContext) return null;
+ 
+-// Require the package binary to appear as a documented run command — never invent it.
++  // Require the package binary to appear as a documented run command — never invent it.
+   const command = findPackageRunCommand(readmeText, packageName);
+   if (!command) return null;
+ 
+@@ -408,6 +465,11 @@ function detectLocalWebService(readmeText, packageName) {
+   const endpoints = [...readmeText.matchAll(LOCAL_ENDPOINT_RE)];
+   if (endpoints.length === 0) return null;
+ 
++  // File-driven preview CLIs (open browser for a slides file) are not services.
++  if (packageName && isFileArgDrivenPackageCli(readmeText, packageName)) {
++    return null;
++  }
++
+   const hasWebServiceContext = endpoints.some((endpoint) => {
+     const index = endpoint.index || 0;
+     const nearby = readmeText.slice(Math.max(0, index - 180), index + 220);
+@@ -429,7 +491,7 @@ function detectLocalWebService(readmeText, packageName) {
+     near ||
+     whole;
+ 
+-// Do not invent `packageName` alone from a localhost URL — that over-fires on
++  // Do not invent `packageName` alone from a localhost URL — that over-fires on
+   // CLI tools with optional `serve` docs. Require a real runnable command.
+   if (!command) return null;
+ 
+@@ -682,6 +744,84 @@ function pickPreferredNpmPackage(readmeText, preferredPackageName = "") {
+   return candidates[0].package;
+ }
+ 
++/**
++ * Collect pip/pipx/uv/uvx install specs from README and pick the app package.
++ * When preferredPackageName is set (repo name / --name), prefer that over optional
++ * deps (e.g. visdom README documents `pip install plotly` for an optional feature).
++ * Shell prompts (`>`, `%`, `$`, `#`) are accepted before the install command.
++ */
++function pickPreferredPipPackage(readmeText, preferredPackageName = "") {
++  const patterns = [
++    PIP_INSTALL_RE,
++    PIPX_INSTALL_RE,
++    UV_TOOL_INSTALL_RE,
++    UVX_RE,
++  ];
++  const candidates = [];
++  for (const pattern of patterns) {
++    const globalRe = new RegExp(
++      pattern.source,
++      pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`,
++    );
++    let match;
++    while ((match = globalRe.exec(readmeText)) !== null) {
++      const rawSpec = match[1];
++      if (isLocalPipInstallTarget(rawSpec)) {
++        candidates.push({
++          package: null,
++          localBuild: true,
++          raw: match[0],
++          index: match.index,
++        });
++        continue;
++      }
++      const pkg = cleanPipPackageSpec(rawSpec);
++      if (!pkg) continue;
++      candidates.push({
++        package: pkg,
++        localBuild: false,
++        raw: match[0],
++        index: match.index,
++      });
++    }
++  }
++  if (candidates.length === 0) return null;
++
++  const preferred = String(preferredPackageName || "").trim();
++  if (preferred) {
++    const preferredLower = preferred.toLowerCase();
++    const preferredLast = preferredLower.split("/").pop();
++    const matchPreferred = candidates.find((c) => {
++      if (!c.package) return false;
++      const pkg = c.package.toLowerCase();
++      const last = pkg.split("/").pop();
++      return (
++        pkg === preferredLower ||
++        pkg === preferredLast ||
++        last === preferredLower ||
++        last === preferredLast
++      );
++    });
++    // Prefer matching the app/package name. Do not fall back to an unrelated
++    // optional dep (e.g. `pip install plotly` in a visdom README) when the
++    // preferred package only appears behind a shell prompt or later in docs.
++    if (matchPreferred) {
++      return { method: "pip", package: matchPreferred.package };
++    }
++    // Preferred name set but no pip hit for it — let later methods try.
++    // Local editable installs still count as python source build.
++    const local = candidates.find((c) => c.localBuild);
++    if (local) return { method: "build", system: "python" };
++    return null;
++  }
++
++  const local = candidates.find((c) => c.localBuild);
++  if (local) return { method: "build", system: "python" };
++  const first = candidates.find((c) => c.package);
++  if (first) return { method: "pip", package: first.package };
++  return null;
++}
++
+ /** Bare English headings like `Run:` must not become service commands. */
+ function isServiceLikeCommand(command, packageName = "") {
+   if (!command) return false;
+@@ -900,6 +1040,14 @@ export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null
+     return { method: "pip" };
+   if (names.has("package.json")) return { method: "npm" };
+   if (names.has("package.swift")) return { method: "swift" };
++  // Ruby gem CLI packages publish a root *.gemspec (e.g. license_finder.gemspec).
++  // Prefer gemspec over Makefile when both exist (many gems ship a rake Makefile).
++  const gemspec = fileNames.find((f) => /\.gemspec$/i.test(String(f)));
++  if (gemspec) {
++    const base = String(gemspec).split("/").pop() || "";
++    const gemName = base.replace(/\.gemspec$/i, "");
++    return { method: "gem", package: gemName || null };
++  }
+   if (names.has("cmakelists.txt")) return { method: "build", system: "cmake" };
+   if (names.has("meson.build")) return { method: "build", system: "meson" };
+   if (names.has("configure")) return { method: "build", system: "autotools" };
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..2812c85 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -4,6 +4,7 @@ import ora from "ora";
+ import { classifyWithHead } from "./classifier.ts";
+ import {
+   discoverPageDownloads,
++  findStoreDownloadGate,
+   parseDiscoverMode,
+   type DiscoverCandidate,
+ } from "./page-discover.ts";
+@@ -11,6 +12,8 @@ import {
+   initOctokit,
+   getRepoInfo,
+   getLatestRelease,
++  listReleases,
++  pickReleaseWithAppAssets,
+   getReadme,
+   getRepoContents,
+   getFileContent,
+@@ -64,18 +67,48 @@ export async function run(url, opts: any = {}) {
+ 
+   try {
+     if (classification.type === "unknown") {
+-      const discovered = await maybeDiscoverFromUnknownPage(url, opts);
+-      if (discovered) {
+-        classification = discovered.classification;
+-        opts = {
+-          ...opts,
+-          sourceUrl: url,
+-          resolvedUrl: discovered.resolvedUrl,
+-          discoverMethod: discovered.method,
+-        };
+-        console.log(
+-          `  Resolved download via discovery (${chalk.cyan(discovered.method)}): ${chalk.bold(classification.type)} → ${chalk.cyan(discovered.resolvedUrl)}`,
++      // Case C: product homepage already shipped on homebrew/cask with matching
++      // homepage domain → adopt official cask (avoid MAS storefront / *-tap).
++      try {
++        const { matchOfficialCaskByHomepage } = await import(
++          "./generators/homebrew-cask.ts"
+         );
++        const matched = await matchOfficialCaskByHomepage(url, opts.name);
++        if (matched?.token) {
++          classification = {
++            type: "homebrew-cask",
++            url: `https://formulae.brew.sh/cask/${matched.token}`,
++            name: matched.token,
++          };
++          opts = {
++            ...opts,
++            // Official cask token wins over batch --name slugs (refine-app → refine).
++            name: matched.token,
++            sourceUrl: url,
++            discoverMethod: "homebrew-cask-homepage",
++          };
++          console.log(
++            `  Matched official homebrew/cask ${chalk.bold(matched.token)} via homepage domain`,
++          );
++        }
++      } catch {
++        /* optional path */
++      }
++
++      if (classification.type === "unknown") {
++        const discovered = await maybeDiscoverFromUnknownPage(url, opts);
++        if (discovered) {
++          classification = discovered.classification;
++          opts = {
++            ...opts,
++            sourceUrl: url,
++            resolvedUrl: discovered.resolvedUrl,
++            discoverMethod: discovered.method,
++          };
++          console.log(
++            `  Resolved download via discovery (${chalk.cyan(discovered.method)}): ${chalk.bold(classification.type)} → ${chalk.cyan(discovered.resolvedUrl)}`,
++          );
++        }
+       }
+     }
+ 
+@@ -109,6 +142,8 @@ async function dispatchClassification(classification: any, opts: any) {
+       return await handleGemPackage(classification, opts);
+     case "dotnet-package":
+       return await handleDotnetPackage(classification, opts);
++    case "cargo-package":
++      return await handleCargoPackage(classification, opts);
+     case "homebrew-formula":
+       return await handleHomebrewFormula(classification, opts);
+     case "homebrew-cask":
+@@ -155,6 +190,7 @@ async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
+     const result = await discoverPageDownloads(url, {
+       mode,
+       verbose: Boolean(opts.verbose),
++      nameHint: typeof opts.name === "string" ? opts.name : undefined,
+       log: (msg) => {
+         if (opts.verbose) console.log(chalk.dim(`  ${msg}`));
+       },
+@@ -184,15 +220,30 @@ async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
+     let chosen: DiscoverCandidate | null = result.chosen;
+     if (!chosen) {
+       const usable = result.candidates.filter(
+-        (c) => c.kind !== "unknown" || /\.(dmg|pkg|zip|tgz|tar\.gz|sh|bash)(?:\?|#|$)/i.test(c.url),
++        (c) =>
++          c.kind !== "store-download-gate" &&
++          (c.kind !== "unknown" ||
++            /\.(dmg|pkg|zip|tgz|tar\.gz|sh|bash)(?:\?|#|$)/i.test(c.url)),
+       );
+       if (isNonInteractive(opts)) {
+         // Never hang automation on ambiguous HTML noise.
+         chosen = usable[0] || null;
+         if (!chosen) {
+-          spinner.warn(
+-            "No high-confidence download candidate in non-interactive mode",
+-          );
++          const gate = findStoreDownloadGate(result.candidates);
++          if (gate) {
++            spinner.warn(
++              `Download is behind a store gate (no direct .dmg/.zip URL): ${gate.url}`,
++            );
++            console.log(
++              chalk.dim(
++                "  Gumroad/itch-style product pages require checkout before a file URL is issued; allbrew cannot build a cask without a stable direct artifact URL.",
++              ),
++            );
++          } else {
++            spinner.warn(
++              "No high-confidence download candidate in non-interactive mode",
++            );
++          }
+           return null;
+         }
+         console.log(
+@@ -831,9 +882,34 @@ async function handleGithubRepo(classification, opts) {
+     );
+ 
+     const appAssets = release.assets.filter((a) => isAppAsset(a.name));
+-    const binAssets = release.assets.filter(
++    // Platform-tagged binaries. Homebrew on macOS needs at least one macOS
++    // asset; Linux-only releases (e.g. ugm, gpg-tui) must fall through to README
++    // install methods (go, cargo, source-build) instead of binary-release.
++    const allBinAssets = release.assets.filter(
+       (a) => isBinaryAsset(a.name) && matchAssetToArch(a.name),
+     );
++    const binAssetsRaw = allBinAssets.filter((a) => {
++      const arch = matchAssetToArch(a.name);
++      return (
++        arch === "macosArm" ||
++        arch === "macosIntel" ||
++        arch === "macosUniversal"
++      );
++    });
++    // Intel-only macOS assets (no arm64/universal) produce formulas with only
++    // `on_intel` URLs. On Apple Silicon Homebrew then fails with
++    // "formula requires at least a URL". Fall through to README methods
++    // (cargo/go/source) so arm64 hosts get a buildable formula (e.g. tickrs).
++    const hasMacosArmOrUniversal = binAssetsRaw.some((a) => {
++      const arch = matchAssetToArch(a.name);
++      return arch === "macosArm" || arch === "macosUniversal";
++    });
++    const intelOnlyMacosBinAssets =
++      binAssetsRaw.length > 0 && !hasMacosArmOrUniversal;
++    const binAssets = intelOnlyMacosBinAssets ? [] : binAssetsRaw;
++    const linuxOnlyBinAssets =
++      binAssetsRaw.length === 0 && allBinAssets.length > 0;
++    const intelOnlyMacosSkipped = intelOnlyMacosBinAssets;
+ 
+     if (appAssets.length > 0 && binAssets.length > 0) {
+       console.log();
+@@ -903,9 +979,57 @@ async function handleGithubRepo(classification, opts) {
+       );
+     }
+ 
+-    console.log(
+-      chalk.dim("  No recognized binary or app assets, checking README..."),
+-    );
++    if (linuxOnlyBinAssets) {
++      console.log(
++        chalk.dim(
++          `  Release has Linux-only binary assets (${allBinAssets.map((a) => a.name).join(", ")}); no macOS bottle path — checking older releases / README...`,
++        ),
++      );
++    } else if (intelOnlyMacosSkipped) {
++      console.log(
++        chalk.dim(
++          `  Release has Intel-only macOS binary assets (${binAssetsRaw.map((a) => a.name).join(", ")}); no arm64/universal bottle — checking older releases / README...`,
++        ),
++      );
++    } else {
++      console.log(
++        chalk.dim(
++          "  No recognized binary or app assets on latest release, checking older releases...",
++        ),
++      );
++    }
++
++    // Latest often ships Linux/Windows only (e.g. manuskript 0.17.0) while an
++    // older tag still has osx.dmg — walk recent releases before README/source.
++    try {
++      const recent = await listReleases(owner, repo, { perPage: 30 });
++      const olderWithApp = pickReleaseWithAppAssets(recent, isAppAsset);
++      if (
++        olderWithApp &&
++        olderWithApp.tagName &&
++        olderWithApp.tagName !== release.tagName
++      ) {
++        const names = olderWithApp.assets
++          .filter((a) => isAppAsset(a.name))
++          .map((a) => a.name);
++        console.log(
++          `  Found macOS app assets on older release ${chalk.bold(olderWithApp.tagName)}: ${names.join(", ")}`,
++        );
++        return await generateWithConfirmation(
++          "cask-app-release",
++          { repoInfo, release: olderWithApp },
++          opts,
++        );
++      }
++    } catch (err) {
++      if (opts.verbose) {
++        console.log(
++          chalk.dim(
++            `  Older-release scan failed: ${err?.message || err}; continuing...`,
++          ),
++        );
++      }
++    }
+   } else {
+     releaseSpinner.info("No releases found, checking README...");
+   }
+@@ -935,16 +1059,28 @@ async function handleGithubRepo(classification, opts) {
+       console.log(`  Detected command: ${chalk.cyan(brewInfo.installCommand)}`);
+       console.log();
+ 
+-      const choice = await select({
+-        message: "What would you like to do?",
+-        choices: [
+-          {
+-            name: `Run "${brewInfo.installCommand}" directly`,
+-            value: "brew-install",
+-          },
+-          { name: "Generate a custom formula anyway", value: "continue" },
+-        ],
+-      });
++      // Non-interactive/batch: keep generating a formula/cask instead of hanging
++      // on select() or auto-running host `brew install` (no tap/manifest).
++      let choice: "brew-install" | "continue" = "continue";
++      if (isNonInteractive(opts)) {
++        console.log(
++          chalk.dim(
++            `  Non-interactive: generating custom formula anyway (Homebrew also has: ${brewInfo.installCommand})`,
++          ),
++        );
++        choice = "continue";
++      } else {
++        choice = await select({
++          message: "What would you like to do?",
++          choices: [
++            {
++              name: `Run "${brewInfo.installCommand}" directly`,
++              value: "brew-install",
++            },
++            { name: "Generate a custom formula anyway", value: "continue" },
++          ],
++        });
++      }
+ 
+       if (choice === "brew-install") {
+         console.log();
+@@ -1050,7 +1186,84 @@ async function handleGithubRepo(classification, opts) {
+             },
+             opts,
+           );
+-        case "build":
++        case "dotnet":
++          console.log(
++            chalk.yellow(
++              "Note: the dotnet/NuGet generator is experimental and not yet fully verified end-to-end.",
++            ),
++          );
++          return await generateWithConfirmation(
++            "dotnet-package",
++            {
++              packageName: opts.package || method.package,
++              repoInfo,
++              serviceConfig: serviceConfigFromReadme,
++            },
++            opts,
++          );
++        case "gem":
++          return await generateWithConfirmation(
++            "gem-package",
++            {
++              gemName: opts.gemName || opts.package || method.package,
++              repoInfo,
++              serviceConfig: serviceConfigFromReadme,
++            },
++            opts,
++          );
++        case "build": {
++          // README `make all` often wraps a language package manager. Prefer
++          // Cargo.toml / go.mod markers over a non-PREFIX-aware Makefile.
++          const cargoTomlForBuild = await getFileContent(
++            owner,
++            repo,
++            "Cargo.toml",
++          );
++          if (cargoTomlForBuild) {
++            const resolved = await resolveCargoGithubInstall(
++              owner,
++              repo,
++              repoInfo,
++              cargoTomlForBuild,
++              opts,
++            );
++            console.log(
++              chalk.dim(
++                `  Preferring cargo over README build (${method.system || "make"}): Cargo.toml present` +
++                  (resolved.cargoPath && resolved.cargoPath !== "."
++                    ? ` (path ${resolved.cargoPath})`
++                    : ""),
++              ),
++            );
++            return await generateWithConfirmation(
++              "cargo-package",
++              {
++                repoInfo,
++                release,
++                crateName: resolved.crateName,
++                cargoPath: resolved.cargoPath,
++                serviceConfig: serviceConfigFromReadme,
++              },
++              opts,
++            );
++          }
++          const goModForBuild = await getFileContent(owner, repo, "go.mod");
++          if (goModForBuild) {
++            console.log(
++              chalk.dim(
++                `  Preferring go over README build (${method.system || "make"}): go.mod present`,
++              ),
++            );
++            return await generateWithConfirmation(
++              "go-package",
++              {
++                repoInfo,
++                release,
++                serviceConfig: serviceConfigFromReadme,
++              },
++              opts,
++            );
++          }
+           return await generateWithConfirmation(
+             "source-build",
+             {
+@@ -1061,6 +1274,7 @@ async function handleGithubRepo(classification, opts) {
+             },
+             opts,
+           );
++        }
+         case "script": {
+           const scriptUrl = resolveScriptInstallUrl(
+             method,
+@@ -1187,10 +1401,22 @@ async function handleGithubRepo(classification, opts) {
+         );
+       case "cargo": {
+         const cargoToml = await getFileContent(owner, repo, "Cargo.toml");
+-        const crateName = parseCargoPackageName(cargoToml) || repoInfo.name;
++        const resolved = await resolveCargoGithubInstall(
++          owner,
++          repo,
++          repoInfo,
++          cargoToml,
++          opts,
++        );
+         return await generateWithConfirmation(
+           "cargo-package",
+-          { repoInfo, release, crateName: opts.crateName || crateName, serviceConfig },
++          {
++            repoInfo,
++            release,
++            crateName: resolved.crateName,
++            cargoPath: resolved.cargoPath,
++            serviceConfig,
++          },
+           opts,
+         );
+       }
+@@ -1200,6 +1426,20 @@ async function handleGithubRepo(classification, opts) {
+           { repoInfo, release, serviceConfig },
+           opts,
+         );
++      case "gem":
++        return await generateWithConfirmation(
++          "gem-package",
++          {
++            gemName:
++              opts.gemName ||
++              opts.package ||
++              buildSystem.package ||
++              repoInfo.name,
++            repoInfo,
++            serviceConfig,
++          },
++          opts,
++        );
+       case "swift": {
+         const packageSwiftText = await getFileContent(
+           owner,
+@@ -1327,6 +1567,21 @@ async function handleDotnetPackage(classification, opts) {
+   );
+ }
+ 
++async function handleCargoPackage(classification, opts) {
++  const crateName =
++    opts.crateName || opts.package || classification.crateName;
++  if (!crateName) {
++    throw new Error(
++      "crates.io crate name required (use --package or a crates.io URL)",
++    );
++  }
++  return await generateWithConfirmation(
++    "cargo-package",
++    { repoInfo: null, release: null, crateName },
++    opts,
++  );
++}
++
+ async function handleCaskDmg(url, opts) {
+   return await generateWithConfirmation("cask-app", { url }, opts);
+ }
+@@ -1394,6 +1649,11 @@ async function handleArchive(url: string, opts: any) {
+ 
+     default:
+       console.log(chalk.yellow("  Could not determine archive contents"));
++      if (isNonInteractive(opts)) {
++        throw new Error(
++          `Unable to classify archive contents in non-interactive mode: ${url}`,
++        );
++      }
+       const choice = await select({
+         message: "How should this archive be treated?",
+         choices: [
+@@ -1598,6 +1858,7 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
+       result = await generateCargoPackage(params.repoInfo, params.release, {
+         ...mergedOpts,
+         crateName: params.crateName || mergedOpts.crateName,
++        cargoPath: params.cargoPath || mergedOpts.cargoPath,
+       });
+       break;
+     }
+@@ -1906,24 +2167,95 @@ async function collectServiceOptions(params: any, opts: any, formulaName: any) {
+   };
+ }
+ 
+-function parseCargoPackageName(cargoToml: string | null) {
+-  if (!cargoToml) return null;
++async function resolveCargoGithubInstall(
++  owner: string,
++  repo: string,
++  repoInfo: any,
++  cargoToml: string | null,
++  opts: any,
++): Promise<{ crateName: string; cargoPath: string }> {
++  const {
++    parseCargoPackageName,
++    parseCargoWorkspaceMembers,
++    isCargoWorkspaceRoot,
++  } = await import("./generators/cargo-package.ts");
++
++  const rootName = parseCargoPackageName(cargoToml);
++  let crateName =
++    opts.crateName || opts.package || rootName || repoInfo?.name || repo;
++  let cargoPath = ".";
++
++  if (rootName) {
++    return { crateName: opts.crateName || opts.package || rootName, cargoPath };
++  }
++
++  if (!isCargoWorkspaceRoot(cargoToml)) {
++    return { crateName, cargoPath };
++  }
++
++  const members = parseCargoWorkspaceMembers(cargoToml);
++  const preferred =
++    String(opts.crateName || opts.package || repoInfo?.name || repo || "")
++      .toLowerCase()
++      .replace(/_/g, "-");
+ 
+-  let inPackageSection = false;
+-  for (const line of cargoToml.split(/\r?\n/)) {
+-    const trimmed = line.trim();
+-    const section = trimmed.match(/^\[([^\]]+)\]/);
+-    if (section) {
+-      inPackageSection = section[1] === "package";
+-      continue;
++  let fallbackPath: string | null = null;
++  let fallbackName: string | null = null;
++
++  for (const member of members) {
++    const memberToml = await getFileContent(
++      owner,
++      repo,
++      `${member.replace(/\/$/, "")}/Cargo.toml`,
++    );
++    const pkgName = parseCargoPackageName(memberToml);
++    if (!pkgName) continue;
++    const norm = pkgName.toLowerCase().replace(/_/g, "-");
++    if (norm === preferred || preferred.endsWith(norm) || norm.endsWith(preferred)) {
++      return {
++        crateName: opts.crateName || opts.package || pkgName,
++        cargoPath: member.replace(/\/$/, ""),
++      };
++    }
++    // Prefer a member whose package name equals the repo slug when scanning.
++    if (!fallbackPath && (norm === String(repo).toLowerCase() || norm === String(repoInfo?.name || "").toLowerCase())) {
++      fallbackPath = member.replace(/\/$/, "");
++      fallbackName = pkgName;
++    }
++    // Else keep first binary-ish member as last-resort (path with "all-in-one", "cli", "bin")
++    if (
++      !fallbackPath &&
++      /(?:^|\/)(?:cli|bin|app|all-in-one|main)(?:\/|$)/i.test(member)
++    ) {
++      fallbackPath = member.replace(/\/$/, "");
++      fallbackName = pkgName;
+     }
++  }
++
++  if (fallbackPath) {
++    return {
++      crateName: opts.crateName || opts.package || fallbackName || crateName,
++      cargoPath: fallbackPath,
++    };
++  }
+ 
+-    if (!inPackageSection) continue;
+-    const name = trimmed.match(/^name\s*=\s*["']([^"']+)["']/);
+-    if (name) return name[1];
++  // First member with a [package] name
++  for (const member of members) {
++    const memberToml = await getFileContent(
++      owner,
++      repo,
++      `${member.replace(/\/$/, "")}/Cargo.toml`,
++    );
++    const pkgName = parseCargoPackageName(memberToml);
++    if (pkgName) {
++      return {
++        crateName: opts.crateName || opts.package || pkgName,
++        cargoPath: member.replace(/\/$/, ""),
++      };
++    }
+   }
+ 
+-  return null;
++  return { crateName, cargoPath };
+ }
+ 
+ async function resolveSpmBinOptions(
+diff --git a/lib/generators/gem-package.ts b/lib/generators/gem-package.ts
+index 7914984..642edfa 100644
+--- a/lib/generators/gem-package.ts
++++ b/lib/generators/gem-package.ts
+@@ -51,7 +51,9 @@ export async function collectGemPackagePayload(
+     urlLines,
+     livecheckBlock: rubyGemsLivecheckBlock(gemName),
+     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+-    testBinName: rubyEscape(options.binName || name),
++    // Gem executables usually match the gem name (underscores), not the
++    // hyphenated Homebrew formula token (e.g. license_finder vs license-finder).
++    testBinName: rubyEscape(options.binName || gemName || name),
+     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+   };
+ }
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..355c0dc 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -115,6 +115,46 @@ it("detects npx as npm", () => {
+     expect(result).toEqual({ method: "pip", package: "s-tui" });
+   });
+ 
++  it("detects `> pip install` shell-prompt docs (visdom-style)", () => {
++    const result = detectInstallMethod(
++      "```bash\n> pip install visdom\n```",
++      "visdom",
++    );
++    expect(result).toEqual({ method: "pip", package: "visdom" });
++  });
++
++  it("prefers preferred PyPI package over optional dep pip install (visdom vs plotly)", () => {
++    const readme = `
++## Setup
++
++Install from pip
++
++\`\`\`bash
++> pip install visdom
++\`\`\`
++
++#### vis.plotlyplot
++
++> **Note** You must have the \`plotly\` Python package installed to use this function. It can typically be installed by running \`pip install plotly\`.
++`;
++    expect(detectInstallMethod(readme, "visdom")).toEqual({
++      method: "pip",
++      package: "visdom",
++    });
++    // Without preferred name, first pip install after prompt stripping is visdom.
++    expect(detectInstallMethod(readme)).toEqual({
++      method: "pip",
++      package: "visdom",
++    });
++  });
++
++  it("does not pick unrelated optional pip dep when preferred name is set and primary is missing", () => {
++    const readme =
++      "Optional: run `pip install plotly` for Plotly figures.\n";
++    // Preferred app is not documented as pip install — do not claim plotly.
++    expect(detectInstallMethod(readme, "visdom")).toBeNull();
++  });
++
+   it("detects pip3 install as pip", () => {
+     const result = detectInstallMethod("```bash\npip3 install toolong\n```");
+     expect(result).toEqual({ method: "pip", package: "toolong" });
+@@ -227,9 +267,44 @@ omnigent server --background
+     expect(result).toEqual({ method: "cargo", package: "ripgrep" });
+   });
+ 
+-  it("detects go install with version", () => {
++  it("detects dotnet tool install -g as nuget global tool", () => {
++    const result = detectInstallMethod(
++      "```bash\ndotnet tool install -g csharprepl\n```",
++    );
++    expect(result).toEqual({ method: "dotnet", package: "csharprepl" });
++  });
++
++  it("detects dotnet tool install --global with package id", () => {
++    const result = detectInstallMethod(
++      "Install via:\n\n    $ dotnet tool install --global dotnet-monitor\n",
++    );
++    expect(result).toEqual({ method: "dotnet", package: "dotnet-monitor" });
++  });
++
++  it("detects gem install as ruby gem package", () => {
++    const result = detectInstallMethod(
++      "```sh\n$ gem install license_finder\n```",
++    );
++    expect(result).toEqual({ method: "gem", package: "license_finder" });
++  });
++
++  it("detects gem install with flags before package name", () => {
++    const result = detectInstallMethod(
++      "```bash\ngem install -N --user-install foo-bar\n```",
++    );
++    expect(result).toEqual({ method: "gem", package: "foo-bar" });
++  });
++
++  it("detects go install with version and strips tag for module path", () => {
+     const result = detectInstallMethod("```bash\ngo install github.com/foo/bar@v1.2.3\n```");
+-    expect(result).toEqual({ method: "go", package: "github.com/foo/bar@v1.2.3" });
++    expect(result).toEqual({ method: "go", package: "github.com/foo/bar" });
++  });
++
++  it("strips @latest from go install module path", () => {
++    const result = detectInstallMethod(
++      "```bash\ngo install github.com/ariasmn/ugm@latest\n```",
++    );
++    expect(result).toEqual({ method: "go", package: "github.com/ariasmn/ugm" });
+   });
+ 
+   it("detects curl | bash install one-liner as script", () => {
+@@ -606,6 +681,51 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
+     ].join("\n");
+     expect(detectServiceConfig(readme, "turbo-fieldfare")).toBeNull();
+   });
++
++  it("does not treat file-arg presentation CLIs with optional --port as services (reveal-md)", () => {
++    const readme = [
++      "# reveal-md",
++      "",
++      "```console",
++      "npm install -g reveal-md",
++      "```",
++      "",
++      "## Usage",
++      "",
++      "```console",
++      "reveal-md slides.md",
++      "```",
++      "",
++      "This starts a local server and opens any Markdown file as a reveal.js presentation.",
++      "",
++      "```console",
++      "docker run --rm -p 1948:1948 -v slides:/slides webpronl/reveal-md:latest",
++      "```",
++      "",
++      "The service is now running at http://localhost:1948",
++      "",
++      "### Directory Listing",
++      "",
++      "```console",
++      "reveal-md",
++      "```",
++      "",
++      "### Custom Port",
++      "",
++      "```console",
++      "reveal-md slides.md --port 8888",
++      "```",
++      "",
++      "```console",
++      "reveal-md slides.md --theme solarized",
++      "```",
++      "",
++      "```console",
++      "reveal-md slides.md --print slides.pdf",
++      "```",
++    ].join("\n");
++    expect(detectServiceConfig(readme, "reveal-md")).toBeNull();
++  });
+ });
+ 
+ describe("detectServiceConfigFromFiles", () => {
+@@ -711,6 +831,22 @@ describe("detectBuildSystemFromFiles", () => {
+     expect(detectBuildSystemFromFiles(["GNUmakefile"])).toEqual({ method: "build", system: "make" });
+   });
+ 
++  it("detects root gemspec as gem package", () => {
++    expect(
++      detectBuildSystemFromFiles([
++        "license_finder.gemspec",
++        "Gemfile",
++        "README.md",
++      ]),
++    ).toEqual({ method: "gem", package: "license_finder" });
++  });
++
++  it("prefers gemspec over Makefile for Ruby gems", () => {
++    expect(
++      detectBuildSystemFromFiles(["Makefile", "license_finder.gemspec", "lib"]),
++    ).toEqual({ method: "gem", package: "license_finder" });
++  });
++
+   it("returns null when no build files are found", () => {
+     expect(detectBuildSystemFromFiles(["README.md", "LICENSE"])).toBeNull();
+   });

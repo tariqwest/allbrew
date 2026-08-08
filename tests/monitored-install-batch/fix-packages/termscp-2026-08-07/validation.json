@@ -1,0 +1,18 @@
+{
+  "url": "https://formulae.brew.sh/formula/termscp",
+  "slug": "termscp",
+  "failureClass": "brew_fail",
+  "secondaryFailure": "generate_fail_monorepo_on_0.0.24",
+  "rootCause": "0.0.24: unknown→homebrew-core monorepo HEAD; main unfixed: bottle cellar double-colon from API :any",
+  "fixFiles": ["lib/generators/homebrew-formula.ts"],
+  "tests": ["tests/unit/homebrew-formula-bottle.test.ts"],
+  "localGenerateOk": true,
+  "rubySyntaxOk": true,
+  "vmVerifyOk": false,
+  "vmExitCode": 143,
+  "vmAllbrewVersion": "0.0.24",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "released": false,
+  "relatedFixPackages": ["dnote-2026-08-07", "pug-2026-08-06", "gpg-tui-2026-08-07"]
+}

@@ -1,0 +1,97 @@
+--- lib/generators/homebrew-cask.ts	2026-08-07 19:31:00
++++ tests/monitored-install-batch/worktrees/ia-writer-fix/lib/generators/homebrew-cask.ts	2026-08-07 20:33:01
+@@ -63,7 +63,7 @@
+   const tokens: string[] = [];
+   const push = (raw: string | null | undefined) => {
+     const t = toCaskToken(String(raw || ""));
+-    if (t && !tokens.includes(t)) tokens.push(t);
++    if (t && t.length >= 3 && !tokens.includes(t)) tokens.push(t);
+   };
+   const raw = String(preferredName || "").trim();
+   if (!raw) return tokens;
+@@ -76,7 +76,11 @@
+   );
+   if (stripped !== bare) push(stripped);
+   // First hyphen segment (aldente-pro → aldente, cleanshot-x → cleanshot).
+-  if (bare.includes("-")) push(bare.split("-")[0]);
++  // Require length >= 4 so ia-writer does not yield "ia" → ia-markdown-dictionary.
++  if (bare.includes("-")) {
++    const first = bare.split("-")[0];
++    if (first.length >= 4) push(first);
++  }
+   // Dehyphenated form.
+   push(bare.replace(/-/g, ""));
+   return tokens;
+@@ -191,17 +195,67 @@
+       });
+     }
+     if (domainHits.length === 0) return null;
+-    if (domainHits.length === 1) return domainHits[0];
+-    // Multiple products share the vendor domain: prefer slug-derived tokens.
++
++    // Prefer cask homepage path aligned with the page path (ia.net/presenter).
++    let pagePath = "";
++    try {
++      pagePath = new URL(pageUrl).pathname.replace(/\/+$/, "") || "/";
++    } catch {
++      pagePath = "/";
++    }
++    const pathAligned = domainHits.filter((h) => {
++      try {
++        const hpPath = new URL(h.homepage || "").pathname.replace(/\/+$/, "") || "/";
++        if (pagePath === "/" || hpPath === "/") return false;
++        if (hpPath === pagePath) return true;
++        const pageSeg = pagePath.split("/").filter(Boolean)[0];
++        const hpSeg = hpPath.split("/").filter(Boolean)[0];
++        return Boolean(pageSeg && hpSeg && pageSeg === hpSeg);
++      } catch {
++        return false;
++      }
++    });
++    if (pathAligned.length === 1) return pathAligned[0];
++
++    const productAligned = (preferredTok: string, caskToken: string): boolean => {
++      const p = toCaskToken(preferredTok);
++      const t = toCaskToken(caskToken);
++      if (!p || !t) return false;
++      if (p === t) return true;
++      const pParts = p.split("-").filter(Boolean);
++      const tParts = t.split("-").filter(Boolean);
++      if (pParts.length && tParts.length) {
++        if (pParts.every((part) => tParts.includes(part)) && p.length >= 4) return true;
++        if (tParts.every((part) => pParts.includes(part)) && t.length >= 4) return true;
++      }
++      if (p.length >= 5 && t.length >= 5 && (p.includes(t) || t.includes(p))) return true;
++      return false;
++    };
++
++    // Add path product tokens to preferred set (ia.net/writer → writer).
++    try {
++      for (const seg of new URL(pageUrl).pathname.split("/").filter(Boolean)) {
++        const t = toCaskToken(seg);
++        if (t && t.length >= 3) preferred.add(t);
++      }
++    } catch { /* ignore */ }
++
++    if (domainHits.length === 1) {
++      const only = domainHits[0];
++      if (preferred.size === 0) return only;
++      if ([...preferred].some((p) => productAligned(p, only.token))) return only;
++      return null;
++    }
++
++    // Multiple products share the vendor domain: require product-aligned preferred/path.
+     const byPreferred = domainHits.find((h) => preferred.has(toCaskToken(h.token)));
+     if (byPreferred) return byPreferred;
+-    // Prefer a hit whose token appears as a path/name fragment of preferred.
+     for (const h of domainHits) {
+-      const t = toCaskToken(h.token);
+       for (const p of preferred) {
+-        if (p.includes(t) || t.includes(p)) return h;
++        if (productAligned(p, h.token)) return h;
+       }
+     }
++    return null;
+   } catch {
+     /* index unavailable */
+   }

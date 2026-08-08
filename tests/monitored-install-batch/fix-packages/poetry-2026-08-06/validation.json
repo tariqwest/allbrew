@@ -1,0 +1,30 @@
+{
+  "url": "https://install.python-poetry.org",
+  "slug": "poetry",
+  "failureClass": "generate_fail",
+  "fixedLocally": true,
+  "unitTests": {
+    "command": "bun test tests/unit/classifier.test.ts",
+    "passed": true,
+    "count": 29
+  },
+  "localGenerate": {
+    "classifiedAs": "pip-package",
+    "packageName": "poetry",
+    "formulaNameAfterCoreCollision": "poetry-tap",
+    "service": false,
+    "serviceMatch": true,
+    "version": "2.4.1"
+  },
+  "vmInstall": {
+    "attempted": true,
+    "endpoint": "homeserver",
+    "allbrewVersion": "0.0.24",
+    "passed": false,
+    "reason": "fix not released; brew allbrew still classifies as unknown"
+  },
+  "files": [
+    "lib/classifier.ts",
+    "tests/unit/classifier.test.ts"
+  ]
+}

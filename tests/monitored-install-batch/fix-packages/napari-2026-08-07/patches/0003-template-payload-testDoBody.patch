@@ -1,0 +1,11 @@
+--- lib/template-payload.ts	2026-08-02 01:27:49
++++ /tmp/allbrew-wt-napari-58004/lib/template-payload.ts	2026-08-07 06:30:03
+@@ -36,6 +36,8 @@
+   licenseLine: string;
+   livecheckBlock: string;
+   resourcesBlock: string;
++  /** Full body line(s) inside `test do` (pre-indented). */
++  testDoBody: string;
+ };
+ 
+ export type CargoPackagePayload = FormulaCommonFields & {

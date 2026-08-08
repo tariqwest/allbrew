@@ -1,0 +1,12 @@
+{
+  "localGenerateOk": true,
+  "localMatchedOfficialCask": true,
+  "vmInstallOk": false,
+  "vmAllbrewVersion": "0.0.24",
+  "vmFailure": "Unable to automatically handle URL (non-interactive)",
+  "serviceExpectation": false,
+  "serviceObserved": false,
+  "packageName": "pictogram",
+  "packageVersion": "0.1,13",
+  "unitTest": "tests/unit/generators/homebrew-cask-homepage.test.ts"
+}

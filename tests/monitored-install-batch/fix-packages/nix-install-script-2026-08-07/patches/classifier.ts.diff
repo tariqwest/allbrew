@@ -1,0 +1,77 @@
+--- lib/classifier.ts	2026-08-06 20:31:46
++++ /Users/tariqwest/Developer/allbrew/tests/monitored-install-batch/worktrees/nix-2026-08-07/lib/classifier.ts	2026-08-07 07:50:40
+@@ -116,6 +116,41 @@
+   return { type: 'unknown', url };
+ }
+ 
++// #!/bin/sh | #!/bin/bash | #!/usr/bin/env bash | #!/usr/bin/env sh
++const SHEBANG_RE =
++  /^#!\s*(?:\/usr\/bin\/env\s+(?:ba)?sh\b|\/bin\/(?:ba)?sh\b|\/usr\/bin\/(?:ba)?sh\b)/m;
++
++/**
++ * Many CDNs serve install scripts as text/plain (e.g. nixos.org/nix/install →
++ * releases.nixos.org/…/install). HEAD alone cannot distinguish them from HTML.
++ * Peek at the body for a POSIX/bash shebang.
++ */
++async function sniffShellScriptBody(url: string): Promise<boolean> {
++  try {
++    const response = await fetch(url, {
++      method: "GET",
++      redirect: "follow",
++      headers: {
++        "User-Agent": "allbrew/1.0",
++        // Prefer plain text; still accept */* so S3 text/plain works.
++        Accept: "text/plain,*/*;q=0.8",
++        Range: "bytes=0-511",
++      },
++      signal: AbortSignal.timeout(30_000),
++    });
++    if (!response.ok && response.status !== 206) return false;
++    const ct = (response.headers.get("content-type") || "").toLowerCase();
++    // Avoid treating HTML download pages as scripts.
++    if (ct.includes("text/html") || ct.includes("application/xhtml")) return false;
++    const buf = new Uint8Array(await response.arrayBuffer());
++    const text = new TextDecoder("utf-8", { fatal: false }).decode(buf);
++    const head = text.replace(/^\uFEFF/, "").trimStart().slice(0, 256);
++    return SHEBANG_RE.test(head);
++  } catch {
++    return false;
++  }
++}
++
+ export async function classifyWithHead(url) {
+   const result = classify(url);
+   if (result.type !== 'unknown') return result;
+@@ -146,9 +181,32 @@
+     if (ct.includes('text/x-shellscript') || ct.includes('application/x-sh')) {
+       return { type: 'bash-script', url };
+     }
++
++    // text/plain (and similar) installers without .sh extension — body shebang sniff
++    if (
++      !ct ||
++      ct.startsWith("text/plain") ||
++      ct.startsWith("application/octet-stream") ||
++      ct.includes("charset=")
++    ) {
++      if (await sniffShellScriptBody(url)) {
++        return { type: "bash-script", url };
++      }
++    }
+   } catch {
+     // fall through
+   }
+ 
++  // Final fallback: path ends with /install (common multi-platform installer URL)
++  // and body is a shell script (covers HEAD failures that still allow GET).
++  try {
++    const path = new URL(url).pathname.toLowerCase();
++    if (/(?:^|\/)install(?:\.sh)?$/.test(path) && (await sniffShellScriptBody(url))) {
++      return { type: "bash-script", url };
++    }
++  } catch {
++    // fall through
++  }
++
+   return { type: 'unknown', url };
+ }

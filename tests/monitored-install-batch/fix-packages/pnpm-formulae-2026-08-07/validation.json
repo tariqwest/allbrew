@@ -1,0 +1,33 @@
+{
+  "slug": "pnpm",
+  "url": "https://formulae.brew.sh/formula/pnpm",
+  "failureClass": "brew_fail",
+  "caseC": true,
+  "coreFormula": "pnpm",
+  "fixApplied": true,
+  "generatorExpected": "homebrew-formula",
+  "generatorBroken": "homebrew-formula",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "rootCause": "renderBottleBlock prefixes : onto API cellar values that already start with :, emitting ::any",
+  "tests": {
+    "unit": "tests/unit/homebrew-formula-bottle.test.ts",
+    "result": "6 pass"
+  },
+  "localGenerate": {
+    "classifiedAs": "homebrew-formula",
+    "formulaName": "pnpm",
+    "version": "11.20.0",
+    "bottleCellar": ":any",
+    "rubySyntax": "OK",
+    "install": "ok_worktree"
+  },
+  "files": [
+    "patches/homebrew-formula.ts",
+    "patches/homebrew-formula.patch",
+    "tests/homebrew-formula-bottle.test.ts",
+    "formula-pnpm-broken.rb",
+    "formula-pnpm-fixed.rb",
+    "FIX.md"
+  ]
+}

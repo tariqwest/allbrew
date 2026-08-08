@@ -1,0 +1,74 @@
+diff --git a/lib/generators/cask-app-release.ts b/lib/generators/cask-app-release.ts
+index 0fa412d..af96f32 100644
+--- a/lib/generators/cask-app-release.ts
++++ b/lib/generators/cask-app-release.ts
+@@ -3,12 +3,43 @@ import {
+   extractVersionFromTag,
+   rubyEscape,
+   isAppAsset,
++  matchAssetToArch,
+ } from "../utils.ts";
+ import { downloadToTemp } from "../sha256.ts";
+ import { listDmgAppNames, listZipEntries } from "../archive-inspector.ts";
+ import type { CaskAppReleasePayload } from "../template-payload.ts";
+ import { writeRenderedCask } from "../template-renderer.ts";
+ import { githubLatestLivecheckBlock } from "./livecheck.ts";
++import { templateReleaseUrl } from "./binary-release.ts";
++
++/** Prefer DMG, then host-arch zip, then first app asset. */
++export function pickBestAppReleaseAsset(appAssets: { name: string }[]): {
++  name: string;
++} {
++  if (appAssets.length === 0) {
++    throw new Error("No .dmg or macOS .zip assets found in release");
++  }
++  const dmgAsset = appAssets.find((a) => a.name.toLowerCase().endsWith(".dmg"));
++  if (dmgAsset) return dmgAsset;
++
++  const hostArch =
++    process.arch === "arm64"
++      ? "macosArm"
++      : process.arch === "x64"
++        ? "macosIntel"
++        : null;
++  if (hostArch) {
++    const archMatch = appAssets.find(
++      (a) => matchAssetToArch(a.name) === hostArch,
++    );
++    if (archMatch) return archMatch;
++  }
++  const universal = appAssets.find(
++    (a) => matchAssetToArch(a.name) === "macosUniversal",
++  );
++  if (universal) return universal;
++  return appAssets[0];
++}
+ 
+ export async function collectCaskAppReleasePayload(
+   repoInfo: any,
+@@ -22,10 +53,7 @@ export async function collectCaskAppReleasePayload(
+     throw new Error("No .dmg or macOS .zip assets found in release");
+   }
+ 
+-  const dmgAsset = appAssets.find((a: any) =>
+-    a.name.toLowerCase().endsWith(".dmg"),
+-  );
+-  const bestAsset = dmgAsset || appAssets[0];
++  const bestAsset = pickBestAppReleaseAsset(appAssets);
+ 
+   let appName = options.appName;
+ 
+@@ -56,9 +84,10 @@ export async function collectCaskAppReleasePayload(
+   const homepage = options.homepage || repoInfo.homepage || repoInfo.htmlUrl;
+   const displayName = appName.replace(/\.app$/i, "");
+ 
+-  const urlTemplate = bestAsset.url
+-    .replace(version, "#{version}")
+-    .replace(release.tagName, "v#{version}");
++  // Use shared templateReleaseUrl so bare tags (tag == version) replace ALL
++  // occurrences without inventing a spurious "v" prefix in the asset basename
++  // (e.g. ComicTagger-1.5.5-osx-….app.zip must not become ComicTagger-v#{version}-…).
++  const urlTemplate = templateReleaseUrl(bestAsset.url, version, release.tagName);
+ 
+   const zapPaths = [
+     `~/Library/Application Support/${displayName}`,

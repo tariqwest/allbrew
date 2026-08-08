@@ -1,0 +1,34 @@
+{
+  "slug": "pasty",
+  "url": "https://pasty.dev",
+  "failureClass": "brew_fail",
+  "rootCause": "cask missing version stanza for GitHub latest/download URL",
+  "filesChanged": [
+    "lib/generators/cask-app.ts",
+    "tests/unit/generators/cask-app.test.ts"
+  ],
+  "unitTests": {
+    "command": "bun test tests/unit/generators/cask-app.test.ts",
+    "passed": 64,
+    "failed": 0
+  },
+  "localGenerate": {
+    "ok": true,
+    "versionLine": "version \"3.7.3\"",
+    "generator": "cask-app",
+    "service": false
+  },
+  "hostBrewInstallValidation": {
+    "ok": true,
+    "note": "local source install succeeded; uninstalled after; not batch success path"
+  },
+  "vmInstall": {
+    "endpoint": "local-2",
+    "exitCode": 1,
+    "verifyOk": false,
+    "allbrewVersion": "0.0.24",
+    "note": "bottle lacks fix; needs release"
+  },
+  "batchMode": true,
+  "released": false
+}

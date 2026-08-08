@@ -1,0 +1,114 @@
+diff --git a/lib/analyzer.ts b/lib/analyzer.ts
+index e028df4..e70e2d8 100644
+--- a/lib/analyzer.ts
++++ b/lib/analyzer.ts
+@@ -30,6 +30,8 @@ const CARGO_INSTALL_RE =
+   /(?:^|[`\n])\s*(?:\$\s*)?cargo[ \t]+install[ \t]+(?:--locked[ \t]+|--force[ \t]+)?(?!--path\b|--git\b|--)([a-zA-Z][a-zA-Z0-9_-]*)/i;
+ const GO_INSTALL_RE =
+   /(?:^|[`\n])\s*(?:\$\s*)?go[ \t]+install[ \t]+([\w./-]+@[\w.]+)/i;
++const GEM_INSTALL_RE =
++  /(?:^|[`\n])\s*(?:\$\s*)?gem[ \t]+install[ \t]+(?:--(?:no-document|no-ri|no-rdoc|user-install|force|local|ignore-dependencies)[ \t]+)*([a-zA-Z0-9][a-zA-Z0-9._-]*)/i;
+ 
+ // curl|bash / wget|sh install one-liners and direct .sh/.bash install URLs
+ const CURL_PIPE_SHELL_RE =
+@@ -203,6 +205,12 @@ export function detectInstallMethod(
+   match = readmeText.match(GO_INSTALL_RE);
+   if (match) return { method: "go", package: match[1] };
+ 
++  match = readmeText.match(GEM_INSTALL_RE);
++  if (match) {
++    const gem = String(match[1] || "").replace(/\.gem$/i, "");
++    if (gem) return { method: "gem", package: gem };
++  }
++
+   match = readmeText.match(DENO_INSTALL_RE);
+   if (match)
+     return {
+@@ -900,6 +908,12 @@ export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null
+     return { method: "pip" };
+   if (names.has("package.json")) return { method: "npm" };
+   if (names.has("package.swift")) return { method: "swift" };
++  // Ruby gem: root *.gemspec (or gemspec without extension is rare)
++  const gemspec = [...names].find((n) => n.endsWith(".gemspec"));
++  if (gemspec) {
++    const base = gemspec.replace(/\.gemspec$/i, "");
++    return { method: "gem", package: base || null };
++  }
+   if (names.has("cmakelists.txt")) return { method: "build", system: "cmake" };
+   if (names.has("meson.build")) return { method: "build", system: "meson" };
+   if (names.has("configure")) return { method: "build", system: "autotools" };
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..6446507 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -1039,6 +1039,16 @@ async function handleGithubRepo(classification, opts) {
+             },
+             opts,
+           );
++        case "gem":
++          return await generateWithConfirmation(
++            "gem-package",
++            {
++              gemName: opts.gemName || opts.package || method.package,
++              repoInfo,
++              serviceConfig: serviceConfigFromReadme,
++            },
++            opts,
++          );
+         case "go":
+           return await generateWithConfirmation(
+             "go-package",
+@@ -1194,6 +1204,16 @@ async function handleGithubRepo(classification, opts) {
+           opts,
+         );
+       }
++      case "gem":
++        return await generateWithConfirmation(
++          "gem-package",
++          {
++            gemName: opts.gemName || opts.package || buildSystem.package || repoInfo.name,
++            repoInfo,
++            serviceConfig,
++          },
++          opts,
++        );
+       case "go":
+         return await generateWithConfirmation(
+           "go-package",
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..957537a 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -227,6 +227,18 @@ omnigent server --background
+     expect(result).toEqual({ method: "cargo", package: "ripgrep" });
+   });
+ 
++  it("detects gem install", () => {
++    const result = detectInstallMethod("```bash\ngem install pry\n```");
++    expect(result).toEqual({ method: "gem", package: "pry" });
++  });
++
++  it("detects gem install with --no-document flags", () => {
++    const result = detectInstallMethod(
++      "```\n$ gem install --no-document pry\n```",
++    );
++    expect(result).toEqual({ method: "gem", package: "pry" });
++  });
++
+   it("detects go install with version", () => {
+     const result = detectInstallMethod("```bash\ngo install github.com/foo/bar@v1.2.3\n```");
+     expect(result).toEqual({ method: "go", package: "github.com/foo/bar@v1.2.3" });
+@@ -785,3 +797,13 @@ describe("detectBuildSystemFromArchive", () => {
+     expect(detectBuildSystemFromArchive(["foo-1.0/LICENSE"])).toBeNull();
+   });
+ });
++
++
++describe("detectBuildSystemFromFiles gem", () => {
++  it("detects root .gemspec as gem method", () => {
++    expect(detectBuildSystemFromFiles(["pry.gemspec", "lib", "README.md"])).toEqual({
++      method: "gem",
++      package: "pry",
++    });
++  });
++});

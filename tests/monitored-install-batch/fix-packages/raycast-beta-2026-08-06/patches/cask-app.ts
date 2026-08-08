@@ -1,0 +1,326 @@
+import {
+  toCaskToken,
+  rubyEscape,
+  extractVersionFromTag,
+} from "../utils.ts";
+import { downloadToTemp } from "../sha256.ts";
+import { listDmgAppNames, listZipEntries } from "../archive-inspector.ts";
+import type { CaskAppPayload } from "../template-payload.ts";
+import { writeRenderedCask } from "../template-renderer.ts";
+import { urlVersionLivecheckBlock } from "./livecheck.ts";
+
+/** Pathname without query/hash for extension and version heuristics. */
+export function urlPathname(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url.split("?")[0].split("#")[0];
+  }
+}
+
+/**
+ * Prefer Content-Disposition filename= in query (CDN signed URLs), else path basename.
+ */
+export function filenameFromDownloadUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const cd =
+      u.searchParams.get("response-content-disposition") ||
+      u.searchParams.get("response-content-disposition".toLowerCase()) ||
+      "";
+    const m = decodeURIComponent(cd).match(
+      /filename\*?=(?:UTF-8''|"?)([^";]+)"?/i,
+    );
+    if (m?.[1]) return m[1].replace(/"/g, "").trim();
+    const base = u.pathname.split("/").filter(Boolean).pop();
+    if (base) return base;
+  } catch {
+    // fall through
+  }
+  return (url.split("/").pop() || "app").split("?")[0];
+}
+
+/**
+ * Rewrite short-lived signed CDN URLs to stable vendor download URLs when known.
+ * Raycast: R2 signed path Raycast_vX.Y.Z_*.dmg → releases.raycast.com/releases/X.Y.Z/download
+ */
+export function canonicalizeCaskDownloadUrl(url: string): {
+  url: string;
+  version: string | null;
+  rewritten: boolean;
+} {
+  const path = urlPathname(url);
+  const ray = path.match(/Raycast_v(\d+\.\d+\.\d+)/i);
+  if (ray && /raycast/i.test(url)) {
+    const ver = ray[1];
+    let build = "";
+    if (/_arm(?:\.dmg)?$/i.test(path) || /[?&]build=arm\b/i.test(url)) {
+      build = "?build=arm";
+    } else if (
+      /x86_64|intel/i.test(path) ||
+      /[?&]build=x86_64\b/i.test(url)
+    ) {
+      build = "?build=x86_64";
+    }
+    // universal (no build) is fine for Homebrew sha256 of a single artifact
+    return {
+      url: `https://releases.raycast.com/releases/${ver}/download${build}`,
+      version: ver,
+      rewritten: true,
+    };
+  }
+  return { url, version: null, rewritten: false };
+}
+
+export function isPresignedCloudUrl(url: string): boolean {
+  return /[?&]X-Amz-Signature=|[?&]X-Amz-Credential=|[?&]X-Amz-Expires=/i.test(
+    url,
+  );
+}
+
+
+export async function fetchRaycastLatestVersion(
+  arch: "arm" | "x86_64" = "arm",
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://releases.raycast.com/releases/latest?build=${arch}`,
+      {
+        headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" },
+        signal: AbortSignal.timeout(20_000),
+      },
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as { version?: string };
+    return json.version || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function collectCaskAppPayload(
+  url: string,
+  options: any = {},
+): Promise<CaskAppPayload> {
+  let canon = canonicalizeCaskDownloadUrl(url);
+  // Stable Raycast /download has no version in path — query API then pin versioned URL.
+  if (
+    !canon.version &&
+    /releases\.raycast\.com\/download\/?$/i.test(url.split("?")[0])
+  ) {
+    const apiVer = await fetchRaycastLatestVersion();
+    if (apiVer) {
+      canon = {
+        url: `https://releases.raycast.com/releases/${apiVer}/download`,
+        version: apiVer,
+        rewritten: true,
+      };
+    }
+  }
+  const downloadUrl = canon.url;
+  let appName = options.appName;
+
+  const { sha256, cleanup, path } = await downloadToTemp(downloadUrl);
+  try {
+    if (!appName) {
+      appName = await detectAppName(downloadUrl, path);
+    }
+  } finally {
+    await cleanup();
+  }
+
+  // Stable vendor endpoints often lack a product filename (…/download).
+  if (
+    /raycast/i.test(downloadUrl) &&
+    (!appName || /^download\.app$/i.test(appName) || /^app\.app$/i.test(appName))
+  ) {
+    appName = "Raycast.app";
+  }
+
+  const filename = filenameFromDownloadUrl(downloadUrl);
+  const baseName = filename
+    .replace(/\.(dmg|zip|pkg)$/i, "")
+    .replace(/[_-]v?\d+\.\d+(?:\.\d+)?.*$/i, "")
+    .replace(/-[\d.]+$/, "");
+
+  const name = options.name || toCaskToken(baseName || "app");
+  const desc =
+    options.desc ||
+    `Install ${((appName || baseName) as string).replace(/\.app$/i, "")}`;
+  const version =
+    (await resolveCaskVersion(downloadUrl, {
+      ...options,
+      version: options.version || canon.version || undefined,
+    })) || null;
+  // Homebrew requires a version stanza; nil version → `undefined method 'latest?' for nil`.
+  const versionLine = version
+    ? `  version "${rubyEscape(version)}"\n`
+    : "  version :latest\n";
+  const displayName = (appName || baseName || name).replace(/\.app$/i, "");
+
+  const livecheckUrl = canon.rewritten
+    ? `https://releases.raycast.com/releases/latest`
+    : downloadUrl;
+
+  return {
+    template: "cask_app",
+    name,
+    sha256: rubyEscape(sha256),
+    url: rubyEscape(downloadUrl),
+    displayName: rubyEscape(displayName),
+    desc: rubyEscape(desc),
+    versionLine,
+    homepageLine: options.homepage
+      ? `  homepage "${rubyEscape(options.homepage)}"\n`
+      : canon.rewritten
+        ? `  homepage "https://raycast.com/"\n`
+        : "",
+    appOrPkgBlock: buildAppOrPkgBlock(
+      downloadUrl,
+      filename,
+      appName,
+      baseName || displayName,
+      name,
+    ),
+    livecheckBlock: urlVersionLivecheckBlock(livecheckUrl),
+  };
+}
+
+/**
+ * Prefer explicit option, then path/query version, then GitHub latest release tag.
+ * Returns null only when nothing can be determined (caller emits `version :latest`).
+ */
+export async function resolveCaskVersion(
+  url: string,
+  options: any = {},
+): Promise<string | null> {
+  if (options.version) return String(options.version);
+
+  const fromUrl = extractVersionFromUrl(url);
+  if (fromUrl) return fromUrl;
+
+  if (/raycast\.com/i.test(url)) {
+    const v = await fetchRaycastLatestVersion();
+    if (v) return v;
+  }
+
+  const gh = url.match(
+    /github\.com\/([^/]+)\/([^/]+)\/releases\/(?:latest\/download|download)\/[^/?#]+/i,
+  );
+  if (gh) {
+    try {
+      const { getLatestRelease } = await import("../github.ts");
+      const release = await getLatestRelease(gh[1], gh[2]);
+      const tag = release?.tagName || release?.tag_name;
+      if (tag) {
+        const v = extractVersionFromTag(tag);
+        if (v) return v;
+      }
+    } catch {
+      // fall through to :latest
+    }
+  }
+
+  return null;
+}
+
+function buildAppOrPkgBlock(
+  url: string,
+  filename: string,
+  appName: string | null,
+  baseName: string,
+  caskToken: string,
+) {
+  const path = urlPathname(url).toLowerCase();
+  if (path.endsWith(".pkg") || filename.toLowerCase().endsWith(".pkg")) {
+    let block = `  pkg "${rubyEscape(filename)}"\n\n`;
+    block += `  uninstall pkgutil: "com.example.${rubyEscape(caskToken)}"\n`;
+    return block;
+  }
+
+  const app = (appName || baseName).replace(/\.app$/i, "") + ".app";
+  return `  app "${rubyEscape(app)}"\n`;
+}
+
+export async function generateCaskApp(url: string, options: any = {}) {
+  const payload = await collectCaskAppPayload(url, options);
+  return writeRenderedCask(payload, options.tapPath);
+}
+
+async function detectAppName(url: string, localPath?: string) {
+  const path = urlPathname(url).toLowerCase();
+  const lower = url.toLowerCase();
+  const looksDmg =
+    path.endsWith(".dmg") ||
+    lower.includes(".dmg?") ||
+    /filename[^&]*Raycast\.dmg/i.test(url) ||
+    /\.dmg(?:\?|#|$)/i.test(url) ||
+    /releases\.raycast\.com\/(?:download|releases\/[^/]+\/download)/i.test(
+      url,
+    );
+
+  if (looksDmg) {
+    try {
+      if (localPath) {
+        const apps = await listDmgAppNames(localPath);
+        if (apps.length > 0) return apps[0];
+      } else {
+        const { downloadToTemp } = await import("../sha256.ts");
+        const { path: p, cleanup } = await downloadToTemp(url);
+        try {
+          const apps = await listDmgAppNames(p);
+          if (apps.length > 0) return apps[0];
+        } finally {
+          await cleanup();
+        }
+      }
+    } catch {
+      // fall through to filename heuristic
+    }
+  }
+
+  if (path.endsWith(".zip") || /\.zip(?:\?|#|$)/i.test(url)) {
+    try {
+      if (localPath) {
+        const entries = await listZipEntries(localPath);
+        const appEntry = entries.find((e) => /\.app\/?$/i.test(e));
+        if (appEntry) {
+          return appEntry.replace(/\/$/, "").split("/").pop();
+        }
+      } else {
+        const { downloadToTemp } = await import("../sha256.ts");
+        const { path: p, cleanup } = await downloadToTemp(url);
+        try {
+          const entries = await listZipEntries(p);
+          const appEntry = entries.find((e) => /\.app\/?$/i.test(e));
+          if (appEntry) {
+            return appEntry.replace(/\/$/, "").split("/").pop();
+          }
+        } finally {
+          await cleanup();
+        }
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  const filename = filenameFromDownloadUrl(url);
+  const base = filename.replace(/\.(dmg|zip|pkg)$/i, "");
+  // Strip version noise: Raycast_v1.104.24_hash_universal → Raycast
+  const clean = base
+    .replace(/[_-]v?\d+\.\d+(?:\.\d+)?.*$/i, "")
+    .replace(/-[\d.]+$/, "");
+  return (clean || base) + ".app";
+}
+
+export function extractVersionFromUrl(url: string) {
+  // Ignore GitHub "/releases/latest/download/" — "latest" is not a version.
+  if (/\/releases\/latest(?:\/|$|\?)/i.test(url)) return null;
+  const path = urlPathname(url);
+  // Prefer underscore form used by Raycast CDNs: Product_v1.2.3_
+  const underscored = path.match(/_v(\d+\.\d+(?:\.\d+)?)/i);
+  if (underscored) return underscored[1];
+  const match = path.match(/[/-]v?(\d+\.\d+(?:\.\d+)?)/);
+  return match ? match[1] : null;
+}

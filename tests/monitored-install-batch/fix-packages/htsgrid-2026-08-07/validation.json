@@ -1,0 +1,12 @@
+{
+  "slug": "htsgrid",
+  "url": "https://github.com/kojix2/htsgrid",
+  "mode": "patch",
+  "unitTestsPass": true,
+  "localGenerateOk": true,
+  "detectedBuildSystem": "gem",
+  "fallback": "source-build/ruby-gem",
+  "rubygemsPublished": false,
+  "vmVerified": false,
+  "serviceExpected": false
+}

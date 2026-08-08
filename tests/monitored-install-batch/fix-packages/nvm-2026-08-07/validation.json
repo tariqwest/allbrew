@@ -1,0 +1,10 @@
+{
+  "slug": "nvm",
+  "url": "https://formulae.brew.sh/cask/nvm",
+  "mode": "patch",
+  "localGenerateOk": true,
+  "unitTests": ["homebrew-cask-formula-fallback.test.ts", "homebrew-formula-bottle.test.ts"],
+  "service": false,
+  "generatorAfterFix": "homebrew-formula",
+  "packageVersion": "0.40.6"
+}

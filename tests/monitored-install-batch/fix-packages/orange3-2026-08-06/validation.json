@@ -1,0 +1,22 @@
+{
+  "url": "https://pypi.org/project/Orange3",
+  "slug": "orange3",
+  "failureClass": "brew_fail",
+  "rootCause": "console_script_bin_mismatch",
+  "generator": "pip-package",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "fix": {
+    "files": ["lib/generators/pip-package.ts", "tests/unit/generators/pip-package.test.ts"],
+    "summary": "KNOWN_BIN_NAMES orange3 -> orange-canvas"
+  },
+  "localValidation": {
+    "unitTests": "pass",
+    "payloadTestBinName": "orange-canvas",
+    "vmInstallExit": 0,
+    "vmVerifyOk": false,
+    "vmVerifyReason": "BIN_MISSING (strictVerify checks formula token orange3; linked bin is orange-canvas)"
+  },
+  "released": false,
+  "batchMode": true
+}

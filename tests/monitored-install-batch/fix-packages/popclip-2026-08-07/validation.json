@@ -1,0 +1,43 @@
+{
+  "slug": "popclip",
+  "url": "https://popclip.app",
+  "failureClass": "brew_fail",
+  "rootCause": "archive-inspector first-match on .app/Info.plist selected nested Sparkle Updater.app instead of outer PopClip.app",
+  "fix": {
+    "files": ["lib/archive-inspector.ts", "tests/unit/archive-inspector.test.ts"],
+    "summary": "pickPrimaryAppName prefers non-nested shallowest .app bundle over Sparkle Updater.app"
+  },
+  "unitTests": {
+    "command": "bun test ./tests/unit/archive-inspector.test.ts",
+    "passed": 7,
+    "failed": 0
+  },
+  "localGenerate": {
+    "ok": true,
+    "appBundle": "PopClip.app",
+    "caskName": "popclip-tap",
+    "version": "2026.7.1",
+    "sha256": "e1349705783831bf5d3d02458932649f85089d1f275d947fdf0f5821306d7246",
+    "url": "https://pilotmoon.com/downloads/PopClip-2026.7.1.zip",
+    "note": "fixed source; fake-brew for host install step; matches official homebrew/cask artifact"
+  },
+  "vmInstall": {
+    "endpoint": "local-2",
+    "allbrewVersion": "0.0.24",
+    "exitCode": 1,
+    "verifyOk": false,
+    "package": "popclip-tap",
+    "error": "App source '.../Updater.app' is not there",
+    "note": "Bottle still lacks fix; Updater.app selection until release/upgrade"
+  },
+  "upstreamBrewCask": {
+    "token": "popclip",
+    "healthy": true,
+    "version": "2026.7.1",
+    "caseC": true
+  },
+  "agentServiceExpectation": false,
+  "allbrewServiceDecision": false,
+  "batchMode": true,
+  "released": false
+}

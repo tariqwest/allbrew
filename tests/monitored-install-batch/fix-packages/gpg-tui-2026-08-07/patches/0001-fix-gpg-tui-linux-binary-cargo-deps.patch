@@ -1,0 +1,315 @@
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..37fa1dd 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -831,9 +831,22 @@ async function handleGithubRepo(classification, opts) {
+     );
+ 
+     const appAssets = release.assets.filter((a) => isAppAsset(a.name));
+-    const binAssets = release.assets.filter(
++    // Platform-tagged binaries. Homebrew on macOS needs at least one macOS
++    // asset; Linux-only releases (e.g. gpg-tui) must fall through to README
++    // install methods (cargo, go, source-build) instead of binary-release.
++    const allBinAssets = release.assets.filter(
+       (a) => isBinaryAsset(a.name) && matchAssetToArch(a.name),
+     );
++    const binAssets = allBinAssets.filter((a) => {
++      const arch = matchAssetToArch(a.name);
++      return (
++        arch === "macosArm" ||
++        arch === "macosIntel" ||
++        arch === "macosUniversal"
++      );
++    });
++    const linuxOnlyBinAssets =
++      binAssets.length === 0 && allBinAssets.length > 0;
+ 
+     if (appAssets.length > 0 && binAssets.length > 0) {
+       console.log();
+@@ -903,9 +916,17 @@ async function handleGithubRepo(classification, opts) {
+       );
+     }
+ 
+-    console.log(
+-      chalk.dim("  No recognized binary or app assets, checking README..."),
+-    );
++    if (linuxOnlyBinAssets) {
++      console.log(
++        chalk.dim(
++          `  Release has Linux-only binary assets (${allBinAssets.map((a) => a.name).join(", ")}); no macOS bottle path — checking README...`,
++        ),
++      );
++    } else {
++      console.log(
++        chalk.dim("  No recognized binary or app assets, checking README..."),
++      );
++    }
+   } else {
+     releaseSpinner.info("No releases found, checking README...");
+   }
+@@ -935,16 +956,28 @@ async function handleGithubRepo(classification, opts) {
+       console.log(`  Detected command: ${chalk.cyan(brewInfo.installCommand)}`);
+       console.log();
+ 
+-      const choice = await select({
+-        message: "What would you like to do?",
+-        choices: [
+-          {
+-            name: `Run "${brewInfo.installCommand}" directly`,
+-            value: "brew-install",
+-          },
+-          { name: "Generate a custom formula anyway", value: "continue" },
+-        ],
+-      });
++      let choice: "brew-install" | "continue" = "continue";
++      if (isNonInteractive(opts)) {
++        // Batch/CI/VM must not hang on @inquirer or auto-run host brew install.
++        // Prefer generating a tap formula; operators can still use core manually.
++        choice = "continue";
++        console.log(
++          chalk.dim(
++            "  Non-interactive: generating custom formula (skipping upstream brew offer).",
++          ),
++        );
++      } else {
++        choice = await select({
++          message: "What would you like to do?",
++          choices: [
++            {
++              name: `Run "${brewInfo.installCommand}" directly`,
++              value: "brew-install",
++            },
++            { name: "Generate a custom formula anyway", value: "continue" },
++          ],
++        });
++      }
+ 
+       if (choice === "brew-install") {
+         console.log();
+diff --git a/lib/generators/cargo-package.ts b/lib/generators/cargo-package.ts
+index 88b69a4..d3db06d 100644
+--- a/lib/generators/cargo-package.ts
++++ b/lib/generators/cargo-package.ts
+@@ -7,11 +7,69 @@ import {
+   getAllbrewFormulaDependency,
+ } from "../utils.ts";
+ import { hashUrl } from "../sha256.ts";
++import { getFileContent } from "../github.ts";
+ import { cratesLivecheckBlock } from "./livecheck.ts";
+ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+ import type { CargoPackagePayload } from "../template-payload.ts";
+ import { writeRenderedFormula } from "../template-renderer.ts";
+ 
++/**
++ * Map Cargo.toml dependency crate names to Homebrew formula deps.
++ * Pure; unit-testable without network.
++ */
++export function inferCargoBrewDependencies(
++  cargoToml: string | null | undefined,
++): string[] {
++  if (!cargoToml) return [];
++  const deps = new Set<string>();
++
++  const found = new Set<string>();
++  const crateLine =
++    /(?:^|\n)\s*([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*(?:"|{)/gm;
++  let m: RegExpExecArray | null;
++  while ((m = crateLine.exec(cargoToml)) !== null) {
++    found.add(m[1].toLowerCase());
++  }
++  for (const block of cargoToml.matchAll(/\[dependencies\.([^\]]+)\]/gi)) {
++    found.add(block[1].trim().toLowerCase());
++  }
++
++  const hasCrate = (name: string) => found.has(name.toLowerCase());
++
++  if (hasCrate("gpgme") || hasCrate("gpgme-sys")) {
++    deps.add('  depends_on "pkgconf" => :build\n');
++    deps.add('  depends_on "gnupg"\n');
++    deps.add('  depends_on "gpgme"\n');
++    deps.add('  depends_on "libgpg-error"\n');
++  }
++  if (
++    hasCrate("libxcb") ||
++    hasCrate("xcb") ||
++    hasCrate("x11rb") ||
++    (hasCrate("arboard") && /wayland-data-control/i.test(cargoToml))
++  ) {
++    deps.add('  depends_on "libxcb"\n');
++  }
++  if (hasCrate("openssl-sys") || hasCrate("openssl")) {
++    deps.add('  depends_on "openssl@3"\n');
++  }
++  if (hasCrate("libsqlite3-sys") || hasCrate("rusqlite")) {
++    deps.add('  depends_on "sqlite"\n');
++  }
++  if (hasCrate("zstd-sys")) {
++    deps.add('  depends_on "zstd"\n');
++  }
++
++  const lines = [...deps];
++  lines.sort((a, b) => {
++    const aBuild = a.includes("=> :build") ? 0 : 1;
++    const bBuild = b.includes("=> :build") ? 0 : 1;
++    if (aBuild !== bBuild) return aBuild - bBuild;
++    return a.localeCompare(b);
++  });
++  return lines;
++}
++
+ export async function collectCargoPackagePayload(
+   repoInfo: any,
+   release: any = null,
+@@ -27,11 +85,30 @@ export async function collectCargoPackagePayload(
+ 
+   let urlLines = "";
+   if (release) {
+-    const sourceUrl = release.tarballUrl || `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
++    const sourceUrl =
++      release.tarballUrl ||
++      `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
+     const sha256 = await hashUrl(sourceUrl);
+     urlLines = `  url ${rubyString(sourceUrl)}\n  sha256 ${rubyString(sha256)}\n`;
+   }
+ 
++  let dependenciesLines = options.dependenciesLines || "";
++  if (!dependenciesLines) {
++    let cargoToml = options.cargoToml as string | undefined;
++    if (!cargoToml && repoInfo?.fullName) {
++      const [owner, repo] = String(repoInfo.fullName).split("/");
++      if (owner && repo) {
++        try {
++          cargoToml =
++            (await getFileContent(owner, repo, "Cargo.toml")) || undefined;
++        } catch {
++          cargoToml = undefined;
++        }
++      }
++    }
++    dependenciesLines = inferCargoBrewDependencies(cargoToml).join("");
++  }
++
+   return {
+     template: "cargo_package",
+     name,
+@@ -46,6 +123,7 @@ export async function collectCargoPackagePayload(
+     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+     testBinName: rubyEscape(options.binName || name),
+     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
++    dependenciesLines,
+   };
+ }
+ 
+diff --git a/lib/template-payload.ts b/lib/template-payload.ts
+index da8b65c..1919112 100644
+--- a/lib/template-payload.ts
++++ b/lib/template-payload.ts
+@@ -45,6 +45,8 @@ export type CargoPackagePayload = FormulaCommonFields & {
+   licenseLine: string;
+   urlLines: string;
+   livecheckBlock: string;
++  /** Extra depends_on lines (native libs), each ending with newline. */
++  dependenciesLines: string;
+ };
+ 
+ export type GoPackagePayload = FormulaCommonFields & {
+diff --git a/lib/templates/formula/cargo-package.ts b/lib/templates/formula/cargo-package.ts
+index 8fc2253..10f1a7e 100644
+--- a/lib/templates/formula/cargo-package.ts
++++ b/lib/templates/formula/cargo-package.ts
+@@ -7,7 +7,7 @@ export default function renderCargoPackage(p: CargoPackagePayload): string {
+ ${p.licenseLine}${p.urlLines}  head "https://github.com/${p.fullName}.git", branch: "${p.defaultBranch}"
+ 
+ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "rust" => :build
+-
++${p.dependenciesLines}
+   def install
+     system "cargo", "install", *std_cargo_args
+   end
+diff --git a/scripts/test-templates.ts b/scripts/test-templates.ts
+index 01f7838..7996cd9 100644
+--- a/scripts/test-templates.ts
++++ b/scripts/test-templates.ts
+@@ -263,6 +263,7 @@ function buildCargoPackageCase(): Case {
+     urlLines: '  url "https://example.com/foo-1.0.tar.gz"\n  sha256 "cc"\n',
+     livecheckBlock: livecheck,
+     allbrewDependency: "",
++    dependenciesLines: "",
+     testBinName: "foo",
+     serviceBlock: "",
+   };
+diff --git a/tests/unit/generators/cargo-package.test.ts b/tests/unit/generators/cargo-package.test.ts
+index 71ca2d6..8b7d2e8 100644
+--- a/tests/unit/generators/cargo-package.test.ts
++++ b/tests/unit/generators/cargo-package.test.ts
+@@ -1,9 +1,14 @@
+ import { describe, it, expect, mock, beforeEach } from "bun:test";
+-import { collectCargoPackagePayload } from "../../../lib/generators/cargo-package.ts";
++import { collectCargoPackagePayload, inferCargoBrewDependencies } from "../../../lib/generators/cargo-package.ts";
+ import managarrFixture from "../../fixtures/github/managarr.json";
+ import wanderFixture from "../../fixtures/github/wander.json";
+ import aichatFixture from "../../fixtures/github/aichat.json";
+ 
++mock.module("../../../lib/github.ts", () => ({
++  getFileContent: mock().mockResolvedValue(null),
++  getReadme: mock().mockResolvedValue(null),
++}));
++
+ mock.module("../../../lib/sha256.ts", () => ({
+   hashUrl: mock().mockResolvedValue("cargo_mocked_sha256_64chars_padding_abcdef0123456789abcdef0123"),
+   downloadAndHash: mock().mockResolvedValue({ sha256: "mocked_sha256" }),
+@@ -206,3 +211,54 @@ describe("collectCargoPackagePayload — aichat", () => {
+     expect(payload.serviceBlock).toBe("");
+   });
+ });
++
++
++describe("inferCargoBrewDependencies", () => {
++  it("maps gpgme crate to gpgme/gnupg/libgpg-error/pkgconf", () => {
++    const toml = `[package]
++name = "gpg-tui"
++[dependencies]
++gpgme = "0.11.0"
++arboard = { version = "3.6.1", features = ["wayland-data-control"] }
++`;
++    const lines = inferCargoBrewDependencies(toml);
++    const joined = lines.join("");
++    expect(joined).toContain('depends_on "gpgme"');
++    expect(joined).toContain('depends_on "gnupg"');
++    expect(joined).toContain('depends_on "libgpg-error"');
++    expect(joined).toContain('depends_on "pkgconf" => :build');
++    expect(joined).toContain('depends_on "libxcb"');
++  });
++
++  it("returns empty for pure rust crate", () => {
++    const toml = `[dependencies]
++serde = "1.0"
++clap = "4.0"
++`;
++    expect(inferCargoBrewDependencies(toml)).toEqual([]);
++  });
++});
++
++describe("collectCargoPackagePayload native deps", () => {
++  beforeEach(() => {
++    mock.restore();
++  });
++
++  it("accepts cargoToml option without network", async () => {
++    const repoInfo = {
++      name: "gpg-tui",
++      fullName: "orhun/gpg-tui",
++      description: "TUI",
++      homepage: "https://github.com/orhun/gpg-tui",
++      htmlUrl: "https://github.com/orhun/gpg-tui",
++      defaultBranch: "master",
++      license: "MIT",
++    };
++    const payload = await collectCargoPackagePayload(repoInfo, null, {
++      cargoToml: `[dependencies]
++gpgme = "0.11.0"
++`,
++    });
++    expect(payload.dependenciesLines).toContain('depends_on "gpgme"');
++  });
++});

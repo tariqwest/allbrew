@@ -1,0 +1,32 @@
+{
+  "package": "ilspycmd",
+  "url": "https://nuget.org/packages/ilspycmd",
+  "failureClass": "generate_fail",
+  "rootCause": "NuGet flat index last version includes prerelease (11.0.0.9335-rc) instead of stable 10.1.1.8388",
+  "fixFiles": [
+    "lib/generators/dotnet-package.ts",
+    "tests/unit/generators/dotnet-package.test.ts"
+  ],
+  "unitTests": {
+    "command": "bun test tests/unit/generators/dotnet-package.test.ts",
+    "passed": true,
+    "count": 18
+  },
+  "localGenerate": {
+    "versionBefore": "11.0.0.9335-rc",
+    "versionAfter": "10.1.1.8388",
+    "generator": "dotnet-package",
+    "service": false
+  },
+  "vmInstall": {
+    "status": "install_ok_verify_fail",
+    "endpoint": "local-2",
+    "exitCode": 0,
+    "verifyOk": false,
+    "verifyDetail": "BIN_HELP_FAIL",
+    "versionInstalled": "11.0.0.9335-rc",
+    "serviceStanza": false,
+    "note": "Unfixed allbrew 0.0.24 selected prerelease; brew install succeeded; strict bin probe failed"
+  },
+  "recommended": "Merge patch, release, retry VM install against upgraded allbrew"
+}

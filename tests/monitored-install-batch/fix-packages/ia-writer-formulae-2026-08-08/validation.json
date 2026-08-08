@@ -1,0 +1,11 @@
+{
+  "url": "https://formulae.brew.sh/cask/ia-writer",
+  "localGenerateExit": 1,
+  "classifiedAs": "homebrew-cask",
+  "apiStatus": 404,
+  "brewInfo": "Cask 'ia-writer' is unavailable",
+  "relatedTokens": ["ia-presenter", "ia-markdown-dictionary"],
+  "monorepoAttempted": false,
+  "vmHelperAttempted": true,
+  "vmHelperOutcome": "pool/env contention after product generate_fail proven locally"
+}

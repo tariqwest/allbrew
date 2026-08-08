@@ -1,0 +1,18 @@
+{
+  "mode": "patch",
+  "slug": "netbar",
+  "files": [
+    "lib/utils.ts",
+    "lib/generators/binary-release.ts",
+    "lib/generators/cask-app-release.ts",
+    "tests/unit/utils.test.ts",
+    "tests/unit/generators/binary-release.test.ts"
+  ],
+  "patches": [
+    "patches/0001-isAppAsset-versioned-product-zip.patch",
+    "patches/0002-templateReleaseUrl-remaining-bare-version.patch",
+    "patches/0003-cask-app-release-use-templateReleaseUrl.patch",
+    "patches/0004-utils-isAppAsset-tests.patch",
+    "patches/0005-templateReleaseUrl-netbar-test.patch"
+  ]
+}

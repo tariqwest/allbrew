@@ -1,0 +1,23 @@
+{
+  "slug": "bleachbit",
+  "url": "https://pypi.org/project/BleachBit",
+  "generator": "pip-package",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "failureClass": "brew_fail",
+  "rootCause": "selectBestDistribution fell back to win_amd64 for msys2-env; Windows-only PyPI packaging",
+  "fixFiles": [
+    "lib/generators/pip-package.ts",
+    "tests/unit/generators/pip-package.test.ts"
+  ],
+  "unitTestsPass": true,
+  "unitTestCommand": "bun test tests/unit/generators/pip-package.test.ts",
+  "localGenerateAfterFix": "generate_fail_clear_error_msys2_env",
+  "vmInstallPreFix": {
+    "exitCode": 1,
+    "verifyOk": false,
+    "endpoint": "homeserver"
+  },
+  "released": false,
+  "option": "A"
+}

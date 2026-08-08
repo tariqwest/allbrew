@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/hanjinliu/tabulous",
+  "slug": "tabulous",
+  "generator": "pip-package",
+  "version": "0.5.8",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "installOk": null,
+  "verifyOk": false,
+  "verifySignal": "QtBindingsNotFoundError + VM env_fail sparsebundle",
+  "failureClass": "env_fail",
+  "productFailureClass": "brew_fail",
+  "fixApplied": true,
+  "released": false,
+  "relatedFixPackages": ["napari-2026-08-07"],
+  "patches": [
+    "0001-tabulous-qt-extra-and-import-test.patch"
+  ],
+  "vm": {
+    "endpointAttempts": ["local-2", "homeserver", "local-1", "homeserver"],
+    "blocker": "homeserver hdiutil attach mount-check fail; local SSH unavailable"
+  }
+}

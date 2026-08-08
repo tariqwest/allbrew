@@ -1,0 +1,15 @@
+diff --git a/tests/unit/utils.test.ts b/tests/unit/utils.test.ts
+index 4f9f82d..efee246 100644
+--- a/tests/unit/utils.test.ts
++++ b/tests/unit/utils.test.ts
+@@ -365,6 +365,10 @@ describe("matchAssetToArch", () => {
+     expect(matchAssetToArch("foo-darwin-arm64.tar.gz")).toBe("macosArm");
+     expect(matchAssetToArch("foo-macos-arm64.tgz")).toBe("macosArm");
+     expect(matchAssetToArch("foo_aarch64_apple.zip")).toBe("macosArm");
++    // goreleaser OS_ARCH order: Darwin_aarch64 (not aarch64_darwin)
++    expect(matchAssetToArch("shiori_Darwin_aarch64_1.8.0.tar.gz")).toBe("macosArm");
++    expect(matchAssetToArch("tool_Darwin_arm64.tar.gz")).toBe("macosArm");
++    expect(matchAssetToArch("tool_macOS_aarch64.tgz")).toBe("macosArm");
+   });
+ 
+   it("matches macOS Intel patterns", () => {

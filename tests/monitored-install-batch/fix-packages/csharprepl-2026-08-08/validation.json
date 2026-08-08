@@ -1,0 +1,17 @@
+{
+  "slug": "csharprepl",
+  "url": "https://github.com/waf/CSharpRepl",
+  "failureClass": "generate_fail",
+  "generatorExpected": "dotnet-package",
+  "generatorObservedReleased": "source-build",
+  "generatorObservedFixedLocal": "dotnet-package",
+  "packageNameFixed": "csharprepl",
+  "packageVersion": "0.9.2",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "vmHelperUsed": true,
+  "released": false,
+  "unitTestsPass": true,
+  "localGenerateFixedOk": true,
+  "fixSummary": "Detect README `dotnet tool install -g`; route to dotnet-package; libexec tool template"
+}

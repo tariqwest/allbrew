@@ -1,0 +1,31 @@
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..fb1e422 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -232,6 +232,26 @@ omnigent server --background
+     expect(result).toEqual({ method: "go", package: "github.com/foo/bar@v1.2.3" });
+   });
+ 
++  it("detects go install without version suffix", () => {
++    const result = detectInstallMethod(
++      "```bash\ngo install github.com/foo/bar\n```",
++    );
++    expect(result).toEqual({ method: "go", package: "github.com/foo/bar" });
++  });
++
++  it("detects relative go install path (./cmd/foo) over make build", () => {
++    const readme = `
++### Building from source
++Run \`$ make build\` to build the binary
++or
++\`\`\`
++$ go install ./cmd/damon
++\`\`\`
++`;
++    const result = detectInstallMethod(readme);
++    expect(result).toEqual({ method: "go", package: "./cmd/damon" });
++  });
++
+   it("detects curl | bash install one-liner as script", () => {
+     const result = detectInstallMethod(
+       "```bash\ncurl -fsSL https://starship.rs/install.sh | bash\n```",

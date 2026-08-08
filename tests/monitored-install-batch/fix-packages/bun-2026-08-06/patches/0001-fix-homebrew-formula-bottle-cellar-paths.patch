@@ -1,0 +1,45 @@
+--- /tmp/hf-head.ts	2026-08-06 20:24:53
++++ /tmp/allbrew-wt-bun-17660/lib/generators/homebrew-formula.ts	2026-08-06 19:58:08
+@@ -47,7 +47,29 @@
+   return response.text();
+ }
+ 
+-function renderBottleBlock(indent: string, bottle: HomebrewBottle): string {
++/**
++ * Format bottle.files[*].cellar for Homebrew Ruby DSL.
++ * API values are either:
++ * - Ruby symbol strings: ":any", ":any_skip_relocation"
++ * - bare symbol names: "any", "any_skip_relocation"
++ * - absolute Cellar paths: "/opt/homebrew/Cellar"
++ * Never emit "::any" (double colon) or ":/opt/..." — both are invalid Ruby.
++ */
++export function formatBottleCellar(
++  cellar: string | undefined | null,
++): string {
++  if (cellar == null || cellar === "") return ":any";
++  const trimmed = String(cellar).trim();
++  if (!trimmed) return ":any";
++  if (trimmed.startsWith(":")) return trimmed;
++  if (trimmed.startsWith("/")) return JSON.stringify(trimmed);
++  return `:${trimmed}`;
++}
++
++export function renderBottleBlock(
++  indent: string,
++  bottle: HomebrewBottle,
++): string {
+   const lines: string[] = [`${indent}bottle do`];
+ 
+   if (Number.isInteger(bottle.rebuild) && bottle.rebuild !== 0) {
+@@ -62,9 +84,9 @@
+     if (!entry || typeof entry !== "object") continue;
+     const { sha256, cellar } = entry as HomebrewBottleFile;
+     if (!sha256) continue;
+-    const cellarSymbol = cellar ? `:${cellar}` : ":any";
++    const cellarExpr = formatBottleCellar(cellar);
+     lines.push(
+-      `${indent}  sha256 cellar: ${cellarSymbol}, ${os}: ${JSON.stringify(sha256)}`,
++      `${indent}  sha256 cellar: ${cellarExpr}, ${os}: ${JSON.stringify(sha256)}`,
+     );
+   }
+ 

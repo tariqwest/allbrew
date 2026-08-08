@@ -1,0 +1,30 @@
+{
+  "url": "https://pypi.org/project/napari",
+  "slug": "napari",
+  "generator": "pip-package",
+  "version": "0.8.0",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "installOk": true,
+  "verifyOk": false,
+  "verifySignal": "BIN_HELP_FAIL",
+  "failureClass": "brew_fail",
+  "fixApplied": true,
+  "released": false,
+  "unitTests": {
+    "pip-package.test.ts": "62 pass",
+    "render.test.ts pip_package": "pass"
+  },
+  "vm": {
+    "endpoint": "homeserver",
+    "allbrewVersion": "0.0.24",
+    "installBytes": "346.6MB",
+    "timeoutFirstAttemptMs": 1800000,
+    "retryTimeoutMs": 2700000
+  },
+  "patches": [
+    "0001-napari-gui-test-extras.patch",
+    "0002-pip-template-testDoBody.patch",
+    "0003-template-payload-testDoBody.patch"
+  ]
+}

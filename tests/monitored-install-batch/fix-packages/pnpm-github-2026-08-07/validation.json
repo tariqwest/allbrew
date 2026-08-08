@@ -1,0 +1,31 @@
+{
+  "slug": "pnpm",
+  "url": "https://github.com/pnpm/pnpm",
+  "failureClass": "brew_fail",
+  "fixApplied": true,
+  "generatorExpected": "binary-release",
+  "generatorBroken": "binary-release",
+  "brokenDetail": "wrong archive entrypoint nopt.js; should be root SEA pnpm",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "caseC": true,
+  "coreFormula": "pnpm",
+  "tests": {
+    "unit": "tests/unit/generators/binary-release.test.ts",
+    "result": "23 pass"
+  },
+  "localGenerate": {
+    "classifiedAs": "github-repo→binary-release",
+    "formulaName": "pnpm-tap",
+    "installBodyFixed": "bin.install \"pnpm\"",
+    "note": "full multi-arch rehash slow; picker validated offline on release tarball"
+  },
+  "files": [
+    "patches/binary-release.ts",
+    "patches/0001-binary-release-pnpm-entrypoint.patch",
+    "tests/binary-release.test.ts",
+    "formula-pnpm-tap-broken.rb",
+    "formula-pnpm-tap-fixed.rb",
+    "FIX.md"
+  ]
+}

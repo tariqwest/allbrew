@@ -1,0 +1,103 @@
+--- lib/page-discover.ts	2026-08-06 20:31:46
++++ /tmp/allbrew-wt-aimeflux-91908/lib/page-discover.ts	2026-08-06 23:04:19
+@@ -598,7 +598,56 @@
+   }
+   return candidates.sort((a, b) => b.score - a.score);
+ }
++
++
++
++/** Common marketing-site TLD swaps when the assigned host NXDOMAINs. */
++const ALT_TLDS = ["com", "app", "io", "dev", "co", "net", "org", "sh", "so"] as const;
+ 
++/**
++ * Build alternate homepage URLs by swapping the public suffix for a single-label host.
++ * e.g. https://aimeflux.app → https://aimeflux.com (catalog often uses wrong TLD).
++ * Returns [] for multi-label hosts (foo.bar.com) or IPs.
++ */
++export function alternateTldUrls(pageUrl: string): string[] {
++  let u: URL;
++  try {
++    u = new URL(pageUrl);
++  } catch {
++    return [];
++  }
++  const host = u.hostname.toLowerCase().replace(/^www\./, "");
++  const parts = host.split(".");
++  // only brand.tld (optional www) — not sub.domain.tld
++  if (parts.length !== 2) return [];
++  const [label, tld] = parts;
++  if (!label || !/^[a-z0-9-]+$/i.test(label)) return [];
++  if (/^\d+$/.test(label)) return [];
++
++  const out: string[] = [];
++  for (const alt of ALT_TLDS) {
++    if (alt === tld) continue;
++    const nu = new URL(u.toString());
++    nu.hostname = label + "." + alt;
++    out.push(nu.toString());
++  }
++  return out;
++}
++
++function isDnsOrHostLookupError(err: unknown): boolean {
++  const msg = String((err as any)?.message || err || "").toLowerCase();
++  const code = String((err as any)?.code || "").toUpperCase();
++  if (code === "ENOTFOUND" || code === "EAI_AGAIN" || code === "EHOSTUNREACH") return true;
++  return (
++    msg.includes("enotfound") ||
++    msg.includes("getaddrinfo") ||
++    msg.includes("nodename nor servname") ||
++    msg.includes("name or service not known") ||
++    msg.includes("typo in the url") ||
++    msg.includes("could not resolve") ||
++    msg.includes("failed to lookup")
++  );
++}
+ 
+ export async function discoverPageDownloads(
+   pageUrl: string,
+@@ -635,14 +684,35 @@
+       finalPageUrl = fetched.url;
+       contentType = fetched.contentType;
+     } catch (err: any) {
+-      return {
+-        pageUrl,
+-        finalPageUrl: pageUrl,
+-        method: "none",
+-        candidates: [],
+-        chosen: null,
+-        reason: `fetch failed: ${err?.message || err}`,
+-      };
++      // Catalog/homepage typos often use the wrong TLD (.app vs .com). On DNS
++      // failures, retry a small set of alternate public suffixes for brand.tld hosts.
++      let recovered = false;
++      if (isDnsOrHostLookupError(err)) {
++        for (const alt of alternateTldUrls(pageUrl)) {
++          try {
++            assertSafePublicFetchUrl(alt);
++            const fetched = await fetchTextLimited(alt);
++            body = fetched.body;
++            finalPageUrl = fetched.url;
++            contentType = fetched.contentType;
++            log(`Host lookup failed for ${pageUrl}; recovered via ${alt}`);
++            recovered = true;
++            break;
++          } catch {
++            /* try next alternate TLD */
++          }
++        }
++      }
++      if (!recovered) {
++        return {
++          pageUrl,
++          finalPageUrl: pageUrl,
++          method: "none",
++          candidates: [],
++          chosen: null,
++          reason: `fetch failed: ${err?.message || err}`,
++        };
++      }
+     }
+   }
+ 

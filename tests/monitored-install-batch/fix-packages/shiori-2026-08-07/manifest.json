@@ -1,0 +1,8 @@
+{
+  "mode": "patch",
+  "slug": "shiori",
+  "files": [
+    { "path": "lib/utils.ts", "patch": "patches/0001-darwin-aarch64-arch-pattern.patch" },
+    { "path": "tests/unit/utils.test.ts", "patch": "patches/0002-matchAssetToArch-goreleaser-tests.patch" }
+  ]
+}

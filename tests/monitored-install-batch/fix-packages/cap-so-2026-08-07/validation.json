@@ -1,0 +1,36 @@
+{
+  "slug": "cap-so",
+  "url": "https://cap.so",
+  "failureClass": "generate_fail",
+  "expected": {
+    "generator": "cask-app",
+    "appName": "Cap.app",
+    "service": false,
+    "version": "0.5.8",
+    "sha256": "74afd36c9541e57eaeb155adfe7dfbeda11ea72b0bd9fcc5a3d8641217bb4c57"
+  },
+  "broken": {
+    "generator": "cargo-package",
+    "formula": "formula-cap-so-broken.rb",
+    "notes": "cargo install monorepo CapSoftware/Cap; crates.io livecheck Cap"
+  },
+  "fixed": {
+    "cask": "cask-cap-so-fixed.rb",
+    "discovery": "platform-download-redirect + release-body CDN",
+    "unitTests": [
+      "tests/unit/page-discover.test.ts",
+      "tests/unit/generators/cask-app.test.ts"
+    ]
+  },
+  "patches": [
+    "patches/0001-page-discover-platform-redirect-and-release-body.patch",
+    "patches/0002-sha256-content-disposition-filename.patch",
+    "patches/0003-cask-app-version-and-filename.patch",
+    "patches/0004-cli-cask-homepage-from-source.patch",
+    "patches/0005-page-discover-cap-tests.patch",
+    "patches/0006-cask-app-tests.patch"
+  ],
+  "vmBottleVersion": "0.0.24",
+  "vmResultWithoutFix": "generate_fail_wrong_generator",
+  "release": false
+}

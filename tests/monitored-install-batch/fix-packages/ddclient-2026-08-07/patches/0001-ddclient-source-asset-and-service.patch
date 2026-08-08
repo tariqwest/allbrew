@@ -1,0 +1,253 @@
+diff --git a/lib/analyzer.ts b/lib/analyzer.ts
+index e028df4..3fadb55 100644
+--- a/lib/analyzer.ts
++++ b/lib/analyzer.ts
+@@ -331,6 +331,20 @@ export function detectServiceConfig(readmeText, packageName = "") {
+     };
+   }
+ 
++  // systemd unit install / enable / start — prefer bare package name over
++  // troubleshooting one-shots like `pkg --daemon=0 --query` elsewhere in README.
++  const systemctl = readmeText.match(
++    /systemctl\s+(?:enable|start|restart)\s+[^\s;|&\n`]+\.service/i,
++  );
++  if (systemctl && packageName) {
++    return {
++      command: packageName,
++      keepAlive: true,
++      confidence: "medium",
++      reason: "README documents systemd unit enable/start",
++    };
++  }
++
+   const commands = [];
+   let match;
+   SERVICE_COMMAND_RE.lastIndex = 0;
+@@ -338,6 +352,7 @@ export function detectServiceConfig(readmeText, packageName = "") {
+     const command = cleanCommand(match[1]);
+     if (!isRunnableCommand(command)) continue;
+     if (!isServiceLikeCommand(command, packageName)) continue;
++    if (isOneShotDiagnosticCommand(command)) continue;
+     commands.push(command);
+   }
+ 
+@@ -619,11 +634,13 @@ function pickBestServiceCommand(commands) {
+ function scoreServiceCommand(command) {
+   const c = String(command || "").trim().toLowerCase();
+   if (!c) return -100;
++  if (isOneShotDiagnosticCommand(c)) return -100;
+   let score = 0;
+   if (/\bgateway\b/.test(c)) score += 50;
+   if (/\b(?:serve|server|daemon|agent)\b/.test(c)) score += 30;
+   if (/\bstart\b/.test(c)) score += 20;
+   if (/\b(?:--daemon|--service|--background)\b/.test(c)) score += 25;
++  if (/\b--foreground\b/.test(c)) score += 15;
+   if (/\bwebui\b/.test(c) || /\bweb\s*ui\b/.test(c)) score -= 40;
+   if (/\bopen\b/.test(c) && /\bbrowser\b/.test(c)) score -= 30;
+   // Prefer fewer tokens when scores tie elsewhere (handled by sort stability via index)
+@@ -631,6 +648,20 @@ function scoreServiceCommand(command) {
+   return score;
+ }
+ 
++/**
++ * One-shot troubleshooting invocations (e.g. `ddclient --daemon=0 --query`)
++ * must not become brew services run lines.
++ */
++function isOneShotDiagnosticCommand(command) {
++  const c = String(command || "").trim().toLowerCase();
++  if (!c) return false;
++  if (/\b--query\b/.test(c)) return true;
++  if (/\b--daemon(?:=|\s+)0\b/.test(c)) return true;
++  if (/\b(?:--help|-h|--version)\b/.test(c)) return true;
++  if (/\b--once\b/.test(c)) return true;
++  return false;
++}
++
+ function pickPreferredNpmPackage(readmeText, preferredPackageName = "") {
+   const patterns = [
+     NPM_INSTALL_RE,
+@@ -873,8 +904,30 @@ export function detectServiceConfigFromFiles(fileNames, packageName = "") {
+     );
+   });
+ 
+-  if (!hasLaunchdPlist) return null;
+-  return { command: packageName, keepAlive: true, confidence: "medium" };
++  if (hasLaunchdPlist) {
++    return { command: packageName, keepAlive: true, confidence: "medium" };
++  }
++
++  // Sample unit files (e.g. sample-etc_systemd.service) indicate a daemon package.
++  const hasSystemdUnit = fileNames.some((f) => {
++    const lower = f.toLowerCase();
++    return (
++      lower.endsWith(".service") &&
++      (lower.includes("systemd") ||
++        lower.includes("sample") ||
++        /(?:^|\/)[a-z0-9._-]+\.service$/.test(lower))
++    );
++  });
++  if (hasSystemdUnit && packageName) {
++    return {
++      command: packageName,
++      keepAlive: true,
++      confidence: "medium",
++      reason: "repo includes systemd unit sample",
++    };
++  }
++
++  return null;
+ }
+ 
+ export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null {
+diff --git a/lib/generators/source-build.ts b/lib/generators/source-build.ts
+index 4e8ab52..a7c2b45 100644
+--- a/lib/generators/source-build.ts
++++ b/lib/generators/source-build.ts
+@@ -6,6 +6,7 @@ import {
+   rubyEscape,
+   guessLicenseIdentifier,
+   getAllbrewFormulaDependency,
++  matchAssetToArch,
+ } from "../utils.ts";
+ import { hashUrl } from "../sha256.ts";
+ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+@@ -13,6 +14,62 @@ import { githubLatestLivecheckBlock } from "./livecheck.ts";
+ import type { SourceBuildPayload } from "../template-payload.ts";
+ import { writeRenderedFormula } from "../template-renderer.ts";
+ 
++/** Prefer uploaded release source archives (with configure/dist files) over API tarballs. */
++export function pickReleaseSourceArchiveUrl(
++  release: any,
++  repoInfo: any,
++): string | null {
++  if (!release) return null;
++  const version = extractVersionFromTag(release.tagName || "");
++  const project = String(repoInfo?.name || "")
++    .toLowerCase()
++    .replace(/[^a-z0-9]+/g, "");
++  const assets = Array.isArray(release.assets) ? release.assets : [];
++
++  const sourceExt = /\.(tar\.gz|tgz|tar\.bz2|tar\.xz)$/i;
++  const platformToken =
++    /(?:^|[^a-z])(?:linux|darwin|macos|osx|windows|win32|win64|freebsd|android|iphoneos)(?:[^a-z]|$)/i;
++  const cpuToken =
++    /(?:^|[^a-z])(?:amd64|arm64|aarch64|x86_64|x64|i386|i686|armv\d+)(?:[^a-z]|$)/i;
++
++  const candidates = assets.filter((a: any) => {
++    const name = String(a?.name || "");
++    if (!sourceExt.test(name)) return false;
++    if (matchAssetToArch(name)) return false;
++    if (platformToken.test(name) && cpuToken.test(name)) return false;
++    if (cpuToken.test(name)) return false;
++    // Skip pure checksum sidecar names if they slipped through
++    if (/\.(sha256|sha512|sig|asc)$/i.test(name)) return false;
++    return Boolean(a.url);
++  });
++
++  if (candidates.length === 0) {
++    return (
++      release.tarballUrl ||
++      (repoInfo?.fullName && release.tagName
++        ? `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`
++        : null)
++    );
++  }
++
++  const score = (name: string) => {
++    const lower = name.toLowerCase();
++    let s = 0;
++    const compact = lower.replace(/[^a-z0-9]+/g, "");
++    if (project && compact.includes(project)) s += 50;
++    if (version && lower.includes(version.toLowerCase())) s += 30;
++    // Prefer project-version style dist tarballs over generic names
++    if (new RegExp(`${project}[-_.]?${version}`, "i").test(lower)) s += 40;
++    if (platformToken.test(lower)) s -= 20;
++    return s;
++  };
++
++  candidates.sort(
++    (a: any, b: any) => score(b.name) - score(a.name) || a.name.localeCompare(b.name),
++  );
++  return candidates[0].url;
++}
++
+ export async function collectSourceBuildPayload(
+   repoInfo: any,
+   release: any,
+@@ -30,9 +87,7 @@ export async function collectSourceBuildPayload(
+   let version: string;
+   if (release) {
+     version = extractVersionFromTag(release.tagName);
+-    sourceUrl =
+-      release.tarballUrl ||
+-      `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
++    sourceUrl = pickReleaseSourceArchiveUrl(release, repoInfo);
+   } else {
+     version = "HEAD";
+   }
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..bb494bc 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -482,6 +482,29 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
+     expect(result!.reason).toContain("launchctl");
+   });
+ 
++  it("prefers systemd unit docs over one-shot --daemon=0 --query (ddclient)", () => {
++    const readme = [
++      "# DDCLIENT",
++      "",
++      "#### systemd",
++      "",
++      "    cp sample-etc_systemd.service /etc/systemd/system/ddclient.service",
++      "    systemctl enable ddclient.service",
++      "    systemctl start ddclient.service",
++      "",
++      "Enable debugging: `ddclient --daemon=0 --debug --verbose`",
++      "Try `$ ddclient --daemon=0 --query`",
++      "",
++      "Alternatively, you may just configure ddclient to operate as a daemon",
++    ].join("\n");
++    const result = detectServiceConfig(readme, "ddclient");
++    expect(result).not.toBeNull();
++    expect(result!.command).toBe("ddclient");
++    expect(result!.confidence).toBe("medium");
++    expect(result!.reason).toMatch(/systemd/i);
++    expect(String(result!.command)).not.toMatch(/--query|--daemon=0/);
++  });
++
+   it("returns null when no service hints are present", () => {
+     expect(detectServiceConfig("just a regular CLI tool", "foo")).toBeNull();
+     expect(detectServiceConfig("", "foo")).toBeNull();
+diff --git a/tests/unit/generators/source-build.test.ts b/tests/unit/generators/source-build.test.ts
+index 94721ab..b768687 100644
+--- a/tests/unit/generators/source-build.test.ts
++++ b/tests/unit/generators/source-build.test.ts
+@@ -58,6 +58,27 @@ describe("collectSourceBuildPayload", () => {
+     );
+   });
+ 
++  it("prefers release source archive asset over API tarball (ddclient-style)", async () => {
++    const payload = await collectSourceBuildPayload(
++      { ...repoInfo, name: "ddclient", fullName: "ddclient/ddclient" },
++      {
++        tagName: "v4.0.0",
++        tarballUrl: "https://api.github.com/repos/ddclient/ddclient/tarball/v4.0.0",
++        assets: [
++          {
++            name: "ddclient-4.0.0.tar.gz",
++            url: "https://github.com/ddclient/ddclient/releases/download/v4.0.0/ddclient-4.0.0.tar.gz",
++          },
++        ],
++      },
++      { system: "autotools" },
++    );
++    expect(payload.urlLines).toContain(
++      "https://github.com/ddclient/ddclient/releases/download/v4.0.0/ddclient-4.0.0.tar.gz",
++    );
++    expect(payload.urlLines).not.toContain("api.github.com");
++  });
++
+   it("generates cmake install body for cmake build system", async () => {
+     const payload = await collectSourceBuildPayload(
+       repoInfo,

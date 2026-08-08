@@ -1,0 +1,64 @@
+--- lib/analyzer.ts	2026-08-01 22:55:46
++++ /Users/tariqwest/Developer/allbrew/tests/monitored-install-batch/worktrees/zellij-2026-08-07/lib/analyzer.ts	2026-08-07 06:41:10
+@@ -909,6 +909,61 @@
+   return null;
+ }
+ 
++/**
++ * Inspect an install/bootstrap shell script body for a durable packaging path.
++ *
++ * Many "try without installing" launchers (e.g. https://zellij.dev/launch) only
++ * curl a GitHub release tarball into /tmp and exec it — they ignore PREFIX and
++ * are unsuitable as Homebrew install-script formulas. Prefer binary-release for
++ * that repo when the script clearly downloads prebuilt release assets.
++ *
++ * Pure over text: no I/O. Callers fetch the script body.
++ */
++export function detectGithubBinaryReleaseFromScript(
++  scriptText: string,
++): { owner: string; repo: string; assetHint?: string; confidence: "high" | "medium" } | null {
++  if (!scriptText) return null;
++  const text = String(scriptText);
++
++  // Match release asset URLs, including shell expansions in the filename:
++  //   https://github.com/zellij-org/zellij/releases/latest/download/zellij-$arch-$sys.tar.gz
++  //   https://github.com/owner/repo/releases/download/v1.2.3/foo_darwin_arm64.tar.gz
++  const releaseUrlRe =
++    /https?:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/releases\/(?:latest\/download|download\/[^/\s"'`]+)\/([^\s"'`]+)/gi;
++
++  const hits: { owner: string; repo: string; asset: string }[] = [];
++  let m: RegExpExecArray | null;
++  while ((m = releaseUrlRe.exec(text)) !== null) {
++    hits.push({ owner: m[1], repo: m[2], asset: m[3] });
++  }
++  if (hits.length === 0) return null;
++
++  // Require a single owner/repo across all hits.
++  const key = `${hits[0].owner}/${hits[0].repo}`;
++  if (!hits.every((h) => `${h.owner}/${h.repo}` === key)) return null;
++
++  const archiveHit = hits.find((h) =>
++    /\.(?:tar\.gz|tgz|tar\.bz2|tar\.xz|zip)(?:\b|$)/i.test(h.asset) ||
++    /\$\{?[A-Za-z_][\w]*\}?/.test(h.asset), // shell vars often wrap arch in archive names
++  );
++  if (!archiveHit && !hits.some((h) => /darwin|linux|macos|aarch64|x86_64|arm64/i.test(h.asset))) {
++    return null;
++  }
++
++  // Prefer high confidence when the script is a thin bootstrap (tmp dir + curl + exec).
++  const thinBootstrap =
++    /\/tmp\//.test(text) &&
++    /\b(?:curl|wget)\b/.test(text) &&
++    /\b(?:tar|unzip)\b/.test(text);
++
++  return {
++    owner: hits[0].owner,
++    repo: hits[0].repo.replace(/\.git$/i, ""),
++    assetHint: (archiveHit || hits[0]).asset,
++    confidence: thinBootstrap ? "high" : "medium",
++  };
++}
++
+ export function detectBuildSystemFromArchive(fileNames) {
+   const names = new Set(
+     fileNames.map((f) => {

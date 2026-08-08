@@ -1,0 +1,19 @@
+{
+  "url": "https://jan.ai",
+  "slug": "jan-ai",
+  "packageName": "jan",
+  "failureClass": "generate_fail",
+  "rootCause": "allbrew 0.0.24 lacks homepage Case C matchOfficialCaskByHomepage; page-discover also fails on >2MB www.jan.ai HTML",
+  "fixStatus": "already_on_main",
+  "requiresRelease": true,
+  "minAllbrewVersion": ">0.0.24",
+  "localMainGenerateOk": true,
+  "vmInstallOk": false,
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "generatorExpected": "homebrew-cask",
+  "generatorObservedMain": "homebrew-cask",
+  "officialToken": "jan",
+  "appBundle": "Jan.app",
+  "versionObserved": "0.8.4"
+}

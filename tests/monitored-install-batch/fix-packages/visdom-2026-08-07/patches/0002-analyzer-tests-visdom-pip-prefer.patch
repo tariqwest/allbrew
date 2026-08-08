@@ -1,0 +1,103 @@
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..2e919c0 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -115,6 +115,46 @@ it("detects npx as npm", () => {
+     expect(result).toEqual({ method: "pip", package: "s-tui" });
+   });
+ 
++  it("detects `> pip install` shell-prompt docs (visdom-style)", () => {
++    const result = detectInstallMethod(
++      "```bash\n> pip install visdom\n```",
++      "visdom",
++    );
++    expect(result).toEqual({ method: "pip", package: "visdom" });
++  });
++
++  it("prefers preferred PyPI package over optional dep pip install (visdom vs plotly)", () => {
++    const readme = `
++## Setup
++
++Install from pip
++
++\`\`\`bash
++> pip install visdom
++\`\`\`
++
++#### vis.plotlyplot
++
++> **Note** You must have the \`plotly\` Python package installed to use this function. It can typically be installed by running \`pip install plotly\`.
++`;
++    expect(detectInstallMethod(readme, "visdom")).toEqual({
++      method: "pip",
++      package: "visdom",
++    });
++    // Without preferred name, first pip install after prompt stripping is visdom.
++    expect(detectInstallMethod(readme)).toEqual({
++      method: "pip",
++      package: "visdom",
++    });
++  });
++
++  it("does not pick unrelated optional pip dep when preferred name is set and primary is missing", () => {
++    const readme =
++      "Optional: run `pip install plotly` for Plotly figures.\n";
++    // Preferred app is not documented as pip install — do not claim plotly.
++    expect(detectInstallMethod(readme, "visdom")).toBeNull();
++  });
++
+   it("detects pip3 install as pip", () => {
+     const result = detectInstallMethod("```bash\npip3 install toolong\n```");
+     expect(result).toEqual({ method: "pip", package: "toolong" });
+@@ -606,6 +646,51 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
+     ].join("\n");
+     expect(detectServiceConfig(readme, "turbo-fieldfare")).toBeNull();
+   });
++
++  it("does not treat file-arg presentation CLIs with optional --port as services (reveal-md)", () => {
++    const readme = [
++      "# reveal-md",
++      "",
++      "```console",
++      "npm install -g reveal-md",
++      "```",
++      "",
++      "## Usage",
++      "",
++      "```console",
++      "reveal-md slides.md",
++      "```",
++      "",
++      "This starts a local server and opens any Markdown file as a reveal.js presentation.",
++      "",
++      "```console",
++      "docker run --rm -p 1948:1948 -v slides:/slides webpronl/reveal-md:latest",
++      "```",
++      "",
++      "The service is now running at http://localhost:1948",
++      "",
++      "### Directory Listing",
++      "",
++      "```console",
++      "reveal-md",
++      "```",
++      "",
++      "### Custom Port",
++      "",
++      "```console",
++      "reveal-md slides.md --port 8888",
++      "```",
++      "",
++      "```console",
++      "reveal-md slides.md --theme solarized",
++      "```",
++      "",
++      "```console",
++      "reveal-md slides.md --print slides.pdf",
++      "```",
++    ].join("\n");
++    expect(detectServiceConfig(readme, "reveal-md")).toBeNull();
++  });
+ });
+ 
+ describe("detectServiceConfigFromFiles", () => {

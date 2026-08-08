@@ -1,0 +1,56 @@
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..cfcdb62 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -606,6 +606,51 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
+     ].join("\n");
+     expect(detectServiceConfig(readme, "turbo-fieldfare")).toBeNull();
+   });
++
++  it("does not treat file-arg presentation CLIs with optional --port as services (reveal-md)", () => {
++    const readme = [
++      "# reveal-md",
++      "",
++      "```console",
++      "npm install -g reveal-md",
++      "```",
++      "",
++      "## Usage",
++      "",
++      "```console",
++      "reveal-md slides.md",
++      "```",
++      "",
++      "This starts a local server and opens any Markdown file as a reveal.js presentation.",
++      "",
++      "```console",
++      "docker run --rm -p 1948:1948 -v slides:/slides webpronl/reveal-md:latest",
++      "```",
++      "",
++      "The service is now running at http://localhost:1948",
++      "",
++      "### Directory Listing",
++      "",
++      "```console",
++      "reveal-md",
++      "```",
++      "",
++      "### Custom Port",
++      "",
++      "```console",
++      "reveal-md slides.md --port 8888",
++      "```",
++      "",
++      "```console",
++      "reveal-md slides.md --theme solarized",
++      "```",
++      "",
++      "```console",
++      "reveal-md slides.md --print slides.pdf",
++      "```",
++    ].join("\n");
++    expect(detectServiceConfig(readme, "reveal-md")).toBeNull();
++  });
+ });
+ 
+ describe("detectServiceConfigFromFiles", () => {

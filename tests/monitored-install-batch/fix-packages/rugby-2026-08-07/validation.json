@@ -1,0 +1,11 @@
+{
+  "slug": "rugby",
+  "url": "https://github.com/swiftyfinch/Rugby",
+  "generator": "binary-release",
+  "version": "2.10.3",
+  "service": false,
+  "unitTests": ["tests/unit/utils.test.ts"],
+  "localGenerateOk": true,
+  "hostBrewCleaned": true,
+  "vmRequired": true
+}

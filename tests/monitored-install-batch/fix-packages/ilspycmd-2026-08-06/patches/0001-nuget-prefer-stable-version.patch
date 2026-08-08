@@ -1,0 +1,81 @@
+diff --git a/lib/generators/dotnet-package.ts b/lib/generators/dotnet-package.ts
+index ea87807..86d3d5b 100644
+--- a/lib/generators/dotnet-package.ts
++++ b/lib/generators/dotnet-package.ts
+@@ -62,6 +62,22 @@ export async function generateDotnetPackage(
+   return writeRenderedFormula(payload, options.tapPath);
+ }
+ 
++/** NuGet SemVer2 prerelease: version contains a hyphen after the numeric core. */
++export function isNugetPrerelease(version: string): boolean {
++  return typeof version === "string" && version.includes("-");
++}
++
++/** Prefer latest stable (non-prerelease); fall back to absolute latest if only prereleases exist. */
++export function pickNugetVersion(versions: string[]): string {
++  if (!versions || versions.length === 0) {
++    throw new Error("No versions found on NuGet");
++  }
++  for (let i = versions.length - 1; i >= 0; i--) {
++    if (!isNugetPrerelease(versions[i])) return versions[i];
++  }
++  return versions[versions.length - 1];
++}
++
+ async function fetchNugetData(packageName: string) {
+   const base = process.env.NUGET_FLAT_URL || process.env.NUGET_URL || "https://api.nuget.org";
+   const url = `${base}/v3-flatcontainer/${encodeURIComponent(packageName.toLowerCase())}/index.json`;
+@@ -76,7 +92,7 @@ async function fetchNugetData(packageName: string) {
+   if (!versions || versions.length === 0) {
+     throw new Error(`No versions found for ${packageName} on NuGet`);
+   }
+-  return { version: versions[versions.length - 1] };
++  return { version: pickNugetVersion(versions) };
+ }
+ 
+ function nugetLivecheckBlock(packageName: string) {
+diff --git a/tests/unit/generators/dotnet-package.test.ts b/tests/unit/generators/dotnet-package.test.ts
+index dd50121..76ac1ef 100644
+--- a/tests/unit/generators/dotnet-package.test.ts
++++ b/tests/unit/generators/dotnet-package.test.ts
+@@ -64,6 +64,40 @@ describe("collectDotnetPackagePayload", () => {
+     expect(payload.version).toBe("2.0.0");
+   });
+ 
++  it("prefers latest stable over NuGet prerelease suffix", async () => {
++    global.fetch = mock((url: string) => {
++      if (url.includes("nuget.org") && url.includes("dotnet-serve")) {
++        return Promise.resolve({
++          ok: true,
++          json: () =>
++            Promise.resolve({
++              versions: ["1.0.0", "2.0.0", "3.0.0-rc", "3.0.0-preview1"],
++            }),
++        });
++      }
++      return Promise.resolve({ ok: false, status: 404 });
++    }) as any;
++    const payload = await collectDotnetPackagePayload("dotnet-serve");
++    expect(payload.version).toBe("2.0.0");
++  });
++
++  it("falls back to latest prerelease when no stable versions exist", async () => {
++    global.fetch = mock((url: string) => {
++      if (url.includes("nuget.org") && url.includes("dotnet-serve")) {
++        return Promise.resolve({
++          ok: true,
++          json: () =>
++            Promise.resolve({
++              versions: ["1.0.0-alpha", "1.0.0-beta", "1.0.0-rc"],
++            }),
++        });
++      }
++      return Promise.resolve({ ok: false, status: 404 });
++    }) as any;
++    const payload = await collectDotnetPackagePayload("dotnet-serve");
++    expect(payload.version).toBe("1.0.0-rc");
++  });
++
+   it("generates NuGet livecheck block", async () => {
+     const payload = await collectDotnetPackagePayload("dotnet-serve");
+     expect(payload.livecheckBlock).toContain("nuget.org");

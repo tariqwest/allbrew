@@ -1,0 +1,578 @@
+diff --git a/lib/analyzer.ts b/lib/analyzer.ts
+index e028df4..c2e75f0 100644
+--- a/lib/analyzer.ts
++++ b/lib/analyzer.ts
+@@ -3,33 +3,36 @@ const BREW_TAP_RE = /brew\s+tap\s+([^\s;|&\n]+)/gi;
+ const BREW_CASK_RE =
+   /brew\s+(?:cask\s+install|install\s+--cask)\s+([^\s;|&\n]+)/gi;
+ 
++// Optional shell prompt chars: $, #, %, > (docs often show `> pip install foo`)
++const SHELL_PROMPT = "(?:[$#%>]\\s*)?";
+ const NPM_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?npm[ \t]+(?:install|i)[ \t]+(?:-g[ \t]+)?([^\s;|&\n`]+)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}npm[ \\t]+(?:install|i)[ \\t]+(?:-g[ \\t]+)?([^\\s;|&\\n\`]+)`, "i");
+ const PNPM_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?pnpm[ \t]+(?:install|add)[ \t]+(?:-g[ \t]+)?([^\s;|&\n`]+)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pnpm[ \\t]+(?:install|add)[ \\t]+(?:-g[ \\t]+)?([^\\s;|&\\n\`]+)`, "i");
+ const YARN_GLOBAL_ADD_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?yarn[ \t]+global[ \t]+add[ \t]+([^\s;|&\n`]+)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}yarn[ \\t]+global[ \\t]+add[ \\t]+([^\\s;|&\\n\`]+)`, "i");
+ const BUN_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?bun[ \t]+(?:install|add)[ \t]+(?:-g[ \t]+|--global[ \t]+)?([^\s;|&\n`]+)/i;
+-const NPX_RE = /(?:^|[`\n])\s*(?:\$\s*)?npx[ \t]+([^\s;|&\n`]+)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}bun[ \\t]+(?:install|add)[ \\t]+(?:-g[ \\t]+|--global[ \\t]+)?([^\\s;|&\\n\`]+)`, "i");
++const NPX_RE =
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}npx[ \\t]+([^\\s;|&\\n\`]+)`, "i");
+ const PIP_FLAGS =
+   "(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n]*)?)*";
+ const PIP_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?pip[3]?[ \t]+install(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pip[3]?[ \\t]+install(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+ const PIPX_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?pipx[ \t]+install(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pipx[ \\t]+install(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+ const UV_TOOL_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?uv[ \t]+(?:tool[ \t]+install|pip[ \t]+install)(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}uv[ \\t]+(?:tool[ \\t]+install|pip[ \\t]+install)(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+ const UVX_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?uvx(?:[ \t]+-(?:[A-Za-z]|-[\w-]+)(?:=[^\s;|&\n`]*)?)*[ \t]+([^\s;|&\n`'-][^\s;|&\n`]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}uvx(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+ const DENO_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?deno[ \t]+install\b[^\n`]*(?:\s(?:--name|-n)[ =]([^\s;|&\n`]+)|\s([\w./:@-]+))(?:[^\n`]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}deno[ \\t]+install\\b[^\\n\`]*(?:\\s(?:--name|-n)[ =]([^\\s;|&\\n\`]+)|\\s([\\w./:@-]+))(?:[^\\n\`]*)`, "i");
+ const SWIFT_RUN_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?swift[ \t]+run(?:[ \t]+(?:-c|--configuration)[ \t]+\w+)?(?:[ \t]+([^\s;|&\n`]+))?/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}swift[ \\t]+run(?:[ \\t]+(?:-c|--configuration)[ \\t]+\\w+)?(?:[ \\t]+([^\\s;|&\\n\`]+))?`, "i");
+ const CARGO_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?cargo[ \t]+install[ \t]+(?:--locked[ \t]+|--force[ \t]+)?(?!--path\b|--git\b|--)([a-zA-Z][a-zA-Z0-9_-]*)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}cargo[ \\t]+install[ \\t]+(?:--locked[ \\t]+|--force[ \\t]+)?(?!--path\\b|--git\\b|--)([a-zA-Z][a-zA-Z0-9_-]*)`, "i");
+ const GO_INSTALL_RE =
+-  /(?:^|[`\n])\s*(?:\$\s*)?go[ \t]+install[ \t]+([\w./-]+@[\w.]+)/i;
++  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}go[ \\t]+install[ \\t]+([\\w./-]+@[\\w.]+)`, "i");
+ 
+ // curl|bash / wget|sh install one-liners and direct .sh/.bash install URLs
+ const CURL_PIPE_SHELL_RE =
+@@ -163,45 +166,19 @@ export function detectInstallMethod(
+   const npmPackage = pickPreferredNpmPackage(readmeText, preferredPackageName);
+   if (npmPackage) return { method: "npm", package: npmPackage };
+ 
+-  match = readmeText.match(PIP_INSTALL_RE);
+-  if (match) {
+-    // Editable/local installs (pip install -e .) are source builds, not PyPI packages.
+-    if (isLocalPipInstallTarget(match[1])) {
+-      return { method: "build", system: "python" };
+-    }
+-    const pkg = cleanPipPackageSpec(match[1]);
+-    if (pkg) return { method: "pip", package: pkg };
+-  }
+-
+-  match = readmeText.match(PIPX_INSTALL_RE);
+-  if (match) {
+-    if (isLocalPipInstallTarget(match[1])) {
+-      return { method: "build", system: "python" };
+-    }
+-    const pkg = cleanPipPackageSpec(match[1]);
+-    if (pkg) return { method: "pip", package: pkg };
+-  }
+-
+-  match = readmeText.match(UV_TOOL_INSTALL_RE);
+-  if (match) {
+-    if (isLocalPipInstallTarget(match[1])) {
+-      return { method: "build", system: "python" };
+-    }
+-    const pkg = cleanPipPackageSpec(match[1]);
+-    if (pkg) return { method: "pip", package: pkg };
+-  }
+-
+-  match = readmeText.match(UVX_RE);
+-  if (match) {
+-    const pkg = cleanPipPackageSpec(match[1]);
+-    if (pkg) return { method: "pip", package: pkg };
+-  }
++  const pipHint = pickPreferredPipPackage(readmeText, preferredPackageName);
++  if (pipHint) return pipHint;
+ 
+   match = readmeText.match(CARGO_INSTALL_RE);
+   if (match) return { method: "cargo", package: match[1] };
+ 
+   match = readmeText.match(GO_INSTALL_RE);
+-  if (match) return { method: "go", package: match[1] };
++  if (match) {
++    // go install path@version → strip version for module identity
++    // (e.g. github.com/ariasmn/ugm@latest → github.com/ariasmn/ugm)
++    const goMod = String(match[1] || "").replace(/@[\w.+\-]+$/, "");
++    return { method: "go", package: goMod || match[1] };
++  }
+ 
+   match = readmeText.match(DENO_INSTALL_RE);
+   if (match)
+@@ -356,6 +333,59 @@ export function detectServiceConfig(readmeText, packageName = "") {
+   };
+ }
+ 
++/**
++ * File/path-driven CLIs (e.g. `reveal-md slides.md`, `tool dir/`) often document
++ * optional `--port` and open a browser, but they are not brew-services daemons:
++ * the user supplies content per invocation and the process is not an always-on service.
++ */
++function isFileArgDrivenPackageCli(readmeText, packageName) {
++  if (!packageName || !readmeText) return false;
++
++  const pkg = escapeRegExp(packageName);
++  const lineRe = new RegExp(
++    `(?:^|[\\n\\\`])\\s*(?:\\$\\s*)?(${pkg})((?:[ \\t]+[^\\n\\\`]+)?)`,
++    "gim",
++  );
++  let total = 0;
++  let withPathArg = 0;
++  let match;
++  while ((match = lineRe.exec(readmeText)) !== null) {
++    const rest = String(match[2] || "").trim();
++    // Skip install lines and env-prefixed non-invocations elsewhere.
++    if (/^(?:install|i|add)\b/i.test(rest)) continue;
++    total += 1;
++    if (!rest) continue;
++    const tokens = rest.split(/\s+/).filter(Boolean);
++    const positional = tokens.filter(
++      (t) =>
++        !t.startsWith("-") &&
++        !/^(?:PORT=\d+|https?:\/\/)/i.test(t) &&
++        !/[=]/.test(t) &&
++        // Port numbers / host bind targets are not file paths.
++        !/^\d+$/.test(t) &&
++        !/^(?:0\.0\.0\.0|127\.0\.0\.1|localhost|\[::1\])$/i.test(t),
++    );
++    if (
++      positional.some(
++        (t) =>
++          // Relative/absolute paths and filenames (slides.md, dir/, ./foo)
++          /[\/]/.test(t) ||
++          /^\.{1,2}(?:\/|$)/.test(t) ||
++          /\.(?:md|markdown|html?|pdf|txt|adoc|rst|tex|json|ya?ml|toml)$/i.test(
++            t,
++          ),
++      )
++    ) {
++      withPathArg += 1;
++    }
++  }
++
++  if (total === 0) return false;
++  // Majority of documented invocations take a path/file positional.
++  if (total === 1) return withPathArg === 1;
++  return withPathArg / total >= 0.5;
++}
++
+ /**
+  * Long-running package binaries documented with PORT= / --port / --host without
+  * an explicit localhost URL (e.g. LiteLLM proxies: `PORT=8080 acp-router`).
+@@ -363,6 +393,9 @@ export function detectServiceConfig(readmeText, packageName = "") {
+ function detectPortBoundPackageService(readmeText, packageName) {
+   if (!packageName || !readmeText) return null;
+ 
++  // File-arg CLIs documenting optional `--port` are not supervised daemons.
++  if (isFileArgDrivenPackageCli(readmeText, packageName)) return null;
++
+   const hasPortBinding =
+     /\bPORT\s*=\s*\d+/i.test(readmeText) ||
+     /(?:^|[\s`])(?:--port|--host)(?:\s+|=)\S+/im.test(readmeText) ||
+@@ -376,7 +409,7 @@ function detectPortBoundPackageService(readmeText, packageName) {
+     );
+   if (!hasProxyContext) return null;
+ 
+-// Require the package binary to appear as a documented run command — never invent it.
++  // Require the package binary to appear as a documented run command — never invent it.
+   const command = findPackageRunCommand(readmeText, packageName);
+   if (!command) return null;
+ 
+@@ -408,6 +441,11 @@ function detectLocalWebService(readmeText, packageName) {
+   const endpoints = [...readmeText.matchAll(LOCAL_ENDPOINT_RE)];
+   if (endpoints.length === 0) return null;
+ 
++  // File-driven preview CLIs (open browser for a slides file) are not services.
++  if (packageName && isFileArgDrivenPackageCli(readmeText, packageName)) {
++    return null;
++  }
++
+   const hasWebServiceContext = endpoints.some((endpoint) => {
+     const index = endpoint.index || 0;
+     const nearby = readmeText.slice(Math.max(0, index - 180), index + 220);
+@@ -429,7 +467,7 @@ function detectLocalWebService(readmeText, packageName) {
+     near ||
+     whole;
+ 
+-// Do not invent `packageName` alone from a localhost URL — that over-fires on
++  // Do not invent `packageName` alone from a localhost URL — that over-fires on
+   // CLI tools with optional `serve` docs. Require a real runnable command.
+   if (!command) return null;
+ 
+@@ -682,6 +720,84 @@ function pickPreferredNpmPackage(readmeText, preferredPackageName = "") {
+   return candidates[0].package;
+ }
+ 
++/**
++ * Collect pip/pipx/uv/uvx install specs from README and pick the app package.
++ * When preferredPackageName is set (repo name / --name), prefer that over optional
++ * deps (e.g. visdom README documents `pip install plotly` for an optional feature).
++ * Shell prompts (`>`, `%`, `$`, `#`) are accepted before the install command.
++ */
++function pickPreferredPipPackage(readmeText, preferredPackageName = "") {
++  const patterns = [
++    PIP_INSTALL_RE,
++    PIPX_INSTALL_RE,
++    UV_TOOL_INSTALL_RE,
++    UVX_RE,
++  ];
++  const candidates = [];
++  for (const pattern of patterns) {
++    const globalRe = new RegExp(
++      pattern.source,
++      pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`,
++    );
++    let match;
++    while ((match = globalRe.exec(readmeText)) !== null) {
++      const rawSpec = match[1];
++      if (isLocalPipInstallTarget(rawSpec)) {
++        candidates.push({
++          package: null,
++          localBuild: true,
++          raw: match[0],
++          index: match.index,
++        });
++        continue;
++      }
++      const pkg = cleanPipPackageSpec(rawSpec);
++      if (!pkg) continue;
++      candidates.push({
++        package: pkg,
++        localBuild: false,
++        raw: match[0],
++        index: match.index,
++      });
++    }
++  }
++  if (candidates.length === 0) return null;
++
++  const preferred = String(preferredPackageName || "").trim();
++  if (preferred) {
++    const preferredLower = preferred.toLowerCase();
++    const preferredLast = preferredLower.split("/").pop();
++    const matchPreferred = candidates.find((c) => {
++      if (!c.package) return false;
++      const pkg = c.package.toLowerCase();
++      const last = pkg.split("/").pop();
++      return (
++        pkg === preferredLower ||
++        pkg === preferredLast ||
++        last === preferredLower ||
++        last === preferredLast
++      );
++    });
++    // Prefer matching the app/package name. Do not fall back to an unrelated
++    // optional dep (e.g. `pip install plotly` in a visdom README) when the
++    // preferred package only appears behind a shell prompt or later in docs.
++    if (matchPreferred) {
++      return { method: "pip", package: matchPreferred.package };
++    }
++    // Preferred name set but no pip hit for it — let later methods try.
++    // Local editable installs still count as python source build.
++    const local = candidates.find((c) => c.localBuild);
++    if (local) return { method: "build", system: "python" };
++    return null;
++  }
++
++  const local = candidates.find((c) => c.localBuild);
++  if (local) return { method: "build", system: "python" };
++  const first = candidates.find((c) => c.package);
++  if (first) return { method: "pip", package: first.package };
++  return null;
++}
++
+ /** Bare English headings like `Run:` must not become service commands. */
+ function isServiceLikeCommand(command, packageName = "") {
+   if (!command) return false;
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..51c9bd3 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -64,18 +64,47 @@ export async function run(url, opts: any = {}) {
+ 
+   try {
+     if (classification.type === "unknown") {
+-      const discovered = await maybeDiscoverFromUnknownPage(url, opts);
+-      if (discovered) {
+-        classification = discovered.classification;
+-        opts = {
+-          ...opts,
+-          sourceUrl: url,
+-          resolvedUrl: discovered.resolvedUrl,
+-          discoverMethod: discovered.method,
+-        };
+-        console.log(
+-          `  Resolved download via discovery (${chalk.cyan(discovered.method)}): ${chalk.bold(classification.type)} → ${chalk.cyan(discovered.resolvedUrl)}`,
++      // Case C: product homepage already shipped on homebrew/cask with matching
++      // homepage domain → adopt official cask (avoid MAS storefront / *-tap).
++      try {
++        const { matchOfficialCaskByHomepage } = await import(
++          "./generators/homebrew-cask.ts"
+         );
++        const matched = await matchOfficialCaskByHomepage(url, opts.name);
++        if (matched?.token) {
++          classification = {
++            type: "homebrew-cask",
++            url: `https://formulae.brew.sh/cask/${matched.token}`,
++            name: matched.token,
++          };
++          opts = {
++            ...opts,
++            name: opts.name || matched.token,
++            sourceUrl: url,
++            discoverMethod: "homebrew-cask-homepage",
++          };
++          console.log(
++            `  Matched official homebrew/cask ${chalk.bold(matched.token)} via homepage domain`,
++          );
++        }
++      } catch {
++        /* optional path */
++      }
++
++      if (classification.type === "unknown") {
++        const discovered = await maybeDiscoverFromUnknownPage(url, opts);
++        if (discovered) {
++          classification = discovered.classification;
++          opts = {
++            ...opts,
++            sourceUrl: url,
++            resolvedUrl: discovered.resolvedUrl,
++            discoverMethod: discovered.method,
++          };
++          console.log(
++            `  Resolved download via discovery (${chalk.cyan(discovered.method)}): ${chalk.bold(classification.type)} → ${chalk.cyan(discovered.resolvedUrl)}`,
++          );
++        }
+       }
+     }
+ 
+@@ -831,9 +860,22 @@ async function handleGithubRepo(classification, opts) {
+     );
+ 
+     const appAssets = release.assets.filter((a) => isAppAsset(a.name));
+-    const binAssets = release.assets.filter(
++    // Platform-tagged binaries. Homebrew on macOS needs at least one macOS
++    // asset; Linux-only releases (e.g. ugm, gpg-tui) must fall through to README
++    // install methods (go, cargo, source-build) instead of binary-release.
++    const allBinAssets = release.assets.filter(
+       (a) => isBinaryAsset(a.name) && matchAssetToArch(a.name),
+     );
++    const binAssets = allBinAssets.filter((a) => {
++      const arch = matchAssetToArch(a.name);
++      return (
++        arch === "macosArm" ||
++        arch === "macosIntel" ||
++        arch === "macosUniversal"
++      );
++    });
++    const linuxOnlyBinAssets =
++      binAssets.length === 0 && allBinAssets.length > 0;
+ 
+     if (appAssets.length > 0 && binAssets.length > 0) {
+       console.log();
+@@ -903,9 +945,17 @@ async function handleGithubRepo(classification, opts) {
+       );
+     }
+ 
+-    console.log(
+-      chalk.dim("  No recognized binary or app assets, checking README..."),
+-    );
++    if (linuxOnlyBinAssets) {
++      console.log(
++        chalk.dim(
++          `  Release has Linux-only binary assets (${allBinAssets.map((a) => a.name).join(", ")}); no macOS bottle path — checking README...`,
++        ),
++      );
++    } else {
++      console.log(
++        chalk.dim("  No recognized binary or app assets, checking README..."),
++      );
++    }
+   } else {
+     releaseSpinner.info("No releases found, checking README...");
+   }
+@@ -935,16 +985,28 @@ async function handleGithubRepo(classification, opts) {
+       console.log(`  Detected command: ${chalk.cyan(brewInfo.installCommand)}`);
+       console.log();
+ 
+-      const choice = await select({
+-        message: "What would you like to do?",
+-        choices: [
+-          {
+-            name: `Run "${brewInfo.installCommand}" directly`,
+-            value: "brew-install",
+-          },
+-          { name: "Generate a custom formula anyway", value: "continue" },
+-        ],
+-      });
++      // Non-interactive/batch: keep generating a formula/cask instead of hanging
++      // on select() or auto-running host `brew install` (no tap/manifest).
++      let choice: "brew-install" | "continue" = "continue";
++      if (isNonInteractive(opts)) {
++        console.log(
++          chalk.dim(
++            `  Non-interactive: generating custom formula anyway (Homebrew also has: ${brewInfo.installCommand})`,
++          ),
++        );
++        choice = "continue";
++      } else {
++        choice = await select({
++          message: "What would you like to do?",
++          choices: [
++            {
++              name: `Run "${brewInfo.installCommand}" directly`,
++              value: "brew-install",
++            },
++            { name: "Generate a custom formula anyway", value: "continue" },
++          ],
++        });
++      }
+ 
+       if (choice === "brew-install") {
+         console.log();
+diff --git a/lib/generators/go-package.ts b/lib/generators/go-package.ts
+index 5f2fa73..59b0b84 100644
+--- a/lib/generators/go-package.ts
++++ b/lib/generators/go-package.ts
+@@ -46,8 +46,10 @@ export async function collectGoPackagePayload(
+   release: any = null,
+   options: any = {},
+ ): Promise<GoPackagePayload> {
+-  const goModule =
++  // Normalize go install specs like github.com/foo/bar@latest → path only
++  const rawGoModule =
+     options.goModule || (repoInfo ? `github.com/${repoInfo.fullName}` : "");
++  const goModule = String(rawGoModule || "").replace(/@[\w.+\-]+$/, "") || rawGoModule;
+   const ghFullName = githubModuleFullName(goModule) || repoInfo?.fullName;
+ 
+   const name =
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..96f3a3a 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -115,6 +115,46 @@ it("detects npx as npm", () => {
+     expect(result).toEqual({ method: "pip", package: "s-tui" });
+   });
+ 
++  it("detects `> pip install` shell-prompt docs (visdom-style)", () => {
++    const result = detectInstallMethod(
++      "```bash\n> pip install visdom\n```",
++      "visdom",
++    );
++    expect(result).toEqual({ method: "pip", package: "visdom" });
++  });
++
++  it("prefers preferred PyPI package over optional dep pip install (visdom vs plotly)", () => {
++    const readme = `
++## Setup
++
++Install from pip
++
++\`\`\`bash
++> pip install visdom
++\`\`\`
++
++#### vis.plotlyplot
++
++> **Note** You must have the \`plotly\` Python package installed to use this function. It can typically be installed by running \`pip install plotly\`.
++`;
++    expect(detectInstallMethod(readme, "visdom")).toEqual({
++      method: "pip",
++      package: "visdom",
++    });
++    // Without preferred name, first pip install after prompt stripping is visdom.
++    expect(detectInstallMethod(readme)).toEqual({
++      method: "pip",
++      package: "visdom",
++    });
++  });
++
++  it("does not pick unrelated optional pip dep when preferred name is set and primary is missing", () => {
++    const readme =
++      "Optional: run `pip install plotly` for Plotly figures.\n";
++    // Preferred app is not documented as pip install — do not claim plotly.
++    expect(detectInstallMethod(readme, "visdom")).toBeNull();
++  });
++
+   it("detects pip3 install as pip", () => {
+     const result = detectInstallMethod("```bash\npip3 install toolong\n```");
+     expect(result).toEqual({ method: "pip", package: "toolong" });
+@@ -227,9 +267,16 @@ omnigent server --background
+     expect(result).toEqual({ method: "cargo", package: "ripgrep" });
+   });
+ 
+-  it("detects go install with version", () => {
++  it("detects go install with version and strips tag for module path", () => {
+     const result = detectInstallMethod("```bash\ngo install github.com/foo/bar@v1.2.3\n```");
+-    expect(result).toEqual({ method: "go", package: "github.com/foo/bar@v1.2.3" });
++    expect(result).toEqual({ method: "go", package: "github.com/foo/bar" });
++  });
++
++  it("strips @latest from go install module path", () => {
++    const result = detectInstallMethod(
++      "```bash\ngo install github.com/ariasmn/ugm@latest\n```",
++    );
++    expect(result).toEqual({ method: "go", package: "github.com/ariasmn/ugm" });
+   });
+ 
+   it("detects curl | bash install one-liner as script", () => {
+@@ -606,6 +653,51 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
+     ].join("\n");
+     expect(detectServiceConfig(readme, "turbo-fieldfare")).toBeNull();
+   });
++
++  it("does not treat file-arg presentation CLIs with optional --port as services (reveal-md)", () => {
++    const readme = [
++      "# reveal-md",
++      "",
++      "```console",
++      "npm install -g reveal-md",
++      "```",
++      "",
++      "## Usage",
++      "",
++      "```console",
++      "reveal-md slides.md",
++      "```",
++      "",
++      "This starts a local server and opens any Markdown file as a reveal.js presentation.",
++      "",
++      "```console",
++      "docker run --rm -p 1948:1948 -v slides:/slides webpronl/reveal-md:latest",
++      "```",
++      "",
++      "The service is now running at http://localhost:1948",
++      "",
++      "### Directory Listing",
++      "",
++      "```console",
++      "reveal-md",
++      "```",
++      "",
++      "### Custom Port",
++      "",
++      "```console",
++      "reveal-md slides.md --port 8888",
++      "```",
++      "",
++      "```console",
++      "reveal-md slides.md --theme solarized",
++      "```",
++      "",
++      "```console",
++      "reveal-md slides.md --print slides.pdf",
++      "```",
++    ].join("\n");
++    expect(detectServiceConfig(readme, "reveal-md")).toBeNull();
++  });
+ });
+ 
+ describe("detectServiceConfigFromFiles", () => {

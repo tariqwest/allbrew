@@ -1,0 +1,28 @@
+diff --git a/lib/utils.ts b/lib/utils.ts
+index 28ec1c1..393edbe 100644
+--- a/lib/utils.ts
++++ b/lib/utils.ts
+@@ -606,6 +606,14 @@ export function isAppAsset(assetName) {
+   return true;
+ }
+ 
++/** True when archive listing contains a macOS .app bundle path. */
++export function membersContainMacAppBundle(members: string[]): boolean {
++  return members.some((m) => {
++    const n = String(m || "").replace(/\\/g, "/");
++    return /(^|\/)[^/]+\.app(\/|$)/i.test(n);
++  });
++}
++
+ const ARCHIVE_BINARY_EXTS = [".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".zip"];
+ const BARE_BINARY_SKIP_SUFFIXES = [
+   ".sha256",
+@@ -614,6 +622,8 @@ const BARE_BINARY_SKIP_SUFFIXES = [
+   ".sha512sum",
+   ".sha384",
+   ".sig",
++  ".minisig",
++  ".minisign",
+   ".asc",
+   ".pem",
+   ".sbom",

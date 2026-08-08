@@ -1,0 +1,110 @@
+diff --git a/lib/analyzer.ts b/lib/analyzer.ts
+index e028df4..91be718 100644
+--- a/lib/analyzer.ts
++++ b/lib/analyzer.ts
+@@ -900,6 +900,9 @@ export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null
+     return { method: "pip" };
+   if (names.has("package.json")) return { method: "npm" };
+   if (names.has("package.swift")) return { method: "swift" };
++  // Ruby gemspec at repo root (published or unpublished gem sources).
++  if ([...names].some((n) => n.endsWith(".gemspec")))
++    return { method: "gem" };
+   if (names.has("cmakelists.txt")) return { method: "build", system: "cmake" };
+   if (names.has("meson.build")) return { method: "build", system: "meson" };
+   if (names.has("configure")) return { method: "build", system: "autotools" };
+@@ -937,6 +940,8 @@ export function detectBuildSystemFromArchive(fileNames) {
+   if (names.has("setup.py") || names.has("pyproject.toml"))
+     return { method: "pip" };
+   if (names.has("package.json")) return { method: "npm" };
++  if ([...names].some((n) => n.endsWith(".gemspec")))
++    return { method: "gem" };
+   if (names.has("meson.build")) return { method: "build", system: "meson" };
+   if (names.has("configure")) return { method: "build", system: "autotools" };
+   if (names.has("makefile") || names.has("gnumakefile"))
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..07dc9f8 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -1221,6 +1221,36 @@ async function handleGithubRepo(classification, opts) {
+           },
+           { ...opts, ...spmOpts },
+         );
++      }
++            case "gem": {
++        const gemName = opts.package || opts.gemName || repoInfo.name;
++        try {
++          return await generateWithConfirmation(
++            "gem-package",
++            {
++              gemName,
++              repoInfo,
++              serviceConfig,
++            },
++            opts,
++          );
++        } catch (err) {
++          console.log(
++            chalk.dim(
++              `  RubyGems package not available (${err instanceof Error ? err.message : err}); building gem from source`,
++            ),
++          );
++          return await generateWithConfirmation(
++            "source-build",
++            {
++              repoInfo,
++              release,
++              buildSystem: { method: "build", system: "ruby-gem" },
++              serviceConfig,
++            },
++            opts,
++          );
++        }
+       }
+       case "build":
+         return await generateWithConfirmation(
+diff --git a/lib/generators/source-build.ts b/lib/generators/source-build.ts
+index 4e8ab52..80e5231 100644
+--- a/lib/generators/source-build.ts
++++ b/lib/generators/source-build.ts
+@@ -95,6 +95,8 @@ function getDependencies(system: string): string[] {
+       return ['"go" => :build'];
+     case "python":
+       return ['"python@3.13"'];
++    case "ruby-gem":
++      return ['"ruby"'];
+     default:
+       return [];
+   }
+@@ -127,6 +129,15 @@ function getInstallBlock(system: string) {
+         `    system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."\n` +
+         `    bin.install_symlink Dir["#{libexec}/bin/*"]\n`
+       );
++    case "ruby-gem":
++      return (
++        `    ENV["GEM_HOME"] = libexec\n` +
++        `    system "gem", "build", *Dir["*.gemspec"]\n` +
++        `    system "gem", "install", *Dir["*.gem"],\n` +
++        `           "--no-document", "--install-dir", libexec\n` +
++        `    bin.install Dir[libexec/"bin/*"]\n` +
++        `    bin.env_script_all_files libexec/"bin", GEM_HOME: ENV.fetch("GEM_HOME")\n`
++      );
+     default:
+       return `    system "make", "PREFIX=#{prefix}", "install"\n`;
+   }
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..5bd698b 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -714,6 +714,12 @@ describe("detectBuildSystemFromFiles", () => {
+   it("returns null when no build files are found", () => {
+     expect(detectBuildSystemFromFiles(["README.md", "LICENSE"])).toBeNull();
+   });
++
++  it("detects Ruby gemspec at repo root", () => {
++    expect(detectBuildSystemFromFiles(["htsgrid.gemspec", "Gemfile", "exe"])).toEqual({
++      method: "gem",
++    });
++  });
+ });
+ 
+ describe("detectBuildSystemFromArchive", () => {

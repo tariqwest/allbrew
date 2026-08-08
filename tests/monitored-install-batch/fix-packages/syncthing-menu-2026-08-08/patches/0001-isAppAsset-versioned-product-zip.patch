@@ -1,0 +1,188 @@
+diff --git a/lib/utils.ts b/lib/utils.ts
+index 28ec1c1..7f1711d 100644
+--- a/lib/utils.ts
++++ b/lib/utils.ts
+@@ -456,11 +456,32 @@ export function assertSafePublicFetchUrl(urlString: string): void {
+   }
+ }
+ 
++function pathLooksInstallArtifact(url: string): boolean {
++  return /\.(dmg|pkg|zip|tar\.gz|tgz|tar\.bz2|tar\.xz|7z|app\.zip)(?:\?|#|$)/i.test(
++    url,
++  );
++}
++
++function contentTypeLooksBinaryArtifact(contentType: string): boolean {
++  const ct = (contentType || "").toLowerCase();
++  return (
++    /application\/(zip|x-zip-compressed|octet-stream|x-apple-diskimage|gzip|x-gzip|x-tar|x-gtar|java-archive|vnd\.apple\.installer|x-xz)/i.test(
++      ct,
++    ) || /application\/x-msdownload/i.test(ct)
++  );
++}
++
+ /** Lightweight HTML GET with size/time limits and safe redirects. */
+ export async function fetchTextLimited(
+   urlString: string,
+   opts: { timeoutMs?: number; maxBytes?: number; maxRedirects?: number } = {},
+-): Promise<{ url: string; contentType: string; body: string }> {
++): Promise<{
++  url: string;
++  contentType: string;
++  body: string;
++  /** True when the final URL is a binary installer/archive (body not loaded). */
++  binaryArtifact?: boolean;
++}> {
+   const timeoutMs = opts.timeoutMs ?? 30_000;
+   const maxBytes = opts.maxBytes ?? 2_000_000;
+   const maxRedirects = opts.maxRedirects ?? 10;
+@@ -487,6 +508,15 @@ export async function fetchTextLimited(
+           throw new Error(`Redirect without Location from ${current}`);
+         }
+         current = new URL(location, current).href;
++        // Redirect target is already a known installer — stop without GET body.
++        if (pathLooksInstallArtifact(current)) {
++          return {
++            url: current,
++            contentType: "application/octet-stream",
++            body: "",
++            binaryArtifact: true,
++          };
++        }
+         continue;
+       }
+ 
+@@ -495,6 +525,34 @@ export async function fetchTextLimited(
+       }
+ 
+       const contentType = (response.headers.get("content-type") || "").toLowerCase();
++      const contentLength = Number(response.headers.get("content-length") || 0);
++      const isBinary =
++        pathLooksInstallArtifact(current) ||
++        contentTypeLooksBinaryArtifact(contentType);
++
++      if (isBinary) {
++        try {
++          await response.body?.cancel();
++        } catch {
++          /* ignore */
++        }
++        return {
++          url: current,
++          contentType,
++          body: "",
++          binaryArtifact: true,
++        };
++      }
++
++      if (contentLength > maxBytes) {
++        try {
++          await response.body?.cancel();
++        } catch {
++          /* ignore */
++        }
++        throw new Error(`Response exceeds ${maxBytes} bytes for ${current}`);
++      }
++
+       const reader = response.body?.getReader();
+       if (!reader) {
+         const text = await response.text();
+@@ -561,6 +619,12 @@ export function archPatterns() {
+       /macos[-_.]?universal/i,
+       /universal[-_.]?macos/i,
+       /darwin[-_.]?universal/i,
++      // goreleaser fat binaries: wander_1.1.0_Darwin_all.tar.gz
++      /darwin[-_.]all(?:[^a-z]|$)/i,
++      /macos[-_.]all(?:[^a-z]|$)/i,
++      /osx[-_.]all(?:[^a-z]|$)/i,
++      /(?:^|[^a-z])all[-_.]darwin(?:[^a-z]|$)/i,
++      /(?:^|[^a-z])all[-_.]macos(?:[^a-z]|$)/i,
+     ],
+     linuxArm: [
+       /linux.*arm64/i,
+@@ -592,17 +656,59 @@ export function isAppAsset(assetName) {
+   if (!lower.endsWith(".zip")) return false;
+   // Explicit app-bundle archives
+   if (lower.includes(".app")) return true;
++
++  // Non-mac desktop/OS tags never count as macOS app assets
++  if (
++    /(?:^|[^a-z])(?:linux|windows|win32|android|freebsd|openbsd)(?:[^a-z]|$)/i.test(
++      lower,
++    )
++  ) {
++    return false;
++  }
++
+   const hasMacToken = /(?:^|[^a-z])(?:mac|macos|osx|darwin)(?:[^a-z]|$)/i.test(
+     lower,
+   );
+-  if (!hasMacToken) return false;
+-  // Arch-tagged darwin/macos zips are almost always CLI binaries (e.g. gogs_*_darwin_amd64.zip),
+-  // not .app bundles. Desktop app zips usually omit cpu arch or use "universal" with .app.
++  // Arch-tagged darwin/macos/osx zips are almost always CLI binaries
++  // (e.g. gogs_*_darwin_amd64.zip). Desktop app zips usually omit cpu arch
++  // or use "universal" with .app, or use short "mac"+arch (Electron).
+   const hasCpuArch =
+     /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(
+       lower,
+     );
+-  if (hasCpuArch) return false;
++
++  if (hasMacToken) {
++    if (hasCpuArch) {
++      const usesDarwinMacosOsx =
++        /(?:^|[^a-z])(?:darwin|macos|osx)(?:[^a-z]|$)/i.test(lower);
++      if (usesDarwinMacosOsx) return false;
++      // short platform token "mac" + cpu arch → desktop app zip
++      return /(?:^|[^a-z])mac(?:[^a-z]|$)/i.test(lower);
++    }
++    return true;
++  }
++
++  // No mac token: versioned product zips without cpu arch (e.g. NetBar-1.2.1.zip)
++  // are commonly single-platform macOS .app distributions. cask-app-release still
++  // peeks inside for a real .app before emitting a cask.
++  if (!hasCpuArch && isVersionedProductZipName(lower)) return true;
++  return false;
++}
++
++/** Foo-1.2.3.zip / Foo_1.2.3.zip product release names (no platform/arch tags). */
++function isVersionedProductZipName(lowerName: string): boolean {
++  if (!lowerName.endsWith(".zip")) return false;
++  if (
++    /(?:^|[^a-z])(?:src|source|sources|checksums?)(?:[^a-z]|$)/i.test(lowerName)
++  ) {
++    return false;
++  }
++  const base = lowerName.slice(0, -".zip".length);
++  if (!/^[a-z]/.test(base)) return false;
++  // Require a dotted version segment (1.2 or 1.2.3…); reject bare "foo.zip"
++  if (!/(?:^|[^0-9])\d+\.\d+(?:\.[\w]+)*(?:[^a-z0-9]|$)/.test(base)) {
++    return false;
++  }
+   return true;
+ }
+ 
+diff --git a/tests/unit/utils.test.ts b/tests/unit/utils.test.ts
+index 4f9f82d..e3d6b0e 100644
+--- a/tests/unit/utils.test.ts
++++ b/tests/unit/utils.test.ts
+@@ -386,6 +386,17 @@ describe("matchAssetToArch", () => {
+     expect(matchAssetToArch("foo-windows-x64.exe")).toBeNull();
+     expect(matchAssetToArch("README.md")).toBeNull();
+   });
++
++  it("matches goreleaser Darwin_all / macos_all fat binaries as macosUniversal", () => {
++    expect(matchAssetToArch("wander_1.1.0_Darwin_all.tar.gz")).toBe(
++      "macosUniversal",
++    );
++    expect(matchAssetToArch("foo_Darwin_all.tar.gz")).toBe("macosUniversal");
++    expect(matchAssetToArch("tool-macos-all.zip")).toBe("macosUniversal");
++    expect(matchAssetToArch("tool_all_darwin.tar.gz")).toBe("macosUniversal");
++    // Linux_all must not be treated as macOS
++    expect(matchAssetToArch("wander_1.1.0_Linux_all.tar.gz")).toBeNull();
++  });
+ });
+ 
+ describe("isAppAsset", () => {

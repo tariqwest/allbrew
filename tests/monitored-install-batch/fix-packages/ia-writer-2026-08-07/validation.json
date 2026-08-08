@@ -1,0 +1,13 @@
+{
+  "unitTests": {"files": ["tests/unit/page-discover.test.ts", "tests/unit/archive-inspector.test.ts"], "pass": 44, "fail": 0},
+  "localGenerate": {
+    "exitCode": 0,
+    "cask": "ia-writer",
+    "version": "8.0.5",
+    "app": "iA Writer.app",
+    "url": "https://files.ia.net/writer/release/iA-Writer-8.0.5-80037.zip",
+    "log": "allbrew-fixed-local.log",
+    "hostBrewInstall": "succeeded then uninstalled (not success path)"
+  },
+  "vmStockExpected": "generate_fail or wrong pkg until fix reconciled into bottle"
+}

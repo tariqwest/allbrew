@@ -1,0 +1,91 @@
+diff --git a/lib/generators/go-package.ts b/lib/generators/go-package.ts
+index 5f2fa73..e8b4e24 100644
+--- a/lib/generators/go-package.ts
++++ b/lib/generators/go-package.ts
+@@ -41,13 +41,57 @@ async function fetchGoProxyInfo(
+   }
+ }
+ 
++/** Strip `@version` and split relative `./cmd/foo` install specs. */
++export function resolveGoInstallTarget(
++  raw: string | null | undefined,
++  repoInfo: any = null,
++): { goModule: string; packagePath: string } {
++  let spec = String(raw || "").trim();
++  if (!spec) {
++    return {
++      goModule: repoInfo?.fullName ? `github.com/${repoInfo.fullName}` : "",
++      packagePath: "",
++    };
++  }
++
++  // Drop go install version suffix (`@v1.2.3`, `@latest`) — keep path-only modules.
++  const at = spec.lastIndexOf("@");
++  if (at > 0 && !spec.slice(at + 1).includes("/")) {
++    spec = spec.slice(0, at);
++  }
++
++  const isRelative = spec.startsWith("./") || spec.startsWith("../");
++  if (isRelative) {
++    return {
++      goModule: repoInfo?.fullName ? `github.com/${repoInfo.fullName}` : "",
++      packagePath: spec,
++    };
++  }
++
++  return { goModule: spec, packagePath: "" };
++}
++
+ export async function collectGoPackagePayload(
+   repoInfo: any,
+   release: any = null,
+   options: any = {},
+ ): Promise<GoPackagePayload> {
++  const resolved = resolveGoInstallTarget(
++    options.goModule || options.packagePath || null,
++    repoInfo,
++  );
+   const goModule =
+-    options.goModule || (repoInfo ? `github.com/${repoInfo.fullName}` : "");
++    options.goModule && !String(options.goModule).startsWith(".")
++      ? resolveGoInstallTarget(options.goModule, repoInfo).goModule
++      : resolved.goModule ||
++        (repoInfo ? `github.com/${repoInfo.fullName}` : "");
++  const packagePath =
++    options.packagePath ||
++    (options.goModule && String(options.goModule).startsWith(".")
++      ? resolveGoInstallTarget(options.goModule, repoInfo).packagePath
++      : resolved.packagePath) ||
++    "";
++
+   const ghFullName = githubModuleFullName(goModule) || repoInfo?.fullName;
+ 
+   const name =
+@@ -76,7 +120,7 @@ export async function collectGoPackagePayload(
+       `https://github.com/${ghFullName}/archive/refs/tags/${release.tagName}.tar.gz`;
+     const sha256 = await hashUrl(sourceUrl);
+     urlLines = `  url ${rubyString(sourceUrl)}\n  sha256 ${rubyString(sha256)}\n`;
+-  } else {
++  } else if (goModule && !goModule.startsWith(".")) {
+     const proxyInfo = await fetchGoProxyInfo(goModule);
+     if (proxyInfo) {
+       const sha256 = await hashUrl(proxyInfo.sourceUrl);
+@@ -84,6 +128,10 @@ export async function collectGoPackagePayload(
+     }
+   }
+ 
++  const goBuildExtraArgs = packagePath
++    ? `, ${rubyString(packagePath)}`
++    : "";
++
+   return {
+     template: "go_package",
+     name,
+@@ -98,6 +146,7 @@ export async function collectGoPackagePayload(
+     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+     testBinName: rubyEscape(options.binName || name),
+     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
++    goBuildExtraArgs,
+   };
+ }
+ 

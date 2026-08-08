@@ -1,0 +1,44 @@
+diff --git a/lib/utils.ts b/lib/utils.ts
+index 28ec1c1..d530750 100644
+--- a/lib/utils.ts
++++ b/lib/utils.ts
+@@ -592,6 +592,9 @@ export function isAppAsset(assetName) {
+   if (!lower.endsWith(".zip")) return false;
+   // Explicit app-bundle archives
+   if (lower.includes(".app")) return true;
++  // SwiftPM binary target / plugin distributions (e.g. Foo-macos.artifactbundle.zip)
++  // are CLI toolchains, not desktop .app casks.
++  if (lower.includes("artifactbundle")) return false;
+   const hasMacToken = /(?:^|[^a-z])(?:mac|macos|osx|darwin)(?:[^a-z]|$)/i.test(
+     lower,
+   );
+@@ -640,12 +643,29 @@ const BARE_BINARY_SKIP_NAMES = new Set([
+ 
+ export function isArchiveBinaryAsset(assetName) {
+   const lower = assetName.toLowerCase();
++  // SwiftPM artifact bundles are not brew-installable CLI tarballs.
++  if (lower.includes("artifactbundle")) return false;
+   return (
+     ARCHIVE_BINARY_EXTS.some((ext) => lower.endsWith(ext)) &&
+     !isAppAsset(assetName)
+   );
+ }
+ 
++/**
++ * Untagged portable CLI zips (e.g. license-plist.zip) with no linux/windows
++ * token — treat as a macOS universal binary asset candidate for release routing.
++ */
++export function isUntaggedMacBinaryAsset(assetName) {
++  if (!isBinaryAsset(assetName)) return false;
++  if (matchAssetToArch(assetName) != null) return false;
++  const lower = assetName.toLowerCase();
++  if (/(?:^|[^a-z])(?:linux|windows|win32|android)(?:[^a-z]|$)/i.test(lower)) {
++    return false;
++  }
++  // Prefer archive-shaped assets for untagged portable CLIs
++  return isArchiveBinaryAsset(assetName) || isBareBinaryAsset(assetName);
++}
++
+ /** Extensionless (or .exe) platform-tagged release binaries, e.g. csctf-macos-arm64.
+  * Also accepts versioned bare names like afm_0.1.0_macOS_universal (dots only in versions).
+  */

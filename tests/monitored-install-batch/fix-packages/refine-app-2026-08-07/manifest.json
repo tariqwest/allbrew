@@ -1,0 +1,14 @@
+{
+  "slug": "refine-app",
+  "url": "https://refine.app",
+  "mode": "patch",
+  "failureClass": "generate_fail",
+  "summary": "Adopt official homebrew/cask refine for expired refine.app; official token must win over --name slug",
+  "targets": [
+    "lib/generators/homebrew-cask.ts",
+    "lib/cli.ts",
+    "tests/unit/generators/homebrew-cask-homepage.test.ts"
+  ],
+  "baseRef": "HEAD",
+  "notes": "files/ copies are full snapshots from validated workspace; patches 001-003 are git diffs vs HEAD; 004 is the one-line token-win delta alone"
+}

@@ -1,0 +1,94 @@
+diff --git a/lib/generators/binary-release.ts b/lib/generators/binary-release.ts
+index d6eb00f..bbc7d1d 100644
+--- a/lib/generators/binary-release.ts
++++ b/lib/generators/binary-release.ts
+@@ -23,6 +23,62 @@ const execFileAsync = promisify(execFile);
+ 
+ type ArchHash = { url: string; sha256: string; name: string };
+ 
++/**
++ * Rank competing release assets for the same arch.
++ * Prefer primary product archives (e.g. deno-*-darwin.zip) over secondary
++ * runtimes/libs (denort, libdenort), profile/android/musl variants, and deltas.
++ */
++export function scoreBinaryReleaseAsset(
++  assetName: string,
++  productHints: string[] = [],
++): number {
++  const lower = (assetName || "").toLowerCase();
++  let s = 0;
++
++  if (/\.(bsdiff|delta|patch)$/i.test(lower) || /\.from-\d/i.test(lower)) {
++    s -= 200;
++  }
++  if (/(?:^|[^a-z])android(?:[^a-z]|$)/i.test(lower)) s -= 100;
++  if (/(?:^|[^a-z])(?:profile|debug|symbols)(?:[^a-z]|$)/i.test(lower)) s -= 50;
++  if (/(?:^|[^a-z])baseline(?:[^a-z]|$)/i.test(lower)) s -= 20;
++  if (/(?:^|[^a-z])musl(?:[^a-z]|$)/i.test(lower)) s -= 10;
++
++  // Shared libraries / lib* product stems (libdenort-*.zip)
++  const base = lower.split("/").pop() || lower;
++  if (/^lib[a-z0-9]/i.test(base)) s -= 80;
++
++  // Product stem before arch/platform tokens
++  const stem = base
++    .replace(/\.(tar\.gz|tgz|tar\.bz2|tar\.xz|zip|exe)$/i, "")
++    .replace(
++      /[-_.]?(darwin|macos|osx|linux|windows|win32|apple|unknown)[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal|gnu|musl)?/gi,
++      "",
++    )
++    .replace(/[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal)/gi, "")
++    .replace(/[-_.]+$/g, "");
++
++  const hints = productHints
++    .map((h) =>
++      String(h || "")
++        .toLowerCase()
++        .replace(/-tap\d*$/i, "")
++        .trim(),
++    )
++    .filter(Boolean);
++
++  for (const h of hints) {
++    if (stem === h) s += 100;
++    // Secondary tools that share a product prefix (denort when product is deno)
++    else if (stem.startsWith(h) && stem.length > h.length) s -= 40;
++  }
++
++  if (isArchiveBinaryAsset(assetName)) s += 5;
++  // Prefer shorter stems when scores otherwise tie (handled by caller length)
++  s -= Math.min(stem.length, 20) * 0.01;
++
++  return s;
++}
++
+ /**
+  * Homebrew stages a bare binary URL as a file named after the asset basename.
+  * Archives unpack and typically expose a binary named like the formula.
+@@ -195,11 +251,25 @@ export async function collectBinaryReleasePayload(
+   const license = guessLicenseIdentifier(repoInfo.license);
+   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
+ 
++  const productHints = [
++    options.binName,
++    repoInfo?.name,
++    String(name || "").replace(/-tap\d*$/i, ""),
++  ].filter(Boolean) as string[];
++
+   const archAssets: Record<string, any> = {};
+   for (const asset of release.assets) {
+     if (!isBinaryAsset(asset.name)) continue;
+     const arch = matchAssetToArch(asset.name);
+-    if (arch) archAssets[arch] = asset;
++    if (!arch) continue;
++    const existing = archAssets[arch];
++    if (
++      !existing ||
++      scoreBinaryReleaseAsset(asset.name, productHints) >
++        scoreBinaryReleaseAsset(existing.name, productHints)
++    ) {
++      archAssets[arch] = asset;
++    }
+   }
+ 
+   if (archAssets.macosUniversal) {

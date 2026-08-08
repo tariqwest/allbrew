@@ -1,0 +1,14 @@
+{
+  "mode": "docs",
+  "slug": "codemantis",
+  "url": "https://github.com/codemantis-dev/codemantis",
+  "failureClass": "generate_fail",
+  "rootCause": "github_repo_404",
+  "patches": [],
+  "suggestedAlternateUrl": "https://codemantis.dev/download",
+  "verify": {
+    "localExit": 1,
+    "vmExit": 1,
+    "verifyOk": false
+  }
+}

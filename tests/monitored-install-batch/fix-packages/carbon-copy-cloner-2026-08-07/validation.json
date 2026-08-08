@@ -1,0 +1,17 @@
+{
+  "slug": "carbon-copy-cloner",
+  "url": "https://bombich.com",
+  "failureClass": "brew_fail",
+  "fixMode": "patch",
+  "patches": ["patches/0001-case-c-homebrew-cask-prefer.patch"],
+  "localValidation": {
+    "command": "CI=1 ALLBREW_NONINTERACTIVE=1 bun run bin/allbrew.ts https://bombich.com --name carbon-copy-cloner --tap $TMP --verbose",
+    "expectLog": "Preferring official Homebrew cask",
+    "expectCask": "carbon-copy-cloner",
+    "expectVersion": "7.1.6,8368",
+    "ok": true
+  },
+  "service": false,
+  "caseC": true,
+  "relatedFixes": ["devonthink-2026-08-07"]
+}

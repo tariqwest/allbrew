@@ -1,0 +1,13 @@
+diff --git a/tests/unit/templates/render.test.ts b/tests/unit/templates/render.test.ts
+index 9ca314b..51c5c73 100644
+--- a/tests/unit/templates/render.test.ts
++++ b/tests/unit/templates/render.test.ts
+@@ -91,6 +91,8 @@ describe("renderFormula", () => {
+     expect(ruby).toContain('depends_on "python@3.13"');
+     expect(ruby).toContain("virtualenv_create(libexec, \"python3.13\")");
+     expect(ruby).toContain("preserve_rpath");
++    expect(ruby).toContain("install_name_tool");
++    expect(ruby).toContain("@rpath/#{id}");
+     expect(ruby).toContain("include-system-site-packages = false");
+     expect(ruby).toContain("pip_install_dist");
+     expect(ruby).toContain("pip_install_main");

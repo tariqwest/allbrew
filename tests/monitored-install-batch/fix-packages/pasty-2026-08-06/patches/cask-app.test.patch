@@ -1,0 +1,145 @@
+diff --git a/tests/unit/generators/cask-app.test.ts b/tests/unit/generators/cask-app.test.ts
+index 208ebe4..1720682 100644
+--- a/tests/unit/generators/cask-app.test.ts
++++ b/tests/unit/generators/cask-app.test.ts
+@@ -77,11 +77,11 @@ describe("collectCaskAppPayload", () => {
+     expect(payload.appOrPkgBlock).toContain("uninstall pkgutil");
+   });
+ 
+-  it("returns empty versionLine when no version in URL", async () => {
++  it("emits version :latest when no version in URL", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://example.com/MyApp.dmg",
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(payload.versionLine).toContain("version :latest");
+   });
+ 
+   it("respects name override", async () => {
+@@ -112,11 +112,15 @@ describe("collectCaskAppPayload", () => {
+     expect(payload.livecheckBlock).toContain("livecheck do");
+   });
+ 
+-  it("handles GitHub /latest/ URL (no version)", async () => {
++  it("handles GitHub /latest/ URL via release tag or :latest", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg",
+     );
+-    expect(payload.versionLine).toBe("");
++    // Prefer concrete version from GitHub API; offline/mock may fall back to :latest
++    expect(
++      payload.versionLine.includes("version :latest") ||
++        /version "[\d.]+"/.test(payload.versionLine),
++    ).toBe(true);
+   });
+ 
+   it("Otty DMG: derives cask token from filename", async () => {
+@@ -126,11 +130,11 @@ describe("collectCaskAppPayload", () => {
+     expect(payload.name).toBe("otty");
+   });
+ 
+-  it("Otty DMG: no version in URL produces empty versionLine", async () => {
++  it("Otty DMG: no version in URL produces version :latest", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://downloads.otty.sh/macos/Otty.dmg",
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(payload.versionLine).toContain("version :latest");
+   });
+ 
+   it("Otty DMG: respects name and appName overrides", async () => {
+@@ -159,12 +163,12 @@ describe("collectCaskAppPayload", () => {
+     expect(payload.name).toBe("perplexity");
+   });
+ 
+-  it("Perplexity DMG: no version in URL produces empty versionLine", async () => {
++  it("Perplexity DMG: no version in URL produces version :latest", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://cdn.perplexity.ai/downloads/Perplexity.dmg",
+       { name: "perplexity", appName: "Perplexity.app", homepage: "https://www.perplexity.ai" },
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(payload.versionLine).toContain("version :latest");
+   });
+ 
+   it("Perplexity DMG: respects all overrides", async () => {
+@@ -236,12 +240,12 @@ it("Postman: version extracted from CDN URL path", async () => {
+     expect(payload.sha256.length).toBeGreaterThan(0);
+   });
+ 
+-  it("Postman /latest/ URL: no version extracted", async () => {
++  it("Postman /latest/ URL: emits version :latest", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://dl.pstmn.io/download/latest/osx",
+       { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(payload.versionLine).toContain("version :latest");
+   });
+ 
+   it("Discord DMG: version extracted from CDN URL path", async () => {
+@@ -286,12 +290,12 @@ it("Postman: version extracted from CDN URL path", async () => {
+     expect(payload.sha256.length).toBeGreaterThan(0);
+   });
+ 
+-  it("OnyX DMG: no version in filename produces empty versionLine", async () => {
++  it("OnyX DMG: no version in filename produces version :latest", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://www.titanium-software.fr/download/26/OnyX.dmg",
+       { name: "onyx", appName: "OnyX.app", homepage: "https://www.titanium-software.fr/en/onyx.html" },
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(payload.versionLine).toContain("version :latest");
+   });
+ 
+   it("OnyX DMG: template is cask_app", async () => {
+@@ -426,12 +430,12 @@ it("Postman: version extracted from CDN URL path", async () => {
+     expect(payload.sha256.length).toBeGreaterThan(0);
+   });
+ 
+-  it("IconChamp ZIP: no version in URL produces empty versionLine", async () => {
++  it("IconChamp ZIP: no version in URL produces version :latest", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://github.com/MacEnhance/appcast/raw/master/IconChamp/IconChamp.zip",
+       { name: "iconchamp", appName: "IconChamp.app", homepage: "https://www.macenhance.com/iconchamp" },
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(payload.versionLine).toContain("version :latest");
+   });
+ 
+   it("IconChamp ZIP: template is cask_app", async () => {
+@@ -474,12 +478,12 @@ it("Postman: version extracted from CDN URL path", async () => {
+     expect(payload.sha256.length).toBeGreaterThan(0);
+   });
+ 
+-  it("ego lite DMG: no version in CDN URL produces empty versionLine", async () => {
++  it("ego lite DMG: no version in CDN URL produces version :latest", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
+       { name: "ego-lite", appName: "ego lite.app", homepage: "https://lite.ego.app" },
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(payload.versionLine).toContain("version :latest");
+   });
+ 
+   it("ego lite DMG: template is cask_app", async () => {
+@@ -531,4 +535,19 @@ it("Postman: version extracted from CDN URL path", async () => {
+     );
+     expect(payload.livecheckBlock).toContain("livecheck do");
+   });
++
++  it("Pasty GitHub latest DMG: always has a version stanza", async () => {
++    const payload = await collectCaskAppPayload(
++      "https://github.com/JordanH22/pasty/releases/latest/download/Pasty.dmg",
++      { name: "pasty", appName: "Pasty.app", homepage: "https://pasty.dev" },
++    );
++    expect(payload.template).toBe("cask_app");
++    expect(payload.name).toBe("pasty");
++    expect(payload.versionLine.trim().length).toBeGreaterThan(0);
++    expect(payload.versionLine).not.toBe("");
++    // Must not leave version empty (Homebrew nil latest? crash)
++    expect(payload.versionLine).toMatch(/version (:latest|"[^"]+")/);
++    expect(payload.displayName).toBe("Pasty");
++    expect(payload.appOrPkgBlock).toContain("Pasty.app");
++  });
+ });

@@ -1,0 +1,70 @@
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..ab6ef40 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -482,6 +482,36 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
+     expect(result!.reason).toContain("launchctl");
+   });
+ 
++  it("detects systemctl enable/start as high-confidence managed daemon (godns)", () => {
++    const readme = [
++      "# GoDNS",
++      "",
++      "## Running GoDNS",
++      "",
++      "### As a managed daemon (with systemd)",
++      "",
++      "1. Copy `./config/systemd/godns.service` to `/lib/systemd/system`",
++      "2. Start the service:",
++      "",
++      "```bash",
++      "sudo systemctl enable godns",
++      "sudo systemctl start godns",
++      "```",
++      "",
++      "### As a manual daemon",
++      "",
++      "```bash",
++      "nohup ./godns &",
++      "```",
++    ].join("\n");
++    const result = detectServiceConfig(readme, "godns");
++    expect(result).not.toBeNull();
++    expect(result!.command).toBe("godns");
++    expect(result!.keepAlive).toBe(true);
++    expect(result!.confidence).toBe("high");
++    expect(result!.reason).toMatch(/systemd|daemon/i);
++  });
++
+   it("returns null when no service hints are present", () => {
+     expect(detectServiceConfig("just a regular CLI tool", "foo")).toBeNull();
+     expect(detectServiceConfig("", "foo")).toBeNull();
+@@ -614,7 +644,10 @@ describe("detectServiceConfigFromFiles", () => {
+       ["src/main.go", "com.foo.launchagent.plist"],
+       "foo",
+     );
+-    expect(result).toEqual({ command: "foo", keepAlive: true, confidence: "medium" });
++    expect(result).not.toBeNull();
++    expect(result!.command).toBe("foo");
++    expect(result!.keepAlive).toBe(true);
++    expect(result!.confidence).toBe("medium");
+   });
+ 
+   it("detects LaunchAgents path plist", () => {
+@@ -634,6 +667,16 @@ describe("detectServiceConfigFromFiles", () => {
+     expect(detectServiceConfigFromFiles(["Info.plist"], "foo")).toBeNull();
+   });
+ 
++  it("detects systemd unit files under configs/systemd", () => {
++    const result = detectServiceConfigFromFiles(
++      ["cmd/godns/main.go", "configs/systemd/godns.service"],
++      "godns",
++    );
++    expect(result).not.toBeNull();
++    expect(result!.command).toBe("godns");
++    expect(result!.confidence).toBe("high");
++  });
++
+   it("returns null for empty file list", () => {
+     expect(detectServiceConfigFromFiles([], "foo")).toBeNull();
+     expect(detectServiceConfigFromFiles(null as any, "foo")).toBeNull();

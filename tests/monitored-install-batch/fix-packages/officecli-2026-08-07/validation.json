@@ -1,0 +1,23 @@
+{
+  "url": "https://formulae.brew.sh/formula/officecli",
+  "slug": "officecli",
+  "failureClass": "brew_fail",
+  "secondaryFailure": "vm_0.0.24_unknown_binary_release_no_macos_assets",
+  "rootCause": "main: homebrew-formula bottle cellar ::any_skip_relocation invalid Ruby; 0.0.24 bottle: misclassifies formulae.brew.sh as unknown→binary-release (Linux-only GH assets)",
+  "fixFiles": ["lib/generators/homebrew-formula.ts"],
+  "tests": ["tests/unit/homebrew-formula-bottle.test.ts"],
+  "localGenerateOk": true,
+  "localGenerator": "homebrew-formula",
+  "rubySyntaxOkBroken": false,
+  "rubySyntaxOkFixed": true,
+  "packageVersion": "1.0.143",
+  "vmExitCode": 1,
+  "vmVerifyOk": false,
+  "vmAllbrewVersion": "0.0.24",
+  "vmGenerator": "binary-release",
+  "vmError": "No macOS binary assets found in release (Linux-only binaries cannot be installed with Homebrew on macOS)",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "released": false,
+  "relatedFixPackages": ["kubetui-2026-08-07", "md-tui-2026-08-07", "dnote-2026-08-07", "bun-2026-08-06"]
+}

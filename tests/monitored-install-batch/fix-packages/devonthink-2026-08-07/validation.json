@@ -1,0 +1,32 @@
+{
+  "slug": "devonthink",
+  "url": "https://devontechnologies.com",
+  "failureClass": "generate_fail",
+  "caseC": true,
+  "expectedGenerator": "homebrew-cask",
+  "service": false,
+  "tests": [
+    {
+      "command": "bun test tests/unit/page-discover.test.ts",
+      "result": "18 pass"
+    }
+  ],
+  "localGenerate": {
+    "ok": true,
+    "signals": [
+      "Preferring official Homebrew cask",
+      "Generated: Casks/devonthink.rb",
+      "version 4.3.2"
+    ]
+  },
+  "vmBottle": {
+    "version": "0.0.24",
+    "ok": false,
+    "note": "needs release; bottle lacks Case C + product hops"
+  },
+  "files": [
+    "lib/cli.ts",
+    "lib/page-discover.ts",
+    "tests/unit/page-discover.test.ts"
+  ]
+}

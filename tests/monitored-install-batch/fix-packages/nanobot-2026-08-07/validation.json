@@ -1,0 +1,16 @@
+{
+  "url": "https://github.com/HKUDS/nanobot",
+  "slug": "nanobot",
+  "status": "failed",
+  "failureClass": "brew_fail",
+  "generator": "pip-package",
+  "packageName": "nanobot-ai",
+  "formulaNamePreferred": "nanobot-ai",
+  "serviceExpected": true,
+  "serviceObserved": true,
+  "serviceCommand": "nanobot gateway",
+  "hostLocalGenerateInstall": "success",
+  "vmInstall": "fail_timeout_or_incomplete_log",
+  "patches": [],
+  "notes": "Host allbrew source generates correct pip formula with service; VM brew install did not complete under batch timeouts"
+}

@@ -1,0 +1,241 @@
+diff --git a/lib/analyzer.ts b/lib/analyzer.ts
+index e028df4..a13c2eb 100644
+--- a/lib/analyzer.ts
++++ b/lib/analyzer.ts
+@@ -30,6 +30,12 @@ const CARGO_INSTALL_RE =
+   /(?:^|[`\n])\s*(?:\$\s*)?cargo[ \t]+install[ \t]+(?:--locked[ \t]+|--force[ \t]+)?(?!--path\b|--git\b|--)([a-zA-Z][a-zA-Z0-9_-]*)/i;
+ const GO_INSTALL_RE =
+   /(?:^|[`\n])\s*(?:\$\s*)?go[ \t]+install[ \t]+([\w./-]+@[\w.]+)/i;
++// e.g. `dotnet tool install -g csharprepl` / `dotnet tool install --global Foo.Bar`
++const SHELL_PROMPT = "(?:\\$\\s*)?";
++const DOTNET_TOOL_INSTALL_RE = new RegExp(
++  `(?:^|[\`\\n])\\s*${SHELL_PROMPT}dotnet[ \\t]+tool[ \\t]+install(?:[ \\t]+(?:-[a-zA-Z]|--[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`,
++  "i",
++);
+ 
+ // curl|bash / wget|sh install one-liners and direct .sh/.bash install URLs
+ const CURL_PIPE_SHELL_RE =
+@@ -203,6 +209,12 @@ export function detectInstallMethod(
+   match = readmeText.match(GO_INSTALL_RE);
+   if (match) return { method: "go", package: match[1] };
+ 
++  match = readmeText.match(DOTNET_TOOL_INSTALL_RE);
++  if (match) {
++    const pkg = String(match[1] || "").trim();
++    if (pkg) return { method: "dotnet", package: pkg };
++  }
++
+   match = readmeText.match(DENO_INSTALL_RE);
+   if (match)
+     return {
+@@ -900,6 +912,12 @@ export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null
+     return { method: "pip" };
+   if (names.has("package.json")) return { method: "npm" };
+   if (names.has("package.swift")) return { method: "swift" };
++  // Prefer .NET project markers over CMakeLists.txt: many Microsoft SDK-style
++  // repos ship a root CMakeLists for repo tooling while the product is a NuGet
++  // global tool (e.g. dotnet/dotnet-monitor).
++  if (hasDotnetProjectMarkers(fileNames)) {
++    return { method: "dotnet", package: null };
++  }
+   if (names.has("cmakelists.txt")) return { method: "build", system: "cmake" };
+   if (names.has("meson.build")) return { method: "build", system: "meson" };
+   if (names.has("configure")) return { method: "build", system: "autotools" };
+@@ -909,6 +927,19 @@ export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null
+   return null;
+ }
+ 
++/** Root-file markers that indicate a .NET/SDK-style repository. */
++export function hasDotnetProjectMarkers(fileNames: string[] = []): boolean {
++  if (!fileNames?.length) return false;
++  const names = new Set(fileNames.map((f) => String(f).toLowerCase()));
++  const hasSln = fileNames.some((f) => /\.sln$/i.test(String(f)));
++  return (
++    hasSln ||
++    names.has("global.json") ||
++    names.has("directory.build.props") ||
++    names.has("nuget.config")
++  );
++}
++
+ export function detectBuildSystemFromArchive(fileNames) {
+   const names = new Set(
+     fileNames.map((f) => {
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..c703cab 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -21,6 +21,7 @@ import {
+   detectBuildSystemFromFiles,
+   detectServiceConfig,
+   detectServiceConfigFromFiles,
++  hasDotnetProjectMarkers,
+ } from "./analyzer.ts";
+ import { inspectArchive } from "./archive-inspector.ts";
+ import {
+@@ -1050,6 +1051,21 @@ async function handleGithubRepo(classification, opts) {
+             },
+             opts,
+           );
++        case "dotnet":
++          console.log(
++            chalk.yellow(
++              "Note: the dotnet/NuGet generator is experimental and not yet fully verified end-to-end.",
++            ),
++          );
++          return await generateWithConfirmation(
++            "dotnet-package",
++            {
++              packageName: opts.package || method.package,
++              repoInfo,
++              serviceConfig: serviceConfigFromReadme,
++            },
++            opts,
++          );
+         case "build":
+           return await generateWithConfirmation(
+             "source-build",
+@@ -1134,6 +1150,37 @@ async function handleGithubRepo(classification, opts) {
+ 
+   const serviceConfig = serviceConfigFromReadme || serviceConfigFromFiles;
+ 
++  // When root README omits install commands (common for docs-only monorepos),
++  // prefer a published NuGet global tool over CMake/source-build if markers
++  // match and the repo name exists on NuGet (e.g. github.com/dotnet/dotnet-monitor).
++  if (hasDotnetProjectMarkers(fileNames)) {
++    const candidatePkg = opts.package || repoInfo.name;
++    const { nugetPackageExists } = await import(
++      "./generators/dotnet-package.ts"
++    );
++    if (await nugetPackageExists(candidatePkg)) {
++      console.log(
++        chalk.dim(
++          `  Preferring NuGet global tool over native build markers: package "${candidatePkg}" exists on NuGet`,
++        ),
++      );
++      console.log(
++        chalk.yellow(
++          "Note: the dotnet/NuGet generator is experimental and not yet fully verified end-to-end.",
++        ),
++      );
++      return await generateWithConfirmation(
++        "dotnet-package",
++        {
++          packageName: candidatePkg,
++          repoInfo,
++          serviceConfig,
++        },
++        opts,
++      );
++    }
++  }
++
+   const buildSystem = detectBuildSystemFromFiles(fileNames);
+   if (buildSystem) {
+     console.log(
+@@ -1200,6 +1247,34 @@ async function handleGithubRepo(classification, opts) {
+           { repoInfo, release, serviceConfig },
+           opts,
+         );
++      case "dotnet": {
++        const packageName = opts.package || buildSystem.package || repoInfo.name;
++        const { nugetPackageExists } = await import(
++          "./generators/dotnet-package.ts"
++        );
++        if (!(await nugetPackageExists(packageName))) {
++          console.log(
++            chalk.dim(
++              `  .NET project markers present but NuGet package "${packageName}" not found; continuing`,
++            ),
++          );
++          break;
++        }
++        console.log(
++          chalk.yellow(
++            "Note: the dotnet/NuGet generator is experimental and not yet fully verified end-to-end.",
++          ),
++        );
++        return await generateWithConfirmation(
++          "dotnet-package",
++          {
++            packageName,
++            repoInfo,
++            serviceConfig,
++          },
++          opts,
++        );
++      }
+       case "swift": {
+         const packageSwiftText = await getFileContent(
+           owner,
+diff --git a/lib/generators/dotnet-package.ts b/lib/generators/dotnet-package.ts
+index ea87807..f14ce45 100644
+--- a/lib/generators/dotnet-package.ts
++++ b/lib/generators/dotnet-package.ts
+@@ -62,6 +62,17 @@ export async function generateDotnetPackage(
+   return writeRenderedFormula(payload, options.tapPath);
+ }
+ 
++/** True when the package id has at least one version on the NuGet flat container. */
++export async function nugetPackageExists(packageName: string): Promise<boolean> {
++  if (!packageName || !String(packageName).trim()) return false;
++  try {
++    const data = await fetchNugetData(packageName);
++    return Boolean(data?.version);
++  } catch {
++    return false;
++  }
++}
++
+ async function fetchNugetData(packageName: string) {
+   const base = process.env.NUGET_FLAT_URL || process.env.NUGET_URL || "https://api.nuget.org";
+   const url = `${base}/v3-flatcontainer/${encodeURIComponent(packageName.toLowerCase())}/index.json`;
+diff --git a/lib/templates/formula/dotnet-package.ts b/lib/templates/formula/dotnet-package.ts
+index db378f0..8c60b3c 100644
+--- a/lib/templates/formula/dotnet-package.ts
++++ b/lib/templates/formula/dotnet-package.ts
+@@ -1,21 +1,38 @@
+ import type { DotnetPackagePayload } from "../../template-payload.ts";
+ 
+ export default function renderDotnetPackage(p: DotnetPackagePayload): string {
+-  return `class ${p.className} < Formula
++  const ri = (expr: string) => "#" + "{" + expr + "}";
++  return (
++    `class ${p.className} < Formula
+   desc "${p.desc}"
+   homepage "${p.homepage}"
+ ${p.licenseLine}${p.urlLines}
+ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "dotnet"
+ 
+   def install
+-    (buildpath/"nupkg").install cached_download
+-    system "dotnet", "tool", "install", ${p.packageName}, "--tool-path", "#{bin}", "--version", version.to_s, "--add-source", buildpath/"nupkg"
+-    bin.env_script_all_files(libexec, DOTNET_ROOT: Formula["dotnet"].opt_libexec)
++    # NuGet local sources require <id>.<version>.nupkg naming.
++    nupkg_dir = buildpath/"nupkg"
++    nupkg_dir.mkpath
++    package_id = ${p.packageName}
++    nupkg = nupkg_dir/"${ri("package_id")}.${ri("version")}.nupkg"
++    cp cached_download, nupkg
++
++    # Install into libexec so the apphost and .store/ stay co-located.
++    # Using bin + env_script_all_files moves only the shim and leaves .store in
++    # bin, which breaks the apphost with "application to execute does not exist".
++    system "dotnet", "tool", "install", package_id,
++           "--tool-path", libexec,
++           "--version", version.to_s,
++           "--add-source", nupkg_dir
++
++    (bin/"${p.testBinName}").write_env_script libexec/"${p.testBinName}",
++                                              DOTNET_ROOT: Formula["dotnet"].opt_libexec
+   end
+ 
+ ${p.serviceBlock}  test do
+-    assert_match version.to_s, shell_output("#{bin}/${p.testBinName} --version")
++    assert_match version.to_s, shell_output("${ri("bin")}/${p.testBinName} --version")
+   end
+ end
+-`;
++`
++  );
+ }

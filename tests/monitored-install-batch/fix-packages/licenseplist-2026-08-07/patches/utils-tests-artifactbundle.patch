@@ -1,0 +1,26 @@
+diff --git a/tests/unit/utils.test.ts b/tests/unit/utils.test.ts
+index 4f9f82d..a7e50fd 100644
+--- a/tests/unit/utils.test.ts
++++ b/tests/unit/utils.test.ts
+@@ -413,6 +413,21 @@ describe("isAppAsset", () => {
+   it("rejects non-archive files", () => {
+     expect(isAppAsset("README.md")).toBe(false);
+   });
++
++  it("rejects SwiftPM artifactbundle zips (CLI/plugin, not brew binary)", () => {
++    expect(isAppAsset("LicensePlistBinary-macos.artifactbundle.zip")).toBe(
++      false,
++    );
++    expect(isAppAsset("Foo.artifactbundle.zip")).toBe(false);
++    expect(isBinaryAsset("LicensePlistBinary-macos.artifactbundle.zip")).toBe(
++      false,
++    );
++  });
++
++  it("treats untagged portable CLI zips as binary assets", () => {
++    expect(isAppAsset("license-plist.zip")).toBe(false);
++    expect(isBinaryAsset("license-plist.zip")).toBe(true);
++  });
+ });
+ 
+ describe("isBinaryAsset", () => {

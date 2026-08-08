@@ -1,0 +1,31 @@
+{
+  "slug": "monk-mode",
+  "url": "https://mac.monk-mode.lifestyle",
+  "failureClass": "brew_fail",
+  "mode": "patch",
+  "agentServiceExpectation": false,
+  "expectedGenerator": "cask-app",
+  "artifactUrl": "https://mac.monk-mode.lifestyle/downloads/MonkMode_0.1.0_aarch64.dmg",
+  "packageVersion": "0.1.0",
+  "localGenerate": {
+    "ok": true,
+    "chosen": "https://mac.monk-mode.lifestyle/downloads/MonkMode_0.1.0_aarch64.dmg",
+    "output": "Casks/monk-mode.rb",
+    "version": "0.1.0",
+    "app": "MonkMode.app"
+  },
+  "vmInstall": {
+    "ok": null,
+    "helper": "tests/monitored-install-batch/vm-install-one.mjs",
+    "note": "pending homeserver; bottle 0.0.24 expected brew_fail missing version"
+  },
+  "patches": [
+    "patches/cask-app-underscore-version-and-arch-guard.patch"
+  ],
+  "files": [
+    "files/cask-app.ts"
+  ],
+  "tests": [
+    "tests/cask-app-compact-version.test.ts"
+  ]
+}

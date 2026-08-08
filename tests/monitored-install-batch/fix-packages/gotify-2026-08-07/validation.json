@@ -1,0 +1,17 @@
+{
+  "url": "https://github.com/gotify/cli",
+  "slug": "gotify",
+  "mode": "patch",
+  "failureClass": "generate_fail",
+  "symptoms": [
+    "Formula name gotify collides with homebrew/core; using cli instead",
+    "Generated Formula/cli.rb class Cli"
+  ],
+  "expectedFormulaName": "gotify-cli",
+  "expectedGenerator": "binary-release",
+  "expectedService": false,
+  "patches": [
+    "patches/0001-formula-collision-skip-generic-cli-alts.patch"
+  ],
+  "files": ["patches/cli.ts", "patches/utils.ts", "tests/utils.test.ts"]
+}

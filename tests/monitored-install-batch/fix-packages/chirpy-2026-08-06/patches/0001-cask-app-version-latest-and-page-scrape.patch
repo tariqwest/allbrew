@@ -1,0 +1,289 @@
+diff --git a/lib/generators/cask-app.ts b/lib/generators/cask-app.ts
+index 096e5fc..6aa6036 100644
+--- a/lib/generators/cask-app.ts
++++ b/lib/generators/cask-app.ts
+@@ -1,4 +1,8 @@
+-import { toCaskToken, rubyEscape } from "../utils.ts";
++import {
++  toCaskToken,
++  rubyEscape,
++  extractVersionFromTag,
++} from "../utils.ts";
+ import { downloadToTemp } from "../sha256.ts";
+ import { listDmgAppNames, listZipEntries } from "../archive-inspector.ts";
+ import type { CaskAppPayload } from "../template-payload.ts";
+@@ -27,8 +31,12 @@ export async function collectCaskAppPayload(
+ 
+   const name = options.name || toCaskToken(baseName);
+   const desc = options.desc || `Install ${appName || baseName}`;
+-  const version = options.version || extractVersionFromUrl(url);
+-  const displayName = appName || baseName;
++  const version = await resolveCaskVersion(url, options);
++  // Homebrew requires a version stanza; nil version → `undefined method 'latest?' for nil`.
++  const versionLine = version
++    ? `  version "${rubyEscape(version)}"\n`
++    : "  version :latest\n";
++  const displayName = (appName || baseName).replace(/\.app$/i, "");
+ 
+   return {
+     template: "cask_app",
+@@ -37,15 +45,83 @@ export async function collectCaskAppPayload(
+     url: rubyEscape(url),
+     displayName: rubyEscape(displayName),
+     desc: rubyEscape(desc),
+-    versionLine: version ? `  version "${rubyEscape(version)}"\n` : "",
+-    homepageLine: options.homepage
+-      ? `  homepage "${rubyEscape(options.homepage)}"\n`
+-      : "",
++    versionLine,
++    homepageLine: (() => {
++      const hp = options.homepage || options.sourceUrl;
++      return hp ? `  homepage "${rubyEscape(hp)}"\n` : "";
++    })(),
+     appOrPkgBlock: buildAppOrPkgBlock(url, filename, appName, baseName, name),
+     livecheckBlock: urlVersionLivecheckBlock(url),
+   };
+ }
+ 
++/**
++ * Prefer explicit option, then path/query version, then GitHub latest release tag,
++ * then a light scrape of source/homepage HTML for "version X.Y.Z" / "App X.Y.Z".
++ * Returns null only when nothing can be determined (caller emits `version :latest`).
++ */
++export async function resolveCaskVersion(
++  url: string,
++  options: any = {},
++): Promise<string | null> {
++  if (options.version) return String(options.version);
++
++  const fromUrl = extractVersionFromUrl(url);
++  if (fromUrl) return fromUrl;
++
++  const gh = url.match(
++    /github\.com\/([^/]+)\/([^/]+)\/releases\/(?:latest\/download|download)\/[^/?#]+/i,
++  );
++  if (gh) {
++    try {
++      const { getLatestRelease } = await import("../github.ts");
++      const release = await getLatestRelease(gh[1], gh[2]);
++      const tag = release?.tagName || release?.tag_name;
++      if (tag) {
++        const v = extractVersionFromTag(tag);
++        if (v) return v;
++      }
++    } catch {
++      // fall through
++    }
++  }
++
++  const pageUrl = options.sourceUrl || options.homepage;
++  if (pageUrl && typeof pageUrl === "string" && /^https?:\/\//i.test(pageUrl)) {
++    try {
++      const fromPage = await extractVersionFromPage(pageUrl);
++      if (fromPage) return fromPage;
++    } catch {
++      // fall through to :latest
++    }
++  }
++
++  return null;
++}
++
++/** Scrape common marketing/download page version strings (not a full parser). */
++export async function extractVersionFromPage(
++  pageUrl: string,
++): Promise<string | null> {
++  const res = await fetch(pageUrl, {
++    headers: { "user-agent": "allbrew/0.0.1 (+https://github.com/tariqwest/allbrew)" },
++    redirect: "follow",
++  });
++  if (!res.ok) return null;
++  const html = await res.text();
++  const patterns = [
++    /version\s+(\d+\.\d+(?:\.\d+)?)/i,
++    /Download\s+[\w.+-]+\s+(\d+\.\d+(?:\.\d+)?)\s+for\s+mac/i,
++    /[\w.+-]+\s+(\d+\.\d+(?:\.\d+)?)\s+for\s+macOS/i,
++    /"softwareVersion"\s*:\s*"(\d+\.\d+(?:\.\d+)?)"/i,
++  ];
++  for (const re of patterns) {
++    const m = html.match(re);
++    if (m?.[1]) return m[1];
++  }
++  return null;
++}
++
+ function buildAppOrPkgBlock(
+   url: string,
+   filename: string,
+@@ -122,6 +198,8 @@ async function detectAppName(url: string, localPath?: string) {
+ }
+ 
+ function extractVersionFromUrl(url: string) {
++  // Ignore GitHub "/releases/latest/download/" — "latest" is not a version.
++  if (/\/releases\/latest\//i.test(url)) return null;
+   const match = url.match(/[/-]v?(\d+\.\d+(?:\.\d+)?)/);
+   return match ? match[1] : null;
+ }
+diff --git a/tests/unit/generators/cask-app.test.ts b/tests/unit/generators/cask-app.test.ts
+index 208ebe4..6d0f8d7 100644
+--- a/tests/unit/generators/cask-app.test.ts
++++ b/tests/unit/generators/cask-app.test.ts
+@@ -77,11 +77,11 @@ describe("collectCaskAppPayload", () => {
+     expect(payload.appOrPkgBlock).toContain("uninstall pkgutil");
+   });
+ 
+-  it("returns empty versionLine when no version in URL", async () => {
++  it("emits version :latest when no version in URL", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://example.com/MyApp.dmg",
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(payload.versionLine).toContain("version :latest");
+   });
+ 
+   it("respects name override", async () => {
+@@ -112,11 +112,14 @@ describe("collectCaskAppPayload", () => {
+     expect(payload.livecheckBlock).toContain("livecheck do");
+   });
+ 
+-  it("handles GitHub /latest/ URL (no version)", async () => {
++  it("handles GitHub /latest/ URL via release tag or :latest", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg",
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(
++      payload.versionLine.includes("version :latest") ||
++        /version "[\d.]+"/.test(payload.versionLine),
++    ).toBe(true);
+   });
+ 
+   it("Otty DMG: derives cask token from filename", async () => {
+@@ -126,11 +129,11 @@ describe("collectCaskAppPayload", () => {
+     expect(payload.name).toBe("otty");
+   });
+ 
+-  it("Otty DMG: no version in URL produces empty versionLine", async () => {
++  it("Otty DMG: no version in URL produces version :latest", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://downloads.otty.sh/macos/Otty.dmg",
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(payload.versionLine).toContain("version :latest");
+   });
+ 
+   it("Otty DMG: respects name and appName overrides", async () => {
+@@ -159,12 +162,15 @@ describe("collectCaskAppPayload", () => {
+     expect(payload.name).toBe("perplexity");
+   });
+ 
+-  it("Perplexity DMG: no version in URL produces empty versionLine", async () => {
++  it("Perplexity DMG: no version in URL emits version stanza (:latest or scraped)", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://cdn.perplexity.ai/downloads/Perplexity.dmg",
+       { name: "perplexity", appName: "Perplexity.app", homepage: "https://www.perplexity.ai" },
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(
++      payload.versionLine.includes("version :latest") ||
++        /version "[\d.]+"/.test(payload.versionLine),
++    ).toBe(true);
+   });
+ 
+   it("Perplexity DMG: respects all overrides", async () => {
+@@ -236,12 +242,15 @@ it("Postman: version extracted from CDN URL path", async () => {
+     expect(payload.sha256.length).toBeGreaterThan(0);
+   });
+ 
+-  it("Postman /latest/ URL: no version extracted", async () => {
++  it("Postman /latest/ URL: emits version stanza (:latest or scraped)", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://dl.pstmn.io/download/latest/osx",
+       { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(
++      payload.versionLine.includes("version :latest") ||
++        /version "[\d.]+"/.test(payload.versionLine),
++    ).toBe(true);
+   });
+ 
+   it("Discord DMG: version extracted from CDN URL path", async () => {
+@@ -286,12 +295,15 @@ it("Postman: version extracted from CDN URL path", async () => {
+     expect(payload.sha256.length).toBeGreaterThan(0);
+   });
+ 
+-  it("OnyX DMG: no version in filename produces empty versionLine", async () => {
++  it("OnyX DMG: no version in filename emits version stanza (:latest or scraped)", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://www.titanium-software.fr/download/26/OnyX.dmg",
+       { name: "onyx", appName: "OnyX.app", homepage: "https://www.titanium-software.fr/en/onyx.html" },
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(
++      payload.versionLine.includes("version :latest") ||
++        /version "[\d.]+"/.test(payload.versionLine),
++    ).toBe(true);
+   });
+ 
+   it("OnyX DMG: template is cask_app", async () => {
+@@ -426,12 +438,15 @@ it("Postman: version extracted from CDN URL path", async () => {
+     expect(payload.sha256.length).toBeGreaterThan(0);
+   });
+ 
+-  it("IconChamp ZIP: no version in URL produces empty versionLine", async () => {
++  it("IconChamp ZIP: no version in URL emits version stanza (:latest or scraped)", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://github.com/MacEnhance/appcast/raw/master/IconChamp/IconChamp.zip",
+       { name: "iconchamp", appName: "IconChamp.app", homepage: "https://www.macenhance.com/iconchamp" },
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(
++      payload.versionLine.includes("version :latest") ||
++        /version "[\d.]+"/.test(payload.versionLine),
++    ).toBe(true);
+   });
+ 
+   it("IconChamp ZIP: template is cask_app", async () => {
+@@ -474,12 +489,15 @@ it("Postman: version extracted from CDN URL path", async () => {
+     expect(payload.sha256.length).toBeGreaterThan(0);
+   });
+ 
+-  it("ego lite DMG: no version in CDN URL produces empty versionLine", async () => {
++  it("ego lite DMG: no version in CDN URL emits version stanza (:latest or scraped)", async () => {
+     const payload = await collectCaskAppPayload(
+       "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
+       { name: "ego-lite", appName: "ego lite.app", homepage: "https://lite.ego.app" },
+     );
+-    expect(payload.versionLine).toBe("");
++    expect(
++      payload.versionLine.includes("version :latest") ||
++        /version "[\d.]+"/.test(payload.versionLine),
++    ).toBe(true);
+   });
+ 
+   it("ego lite DMG: template is cask_app", async () => {
+@@ -531,4 +549,23 @@ it("Postman: version extracted from CDN URL path", async () => {
+     );
+     expect(payload.livecheckBlock).toContain("livecheck do");
+   });
++
++  it("Chirpy GitLab raw DMG: no path version → :latest without page", async () => {
++    const payload = await collectCaskAppPayload(
++      "https://gitlab.com/chirpy_pro/releases/-/raw/main/v2/Chirpy.dmg",
++      { name: "chirpy", appName: "Chirpy.app" },
++    );
++    expect(payload.versionLine).toContain("version :latest");
++    expect(payload.displayName).toBe("Chirpy");
++    expect(payload.appOrPkgBlock).toContain("Chirpy.app");
++  });
++
++  it("Chirpy: options.version preferred over URL/page", async () => {
++    const payload = await collectCaskAppPayload(
++      "https://gitlab.com/chirpy_pro/releases/-/raw/main/v2/Chirpy.dmg",
++      { name: "chirpy", version: "3.0.1" },
++    );
++    expect(payload.versionLine).toContain('version "3.0.1"');
++  });
++
+ });

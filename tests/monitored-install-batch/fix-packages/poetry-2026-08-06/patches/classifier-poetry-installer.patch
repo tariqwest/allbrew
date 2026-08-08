@@ -1,0 +1,118 @@
+diff --git a/lib/classifier.ts b/lib/classifier.ts
+index 97cba82..57a0997 100644
+--- a/lib/classifier.ts
++++ b/lib/classifier.ts
+@@ -9,11 +9,19 @@ const SETAPP_APP_RE = /^https?:\/\/setapp\.com\/apps\/([^/?#]+)/i;
+ 
+ const NPM_PACKAGE_RE = /^https?:\/\/(?:www\.)?npmjs\.com\/package\/(@[^/]+\/[^/]+|[^/]+)/;
+ const PYPI_PACKAGE_RE = /^https?:\/\/(?:www\.)?pypi\.org\/project\/([^/]+)/;
++// Simple / JSON / files API: /pypi/<name> , /pypi/<name>/json , /pypi/<name>/<ver>/json
++const PYPI_API_RE =
++  /^https?:\/\/(?:www\.)?pypi\.org\/pypi\/([^/]+)(?:\/(?:json|[^/]+\/json))?\/?$/i;
+ const RUBYGEMS_PACKAGE_RE = /^https?:\/\/(?:www\.)?rubygems\.org\/gems\/([^/]+)/;
+ const NUGET_PACKAGE_RE = /^https?:\/\/(?:www\.)?nuget\.org\/packages\/([^/]+)/;
+ 
+ const CRATES_PACKAGE_RE = /^https?:\/\/(?:www\.)?crates\.io\/crates\/([^/]+)/;
+ 
++/** Official installers that should become registry formulas (not shell install-script). */
++const KNOWN_PIP_INSTALLER_HOSTS: Record<string, string> = {
++  "install.python-poetry.org": "poetry",
++};
++
+ const HOMEBREW_FORMULA_RE =
+   /^https?:\/\/formulae\.brew\.sh\/formula\/([^/?#]+)/i;
+ const HOMEBREW_CASK_RE =
+@@ -50,6 +58,21 @@ export function classify(url) {
+     return { type: 'pip-package', url, packageName: pypiMatch[1] };
+   }
+ 
++  const pypiApiMatch = url.match(PYPI_API_RE);
++  if (pypiApiMatch) {
++    return { type: 'pip-package', url, packageName: pypiApiMatch[1] };
++  }
++
++  const knownPipHost = KNOWN_PIP_INSTALLER_HOSTS[parsed.hostname.toLowerCase()];
++  if (knownPipHost) {
++    return {
++      type: 'pip-package',
++      url,
++      packageName: knownPipHost,
++      via: 'known-installer-host',
++    };
++  }
++
+   const gemMatch = url.match(RUBYGEMS_PACKAGE_RE);
+   if (gemMatch) {
+     return { type: 'gem-package', url, gemName: gemMatch[1] };
+@@ -146,6 +169,42 @@ export async function classifyWithHead(url) {
+     if (ct.includes('text/x-shellscript') || ct.includes('application/x-sh')) {
+       return { type: 'bash-script', url };
+     }
++
++    // Python installers served as text/plain (e.g. install.python-poetry.org → install-poetry.py).
++    // Prefer mapping known hosts above; as a fallback, probe the body for a PyPI package install.
++    const looksPython =
++      disp.includes('.py') ||
++      ct.includes('text/x-python') ||
++      ct.includes('application/x-python') ||
++      (ct.includes('text/plain') && /filename="?[^"]+\.py"?/i.test(disp));
++    if (looksPython || ct.includes('text/plain')) {
++      try {
++        const bodyRes = await fetch(url, {
++          method: 'GET',
++          redirect: 'follow',
++          headers: {
++            'User-Agent': 'allbrew/1.0',
++            Range: 'bytes=0-4095',
++          },
++          signal: AbortSignal.timeout(30_000),
++        });
++        const snippet = (await bodyRes.text()).slice(0, 4096);
++        const shebangPython = /^#!.*python/i.test(snippet);
++        if (shebangPython || looksPython) {
++          // install poetry / pip install poetry patterns in official installers
++          const pipPoetry =
++            /\bpip\b[^\n]{0,80}\binstall\b[^\n]{0,40}\bpoetry\b/i.test(snippet) ||
++            /Install the latest[^\n]{0,40}\bPoetry\b/i.test(snippet) ||
++            /python-poetry\.org/i.test(snippet);
++          if (pipPoetry) {
++            return { type: 'pip-package', url, packageName: 'poetry', via: 'python-installer-probe' };
++          }
++          // Generic: treat bare .py installers as unknown rather than bash-script
++        }
++      } catch {
++        // fall through
++      }
++    }
+   } catch {
+     // fall through
+   }
+diff --git a/tests/unit/classifier.test.ts b/tests/unit/classifier.test.ts
+index 1837f08..19925dd 100644
+--- a/tests/unit/classifier.test.ts
++++ b/tests/unit/classifier.test.ts
+@@ -149,6 +149,24 @@ describe("classify", () => {
+       expect(result.packageName).toBe("marimo");
+     });
+ 
++    it("matches PyPI JSON API URLs", () => {
++      const result = classify("https://pypi.org/pypi/poetry/json");
++      expect(result.type).toBe("pip-package");
++      expect(result.packageName).toBe("poetry");
++    });
++
++    it("maps official Poetry installer host to pip-package poetry", () => {
++      const result = classify("https://install.python-poetry.org");
++      expect(result.type).toBe("pip-package");
++      expect(result.packageName).toBe("poetry");
++    });
++
++    it("maps official Poetry installer host with trailing slash", () => {
++      const result = classify("https://install.python-poetry.org/");
++      expect(result.type).toBe("pip-package");
++      expect(result.packageName).toBe("poetry");
++    });
++
+     it("matches npm URLs", () => {
+       const result = classify("https://www.npmjs.com/package/maildev");
+       expect(result.type).toBe("npm-package");

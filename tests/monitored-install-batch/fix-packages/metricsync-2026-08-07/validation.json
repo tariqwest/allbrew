@@ -1,0 +1,26 @@
+{
+  "slug": "metricsync",
+  "url": "https://metricsync.download",
+  "failureClass": "generate_fail",
+  "platformUnsupported": true,
+  "platform": "ios-only",
+  "appStoreId": "6746950963",
+  "tests": [
+    "tests/unit/page-discover.test.ts",
+    "tests/unit/generators/cask-app-mas.test.ts"
+  ],
+  "unitTestsPass": true,
+  "localGenerate": {
+    "discoveredUrl": "https://apps.apple.com/us/app/metricsync/id6746950963",
+    "exitNonZero": true,
+    "errorContains": "not a Mac app (kind=software)"
+  },
+  "vmInstall": {
+    "bottleVersion": "0.0.24",
+    "exitCode": 1,
+    "errorContains": "Could not extract App Store ID from URL: https://apps.apple.com/"
+  },
+  "mode": "patch",
+  "installSuccessExpectedAfterFix": false,
+  "reason": "iOS App Store only; mas cannot install on macOS"
+}

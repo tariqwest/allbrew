@@ -1,0 +1,243 @@
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..13fc9ce 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -27,6 +27,8 @@ import {
+   matchAssetToArch,
+   isAppAsset,
+   isBinaryAsset,
++  isArchiveBinaryAsset,
++  membersContainMacAppBundle,
+   chooseReleaseArtifactKind,
+   resolveNonCollidingFormulaName,
+   resolveNonCollidingCaskName,
+@@ -893,6 +895,50 @@ async function handleGithubRepo(classification, opts) {
+     }
+ 
+     if (binAssets.length > 0) {
++      // Arch-tagged macOS zips are assumed CLI by isAppAsset, but some releases
++      // (e.g. go2tv_v*_macOS_arm64.zip) ship a .app bundle. Peek one mac archive.
++      const macBins = binAssets.filter((a) => {
++        const arch = matchAssetToArch(a.name);
++        return (
++          arch === "macosArm" ||
++          arch === "macosIntel" ||
++          arch === "macosUniversal"
++        );
++      });
++      const peekAsset =
++        macBins.find((a) => isArchiveBinaryAsset(a.name)) || null;
++      if (peekAsset) {
++        try {
++          const { downloadToTemp } = await import("./sha256.ts");
++          const {
++            listArchiveMembersFromPath,
++          } = await import("./generators/binary-release.ts");
++          const dl = await downloadToTemp(peekAsset.url, peekAsset.name);
++          try {
++            const members = await listArchiveMembersFromPath(dl.path);
++            if (membersContainMacAppBundle(members)) {
++              const extraAppAssetNames = macBins.map((a) => a.name);
++              console.log(
++                `  Detected ${chalk.cyan("macOS app")} inside binary-named zip: ${peekAsset.name}`,
++              );
++              return await generateWithConfirmation(
++                "cask-app-release",
++                { repoInfo, release },
++                { ...opts, extraAppAssetNames },
++              );
++            }
++          } finally {
++            await dl.cleanup();
++          }
++        } catch (err) {
++          console.log(
++            chalk.dim(
++              `  Archive peek failed (${err?.message || err}); continuing as binary-release`,
++            ),
++          );
++        }
++      }
++
+       console.log(
+         `  Detected ${chalk.cyan("binary")} assets: ${binAssets.map((a) => a.name).join(", ")}`,
+       );
+diff --git a/lib/generators/binary-release.ts b/lib/generators/binary-release.ts
+index d6eb00f..cf8efa8 100644
+--- a/lib/generators/binary-release.ts
++++ b/lib/generators/binary-release.ts
+@@ -65,13 +65,17 @@ export function pickArchiveEntrypoint(
+     .map((m) => m.replace(/\\/g, "/").replace(/^\.\//, ""))
+     .filter((m) => m && !m.endsWith("/"));
+ 
++  const DOC_BASE =
++    /^(license|licence|readme|changelog|changes|authors|contributing|copying|notice|install|todo)(\.[a-z0-9]+)?$/i;
+   const candidates = files.filter((m) => {
+     const base = m.split("/").pop() || "";
+     if (!base || base.startsWith(".")) return false;
++    if (DOC_BASE.test(base)) return false;
+     if (/\.(txt|md|json|sha256|sig|asc|1|html|sample|dylib|so|a)$/i.test(base)) return false;
+     // Prefer bin/ layout; also allow root-level binaries and files one directory
+     // deep (common for release archives with a top-level wrapper directory like
+-    // `project-arch/binary`).
++    // `project-arch/binary`). Nested .app/Contents/MacOS/* is intentionally out of
++    // scope — those archives should be casks (see membersContainMacAppBundle).
+     const depth = m.split("/").length - 1;
+     return (
+       /(^|\/)bin\//.test(m) ||
+@@ -153,7 +157,7 @@ export function buildBinaryReleaseInstallBody(
+   return `bin.install ${rubyString(binName)}`;
+ }
+ 
+-async function listArchiveMembersFromPath(archivePath: string): Promise<string[]> {
++export async function listArchiveMembersFromPath(archivePath: string): Promise<string[]> {
+   const lower = archivePath.toLowerCase();
+   if (lower.endsWith(".zip")) {
+     try {
+@@ -236,6 +240,11 @@ export async function collectBinaryReleasePayload(
+         hashes[arch] = { url: asset.url, sha256: dl.sha256, name: asset.name };
+         try {
+           const members = await listArchiveMembersFromPath(dl.path);
++          if (membersContainMacAppBundle(members)) {
++            throw new Error(
++              `Release archive ${asset.name} contains a macOS .app bundle; use cask-app-release, not binary-release`,
++            );
++          }
+           const picked = pickArchiveEntrypoint(members, name, options);
+           if (picked) {
+             archiveEntrypoint = picked.sourcePath;
+diff --git a/lib/generators/cask-app-release.ts b/lib/generators/cask-app-release.ts
+index 0fa412d..4cb4e48 100644
+--- a/lib/generators/cask-app-release.ts
++++ b/lib/generators/cask-app-release.ts
+@@ -3,6 +3,7 @@ import {
+   extractVersionFromTag,
+   rubyEscape,
+   isAppAsset,
++  matchAssetToArch,
+ } from "../utils.ts";
+ import { downloadToTemp } from "../sha256.ts";
+ import { listDmgAppNames, listZipEntries } from "../archive-inspector.ts";
+@@ -17,15 +18,32 @@ export async function collectCaskAppReleasePayload(
+ ): Promise<CaskAppReleasePayload> {
+   const version = extractVersionFromTag(release.tagName);
+ 
+-  const appAssets = release.assets.filter((a: any) => isAppAsset(a.name));
++  const extraNames = new Set(
++    (options.extraAppAssetNames as string[] | undefined) || [],
++  );
++  const appAssets = release.assets.filter(
++    (a: any) => isAppAsset(a.name) || extraNames.has(a.name),
++  );
+   if (appAssets.length === 0) {
+     throw new Error("No .dmg or macOS .zip assets found in release");
+   }
+ 
+-  const dmgAsset = appAssets.find((a: any) =>
++  // Prefer host-arch when arch-tagged mac app zips are present (e.g. go2tv macOS_arm64).
++  const hostArch =
++    process.arch === "arm64"
++      ? "macosArm"
++      : process.arch === "x64"
++        ? "macosIntel"
++        : null;
++  let bestAsset = appAssets.find((a: any) =>
+     a.name.toLowerCase().endsWith(".dmg"),
+   );
+-  const bestAsset = dmgAsset || appAssets[0];
++  if (!bestAsset && hostArch) {
++    bestAsset = appAssets.find(
++      (a: any) => matchAssetToArch(a.name) === hostArch,
++    );
++  }
++  if (!bestAsset) bestAsset = appAssets[0];
+ 
+   let appName = options.appName;
+ 
+diff --git a/lib/utils.ts b/lib/utils.ts
+index 28ec1c1..d31be6a 100644
+--- a/lib/utils.ts
++++ b/lib/utils.ts
+@@ -606,6 +606,14 @@ export function isAppAsset(assetName) {
+   return true;
+ }
+ 
++/** True when archive listing contains a macOS .app bundle path. */
++export function membersContainMacAppBundle(members: string[]): boolean {
++  return members.some((m) => {
++    const n = String(m || "").replace(/\\/g, "/");
++    return /(^|\/)[^/]+\.app(\/|$)/i.test(n);
++  });
++}
++
+ const ARCHIVE_BINARY_EXTS = [".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".zip"];
+ const BARE_BINARY_SKIP_SUFFIXES = [
+   ".sha256",
+diff --git a/tests/unit/generators/binary-release.test.ts b/tests/unit/generators/binary-release.test.ts
+index 1b44375..e21b5ea 100644
+--- a/tests/unit/generators/binary-release.test.ts
++++ b/tests/unit/generators/binary-release.test.ts
+@@ -321,3 +321,23 @@ describe("pickArchiveEntrypoint / nested package archives", () => {
+     }
+   });
+ });
++
++describe("pickArchiveEntrypoint doc exclusion", () => {
++  it("does not pick LICENSE when it is the only shallow non-md file", () => {
++    const { pickArchiveEntrypoint } = require("../../../lib/generators/binary-release.ts");
++  });
++});
++
++describe("pickArchiveEntrypoint excludes license docs", () => {
++  it("returns null when archive only has LICENSE/README at root (no binary)", async () => {
++    const { pickArchiveEntrypoint } = await import(
++      "../../../lib/generators/binary-release.ts"
++    );
++    const picked = pickArchiveEntrypoint(
++      ["LICENSE", "README.md", "go2tv.app/Contents/MacOS/go2tv"],
++      "go2tv",
++    );
++    // Nested .app binary is out of depth scope; LICENSE must not win.
++    expect(picked).toBeNull();
++  });
++});
+diff --git a/tests/unit/utils.test.ts b/tests/unit/utils.test.ts
+index 4f9f82d..1173ffc 100644
+--- a/tests/unit/utils.test.ts
++++ b/tests/unit/utils.test.ts
+@@ -9,6 +9,7 @@ import {
+   guessLicenseIdentifier,
+   matchAssetToArch,
+   isAppAsset,
++  membersContainMacAppBundle,
+   isBinaryAsset,
+   assertSafeFetchUrl,
+   resolveNonCollidingFormulaName,
+@@ -415,6 +416,27 @@ describe("isAppAsset", () => {
+   });
+ });
+ 
++
++describe("membersContainMacAppBundle", () => {
++  it("detects go2tv-style .app bundle paths", () => {
++    expect(
++      membersContainMacAppBundle([
++        "go2tv.app/",
++        "go2tv.app/Contents/MacOS/go2tv",
++        "LICENSE",
++        "README.md",
++      ]),
++    ).toBe(true);
++  });
++
++  it("rejects CLI archive listings without .app", () => {
++    expect(membersContainMacAppBundle(["go2tv", "LICENSE", "README.md"])).toBe(
++      false,
++    );
++    expect(membersContainMacAppBundle(["bin/tool", "lib/foo.so"])).toBe(false);
++  });
++});
++
+ describe("isBinaryAsset", () => {
+   it("matches archive extensions that aren't app assets", () => {
+     expect(isBinaryAsset("foo-linux-amd64.tar.gz")).toBe(true);

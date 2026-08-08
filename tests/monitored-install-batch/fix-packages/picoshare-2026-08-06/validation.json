@@ -1,0 +1,34 @@
+{
+  "url": "https://github.com/mtlynch/picoshare",
+  "slug": "picoshare",
+  "failureClass": "generate_fail",
+  "rootCause": "Linux-only GitHub release assets selected binary-release on macOS; no fallthrough to go.mod; go build missing ./cmd/picoshare",
+  "fixSummary": "Host-installable binary gate + go cmd package detection",
+  "agentServiceExpectation": true,
+  "allbrewServiceDecision": true,
+  "serviceCommand": "opt_bin/picoshare",
+  "expectedGenerator": "go-package",
+  "localValidation": {
+    "unitTests": "pass",
+    "templateParity": "pass",
+    "generate": "pass (worktree)",
+    "formulaSnippet": "system \"go\", \"build\", *std_go_args(ldflags: \"-s -w\"), \"./cmd/picoshare\"",
+    "hostBrewInstall": "succeeded once then uninstalled (isolation cleanup); not success criterion"
+  },
+  "vmValidation": {
+    "status": "generate_fail",
+    "endpoint": "homeserver",
+    "allbrewVersion": "0.0.24",
+    "error": "No macOS binary assets found in release"
+  },
+  "files": [
+    "lib/utils.ts",
+    "lib/cli.ts",
+    "lib/generators/go-package.ts",
+    "lib/templates/formula/go-package.ts",
+    "lib/template-payload.ts",
+    "tests/unit/utils.test.ts",
+    "tests/unit/generators/go-package.test.ts",
+    "scripts/test-templates.ts"
+  ]
+}

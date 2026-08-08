@@ -1,0 +1,271 @@
+diff --git a/lib/analyzer.ts b/lib/analyzer.ts
+index e028df4..b80e615 100644
+--- a/lib/analyzer.ts
++++ b/lib/analyzer.ts
+@@ -956,3 +956,39 @@ export function detectBuildSystemFromArchive(fileNames) {
+ 
+   return null;
+ }
++
++
++/**
++ * Detect README notes that the GitHub repository has moved to another owner/repo.
++ * Common patterns: "This repository has moved to: https://github.com/org/Name"
++ */
++export function detectGithubRepoRelocation(
++  readmeText: string,
++): { owner: string; repo: string; url: string } | null {
++  if (!readmeText) return null;
++  const text = String(readmeText);
++
++  const patterns = [
++    /(?:this\s+)?(?:repository|repo)\s+has\s+moved\s+to\s*:?\s*(?:\[[^\]]*\]\()?(https?:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+))(?:\/)?(?:\))?/i,
++    /(?:moved|relocated)\s+to\s*:?\s*(?:\[[^\]]*\]\()?(https?:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+))(?:\/)?(?:\))?/i,
++    /(?:new\s+(?:home|location|repository)|repo(?:sitory)?\s+(?:is\s+)?now\s+at)\s*:?\s*(?:\[[^\]]*\]\()?(https?:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+))(?:\/)?(?:\))?/i,
++    /(?:this\s+)?(?:repository|repo)\s+has\s+moved\s+to\s*:?\s*([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\b/i,
++  ];
++
++  for (const re of patterns) {
++    const m = text.match(re);
++    if (!m) continue;
++    if (m[2] && m[3] && m[1]?.includes?.("github.com")) {
++      const owner = m[2];
++      const repo = String(m[3]).replace(/\.git$/i, "");
++      return { owner, repo, url: `https://github.com/${owner}/${repo}` };
++    }
++    if (m[1] && m[2] && !m[3]) {
++      const owner = m[1];
++      const repo = String(m[2]).replace(/\.git$/i, "");
++      if (/github\.com/i.test(owner)) continue;
++      return { owner, repo, url: `https://github.com/${owner}/${repo}` };
++    }
++  }
++  return null;
++}
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..78fb98f 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -11,6 +11,8 @@ import {
+   initOctokit,
+   getRepoInfo,
+   getLatestRelease,
++  listReleases,
++  pickReleaseWithAppAssets,
+   getReadme,
+   getRepoContents,
+   getFileContent,
+@@ -21,6 +23,7 @@ import {
+   detectBuildSystemFromFiles,
+   detectServiceConfig,
+   detectServiceConfigFromFiles,
++  detectGithubRepoRelocation,
+ } from "./analyzer.ts";
+ import { inspectArchive } from "./archive-inspector.ts";
+ import {
+@@ -904,8 +907,40 @@ async function handleGithubRepo(classification, opts) {
+     }
+ 
+     console.log(
+-      chalk.dim("  No recognized binary or app assets, checking README..."),
++      chalk.dim(
++        "  No recognized binary or app assets on latest release, checking older releases...",
++      ),
+     );
++
++    try {
++      const recent = await listReleases(owner, repo, { perPage: 30 });
++      const olderWithApp = pickReleaseWithAppAssets(recent, isAppAsset);
++      if (
++        olderWithApp &&
++        olderWithApp.tagName &&
++        olderWithApp.tagName !== release.tagName
++      ) {
++        const names = olderWithApp.assets
++          .filter((a) => isAppAsset(a.name))
++          .map((a) => a.name);
++        console.log(
++          `  Found macOS app assets on older release ${chalk.bold(olderWithApp.tagName)}: ${names.join(", ")}`,
++        );
++        return await generateWithConfirmation(
++          "cask-app-release",
++          { repoInfo, release: olderWithApp },
++          opts,
++        );
++      }
++    } catch (err) {
++      if (opts.verbose) {
++        console.log(
++          chalk.dim(
++            `  Older-release scan failed: ${err?.message || err}; continuing...`,
++          ),
++        );
++      }
++    }
+   } else {
+     releaseSpinner.info("No releases found, checking README...");
+   }
+@@ -920,6 +955,37 @@ async function handleGithubRepo(classification, opts) {
+   } else {
+     readmeSpinner.succeed("README fetched");
+ 
++    // Follow "repository has moved to …" README stubs (e.g. stonerl/Thaw → thaw-app/Thaw)
++    const relocationHops = Number(opts._relocationHops || 0);
++    const relocated = detectGithubRepoRelocation(readme);
++    if (
++      relocated &&
++      relocationHops < 2 &&
++      (relocated.owner.toLowerCase() !== owner.toLowerCase() ||
++        relocated.repo.toLowerCase() !== repo.toLowerCase())
++    ) {
++      console.log(
++        chalk.yellow(
++          `  Repository relocated: ${owner}/${repo} → ${relocated.owner}/${relocated.repo}`,
++        ),
++      );
++      return await handleGithubRepo(
++        {
++          type: "github-repo",
++          url: relocated.url,
++          owner: relocated.owner,
++          repo: relocated.repo,
++        },
++        {
++          ...opts,
++          _relocationHops: relocationHops + 1,
++          sourceUrl: opts.sourceUrl || classification.url,
++          resolvedUrl: relocated.url,
++          discoverMethod: "github-repo-relocation",
++        },
++      );
++    }
++
+     // Check for existing Homebrew availability first
+     const brewInfo = detectBrewInstall(
+       readme,
+diff --git a/lib/github.ts b/lib/github.ts
+index 8d16f43..3dc0473 100644
+--- a/lib/github.ts
++++ b/lib/github.ts
+@@ -102,28 +102,69 @@ export async function getRepoInfo(owner, repo) {
+   };
+ }
+ 
++function mapRelease(data: any) {
++  return {
++    tagName: data.tag_name,
++    name: data.name,
++    body: data.body,
++    draft: Boolean(data.draft),
++    prerelease: Boolean(data.prerelease),
++    assets: (data.assets || []).map((a: any) => ({
++      name: a.name,
++      url: a.browser_download_url,
++      size: a.size,
++      contentType: a.content_type,
++    })),
++    tarballUrl: data.tarball_url,
++    zipballUrl: data.zipball_url,
++  };
++}
++
+ export async function getLatestRelease(owner, repo) {
+   try {
+     const { data } = await getOctokit().rest.repos.getLatestRelease({ owner, repo });
+-    return {
+-      tagName: data.tag_name,
+-      name: data.name,
+-      body: data.body,
+-      assets: data.assets.map(a => ({
+-        name: a.name,
+-        url: a.browser_download_url,
+-        size: a.size,
+-        contentType: a.content_type,
+-      })),
+-      tarballUrl: data.tarball_url,
+-      zipballUrl: data.zipball_url,
+-    };
++    return mapRelease(data);
+   } catch (err) {
+     if (err.status === 404) return null;
+     throw err;
+   }
+ }
+ 
++export async function listReleases(
++  owner: string,
++  repo: string,
++  opts: { perPage?: number } = {},
++) {
++  const perPage = Math.min(Math.max(opts.perPage ?? 20, 1), 100);
++  try {
++    const { data } = await getOctokit().rest.repos.listReleases({
++      owner,
++      repo,
++      per_page: perPage,
++    });
++    return (data || []).map(mapRelease);
++  } catch (err) {
++    if (err.status === 404) return [];
++    throw err;
++  }
++}
++
++export function pickReleaseWithAppAssets(
++  releases: ReturnType<typeof mapRelease>[],
++  isAppAssetFn: (name: string) => boolean,
++): ReturnType<typeof mapRelease> | null {
++  const usable = (releases || []).filter((r) => r && !r.draft);
++  const stable = usable.filter((r) => !r.prerelease);
++  for (const pool of [stable, usable]) {
++    for (const rel of pool) {
++      if ((rel.assets || []).some((a) => isAppAssetFn(a.name))) {
++        return rel;
++      }
++    }
++  }
++  return null;
++}
++
+ export async function getReadme(owner, repo) {
+   try {
+     const { data } = await getOctokit().rest.repos.getReadme({ owner, repo });
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..2b46420 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -6,6 +6,7 @@ import {
+   detectServiceConfigFromFiles,
+   detectBuildSystemFromFiles,
+   detectBuildSystemFromArchive,
++  detectGithubRepoRelocation,
+ } from "../../lib/analyzer.ts";
+ 
+ // ─── A5: Analyzer unit suite ─────────────────────────────────────────────
+@@ -785,3 +786,26 @@ describe("detectBuildSystemFromArchive", () => {
+     expect(detectBuildSystemFromArchive(["foo-1.0/LICENSE"])).toBeNull();
+   });
+ });
++
++describe("detectGithubRepoRelocation", () => {
++  it("detects markdown-style moved-to full GitHub URL (Thaw stub)", () => {
++    const readme = "# Thaw\n\nThis repository has moved to: https://github.com/thaw-app/Thaw\n";
++    const r = detectGithubRepoRelocation(readme);
++    expect(r).not.toBeNull();
++    expect(r!.owner).toBe("thaw-app");
++    expect(r!.repo).toBe("Thaw");
++    expect(r!.url).toBe("https://github.com/thaw-app/Thaw");
++  });
++
++  it("detects owner/repo without URL", () => {
++    const readme = "This repository has moved to: acme/Widget\n";
++    const r = detectGithubRepoRelocation(readme);
++    expect(r).not.toBeNull();
++    expect(r!.owner).toBe("acme");
++    expect(r!.repo).toBe("Widget");
++  });
++
++  it("returns null when no relocation notice", () => {
++    expect(detectGithubRepoRelocation("## Install\n\nbrew install foo\n")).toBeNull();
++  });
++});

@@ -1,0 +1,14 @@
+{
+  "mode": "patch",
+  "slug": "visdom",
+  "url": "https://github.com/fossasia/visdom",
+  "summary": "Prefer preferred PyPI package name and accept shell-prompt pip install lines (visdom vs plotly)",
+  "files": [
+    "lib/analyzer.ts",
+    "tests/unit/analyzer.test.ts"
+  ],
+  "patches": [
+    "patches/0001-analyzer-pip-preferred-and-shell-prompt.patch",
+    "patches/0002-analyzer-tests-visdom-pip-prefer.patch"
+  ]
+}

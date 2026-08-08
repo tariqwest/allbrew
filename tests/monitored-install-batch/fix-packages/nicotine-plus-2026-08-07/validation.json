@@ -1,0 +1,13 @@
+{
+  "slug": "nicotine-plus",
+  "url": "https://github.com/nicotine-plus/nicotine-plus",
+  "failureClass": "brew_fail",
+  "fixedLocally": true,
+  "generatorBefore": "binary-release",
+  "generatorAfter": "cask-app-release",
+  "serviceExpected": false,
+  "serviceObserved": false,
+  "unitTests": "tests/unit/utils.test.ts tests/unit/generators/cask-app-release.test.ts",
+  "localGenerateOk": true,
+  "vmVerifyNeedsRelease": true
+}

@@ -1,0 +1,30 @@
+--- /tmp/pd-head.ts	2026-08-06 20:24:53
++++ /tmp/allbrew-wt-bun-17660/lib/page-discover.ts	2026-08-06 20:22:52
+@@ -122,6 +122,11 @@
+       score += 75;
+       ev.push("classifier:github-repo");
+       break;
++    case "homebrew-formula":
++    case "homebrew-cask":
++      score += 95;
++      ev.push(`classifier:${classified.type}`);
++      break;
+     case "npm-package":
+     case "pip-package":
+     case "cargo-package":
+@@ -138,6 +143,15 @@
+     default:
+       score += 10;
+       ev.push("classifier:unknown");
++  }
++
++  // Never treat the homebrew-core/cask monorepos as installable package repos.
++  if (
++    /github\.com\/Homebrew\/homebrew-(core|cask)(?:\.git)?(?:\/|$)/i.test(url) &&
++    classified.type === "github-repo"
++  ) {
++    score -= 100;
++    ev.push("homebrew-monorepo-penalty");
+   }
+ 
+   if (pathLooksMac(url)) {

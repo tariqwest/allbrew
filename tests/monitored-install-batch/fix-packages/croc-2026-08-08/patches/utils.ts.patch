@@ -1,0 +1,24 @@
+diff --git a/lib/utils.ts b/lib/utils.ts
+index 28ec1c1..5d6bacd 100644
+--- a/lib/utils.ts
++++ b/lib/utils.ts
+@@ -556,6 +556,9 @@ export function archPatterns() {
+       /macos.*x64/i,
+       /x86_64.*darwin/i,
+       /x86_64.*macos/i,
++      // goreleaser/croc style: macOS-64bit (not ARM64)
++      /(?:darwin|macos)[-_.]?64bit/i,
++      /64bit[-_.]?(?:darwin|macos)/i,
+     ],
+     macosUniversal: [
+       /macos[-_.]?universal/i,
+@@ -574,6 +577,9 @@ export function archPatterns() {
+       /linux.*x64/i,
+       /amd64.*linux/i,
+       /x86_64.*linux/i,
++      // goreleaser/croc style: Linux-64bit (not ARM64)
++      /linux[-_.]?64bit/i,
++      /64bit[-_.]?linux/i,
+     ],
+   };
+ }

@@ -1,0 +1,12 @@
+diff --git a/lib/cli.ts b/tmp/allbrew-wt-aldente-pro-12039/lib/cli.ts
+index dc1e69f..9f0b6d2 100644
+--- a/lib/cli.ts
++++ b/tmp/allbrew-wt-aldente-pro-12039/lib/cli.ts
+@@ -155,6 +155,7 @@ async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
+     const result = await discoverPageDownloads(url, {
+       mode,
+       verbose: Boolean(opts.verbose),
++      preferredName: opts.name || opts.package || opts.appName || null,
+       log: (msg) => {
+         if (opts.verbose) console.log(chalk.dim(`  ${msg}`));
+       },

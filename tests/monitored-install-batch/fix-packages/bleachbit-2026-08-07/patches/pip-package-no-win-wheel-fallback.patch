@@ -1,0 +1,168 @@
+diff --git a/lib/generators/pip-package.ts b/lib/generators/pip-package.ts
+index 2106ddf..ef403df 100644
+--- a/lib/generators/pip-package.ts
++++ b/lib/generators/pip-package.ts
+@@ -709,14 +709,9 @@ export function selectBestDistribution(
+     null;
+   if (sdist) return toSelectedDist(sdist, "sdist", options.version);
+ 
+-  if (candidates[0]) {
+-    const kind =
+-      candidates[0].packagetype === "bdist_wheel" ||
+-      String(candidates[0].filename || "").endsWith(".whl")
+-        ? "wheel"
+-        : "sdist";
+-    return toSelectedDist(candidates[0], kind, options.version);
+-  }
++  // Never fall back to platform-incompatible wheels (e.g. win_amd64 on macOS).
++  // Returning null lets callers skip the dep or fail generation with a clear
++  // "no host-compatible distribution" error.
+   return null;
+ }
+ 
+@@ -769,12 +764,35 @@ async function selectDistForDependency(
+   constraint: VersionConstraint,
+ ): Promise<SelectedDist | null> {
+   const pin = exactPinVersion(constraint);
++
++  const trySelect = (urls: PypiUrl[] | undefined, version?: string) => {
++    const list = urls || [];
++    const dist = selectBestDistribution(list, { version });
++    if (dist) return { dist, incompatible: false as const };
++    const candidates = list.filter(
++      (u) => u && !u.yanked && u.url && u.digests?.sha256,
++    );
++    // Artifacts exist but none are host-compatible (e.g. win_amd64-only).
++    return { dist: null, incompatible: candidates.length > 0 };
++  };
++
+   if (pin) {
+     try {
+       const pinned = await fetchPypiData(depName, pin);
+-      const dist = selectBestDistribution(pinned.urls || [], { version: pin });
+-      if (dist) return { ...dist, version: pin };
+-    } catch {
++      const pick = trySelect(pinned.urls || [], pin);
++      if (pick.dist) return { ...pick.dist, version: pin };
++      if (pick.incompatible) {
++        throw new Error(
++          `No host-compatible distribution for required dependency "${depName}" (package may be Windows-only or lack macOS/Linux artifacts)`,
++        );
++      }
++    } catch (err) {
++      if (
++        err instanceof Error &&
++        err.message.includes("No host-compatible distribution")
++      ) {
++        throw err;
++      }
+       // fall through
+     }
+   }
+@@ -782,10 +800,13 @@ async function selectDistForDependency(
+   const latest = await fetchPypiData(depName);
+   const latestVersion = latest.info.version;
+   if (latestVersion && versionSatisfies(latestVersion, constraint)) {
+-    const dist = selectBestDistribution(latest.urls || [], {
+-      version: latestVersion,
+-    });
+-    if (dist) return { ...dist, version: latestVersion };
++    const pick = trySelect(latest.urls || [], latestVersion);
++    if (pick.dist) return { ...pick.dist, version: latestVersion };
++    if (pick.incompatible) {
++      throw new Error(
++        `No host-compatible distribution for required dependency "${depName}" (package may be Windows-only or lack macOS/Linux artifacts)`,
++      );
++    }
+   }
+ 
+   const chosen = pickVersionFromReleases(
+@@ -795,18 +816,43 @@ async function selectDistForDependency(
+   );
+   if (!chosen) return null;
+   if (chosen === latestVersion) {
+-    return selectBestDistribution(latest.urls || [], { version: chosen });
++    const pick = trySelect(latest.urls || [], chosen);
++    if (pick.incompatible && !pick.dist) {
++      throw new Error(
++        `No host-compatible distribution for required dependency "${depName}" (package may be Windows-only or lack macOS/Linux artifacts)`,
++      );
++    }
++    return pick.dist;
+   }
+ 
+   try {
+     const pinned = await fetchPypiData(depName, chosen);
+-    return selectBestDistribution(pinned.urls || [], { version: chosen });
+-  } catch {
++    const pick = trySelect(pinned.urls || [], chosen);
++    if (pick.incompatible && !pick.dist) {
++      throw new Error(
++        `No host-compatible distribution for required dependency "${depName}" (package may be Windows-only or lack macOS/Linux artifacts)`,
++      );
++    }
++    return pick.dist;
++  } catch (err) {
++    if (
++      err instanceof Error &&
++      err.message.includes("No host-compatible distribution")
++    ) {
++      throw err;
++    }
+     const files = latest.releases?.[chosen] || [];
+-    return selectBestDistribution(files, { version: chosen });
++    const pick = trySelect(files, chosen);
++    if (pick.incompatible && !pick.dist) {
++      throw new Error(
++        `No host-compatible distribution for required dependency "${depName}" (package may be Windows-only or lack macOS/Linux artifacts)`,
++      );
++    }
++    return pick.dist;
+   }
+ }
+ 
++
+ /**
+  * Track which extras have already been expanded per package.
+  * The empty string means base (non-extra) requirements were walked.
+@@ -900,22 +946,36 @@ async function resolveTransitiveDeps(
+         }
+ 
+         if (depAlreadyFullyExpanded) continue;
++        if (!dist) continue;
+ 
+         const transitive = await resolveTransitiveDeps(
+           parsed.name,
+           visited,
+           maxDepth,
+           depth + 1,
+-          dist?.version,
++          dist.version,
+           depExtras,
+         );
+         resources.push(...transitive);
+-      } catch {
++      } catch (err) {
++        // Re-throw explicit host-compat failures; skip flaky network/registry misses.
++        if (
++          err instanceof Error &&
++          err.message.includes("No host-compatible distribution")
++        ) {
++          throw err;
++        }
+         // skip deps that fail to resolve
+       }
+     }
+-  } catch {
+-    // skip
++  } catch (err) {
++    if (
++      err instanceof Error &&
++      err.message.includes("No host-compatible distribution")
++    ) {
++      throw err;
++    }
++    // skip network/metadata failures for optional resolution paths
+   }
+ 
+   return resources;

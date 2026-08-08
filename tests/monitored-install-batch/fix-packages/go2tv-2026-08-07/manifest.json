@@ -1,0 +1,13 @@
+{
+  "slug": "go2tv",
+  "mode": "patch",
+  "files": [
+    "lib/utils.ts",
+    "lib/cli.ts",
+    "lib/generators/binary-release.ts",
+    "lib/generators/cask-app-release.ts",
+    "tests/unit/utils.test.ts",
+    "tests/unit/generators/binary-release.test.ts"
+  ],
+  "patch": "patches/go2tv-app-zip-cask.patch"
+}

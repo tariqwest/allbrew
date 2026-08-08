@@ -1,0 +1,10 @@
+{
+  "slug": "aldente-pro",
+  "url": "https://apphousekitchen.com",
+  "mode": "patch",
+  "files": [
+    "lib/generators/homebrew-cask.ts",
+    "tests/unit/generators/homebrew-cask-homepage.test.ts"
+  ],
+  "dependsOn": ["case-c-homebrew-cask-homepage-cli"]
+}

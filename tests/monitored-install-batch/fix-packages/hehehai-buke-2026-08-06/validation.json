@@ -1,0 +1,33 @@
+{
+  "package": "@hehehai/buke",
+  "slug": "hehehai-buke",
+  "url": "https://npmjs.com/package/@hehehai/buke",
+  "failureClass": "brew_fail",
+  "rootCause": "npm formula missing depends_on bun for engines.bun packages; bin shebang requires bun",
+  "fixSummary": "Detect engines.bun and add depends_on bun to npm-package template",
+  "unitTests": {
+    "command": "bun test tests/unit/generators/npm-package.test.ts",
+    "passed": true,
+    "count": 85
+  },
+  "localGenerate": {
+    "hasDependsOnBun": true,
+    "binName": "buke",
+    "service": false
+  },
+  "vmVerify": {
+    "initial": {
+      "installExit": 0,
+      "verifyOk": false,
+      "signals": ["FORMULA_LISTED=1", "MANIFEST_OK", "BIN_MISSING", "SERVICE_STANZA=0"]
+    },
+    "postFix": "not_re_run_lock_contention"
+  },
+  "files": [
+    "lib/generators/npm-package.ts",
+    "lib/templates/formula/npm-package.ts",
+    "lib/template-payload.ts",
+    "tests/fixtures/npm/hehehai-buke.json",
+    "tests/unit/generators/npm-package.test.ts"
+  ]
+}

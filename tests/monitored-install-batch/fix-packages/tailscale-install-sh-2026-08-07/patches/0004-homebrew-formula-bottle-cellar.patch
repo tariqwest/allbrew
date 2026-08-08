@@ -1,0 +1,41 @@
+diff --git a/lib/generators/homebrew-formula.ts b/lib/generators/homebrew-formula.ts
+index 45cf376..5fd0de1 100644
+--- a/lib/generators/homebrew-formula.ts
++++ b/lib/generators/homebrew-formula.ts
+@@ -47,7 +47,23 @@ async function fetchText(url: string): Promise<string> {
+   return response.text();
+ }
+ 
+-function renderBottleBlock(indent: string, bottle: HomebrewBottle): string {
++/**
++ * Format bottle.files[*].cellar for Homebrew Ruby DSL.
++ * API values may already include a leading colon (`:any_skip_relocation`).
++ * Never emit `::any` (double colon) or `:/opt/...`.
++ */
++export function formatBottleCellar(
++  cellar: string | undefined | null,
++): string {
++  if (cellar == null || cellar === "") return ":any";
++  const trimmed = String(cellar).trim();
++  if (!trimmed) return ":any";
++  if (trimmed.startsWith(":")) return trimmed;
++  if (trimmed.startsWith("/")) return JSON.stringify(trimmed);
++  return `:${trimmed}`;
++}
++
++export function renderBottleBlock(indent: string, bottle: HomebrewBottle): string {
+   const lines: string[] = [`${indent}bottle do`];
+ 
+   if (Number.isInteger(bottle.rebuild) && bottle.rebuild !== 0) {
+@@ -62,9 +78,9 @@ function renderBottleBlock(indent: string, bottle: HomebrewBottle): string {
+     if (!entry || typeof entry !== "object") continue;
+     const { sha256, cellar } = entry as HomebrewBottleFile;
+     if (!sha256) continue;
+-    const cellarSymbol = cellar ? `:${cellar}` : ":any";
++    const cellarExpr = formatBottleCellar(cellar);
+     lines.push(
+-      `${indent}  sha256 cellar: ${cellarSymbol}, ${os}: ${JSON.stringify(sha256)}`,
++      `${indent}  sha256 cellar: ${cellarExpr}, ${os}: ${JSON.stringify(sha256)}`,
+     );
+   }
+ 

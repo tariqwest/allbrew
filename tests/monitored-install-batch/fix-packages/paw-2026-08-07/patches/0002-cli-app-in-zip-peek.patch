@@ -1,0 +1,64 @@
+diff --git a/lib/cli.ts b/lib/cli.ts
+index dc1e69f..8ff6604 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -27,6 +27,8 @@ import {
+   matchAssetToArch,
+   isAppAsset,
+   isBinaryAsset,
++  isArchiveBinaryAsset,
++  membersContainMacAppBundle,
+   chooseReleaseArtifactKind,
+   resolveNonCollidingFormulaName,
+   resolveNonCollidingCaskName,
+@@ -893,6 +895,50 @@ async function handleGithubRepo(classification, opts) {
+     }
+ 
+     if (binAssets.length > 0) {
++      // Arch-tagged macOS zips are assumed CLI by isAppAsset, but some releases
++      // (e.g. go2tv / paw) ship a .app bundle inside. Peek one mac archive.
++      const macBins = binAssets.filter((a) => {
++        const arch = matchAssetToArch(a.name);
++        return (
++          arch === "macosArm" ||
++          arch === "macosIntel" ||
++          arch === "macosUniversal"
++        );
++      });
++      const peekAsset =
++        macBins.find((a) => isArchiveBinaryAsset(a.name)) || null;
++      if (peekAsset) {
++        try {
++          const { downloadToTemp } = await import("./sha256.ts");
++          const {
++            listArchiveMembersFromPath,
++          } = await import("./generators/binary-release.ts");
++          const dl = await downloadToTemp(peekAsset.url, peekAsset.name);
++          try {
++            const members = await listArchiveMembersFromPath(dl.path);
++            if (membersContainMacAppBundle(members)) {
++              const extraAppAssetNames = macBins.map((a) => a.name);
++              console.log(
++                `  Detected ${chalk.cyan("macOS app")} inside binary-named zip: ${peekAsset.name}`,
++              );
++              return await generateWithConfirmation(
++                "cask-app-release",
++                { repoInfo, release },
++                { ...opts, extraAppAssetNames },
++              );
++            }
++          } finally {
++            await dl.cleanup();
++          }
++        } catch (err) {
++          console.log(
++            chalk.dim(
++              `  Archive peek failed (${err?.message || err}); continuing as binary-release`,
++            ),
++          );
++        }
++      }
++
+       console.log(
+         `  Detected ${chalk.cyan("binary")} assets: ${binAssets.map((a) => a.name).join(", ")}`,
+       );

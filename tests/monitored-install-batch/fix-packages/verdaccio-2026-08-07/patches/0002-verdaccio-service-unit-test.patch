@@ -1,0 +1,30 @@
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 448b125..88211ab 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -608,6 +608,25 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
+   });
+ });
+ 
++
++  it("detects bare verdaccio + localhost:4873 as high-confidence private registry service", () => {
++    const readme = `
++# Verdaccio
++A lightweight private npm proxy registry.
++
++\`\`\`bash
++verdaccio
++\`\`\`
++
++Now you can navigate to http://localhost:4873/ where your local packages will be listed.
++`;
++    const result = detectServiceConfig(readme, "verdaccio");
++    expect(result).not.toBeNull();
++    expect(result!.command).toBe("verdaccio");
++    expect(result!.keepAlive).toBe(true);
++    expect(result!.confidence).toBe("high");
++  });
++
+ describe("detectServiceConfigFromFiles", () => {
+   it("detects launchd plist files with medium confidence", () => {
+     const result = detectServiceConfigFromFiles(

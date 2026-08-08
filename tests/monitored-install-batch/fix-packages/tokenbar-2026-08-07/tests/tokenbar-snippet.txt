@@ -1,0 +1,34 @@
+580:describe("TokenBar-class SPA download API vs filename placeholder", () => {
+581-  it("detects /api/download/latest as extensionless artifact", () => {
+582-    expect(looksLikeExtensionlessArtifactUrl("https://www.tokenbar.site/api/download/latest")).toBe(true);
+583-    expect(looksLikeExtensionlessArtifactUrl("https://tokenbar.site/api/download/file")).toBe(true);
+584-  });
+585-
+586-  it("flags root same-site *.dmg as filename placeholder", () => {
+587-    const page = "https://tokenbar.site/get-started";
+588-    expect(isLikelyScriptFilenamePlaceholderDmg("https://www.tokenbar.site/TokenBar-latest.dmg", page)).toBe(true);
+589-    expect(isLikelyScriptFilenamePlaceholderDmg("https://cdn.example.com/TokenBar-latest.dmg", page)).toBe(false);
+590-    expect(isLikelyScriptFilenamePlaceholderDmg("https://www.tokenbar.site/releases/v1/TokenBar.dmg", page)).toBe(false);
+591-  });
+592-
+593-  it("HEAD-probes /api/download/latest even when placeholder .dmg exists", async () => {
+594-    const page = "https://www.tokenbar.site/download";
+595-    const placeholder = scoreCandidateUrl(
+596-      "https://www.tokenbar.site/TokenBar-latest.dmg",
+597-      page,
+598-      ["script-bundle-or-api", "script-filename-placeholder-dmg"],
+599-    );
+600-    placeholder.score = 60;
+601-    const merged = await enrichExtensionlessArtifactUrls([placeholder], page, {
+602-      classifyHead: async (url) => {
+603-        if (url.includes("/api/download/latest")) return { type: "cask-dmg", url };
+604-        return { type: "unknown", url };
+605-      },
+606-    });
+607-    const api = merged.find((c) => c.url.includes("/api/download/latest"));
+608-    expect(api).toBeTruthy();
+609-    expect(api!.kind).toBe("cask-dmg");
+610-    expect(api!.score).toBeGreaterThanOrEqual(200);
+611-    expect(api!.score).toBeGreaterThan(placeholder.score);
+612-  });
+613-});

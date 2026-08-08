@@ -1,0 +1,6 @@
+{
+  "unitTests": "bun test tests/unit/github-release-pick.test.ts → 4 pass",
+  "localGenerate": "cask-app-release olivierkes-manuskript 0.16.1 manuskript.app",
+  "hostInstallNote": "host brew install succeeded then uninstalled; not success path",
+  "vmInstall": "pending / needs patch on guest allbrew"
+}

@@ -1,0 +1,17 @@
+{
+  "slug": "netbar",
+  "url": "https://github.com/mh-sudo/NetBar",
+  "failureClass": "generate_fail",
+  "expectedGenerator": "cask-app-release",
+  "expectedApp": "NetBar.app",
+  "service": false,
+  "packageVersion": "1.2.1",
+  "sha256": "8e15790adc8ac0a486facff205eeea636c2291d1f9af593d991410973caf2063",
+  "urlTemplate": "https://github.com/mh-sudo/NetBar/releases/download/v#{version}/NetBar-#{version}.zip",
+  "unitTests": [
+    "tests/unit/utils.test.ts --test-name-pattern isAppAsset",
+    "tests/unit/generators/binary-release.test.ts --test-name-pattern templateReleaseUrl"
+  ],
+  "localGenerateOk": true,
+  "vmInstallExpectedWithoutRelease": false
+}

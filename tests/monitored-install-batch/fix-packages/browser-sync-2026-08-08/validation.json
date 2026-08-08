@@ -1,0 +1,15 @@
+{
+  "unitTests": {
+    "command": "bun test tests/unit/analyzer.test.ts --test-name-pattern isNpmRegistryCandidate",
+    "passed": true,
+    "count": 5
+  },
+  "localGenerate": {
+    "command": "CI=1 ALLBREW_NONINTERACTIVE=1 bun run bin/allbrew.ts https://github.com/BrowserSync/browser-sync --name browser-sync --tap <tmp>",
+    "passed": true,
+    "packageName": "browser-sync",
+    "version": "3.0.4",
+    "generator": "npm-package",
+    "service": false
+  }
+}

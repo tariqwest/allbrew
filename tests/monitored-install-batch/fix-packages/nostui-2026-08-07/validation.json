@@ -1,0 +1,33 @@
+{
+  "slug": "nostui",
+  "url": "https://crates.io/crates/nostui",
+  "mode": "patch",
+  "failureClass": "generate_fail",
+  "expected": {
+    "generator": "cargo-package",
+    "packageName": "nostui",
+    "service": false,
+    "version": "0.1.1"
+  },
+  "localGenerate": {
+    "pass": true,
+    "generator": "cargo-package",
+    "formulaPath": "formula-nostui.rb",
+    "service": false,
+    "note": "killed host brew install after write; formula verified"
+  },
+  "vmInstall": {
+    "pass": false,
+    "helper": "tests/monitored-install-batch/vm-install-one.mjs",
+    "error": "homeserver sparsebundle attach failed; local-1 SSH down; local-2 busy entire wall",
+    "endpointsTried": [
+      "homeserver",
+      "local-1",
+      "local-2"
+    ]
+  },
+  "patches": [
+    "patches/0001-cli-dispatch-cargo-package.patch",
+    "patches/0002-cargo-package-crates-io-registry-path.patch"
+  ]
+}

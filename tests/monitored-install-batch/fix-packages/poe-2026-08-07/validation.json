@@ -1,0 +1,17 @@
+{
+  "slug": "poe",
+  "url": "https://formulae.brew.sh/cask/poe",
+  "case": "C",
+  "rootCause": "0.0.24 lacks homebrew-cask path for formulae.brew.sh/cask/poe; falls through to wrong nested Electron helper app and poe-tap. Fixed on main.",
+  "fixedOnMain": true,
+  "requiresRelease": true,
+  "minVersion": "0.0.25",
+  "vmValidation": {
+    "endpoint": "homeserver",
+    "allbrewVersion": "0.0.24",
+    "exitCode": 1,
+    "package": "poe-tap",
+    "verifyOk": false,
+    "failureClass": "brew_fail"
+  }
+}

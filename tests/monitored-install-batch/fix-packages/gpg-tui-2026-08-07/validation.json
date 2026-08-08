@@ -1,0 +1,14 @@
+{
+  "url": "https://github.com/orhun/gpg-tui",
+  "slug": "gpg-tui",
+  "failureClass": "generate_fail",
+  "generatorExpected": "cargo-package",
+  "serviceExpected": false,
+  "formulaName": "gpg-tui-tap",
+  "binName": "gpg-tui",
+  "unitTests": ["tests/unit/generators/cargo-package.test.ts"],
+  "unitTestsPass": 34,
+  "localGenerateOk": true,
+  "vmInstallWithReleasedAllbrew": false,
+  "notes": "Linux-only release assets + cargo native deps"
+}

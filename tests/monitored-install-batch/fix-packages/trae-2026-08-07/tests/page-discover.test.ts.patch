@@ -1,0 +1,52 @@
+diff --git a/tests/unit/page-discover.test.ts b/tests/unit/page-discover.test.ts
+index a12db0d..5de03e2 100644
+--- a/tests/unit/page-discover.test.ts
++++ b/tests/unit/page-discover.test.ts
+@@ -11,6 +11,7 @@ import {
+   scoreCandidateUrl,
+   enrichGithubReleaseAssets,
+   parseGithubRepoHome,
++  rankCandidatesForPage,
+ } from "../../lib/page-discover.ts";
+ import { assertSafePublicFetchUrl } from "../../lib/utils.ts";
+ 
+@@ -219,3 +220,39 @@ describe("enrichGithubReleaseAssets", () => {
+   });
+ });
+ 
++
++describe("rankCandidatesForPage (trae multi-mirror)", () => {
++  it("prefers trae-ai-us Trae arm64 over sg TraeWork when preferredName=trae", () => {
++    const page = "https://www.trae.ai/download";
++    const list = [
++      scoreCandidateUrl(
++        "https://lf-cdn.trae.ai/obj/trae-ai-sg/pkg/app/releases/stable/2.3.61406/darwin/Trae-darwin-arm64.dmg",
++        page,
++        ["script-bundle-or-api"],
++      ),
++      scoreCandidateUrl(
++        "https://lf-cdn.trae.ai/obj/trae-ai-us/pkg/app/releases/stable/2.3.61406/darwin/Trae-darwin-arm64.dmg",
++        page,
++        ["script-bundle-or-api"],
++      ),
++      scoreCandidateUrl(
++        "https://lf-cdn.trae.ai/obj/trae-ai-sg/pkg/app/releases/stable/2.3.66431/darwin/TraeWork-darwin-arm64.dmg",
++        page,
++        ["script-bundle-or-api"],
++      ),
++      scoreCandidateUrl(
++        "https://lf-cdn.trae.ai/obj/trae-ai-us/pkg/app/releases/stable/2.3.66431/darwin/TraeWork-darwin-arm64.dmg",
++        page,
++        ["script-bundle-or-api"],
++      ),
++    ];
++    // Simulate script-bundle score bump used in production discovery
++    for (const c of list) c.score += 35;
++
++    const ranked = rankCandidatesForPage(list, { preferredName: "trae" });
++    expect(ranked[0].url).toContain("trae-ai-us");
++    expect(ranked[0].url).toContain("Trae-darwin-arm64");
++    expect(ranked[0].url).not.toContain("TraeWork");
++    expect(ranked[0].evidence.join(" ")).toMatch(/preferred-name|cdn-region-us/);
++  });
++});

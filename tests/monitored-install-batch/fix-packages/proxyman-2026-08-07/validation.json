@@ -1,0 +1,26 @@
+{
+  "slug": "proxyman",
+  "url": "https://formulae.brew.sh/cask/proxyman",
+  "failureClass": "generate_fail",
+  "case": "C",
+  "agentServiceExpectation": false,
+  "expectedGenerator": "homebrew-cask",
+  "mainSource": {
+    "classify": "homebrew-cask",
+    "generateExit": 0,
+    "formula": "Casks/proxyman.rb",
+    "officialCaskRuby": true,
+    "version": "6.14.0,61400"
+  },
+  "vmBottle_0_0_24": {
+    "classify": "unknown",
+    "resolved": "cask-dmg → download.proxyman.com DMG",
+    "nameUsed": "proxyman-tap",
+    "brewInstall": "failed: undefined method latest? for nil",
+    "verifyOk": false
+  },
+  "patchesRequired": false,
+  "alreadyOnMain": true,
+  "needsRelease": true,
+  "notes": "homebrew-cask generator + formulae.brew.sh classifier already on main (5e7a04e); bottle lag only"
+}

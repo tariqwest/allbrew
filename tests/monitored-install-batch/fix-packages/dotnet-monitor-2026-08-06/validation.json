@@ -1,0 +1,26 @@
+{
+  "package": "dotnet-monitor",
+  "url": "https://nuget.org/packages/dotnet-monitor",
+  "failureClass": "brew_fail",
+  "fixAppliedLocally": true,
+  "released": false,
+  "localVerify": {
+    "command": "dotnet-monitor --version",
+    "output": "10.0.3+215faa16aba9252ef6275144caf9433b8a50ffaf",
+    "ok": true
+  },
+  "unitTests": {
+    "generators/dotnet-package.test.ts": "16 pass",
+    "templates/dotnet-package-template.test.ts": "1 pass"
+  },
+  "vmInstall": {
+    "attempted": true,
+    "endpoint": "homeserver",
+    "exitCode": 1,
+    "verifyOk": false
+  },
+  "files": [
+    "lib/templates/formula/dotnet-package.ts",
+    "tests/unit/templates/dotnet-package-template.test.ts"
+  ]
+}
