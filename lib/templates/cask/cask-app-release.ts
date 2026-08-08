@@ -12,7 +12,7 @@ export default function renderCaskAppRelease(
   desc "${p.desc}"
   homepage "${p.homepage}"
 
-  app "${p.appName}"
+${p.containerBlock}  app "${p.appName}"
 
 ${p.livecheckBlock}${p.zapBlock}end
 `;

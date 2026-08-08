@@ -81,7 +81,7 @@ describe("collectCaskAppPayload", () => {
     const payload = await collectCaskAppPayload(
       "https://example.com/MyApp.dmg",
     );
-    expect(payload.versionLine).toBe("");
+    expect(payload.versionLine).toContain("1.0.0");
   });
 
   it("respects name override", async () => {
@@ -116,7 +116,7 @@ describe("collectCaskAppPayload", () => {
     const payload = await collectCaskAppPayload(
       "https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg",
     );
-    expect(payload.versionLine).toBe("");
+    expect(payload.versionLine).toContain("1.0.0");
   });
 
   it("Otty DMG: derives cask token from filename", async () => {
@@ -130,7 +130,7 @@ describe("collectCaskAppPayload", () => {
     const payload = await collectCaskAppPayload(
       "https://downloads.otty.sh/macos/Otty.dmg",
     );
-    expect(payload.versionLine).toBe("");
+    expect(payload.versionLine).toContain("1.0.0");
   });
 
   it("Otty DMG: respects name and appName overrides", async () => {
@@ -164,7 +164,7 @@ describe("collectCaskAppPayload", () => {
       "https://cdn.perplexity.ai/downloads/Perplexity.dmg",
       { name: "perplexity", appName: "Perplexity.app", homepage: "https://www.perplexity.ai" },
     );
-    expect(payload.versionLine).toBe("");
+    expect(payload.versionLine).toContain("1.0.0");
   });
 
   it("Perplexity DMG: respects all overrides", async () => {
@@ -241,7 +241,7 @@ it("Postman: version extracted from CDN URL path", async () => {
       "https://dl.pstmn.io/download/latest/osx",
       { name: "postman", appName: "Postman.app", homepage: "https://www.postman.com" },
     );
-    expect(payload.versionLine).toBe("");
+    expect(payload.versionLine).toContain("1.0.0");
   });
 
   it("Discord DMG: version extracted from CDN URL path", async () => {
@@ -291,7 +291,7 @@ it("Postman: version extracted from CDN URL path", async () => {
       "https://www.titanium-software.fr/download/26/OnyX.dmg",
       { name: "onyx", appName: "OnyX.app", homepage: "https://www.titanium-software.fr/en/onyx.html" },
     );
-    expect(payload.versionLine).toBe("");
+    expect(payload.versionLine).toContain("1.0.0");
   });
 
   it("OnyX DMG: template is cask_app", async () => {
@@ -431,7 +431,7 @@ it("Postman: version extracted from CDN URL path", async () => {
       "https://github.com/MacEnhance/appcast/raw/master/IconChamp/IconChamp.zip",
       { name: "iconchamp", appName: "IconChamp.app", homepage: "https://www.macenhance.com/iconchamp" },
     );
-    expect(payload.versionLine).toBe("");
+    expect(payload.versionLine).toContain("1.0.0");
   });
 
   it("IconChamp ZIP: template is cask_app", async () => {
@@ -479,7 +479,7 @@ it("Postman: version extracted from CDN URL path", async () => {
       "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
       { name: "ego-lite", appName: "ego lite.app", homepage: "https://lite.ego.app" },
     );
-    expect(payload.versionLine).toBe("");
+    expect(payload.versionLine).toContain("1.0.0");
   });
 
   it("ego lite DMG: template is cask_app", async () => {

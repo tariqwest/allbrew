@@ -15,6 +15,7 @@ mock.module("../../../lib/sha256.ts", () => ({
 
 mock.module("../../../lib/archive-inspector.ts", () => ({
   listZipEntries: mock().mockResolvedValue(["TestApp.app/"]),
+  listArchiveEntries: mock().mockResolvedValue(["TestApp.app/"]),
   listDmgAppNames: mock().mockResolvedValue([]),
 }));
 
@@ -22,6 +23,7 @@ mock.module("../../../lib/archive-inspector.ts", () => ({
 function mockArchiveInspector(opts: { zip?: string[]; dmg?: string[] } = {}) {
   mock.module("../../../lib/archive-inspector.ts", () => ({
     listZipEntries: mock().mockResolvedValue(opts.zip ?? ["TestApp.app/"]),
+    listArchiveEntries: mock().mockResolvedValue(opts.zip ?? ["TestApp.app/"]),
     listDmgAppNames: mock().mockResolvedValue(opts.dmg ?? []),
   }));
 }
@@ -109,6 +111,71 @@ describe("collectCaskAppReleasePayload", () => {
     );
     expect(payload.appName).toBe("MCP Router.app");
     expect(payload.displayName).toBe("MCP Router");
+  });
+
+  it("detects .app inside zip-wrapped DMG and emits container nested (Nicotine+)", async () => {
+    const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const execFileAsync = promisify(execFile);
+
+    const dir = await mkdtemp(join(tmpdir(), "allbrew-np-zip-"));
+    const dmgName = "nicotine+-3.3.10.dmg";
+    const zipPath = join(dir, "macos-arm64-installer.zip");
+    try {
+      await writeFile(join(dir, dmgName), "not-a-real-dmg");
+      await execFileAsync("zip", ["-j", "-q", zipPath, join(dir, dmgName)]);
+
+      mock.module("../../../lib/sha256.ts", () => ({
+        hashUrl: mock().mockResolvedValue("cask_sha256_mock"),
+        downloadAndHash: mock().mockResolvedValue({
+          sha256: "np_sha256_64chars_pad_abcdef0123456789abcdef0123456789abcd",
+        }),
+        downloadToTemp: mock().mockResolvedValue({
+          path: zipPath,
+          sha256: "np_sha256_64chars_pad_abcdef0123456789abcdef0123456789abcd",
+          cleanup: mock(),
+        }),
+      }));
+      mockArchiveInspector({
+        zip: [dmgName],
+        dmg: ["Nicotine+.app"],
+      });
+
+      const npRelease = {
+        tagName: "3.3.10",
+        assets: [
+          {
+            name: "macos-arm64-installer.zip",
+            url: "https://github.com/nicotine-plus/nicotine-plus/releases/download/3.3.10/macos-arm64-installer.zip",
+          },
+          {
+            name: "macos-x86_64-installer.zip",
+            url: "https://github.com/nicotine-plus/nicotine-plus/releases/download/3.3.10/macos-x86_64-installer.zip",
+          },
+        ],
+      };
+      const payload = await collectCaskAppReleasePayload(
+        {
+          name: "nicotine-plus",
+          fullName: "nicotine-plus/nicotine-plus",
+          description: "Graphical client for the Soulseek peer-to-peer network",
+          homepage: "https://nicotine-plus.org",
+          htmlUrl: "https://github.com/nicotine-plus/nicotine-plus",
+        },
+        npRelease,
+      );
+      expect(payload.template).toBe("cask_app_release");
+      expect(payload.appName).toBe("Nicotine+.app");
+      expect(payload.displayName).toBe("Nicotine+");
+      expect(payload.containerBlock).toContain("container nested:");
+      expect(payload.containerBlock).toContain("nicotine+-#{version}.dmg");
+      expect(payload.url).toContain("macos-arm64-installer.zip");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("uses repo description", async () => {
@@ -1066,5 +1133,49 @@ describe("collectCaskAppReleasePayload — MCPSM (Rust .app.zip only)", () => {
   it("includes SHA256", async () => {
     const payload = await collectCaskAppReleasePayload(repoInfo, release);
     expect(payload.sha256).toBeTruthy();
+  });
+});
+
+describe("collectCaskAppReleasePayload — ComicTagger (bare tag, version in asset name)", () => {
+  beforeEach(() => {
+    mock.restore();
+    mockArchiveInspector({ zip: ["ComicTagger.app/"] });
+  });
+
+  const repoInfo = {
+    name: "comictagger",
+    fullName: "comictagger/comictagger",
+    description: "A multi-platform app for writing metadata to digital comics",
+    homepage: "https://github.com/comictagger/comictagger",
+    htmlUrl: "https://github.com/comictagger/comictagger",
+    license: "Apache-2.0",
+  };
+
+  const release = {
+    // GitHub release tag is bare "1.5.5" (no v prefix); asset basename also embeds 1.5.5
+    tagName: "1.5.5",
+    assets: [
+      {
+        name: "ComicTagger-1.5.5-osx-10.15.7-x86_64.app.zip",
+        url: "https://github.com/comictagger/comictagger/releases/download/1.5.5/ComicTagger-1.5.5-osx-10.15.7-x86_64.app.zip",
+      },
+      {
+        name: "comictagger-1.5.5-py3-none-any.whl",
+        url: "https://github.com/comictagger/comictagger/releases/download/1.5.5/comictagger-1.5.5-py3-none-any.whl",
+      },
+    ],
+  };
+
+  it("templates bare tag without injecting v into asset basename", async () => {
+    const payload = await collectCaskAppReleasePayload(repoInfo, release, {
+      name: "comictagger-comictagger",
+    });
+    expect(payload.template).toBe("cask_app_release");
+    expect(payload.version).toBe("1.5.5");
+    expect(payload.url).toBe(
+      "https://github.com/comictagger/comictagger/releases/download/#{version}/ComicTagger-#{version}-osx-10.15.7-x86_64.app.zip",
+    );
+    expect(payload.url).not.toContain("ComicTagger-v#{version}");
+    expect(payload.appName).toBe("ComicTagger.app");
   });
 });
