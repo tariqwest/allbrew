@@ -204,6 +204,15 @@ describe("collectBinaryReleasePayload", () => {
     );
   });
 
+  it("templateReleaseUrl rewrites bare version in asset basename after v-tag path", () => {
+    // Supersonic-style: tag v0.22.0 in path, bare 0.22.0 in zip name
+    const url =
+      "https://github.com/supersonic-app/supersonic/releases/download/v0.22.0/Supersonic-0.22.0-mac-arm64.zip";
+    expect(templateReleaseUrl(url, "0.22.0", "v0.22.0")).toBe(
+      "https://github.com/supersonic-app/supersonic/releases/download/v#{version}/Supersonic-#{version}-mac-arm64.zip",
+    );
+  });
+
   it("detects versioned bare universal binaries (afm_0.1.0_macOS_universal)", async () => {
     const bareRelease = {
       tagName: "0.1.0",

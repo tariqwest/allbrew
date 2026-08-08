@@ -46,8 +46,10 @@ export async function collectGoPackagePayload(
   release: any = null,
   options: any = {},
 ): Promise<GoPackagePayload> {
-  const goModule =
+  // Normalize go install specs like github.com/foo/bar@latest → path only
+  const rawGoModule =
     options.goModule || (repoInfo ? `github.com/${repoInfo.fullName}` : "");
+  const goModule = String(rawGoModule || "").replace(/@[\w.+\-]+$/, "") || rawGoModule;
   const ghFullName = githubModuleFullName(goModule) || repoInfo?.fullName;
 
   const name =

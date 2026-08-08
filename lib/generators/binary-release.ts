@@ -44,7 +44,7 @@ export function resolveBinaryReleaseBinName(
     n
       .replace(/\.exe$/i, "")
       .replace(
-        /[-_.]?(darwin|macos|osx|linux|windows|win32|apple)[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal)?$/i,
+        /[-_.]?(darwin|macos|osx|linux|windows|win32|apple)[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal|all)?$/i,
         "",
       )
       .replace(/[-_.]\d+\.\d+(?:\.\d+)*(?:[-_][0-9A-Za-z]+)?$/i, "")
@@ -316,7 +316,11 @@ export function templateReleaseUrl(
       replacement = "#{version}";
     }
     out = out.split(tag).join(replacement);
-  } else if (ver && out.includes(ver)) {
+  }
+  // Asset basenames often embed the bare version (NetBar-1.2.1.zip) while the
+  // path segment used the tag (v1.2.1). After tag rewrite, still template any
+  // remaining bare version so livecheck upgrades keep working.
+  if (ver && out.includes(ver)) {
     out = out.split(ver).join("#{version}");
   }
 

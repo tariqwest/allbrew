@@ -51,7 +51,9 @@ export async function collectGemPackagePayload(
     urlLines,
     livecheckBlock: rubyGemsLivecheckBlock(gemName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    testBinName: rubyEscape(options.binName || name),
+    // Gem executables usually match the gem name (underscores), not the
+    // hyphenated Homebrew formula token (e.g. license_finder vs license-finder).
+    testBinName: rubyEscape(options.binName || gemName || name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
 }
