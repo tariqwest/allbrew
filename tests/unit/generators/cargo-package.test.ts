@@ -55,16 +55,28 @@ describe("collectCargoPackagePayload", () => {
     expect(payload.licenseLine).toContain("MIT");
   });
 
-  it("generates crates.io livecheck block", async () => {
+  it("uses github_latest livecheck for GitHub-sourced cargo formulas", async () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
-    expect(payload.livecheckBlock).toContain("crates.io/api/v1/crates/managarr");
+    expect(payload.livecheckBlock).toContain("strategy :github_latest");
   });
 
   it("uses crateName from options when provided", async () => {
     const payload = await collectCargoPackagePayload(repoInfo, release, {
       crateName: "managarr-cli",
     });
-    expect(payload.livecheckBlock).toContain("managarr-cli");
+    expect(payload.name).toBe("managarr-cli");
+  });
+
+  it("defaults cargoInstallArgs to *std_cargo_args", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release);
+    expect(payload.cargoInstallArgs).toBe("*std_cargo_args");
+  });
+
+  it("renders std_cargo_args path for workspace member installs", async () => {
+    const payload = await collectCargoPackagePayload(repoInfo, release, {
+      cargoPath: "crates/all-in-one",
+    });
+    expect(payload.cargoInstallArgs).toContain('path: "crates/all-in-one"');
   });
 
   it("includes head reference to default branch", async () => {
@@ -88,6 +100,53 @@ describe("collectCargoPackagePayload", () => {
   it("includes empty service block by default", async () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
     expect(payload.serviceBlock).toBe("");
+  });
+});
+
+describe("collectCargoPackagePayload — crates.io registry path", () => {
+  it("uses cratesMeta .crate url without GitHub release", async () => {
+    const cratesMeta = {
+      crateName: "krokiet",
+      version: "12.0.1",
+      description: "Slint frontend of Czkawka Core",
+      homepage: "https://github.com/qarmin/czkawka",
+      repository: "https://github.com/qarmin/czkawka",
+      license: "GPL-3.0-only",
+      checksum: "20e0fe56aac95ac8fd55b84bad22ad9a865d0901343658e75fd9b5eb742a1ffc",
+      crateUrl: "https://static.crates.io/crates/krokiet/krokiet-12.0.1.crate",
+      binNames: ["krokiet"],
+    };
+    const payload = await collectCargoPackagePayload(null, null, {
+      crateName: "krokiet",
+      cratesMeta,
+      fromCratesIo: true,
+    });
+    expect(payload.template).toBe("cargo_package");
+    expect(payload.name).toBe("krokiet");
+    expect(payload.urlLines).toContain(
+      "https://static.crates.io/crates/krokiet/krokiet-12.0.1.crate",
+    );
+    expect(payload.urlLines).toContain(
+      "20e0fe56aac95ac8fd55b84bad22ad9a865d0901343658e75fd9b5eb742a1ffc",
+    );
+    expect(payload.urlLines).toContain('version "12.0.1"');
+    expect(payload.fullName).toBe("qarmin/czkawka");
+    expect(payload.livecheckBlock).toContain("crates.io/api/v1/crates/krokiet");
+    expect(payload.testBinName).toBe("krokiet");
+    expect(payload.serviceBlock).toBe("");
+  });
+
+  it("githubFullNameFromRepoUrl extracts owner/repo", async () => {
+    const { githubFullNameFromRepoUrl } = await import(
+      "../../../lib/generators/cargo-package.ts"
+    );
+    expect(githubFullNameFromRepoUrl("https://github.com/qarmin/czkawka")).toBe(
+      "qarmin/czkawka",
+    );
+    expect(githubFullNameFromRepoUrl("https://github.com/qarmin/czkawka.git")).toBe(
+      "qarmin/czkawka",
+    );
+    expect(githubFullNameFromRepoUrl(null)).toBe(null);
   });
 });
 
@@ -132,9 +191,9 @@ describe("collectCargoPackagePayload — wander", () => {
     expect(payload.licenseLine).toContain("MIT");
   });
 
-  it("generates crates.io livecheck block", async () => {
+  it("uses github_latest livecheck for GitHub-sourced cargo formulas", async () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
-    expect(payload.livecheckBlock).toContain("crates.io/api/v1/crates/wander");
+    expect(payload.livecheckBlock).toContain("strategy :github_latest");
   });
 
   it("includes head reference to default branch", async () => {
@@ -190,9 +249,9 @@ describe("collectCargoPackagePayload — aichat", () => {
     expect(payload.licenseLine).toContain("Apache-2.0");
   });
 
-  it("generates crates.io livecheck block", async () => {
+  it("uses github_latest livecheck for GitHub-sourced cargo formulas", async () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
-    expect(payload.livecheckBlock).toContain("crates.io/api/v1/crates/aichat");
+    expect(payload.livecheckBlock).toContain("strategy :github_latest");
   });
 
   it("includes head reference to default branch", async () => {
@@ -204,5 +263,36 @@ describe("collectCargoPackagePayload — aichat", () => {
   it("includes empty service block by default", async () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
     expect(payload.serviceBlock).toBe("");
+  });
+});
+
+describe("cargo toml helpers", () => {
+  it("parseCargoPackageName reads [package] name", async () => {
+    const { parseCargoPackageName } = await import(
+      "../../../lib/generators/cargo-package.ts"
+    );
+    expect(
+      parseCargoPackageName('[package]\nname = "deputui"\nversion = "0.1.0"\n'),
+    ).toBe("deputui");
+  });
+
+  it("parseCargoWorkspaceMembers and isCargoWorkspaceRoot", async () => {
+    const {
+      parseCargoWorkspaceMembers,
+      isCargoWorkspaceRoot,
+      parseCargoPackageName,
+      cargoStdInstallArgs,
+    } = await import("../../../lib/generators/cargo-package.ts");
+    const ws = `[workspace]\nresolver = "2"\nmembers = [\n  "crates/common",\n  "crates/all-in-one",\n]\n`;
+    expect(isCargoWorkspaceRoot(ws)).toBe(true);
+    expect(parseCargoPackageName(ws)).toBeNull();
+    expect(parseCargoWorkspaceMembers(ws)).toEqual([
+      "crates/common",
+      "crates/all-in-one",
+    ]);
+    expect(cargoStdInstallArgs("crates/all-in-one")).toBe(
+      '*std_cargo_args(path: "crates/all-in-one")',
+    );
+    expect(cargoStdInstallArgs(".")).toBe("*std_cargo_args");
   });
 });
