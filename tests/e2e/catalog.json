@@ -5102,5 +5102,19 @@
     ],
     "skip": true,
     "notes": "Python monorepo with private package.json; README npm install -g pnpm must not select npm generator; uv tool install omnigent + local server service."
+  },
+  {
+    "name": "foundation-lab",
+    "url": "https://github.com/rudrankriyam/Foundation-Models-Framework-Lab",
+    "generator": "spm-package",
+    "allbrewArgs": [
+      "--name",
+      "foundation-lab"
+    ],
+    "expectedBin": null,
+    "verifyCommand": null,
+    "skip": true,
+    "notes": "Xcode app lab with library-only Package.swift and empty release assets; expect generate fail / reject (not installable via Homebrew formula). CLI is separate afm repo.",
+    "expectGenerateFail": true
   }
 ]

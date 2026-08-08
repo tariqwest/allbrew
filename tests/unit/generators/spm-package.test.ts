@@ -3,6 +3,8 @@ import {
   collectSpmPackagePayload,
   parseSpmExecutableProducts,
   preferSpmBinName,
+  isLibraryOnlyPackageSwift,
+  hasXcodeAppProject,
 } from "../../../lib/generators/spm-package.ts";
 
 mock.module("../../../lib/sha256.ts", () => ({
@@ -26,40 +28,52 @@ describe("collectSpmPackagePayload", () => {
   };
 
   const release = { tagName: "v2.3.1" };
+  const rugbySwift = `
+let package = Package(
+  name: "Rugby",
+  products: [
+    .executable(name: "Rugby", targets: ["Rugby"]),
+  ],
+  targets: [
+    .executableTarget(name: "Rugby"),
+  ]
+)
+`;
+  const withBin = { packageSwiftText: rugbySwift };
 
   it("returns payload with correct template identifier", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.template).toBe("spm_package");
   });
 
   it("derives name from repo name (lowercased)", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.name).toBe("rugby");
   });
 
   it("derives className from name", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.className).toBe("Rugby");
   });
 
   it("strips v prefix from version", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.urlLines).toContain("v2.3.1.tar.gz");
     expect(payload.urlLines).not.toContain("version");
   });
 
   it("uses repo description", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.desc).toContain("Cache CocoaPods");
   });
 
   it("preserves fullName", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.fullName).toBe("swiftyfinch/Rugby");
   });
 
   it("generates urlLines with release tarball URL and sha256", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.urlLines).toContain(
       "https://github.com/swiftyfinch/Rugby/archive/refs/tags/v2.3.1.tar.gz",
     );
@@ -67,12 +81,12 @@ describe("collectSpmPackagePayload", () => {
   });
 
   it("generates empty urlLines when release is null", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, null);
+    const payload = await collectSpmPackagePayload(repoInfo, null, withBin);
     expect(payload.urlLines).toBe("");
   });
 
   it("includes binInstallPaths with .build/release path", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.binInstallPaths).toContain(".build/release/Rugby");
   });
 
@@ -85,19 +99,61 @@ describe("collectSpmPackagePayload", () => {
 
   it("respects name override", async () => {
     const payload = await collectSpmPackagePayload(repoInfo, release, {
+      ...withBin,
       name: "my-rugby",
     });
     expect(payload.name).toBe("my-rugby");
   });
 
   it("generates license line", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.licenseLine).toContain("MIT");
   });
 
   it("includes empty service block by default", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.serviceBlock).toBe("");
+  });
+
+  it("throws for library-only Package.swift without bin override", async () => {
+    const libraryOnly = `
+let package = Package(
+  name: "FoundationModelsFrameworkLab",
+  products: [
+    .library(name: "FoundationLabCore", targets: ["FoundationLabCore"]),
+  ],
+  targets: [
+    .target(name: "FoundationLabCore"),
+  ]
+)
+`;
+    await expect(
+      collectSpmPackagePayload(
+        {
+          name: "Foundation-Models-Framework-Lab",
+          fullName: "rudrankriyam/Foundation-Models-Framework-Lab",
+          description: "lab app",
+          homepage: "",
+          htmlUrl: "https://github.com/rudrankriyam/Foundation-Models-Framework-Lab",
+          license: "MIT",
+          defaultBranch: "main",
+        },
+        { tagName: "1.2.0" },
+        { packageSwiftText: libraryOnly, name: "foundation-lab" },
+      ),
+    ).rejects.toThrow(/no \.executable/);
+  });
+
+  it("detects library-only Package.swift and Xcode app roots", () => {
+    expect(
+      isLibraryOnlyPackageSwift(
+        `products: [ .library(name: "FoundationLabCore", targets: ["FoundationLabCore"]) ]`,
+      ),
+    ).toBe(true);
+    expect(hasXcodeAppProject(["Package.swift", "FoundationLab.xcodeproj", "README.md"])).toBe(
+      true,
+    );
+    expect(hasXcodeAppProject(["Package.swift", "README.md"])).toBe(false);
   });
 });
 
@@ -175,44 +231,52 @@ describe("collectSpmPackagePayload — utiluti", () => {
   };
 
   const release = { tagName: "v2.0.0" };
+  const utilutiSwift = `
+let package = Package(
+  name: "utiluti",
+  products: [ .executable(name: "utiluti", targets: ["utiluti"]) ],
+  targets: [ .executableTarget(name: "utiluti") ]
+)
+`;
+  const withBin = { packageSwiftText: utilutiSwift };
 
   it("returns payload with correct template identifier", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.template).toBe("spm_package");
   });
 
   it("derives name as utiluti (already lowercase)", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.name).toBe("utiluti");
   });
 
   it("derives className as Utiluti", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.className).toBe("Utiluti");
   });
 
   it("strips v prefix from version in tarball URL", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.urlLines).toContain("v2.0.0.tar.gz");
   });
 
   it("uses repo description", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.desc).toContain("URL schemes");
   });
 
   it("sets binInstallPaths to .build/release/utiluti", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.binInstallPaths).toContain(".build/release/utiluti");
   });
 
   it("head-only mode produces empty urlLines", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, null);
+    const payload = await collectSpmPackagePayload(repoInfo, null, withBin);
     expect(payload.urlLines).toBe("");
   });
 
   it("generates license line", async () => {
-    const payload = await collectSpmPackagePayload(repoInfo, release);
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.licenseLine).toContain("MIT");
   });
 });

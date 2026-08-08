@@ -322,7 +322,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -377,13 +377,13 @@
 | brew install agent-deck && agent-deck --version | | | | | | | | | | | | | | | | | | | | | | | |
 | # future generators (manual today) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned) | | | | | | | | | | | | | | | | | | | | | | | |
-| ``` | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ``` | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | Record per pick: generator chosen, bin name vs package name drift, livecheck source, service | | | | | | | | | | | | | | | | | | | | | | | |
 | block (flower/wakapi/smtp4dev), and any native-build failures (tgt/TDLib, goatcounter/CGO, | | | | | | | | | | | | | | | | | | | | | | | |
 | Fyne/`fyne install`). | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (cask-app & script-install) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # Not-in-HB app (GitHub release DMG) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install --cask seaquel && open -a Seaquel | | | | | | | | | | | | | | | | | | | | | | | |
@@ -454,3 +454,4 @@
 | lattix-app | Swift | AppKit | lattix.app | | | | | | | | | | | | | | yes | | .dmg | | | | Workspace & window layout launcher across multi-monitors; $13.99-23.99 |
 | tusk-backup | Swift | AppKit | tusk.app | | | | | | | | | | | | | | yes | | .dmg | | | | Backup management tracking file safety across destinations; $49 |
 | systemeq | Swift | AudioUnit/AppKit | | github.com/denzam/SystemEQ-for-Mac | systemeq (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | System-wide audio equalizer; versioned URL (v1.0.5) |
+| Foundation Lab | Swift | SwiftUI / Foundation Models | | https://github.com/rudrankriyam/Foundation-Models-Framework-Lab | no | | | | | | | | library-only (FoundationLabCore) | | | | yes | | | yes | | | Native Xcode app (FoundationLab.xcodeproj) + library-only Package.swift; releases have no DMG/ZIP; TestFlight only. allbrew must NOT spm-package (no .executable). CLI is separate repo Foundation-Models-Framework-CLI (afm). generator: reject/unsupported-app-source |

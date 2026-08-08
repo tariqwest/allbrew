@@ -1310,6 +1310,14 @@ async function handleGithubRepo(classification, opts) {
             repo,
             "Package.swift",
           );
+          const rootFilesForSwift = await getRepoContents(owner, repo);
+          const rootNamesForSwift = rootFilesForSwift.map((f) => f.name);
+          await assertSpmPackageInstallable(
+            packageSwiftText,
+            rootNamesForSwift,
+            repoInfo,
+            opts,
+          );
           const spmOpts = await resolveSpmBinOptions(
             packageSwiftText,
             repoInfo,
@@ -1446,6 +1454,12 @@ async function handleGithubRepo(classification, opts) {
           repo,
           "Package.swift",
         );
+        await assertSpmPackageInstallable(
+          packageSwiftText,
+          fileNames,
+          repoInfo,
+          opts,
+        );
         const spmOpts = await resolveSpmBinOptions(
           packageSwiftText,
           repoInfo,
@@ -1473,6 +1487,20 @@ async function handleGithubRepo(classification, opts) {
           },
           opts,
         );
+    }
+  }
+
+  // Xcode app / workspace without installable release assets or CLI products.
+  {
+    const { hasXcodeAppProject } = await import("./generators/spm-package.ts");
+    if (hasXcodeAppProject(fileNames)) {
+      throw new Error(
+        `Repository ${repoInfo.fullName} looks like an Xcode app project ` +
+          `(${fileNames.find((f) => /\.(xcodeproj|xcworkspace)$/i.test(String(f)))}) ` +
+          `with no recognized macOS app release assets (DMG/ZIP/PKG) and no Homebrew-installable CLI. ` +
+          `Install via Xcode, TestFlight, or the Mac App Store — not a generated formula. ` +
+          `If a separate CLI repo exists, allbrew that URL instead.`,
+      );
     }
   }
 
@@ -2280,6 +2308,43 @@ async function resolveSpmBinOptions(
     );
   }
   return { binName: preferred, binNames: bins };
+}
+
+/** Fail early for library-only Package.swift / Xcode app monorepos (no CLI product). */
+async function assertSpmPackageInstallable(
+  packageSwiftText: string | null | undefined,
+  fileNames: string[],
+  repoInfo: any,
+  opts: any,
+) {
+  if (opts?.binName || (Array.isArray(opts?.binNames) && opts.binNames.length)) {
+    return;
+  }
+  const {
+    parseSpmExecutableProducts,
+    isLibraryOnlyPackageSwift,
+    hasXcodeAppProject,
+  } = await import("./generators/spm-package.ts");
+  const bins = parseSpmExecutableProducts(packageSwiftText || "");
+  if (bins.length > 0) return;
+
+  const xcode = hasXcodeAppProject(fileNames);
+  const libraryOnly = isLibraryOnlyPackageSwift(packageSwiftText || "");
+  if (!libraryOnly && !xcode) return;
+
+  const xcodeName = fileNames.find((f) =>
+    /\.(xcodeproj|xcworkspace)$/i.test(String(f)),
+  );
+  throw new Error(
+    `Cannot install ${repoInfo?.fullName || repoInfo?.name || "this repository"} via spm-package: ` +
+      (libraryOnly
+        ? "Package.swift has no .executable products (library-only). "
+        : "") +
+      (xcode
+        ? `Xcode project detected (${xcodeName}). This is a native app lab, not a CLI — use Xcode, TestFlight, or a release DMG/ZIP cask when assets exist. `
+        : "") +
+      `Do not generate a Homebrew formula that runs swift build without a bin product.`,
+  );
 }
 
 /**

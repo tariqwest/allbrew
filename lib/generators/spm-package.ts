@@ -33,6 +33,20 @@ export function parseSpmExecutableProducts(packageSwiftText: string): string[] {
   return found;
 }
 
+/** True when Package.swift only exposes libraries (no CLI install target). */
+export function isLibraryOnlyPackageSwift(packageSwiftText: string): boolean {
+  const text = String(packageSwiftText || "");
+  if (!text.trim()) return false;
+  if (parseSpmExecutableProducts(text).length > 0) return false;
+  return /\.library\s*\(/i.test(text) || /products:\s*\[/i.test(text);
+}
+
+/** Root Xcode app/workspace markers that should not become SPM formulae. */
+export function hasXcodeAppProject(fileNames: string[] | null | undefined): boolean {
+  if (!fileNames?.length) return false;
+  return fileNames.some((f) => /\.(xcodeproj|xcworkspace)$/i.test(String(f)));
+}
+
 /** Prefer CLI-style product over Server/Mac/Service/Repack helpers. */
 export function preferSpmBinName(
   executables: string[],
@@ -107,8 +121,21 @@ export async function collectSpmPackagePayload(
     options.binName ||
     preferSpmBinName(binNames, name, repoInfo.name) ||
     binNames[0] ||
-    repoInfo.name ||
-    name;
+    null;
+
+  // Library-only Package.swift (common for Xcode app monorepos) has no CLI product.
+  // Falling back to repoInfo.name produced broken formulae (swift build + missing bin).
+  if (!binTarget) {
+    const xcodeHint = options.xcodeApp
+      ? " This repository looks like an Xcode app project; distribute via release DMG/ZIP, MAS, or TestFlight instead of an SPM formula."
+      : "";
+    throw new Error(
+      `Cannot generate spm-package for ${repoInfo.fullName || repoInfo.name || name}: ` +
+        `Package.swift has no .executable / .executableTarget products (library-only).` +
+        xcodeHint +
+        ` Pass --bin-name if a product name is known.`,
+    );
+  }
 
   const installTargets =
     binNames.length > 0
