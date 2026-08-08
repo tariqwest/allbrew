@@ -237,10 +237,18 @@ export async function discoverWithWebView(
           try {
             const u = new URL(url);
             const p = new URL(pageUrl);
+            // Drop pure page assets early (css/js/fonts/images).
+            if (
+              /\.(?:png|jpe?g|gif|svg|webp|ico|css|js|mjs|map|woff2?|ttf|otf|eot|mp4|webm|mp3|json|webmanifest)(?:\?|#|$)/i.test(
+                u.pathname,
+              )
+            ) {
+              return;
+            }
             if (
               u.origin === p.origin &&
               !looksLikeArtifactUrl(url) &&
-              !/github\.com|raw\.githubusercontent|npmjs|pypi|crates|rubygems|nuget|apps\.apple|setapp/i.test(
+              !/github\.com|raw\.githubusercontent|npmjs|pypi|crates|rubygems|nuget|apps\.apple|setapp|gumroad\.com|gum\.co|itch\.io/i.test(
                 url,
               )
             ) {
@@ -256,6 +264,10 @@ export async function discoverWithWebView(
           if (String(evidence).startsWith("network")) {
             scored.score += 40;
             scored.evidence.push("network-intercept");
+          }
+          // Store gates never become auto-install artifacts via network boost alone.
+          if (scored.kind === "store-download-gate" && scored.score > 65) {
+            scored.score = 65;
           }
           candidates.push(scored);
         };
