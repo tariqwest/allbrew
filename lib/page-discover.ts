@@ -104,7 +104,8 @@ export function isDownloadHubPath(url: string): boolean {
     }
     return (
       /(?:^|\/)(?:download|downloads|get|install)(?:\/|$)/i.test(p) ||
-      /(?:^|\/)(?:mac|macos|desktop)(?:-?app)?(?:\/|$)/i.test(p)
+      /(?:^|\/)(?:mac|macos|desktop)(?:-?app)?(?:\/|$)/i.test(p) ||
+      /(?:^|\/)(?:thanks|thank-you|thankyou)(?:\.html)?(?:\/|$)/i.test(p)
     );
   } catch {
     return false;
@@ -412,6 +413,23 @@ export function scoreCandidateUrl(
   if (isSkillOrCompanionAssetUrl(url)) {
     score -= 70;
     ev.push("skill-companion-asset-penalty");
+  }
+
+  // curl|bash install commands are strong signals — the page explicitly says
+  // to fetch this URL and pipe to sh. Treat as bash-script even when the
+  // path lacks a .sh extension (e.g. https://app.warp.dev/download/agent-cli).
+  if (evidence.includes("install-command")) {
+    if (kind === "unknown") kind = "bash-script";
+    score += 85;
+    ev.push("install-command-boost");
+    // Extensionless download endpoints serving scripts should not be penalized
+    // as generic HTML download pages.
+    const hasHtmlPenalty = ev.indexOf("html-download-page-penalty");
+    if (hasHtmlPenalty !== -1) {
+      score += 8;
+      ev.splice(hasHtmlPenalty, 1);
+      ev.push("install-command-no-html-penalty");
+    }
   }
 
   // Direct Mac app archives (Things3.zip, Foo.app.zip) should beat MAS storefront

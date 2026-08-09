@@ -13,7 +13,7 @@ description: >
   scripting whenever orchestration, concurrency, or child-agent lifecycle is
   involved — even if the user only says "keep going" after a prior batch session.
 metadata:
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Monitored-install batch (orchestrator)
@@ -292,6 +292,126 @@ Apply only under `tests/monitored-install-batch/worktrees/`. Never promote to `m
 | Child isolation + completion schema | `references/child-contract.md` |
 | Child privileges + sample allow/deny patterns | `assets/child-agent-privileges.DRAFT.toml` |
 | Single-URL phases | `.agents/skills/monitored-allbrew-install/SKILL.md` |
+
+## Handoff / takeover — unwinding in-flight and leftover state (including crash / messy shutdown)
+
+When a **new parent/orchestrator** starts — new harness session, repo reopen, `agent-queue.json` left mid-flight, **or a prior harness died mid-batch** (process kill, `Ctrl-C` during `run_agents`, host reboot, VM SSH drop, token expiry, OOM) — run this unwind **before** the normal loop. It is **filesystem-first and idempotent**: it recovers from what is on disk (`state/agent-queue.json`, `RUN_DIR`s, host mutex dirs, VM guest locks) without trusting any in-memory state from the dead harness. Re-running it after a clean shutdown is a no-op. Keep it read-mostly until every `running`/`launching` row is classified — do not bulk-reset the queue.
+
+> **Mental model:** the previous harness may have left *any* combination of: queue rows stuck `running` with no `agentId`, `RUN_DIR`s with no `outcome.json`, host `logs/vm-mutex-*.lockdir` held by a now-dead pid, guest `/var/run/lume-homebrew.lock` inside a VM still held, local twins `stopped` while `homeserver` is busy, `agent-wave.json` pointing at a half-launched wave, half-written `fix-package/` trees, temp taps in `/var/folders/*/T/tmp.*` that already host-installed a cask, or a `brew install --cask` mid-copy into `/Applications`. All of those are normal after a crash — this section makes the takeover elegant.
+
+### 0. Snapshot before mutating (filesystem ground truth)
+
+You have **no reliable memory** of the dead harness’s opaque child run ids. Treat the filesystem as the source of truth.
+
+```bash
+cp tests/monitored-install-batch/state/agent-queue.json \
+   tests/monitored-install-batch/state/agent-queue.json.bak-$(date -u +%Y%m%dT%H%M%SZ)
+bun tests/monitored-install-batch/run-agent-batch.mjs --status
+ls -1dt tests/monitored-install-runs/* 2>/dev/null | head -20
+cat tests/monitored-install-batch/state/agent-queue.json | python3 -c "
+import json
+q=json.load(open('tests/monitored-install-batch/state/agent-queue.json'))
+for i in q['items']:
+  if i['status'] in ('running','launching'):
+    print(i['agentName'], i.get('launchName'), i.get('agentId'), i.get('launchedAt'), i.get('runDir'), (i.get('url') or '')[:80])
+"
+# Also look for orphan RUN_DIRs that have no queue row (crashed before mark-launched)
+ls -1 tests/monitored-install-runs/ 2>/dev/null | wc -l
+cat tests/monitored-install-batch/state/agent-wave.json 2>/dev/null | python3 -m json.tool | head -n 60
+# host VM mutexes + local VM liveness (stale pids survive a crash)
+bun tests/monitored-install-batch/vm-guest-health.mjs --clear-stale --json | python3 -m json.tool | head -n 120
+lume ls --format json | python3 -c "import json,sys; [print(v['name'], v['status'], v.get('sshAvailable')) for v in json.load(sys.stdin)]"
+# host pollution that may have landed via temp-tap before the crash
+brew list --cask 2>&1 | tail -20; ls /opt/homebrew/Caskroom 2>&1 | tail -20
+ps aux | grep -E "vm-install-one|allbrew.*--tap|acquireHomebrewPrefix" | grep -v grep | head -20
+```
+
+The goal is to answer for each queue row: *is this `running` row still attached to a live child (or at least recent RUN_DIR activity), and does its `RUN_DIR` already hold the terminal outcome?* Do not rely on `agentId` / `launchName` from the previous harness — minimal `run-agent-batch.mjs` builds never populated `agentId`, and the dead harness’s ids are unrecoverable.
+
+### 1. Classify every `running` / `launching` row (filesystem-first)
+
+For each item `i` where `status ∈ {running, launching}`:
+
+| Signal (filesystem) | Meaning | What to do |
+|--------|---------|------------|
+| `runDir` exists and `outcome.json` says `success`/`failed`/`blocked`/`skipped` | Child already finished and flushed its record before the parent died; queue mark is stale. Classic crash artifact: child appended `agent-index.jsonl` + wrote `outcome.json`, parent crashed before `--mark-done`. | **Reap**: `bun … --mark-done <agentName> <outcome.status>` (see `references/state-and-queue.md`). Preserve `fix-package/` if present; the `agent-index.jsonl` duplicate is harmless. |
+| `runDir` exists, no `outcome.json`, but `vm-install.log` / `summary.md` / `agent-judgment.json` mtime within last **~3 min**, or `vm-install-one.mjs` pid still alive (`ps`/mutex holder) | Still active on a VM (pool wait or long install) — the previous parent died but the child process survived as an orphan. | **Adopt, don’t duplicate**: keep `running`; *do not* launch a second child for the same `agentName`/`idx`. Optionally recover by re-attaching via harness if the pid is still alive, otherwise just monitor its `RUN_DIR` mtimes. Nudge per `references/nudge-and-blocked.md` 3-min rule if stalled. `launchedAt` wall-clock keeps running — do not reset it. |
+| `runDir` exists, no `outcome.json`, and mtime is **stale (>5–8 min)** with no live pid / no VM `installCmd` streaming and mutex not held | Orphan that died with its parent (or hung on approval-gated shell after the crash). | **Stop + mark** `failed` or `failed-agent-runtime` (or `failed-timeout` if logs show a hang). Free the slot. Its `fix-package/` if any is still reconcilable — don’t delete it. |
+| `runDir` missing AND `launchedAt` older than **15 min** (`TH_BATCH_ITEM_WALL_MS`) | Orphaned launch that never materialised (harness crashed between `--mark-launched` and child’s `init-run-record`). | **Stop + mark** `failed-agent-runtime` (or `failed-timeout`). Free the slot. |
+| `runDir` missing but `launchedAt` younger than 15 min | Late-starting child (cold VM SSH bootstrap, `lume run --detach` still booting). The dead parent may have launched it seconds before crashing. | **Keep running**; give it until the wall-clock cap. Check next cycle — if no `runDir` appears by the cap, mark `failed-agent-runtime`. |
+| `agent-wave.json` still lists `launching` items that never became `running` | Wave was half-persisted when the parent died (printed wave but crashed before `--mark-launched` for some). | Treat those `launching` rows as `queued` for refill — do **not** mark them `failed`. Next `print-wave` will re-emit them (idempotent). Only `--mark-launched` promotes to `running`. |
+| Queue says `running` but **no** `RUN_DIR` on disk **and** an orphan `tests/monitored-install-runs/*__<slug>` exists with a different timestamp | Previous child wrote to a `RUN_DIR` but the queue row points at an older `runDir` (or none). Filesystem is newer than queue. | Reap from the **actual** `RUN_DIR` on disk (the one with the latest mtime / `latest` symlink target), then `--mark-done` the matching `agentName`. Queue `runDir` is just a cache — `outcome.json` on disk wins. |
+
+Never infer “dead” from missing `agentId` alone — minimal `run-agent-batch.mjs` builds never populated `agentId`, and the previous harness’s ids are gone with it. Check harness lifecycle + `RUN_DIR` + `ps`/mutex first.
+
+Reference table for the *why* behind re-marking and late completions: `references/orchestrator-loop.md` § Reap completions.
+
+### 1b. Orphan RUN_DIRs with no queue row
+
+A crash can leave `tests/monitored-install-runs/2026-08-09T13-…__<slug>/` on disk while the queue still says `queued` (parent crashed before `--mark-launched`). Those runs are still valid evidence — don’t launch a duplicate for the same `idx`/`slug` until you’ve checked `ls -1dt tests/monitored-install-runs/* | head` and confirmed the slug isn’t already in-flight on disk with recent mtime. If the orphan’s `outcome.json` is terminal, reap it into the queue (`--mark-done`) rather than re-running the URL.
+
+### 2. Clear stale host-side VM mutexes and guest Homebrew locks
+
+Host mutex dirs (`logs/vm-mutex-*.lockdir/owner`) and guest `/var/run/lume-homebrew.lock` inside the VMs can outlive the child that held them (e.g. `91501\tgridplayer\thomeserver` after `devdash` → `gridplayer` handoff, or a host `kill -9` while holding the mutex). They block `acquirePoolSlot()` for every endpoint and make the next `vm-install-one` look “stuck” when it is just pooled-waiting.
+
+```bash
+# Remove only dead holders (pid no longer alive) — safe, leaves live holders alone
+bun tests/monitored-install-batch/vm-guest-health.mjs --clear-stale --json
+# also: lib/vm-pool.mjs:isEndpointLocked() auto-clears dead pids on next acquire,
+# and lib/guest-ops.mjs:forceUnlockHomebrewPrefix() clears guest locks before/after
+# acquireHomebrewPrefixDurable. Both are no-ops if the holder is still alive.
+```
+
+Do not `rm -rf` a `lockdir` whose `owner` pid is still alive — that would let two children enter the same exclusive Homebrew prefix concurrently (`/opt/homebrew` corruption). If you must free a live holder, `kill` the holder pid first (the child’s `vm-install-one` wrapper) and let the next acquire clean it.
+
+Guest-side stale locks survive a host crash even after the host mutex is cleared. The next child’s `acquireHomebrewPrefixDurable` calls `forceUnlockHomebrewPrefix("pre-acquire")` automatically; no manual SSH needed unless VM SSH itself is down.
+
+### 3. Warm the VM pool (locals are often `stopped` after a crash/reboot)
+
+Local twin VMs (`vm-local-macos-testing-1/2` in `vm-pool.json`) are frequently `stopped` after a host reboot, `lume` daemon restart, or a crash that left them orphaned `running` but unreachable. Starting them before the first wave restores 3-way concurrency; otherwise later children serialize on `homeserver` only.
+
+```bash
+bun tests/monitored-install-batch/run-agent-batch.mjs --ensure-vms
+# idempotent: already-running is a no-op, stopped → lume run --detach
+# or: bun tests/monitored-install-batch/run-agent-batch.mjs --print-wave-ensured  # ensure + print in one call
+```
+
+See `run-agent-batch.mjs:ensureLocalVms()` for the exact mapping (`LUME_VM_NAME` ↔ `lume ls --format json`). Wait ~10–30 s for `sshAvailable: true` before launching; `vm-guest-health.mjs --json` reports `healthy`/`usable` per endpoint. If locals report `ssh_unavailable` after 30 s, they still need Remote Login / project-user bootstrap — `homeserver` remains usable alone; don’t block the batch on it, but note the degraded concurrency.
+
+### 4. Reconcile `agent-index.jsonl` vs queue
+
+- Queue is the **source of truth** for scheduling; `agent-index.jsonl` is append-only audit — the dead parent may have appended some rows but not yet flushed `agent-queue.json` to disk.
+- If a child appended a terminal row but the parent crashed before `--mark-done`, the queue still says `running` — step 1’s “outcome present → reap” fixes it. Duplicate lines are fine.
+- `agent-wave.json` may be stale/partial (half a wave). Treat it as a hint, not authority — rebuild the next wave from `agent-queue.json` pending (`queued`/`retry`) filtered by `TH_BATCH_CONCURRENCY`.
+- Never requeue a terminal status back to `queued` on takeover unless you are intentionally retrying (set `requeuedAt`, `requeuedFrom`, `retryReason`).
+- `fix-package/` trees under `tests/monitored-install-batch/fix-packages/` survive the parent crash — they’re already on disk under the `RUN_DIR` even if the queue still says `running`. Steps 1 and 4 preserve them; reconcile later via `bun run batch:reconcile-fixes -- --dry-run`.
+
+### 5. Host pollution check (do this before refilling)
+
+A crash often leaves a temp-tap child mid-`brew install --cask` with no uninstall. The local `bun run bin/allbrew.ts … --tap $(mktemp -d)` leg still host-`brew install`s even when `vm-install-one` was the intended success path. A prior build hardcoded `LUME_REMOTE_ENABLED=true … --endpoint homeserver`, serializing onto one VM and letting that temp-tap leg host-install casks into `/Applications` / `/opt/homebrew/Caskroom` (observed: `/Applications/Aizen.app` + `/Applications/Nicotine+.app` / `Caskroom/aizen` + `Caskroom/nicotine-plus`).
+
+```bash
+# tailored to the last wave / stuck slugs — not a blind brew list
+for slug in $(cat tests/monitored-install-batch/state/agent-queue.json | python3 -c "import json; q=json.load(open('tests/monitored-install-batch/state/agent-queue.json')); print(' '.join(i['slug'] for i in q['items'] if i['status'] in ('running','launching')))" 2>/dev/null); do
+  brew list --cask 2>&1 | grep -qx "$slug" && echo "HOST CASK STILL INSTALLED: $slug"
+  ls -d /opt/homebrew/Caskroom/$slug 2>&1 | head -1
+  ls -d "/Applications/${slug}.app" "/Applications/${slug^}.app" 2>&1 | head -1
+done
+# if found: brew uninstall --cask <name> --zap  (or without --zap to keep prefs)
+ls /var/folders/*/T/tmp.* 2>&1 | head -20  # orphan temp taps are harmless but noisy
+```
+
+Do not treat a temp-tap host install as “success”; only VM `VERIFY_OK=true` counts. Clean before refilling so the next wave’s `verify` phase doesn’t see a false-positive `--version` from a host-installed binary.
+
+### 6. Resume the normal loop
+
+After the unwind:
+
+1. `bun tests/monitored-install-batch/run-agent-batch.mjs --status` should now show `running + launching < concurrency` and accurate `remaining`. No `running` row should remain that is both stale (old `launchedAt`) and without a recent `RUN_DIR` mtime — those are now `failed-agent-runtime` / `blocked`.
+2. `running` rows that are truly still live (orphaned child still churning on a VM, `vm-install.log` tail shows recent pool-wait or download progress) keep their `launchedAt`; do not reset the wall-clock.
+3. Now run the regular loop from `## Parent loop → 2. Reap / 3. Nudge / 4. Fill free slots`.
+
+If you arrived with zero live children and all `running` rows were reaped or marked `failed-agent-runtime`, the next `print-wave` / `print-wave-ensured` will produce a full refill wave (cap `TH_BATCH_CONCURRENCY`) — this is the elegant “catch up from where we left off” handoff. If some orphans are still live, refill only `free = concurrency - liveRunning` slots (e.g. 2 live → 4 new) — never oversubscribe the 3 VM endpoints.
 
 ## Done criteria
 

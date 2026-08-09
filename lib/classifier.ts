@@ -147,6 +147,34 @@ export async function classifyWithHead(url) {
     if (ct.includes('text/x-shellscript') || ct.includes('application/x-sh')) {
       return { type: 'bash-script', url };
     }
+
+    // Some endpoints (e.g. https://app.warp.dev/download/agent-cli) return
+    // text/html for HEAD but text/x-shellscript for GET. Fall back to a
+    // ranged GET when HEAD was html/unknown.
+    if (!ct || ct.includes('text/html') || ct.includes('text/plain')) {
+      try {
+        const getRes = await fetch(url, {
+          method: 'GET',
+          headers: { 'User-Agent': 'allbrew/1.0', Range: 'bytes=0-1024' },
+          redirect: 'follow',
+          signal: AbortSignal.timeout(30_000),
+        });
+        const gct = (getRes.headers.get('content-type') || '').toLowerCase();
+        if (gct.includes('text/x-shellscript') || gct.includes('application/x-sh')) {
+          return { type: 'bash-script', url };
+        }
+        if (gct.includes('application/x-apple-diskimage') || disp.includes('.dmg')) {
+          return { type: 'cask-dmg', url };
+        }
+        if (gct.includes('application/zip') || gct.includes('application/gzip') ||
+            gct.includes('application/x-tar') || gct.includes('application/x-bzip2') ||
+            gct.includes('application/x-xz')) {
+          return { type: 'archive', url };
+        }
+      } catch {
+        // fall through
+      }
+    }
   } catch {
     // fall through
   }

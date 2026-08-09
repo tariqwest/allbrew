@@ -699,7 +699,7 @@ export function isAppAsset(assetName) {
 function isVersionedProductZipName(lowerName: string): boolean {
   if (!lowerName.endsWith(".zip")) return false;
   if (
-    /(?:^|[^a-z])(?:src|source|sources|checksums?)(?:[^a-z]|$)/i.test(lowerName)
+    /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions)(?:[^a-z]|$)/i.test(lowerName)
   ) {
     return false;
   }

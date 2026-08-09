@@ -65,6 +65,14 @@ export async function collectInstallScriptPayload(
   const repoInfo = options.repoInfo;
   const license = guessLicenseIdentifier(options.license || repoInfo?.license || null);
   const version = await resolveInstallScriptVersion(url, options);
+  let binName = options.binName || name;
+  if (!options.binName && /agent-cli/i.test(url) && /warp/i.test(name)) {
+    try {
+      const scriptText = await (await fetch(url, { signal: AbortSignal.timeout(15_000) })).text();
+      const m = scriptText.match(/CLI_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/);
+      if (m?.[1]) binName = m[1];
+    } catch { /* fallback to name */ }
+  }
 
   return {
     template: "install_script",
@@ -79,7 +87,7 @@ export async function collectInstallScriptPayload(
     scriptFilename: rubyEscape(filename),
     livecheckBlock: urlVersionLivecheckBlock(url),
     allbrewDependency: "",
-    testBinName: rubyEscape(options.binName || name),
+    testBinName: rubyEscape(binName),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
 }

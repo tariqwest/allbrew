@@ -223,7 +223,8 @@ async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
         (c) =>
           c.kind !== "store-download-gate" &&
           (c.kind !== "unknown" ||
-            /\.(dmg|pkg|zip|tgz|tar\.gz|sh|bash)(?:\?|#|$)/i.test(c.url)),
+            /\.(dmg|pkg|zip|tgz|tar\.gz|sh|bash)(?:\?|#|$)/i.test(c.url) ||
+            (c.evidence || []).includes("install-command")),
       );
       if (isNonInteractive(opts)) {
         // Never hang automation on ambiguous HTML noise.
@@ -259,15 +260,33 @@ async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
       }
     }
 
-    const classification = await classifyWithHead(chosen.url);
+    let classification = await classifyWithHead(chosen.url);
     if (classification.type === "unknown") {
-      console.log(
-        chalk.yellow(
-          `  Discovered URL still classifies as unknown: ${chosen.url}`,
-        ),
-      );
-      await promptUnknownUrl(chosen.url, opts, result.candidates);
-      return null;
+      // Trust the discovery scoring when it already identified a concrete kind
+      // via install-command evidence (e.g. warp agent-cli). This avoids a
+      // prompt hang in non-interactive mode when HEAD is misleading.
+      if (chosen.kind !== "unknown" && chosen.kind !== "store-download-gate") {
+        classification = { type: chosen.kind, url: chosen.url } as any;
+        console.log(
+          chalk.dim(
+            `  Using discovered kind ${chosen.kind} for ${chosen.url} (HEAD was unknown)`,
+          ),
+        );
+      } else {
+        console.log(
+          chalk.yellow(
+            `  Discovered URL still classifies as unknown: ${chosen.url}`,
+          ),
+        );
+        if (isNonInteractive(opts)) {
+          console.log(
+            chalk.yellow(`  Non-interactive: cannot prompt for unknown URL type`),
+          );
+          return null;
+        }
+        await promptUnknownUrl(chosen.url, opts, result.candidates);
+        return null;
+      }
     }
 
     return {

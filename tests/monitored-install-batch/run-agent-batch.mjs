@@ -164,12 +164,12 @@ plus references/run-records.md, failure-playbook.md, release-and-retry.md (local
 ## HARD ISOLATION RULES (do not violate)
 1. **Do NOT clutter or mutate the host machine's real Homebrew**.
    - Forbidden as success path: host \`brew install\`, host \`allbrew <url>\` auto-install into the user's real tap, host \`brew services\`.
-2. **Full install/verify/uninstall MUST run in the Lume VM** via:
+2. **Full install/verify/uninstall MUST run in the Lume VM** via the pool's least-busy picker:
    \`\`\`bash
-   LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \\
+   bun tests/monitored-install-batch/vm-install-one.mjs \\
      --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log"
    \`\`\`
-   That helper uses th-allbrew + exclusive prefix + unlock hygiene, then uninstalls.
+   Do NOT add \`--endpoint homeserver\` or \`LUME_REMOTE_ENABLED=true\` — the helper picks the least-busy free endpoint from \`vm-pool.json\` (homeserver + local-1 + local-2) via \`acquirePoolSlot()\`. It handles exclusive prefix, lock hygiene, and uninstall. If you force an endpoint you serialize onto one VM while the other two sit idle.
 3. Local generate/debug only:
    \`bun run bin/allbrew.ts "<url>" --name "<slug>" --tap "$(mktemp -d)" --verbose\`
    with CI=1 ALLBREW_NONINTERACTIVE=1.
@@ -298,6 +298,58 @@ function status() {
   );
 }
 
+async function ensureLocalVms() {
+  const { spawnSync } = await import("node:child_process");
+  let pool;
+  try {
+    pool = JSON.parse(readFileSync(join(BATCH_DIR, "vm-pool.json"), "utf8"));
+  } catch {
+    return { attempted: [], skipped: "no vm-pool.json" };
+  }
+  const localEndpoints = (pool.endpoints || []).filter(
+    (e) => e.id !== "homeserver" && e.id.startsWith("local-") && e.enabled !== false,
+  );
+  if (!localEndpoints.length) return { attempted: [], skipped: "no local endpoints" };
+  let vms = [];
+  try {
+    const ls = spawnSync("lume", ["ls", "--format", "json"], { encoding: "utf8", timeout: 10000 });
+    if (ls.stdout) vms = JSON.parse(ls.stdout);
+  } catch {
+    return { attempted: [], skipped: "lume ls failed" };
+  }
+  const byName = new Map(vms.map((v) => [v.name, v]));
+  const results = [];
+  for (const ep of localEndpoints) {
+    const vmName = ep.env?.LUME_VM_NAME;
+    if (!vmName) continue;
+    const vm = byName.get(vmName);
+    if (!vm) {
+      results.push({ endpoint: ep.id, vmName, status: "not-found", action: "skip" });
+      continue;
+    }
+    if (vm.status === "running") {
+      results.push({ endpoint: ep.id, vmName, status: "running", action: "already-running" });
+      continue;
+    }
+    if (vm.status === "stopped") {
+      const run = spawnSync("lume", ["run", vmName, "--detach"], { encoding: "utf8", timeout: 30000 });
+      const ok = run.status === 0;
+      results.push({
+        endpoint: ep.id,
+        vmName,
+        status: vm.status,
+        action: ok ? "started" : "failed",
+        exitCode: run.status,
+        stderr: (run.stderr || "").slice(0, 300),
+      });
+      if (ok) await new Promise((r) => setTimeout(r, 3000));
+    } else {
+      results.push({ endpoint: ep.id, vmName, status: vm.status, action: "skip-unknown-status" });
+    }
+  }
+  return { attempted: results };
+}
+
 const args = process.argv.slice(2);
 const cmd = args[0] || "--print-wave";
 
@@ -307,6 +359,13 @@ if (cmd === "--rebuild-queue") {
   console.log(JSON.stringify({ ok: true, total: items.length }));
 } else if (cmd === "--print-wave") {
   printWave();
+} else if (cmd === "--ensure-vms") {
+  const res = await ensureLocalVms();
+  console.log(JSON.stringify({ ok: true, ...res }, null, 2));
+} else if (cmd === "--print-wave-ensured") {
+  const vms = await ensureLocalVms();
+  const wave = printWave();
+  console.log(JSON.stringify({ vms, waveCreated: !!wave }, null, 2));
 } else if (cmd === "--mark-launched") {
   markLaunched(args.slice(1));
 } else if (cmd === "--mark-done") {
@@ -317,7 +376,7 @@ if (cmd === "--rebuild-queue") {
   console.log(basePrompt());
 } else {
   console.error(
-    "Usage: --print-wave | --rebuild-queue | --status | --mark-launched names... | --base-prompt",
+    "Usage: --print-wave | --print-wave-ensured | --ensure-vms | --rebuild-queue | --status | --mark-launched names... | --base-prompt",
   );
   process.exit(2);
 }

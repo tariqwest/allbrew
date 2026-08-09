@@ -65,7 +65,10 @@ function isDocumentationHost(hostname: string): boolean {
 
 function isDocumentationPath(pathname: string): boolean {
   const p = String(pathname || "").toLowerCase();
-  return /\/(docs?|documentation|quickstart|guide|guides|cli|sdk|api-reference)\b/.test(p);
+  if (/\/(docs?|documentation|quickstart|guide|guides|cli|sdk|api-reference)\b/.test(p)) return true;
+  if (/\/agent-cli\b/i.test(p)) return true;
+  if (/\/download\/agent-cli/i.test(p)) return true;
+  return false;
 }
 
 /** Satellite / helper casks that share a vendor domain with the main product. */
@@ -230,6 +233,13 @@ export async function matchOfficialCaskByHomepage(
       const brandTldFlex = coresMatch && tokenIsBrand;
 
       if (exactDomain || brandTldFlex) {
+        if (preferredName) {
+          const prefSet = new Set(expandPreferredCaskTokens(preferredName));
+          const originalToken = toCaskToken(preferredName);
+          const exactOriginal = originalToken === toCaskToken(info.token || token);
+          const related = preferredRelatedToToken(prefSet, info.token || token);
+          if (!exactOriginal && !related) continue;
+        }
         return {
           token: info.token || token,
           version: info.version,
