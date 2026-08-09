@@ -17,7 +17,7 @@
 ## Core Mandates & Rules
 
 ### Monitored Allbrew Install Batching Rule
-Any `monitored-allbrew-install-batch` solution must have a real agent in the loop providing dynamic judgement and live test/fix/retest/save-fix loop as laid out in the `.agents/skills/monitored-allbrew-install/` skill (per URL). For parent/orchestrator + child-agent queue exhaustion, use [`.agents/skills/monitored-install-batch/`](./.agents/skills/monitored-install-batch/) — harness-agnostic playbook for `tests/monitored-install-batch/state/`, wave launch, nudge/blocked handling, and fix-package post-process. The idea is to implement the single-URL skill's logic, in batches, with greater concurrency and isolation than running it only in the user's local workspace.
+Any `monitored-install-batch` solution must have a real agent in the loop providing dynamic judgement and live test/fix/retest/save-fix loop as laid out in the `.agents/skills/monitored-install/` skill (per URL). For parent/orchestrator + child-agent queue exhaustion, use [`.agents/skills/monitored-install-batch/`](./.agents/skills/monitored-install-batch/) — harness-agnostic playbook for `tests/monitored-install-batch/state/`, wave launch, nudge/blocked handling, and fix-package post-process. The idea is to implement the single-URL skill's logic, in batches, with greater concurrency and isolation than running it only in the user's local workspace.
 > - [`allbrew-agent-skills.md`](./.agents/plans/allbrew-agent-skills.md) — proposed agent skills for orientation, diagnosis, and repair (12 skills across understand/diagnose/fix tiers)
 
 ## Project overview

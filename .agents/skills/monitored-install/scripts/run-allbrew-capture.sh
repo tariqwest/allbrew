@@ -22,7 +22,7 @@ Options:
   -h, --help            Show help
 
 Note: Do not pass --service / --no-service here. allbrew auto-detects service
-blocks; the monitored-allbrew-install skill compares that decision to an
+blocks; the monitored-install skill compares that decision to an
 independent agent expectation.
 EOF
 }

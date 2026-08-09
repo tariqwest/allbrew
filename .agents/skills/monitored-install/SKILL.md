@@ -1,5 +1,5 @@
 ---
-name: monitored-allbrew-install
+name: monitored-install
 description: This skill should be used when the user asks to "install with allbrew and monitor", "troubleshoot allbrew install", "allbrew this URL end-to-end", "monitored allbrew install", "fix allbrew generation for a URL", or wants a URL run through the Homebrew-installed allbrew CLI with error monitoring, post-install verification, codebase fix + release if needed, and a final retry. Accepts a package/repo/app URL and drives the full generate → install → verify → (fix → release → retry) loop.
 metadata:
   version: "1.2"
@@ -58,7 +58,7 @@ Stop when all of the following hold:
 4. Load `GITHUB_TOKEN` for releases from the repo `.env` or environment without printing the secret. See `references/release-and-retry.md`.
 5. Initialize a run record (required):
    ```bash
-   bun .agents/skills/monitored-allbrew-install/scripts/init-run-record.mjs \
+   bun .agents/skills/monitored-install/scripts/init-run-record.mjs \
      --url "<url>" --slug "<slug>"
    # capture RUN_DIR=... and RUN_ID=... from output
    ```
@@ -125,7 +125,7 @@ If service evidence is ambiguous, set `expected.service` to `null` / unclear and
 3. Capture stdout+stderr under `$RUN_DIR/allbrew-initial.log` (preferred) or `/tmp/allbrew-monitor-<slug>-<ts>.log` then copy into the run dir.
 4. Run via the capture helper when available (log **into** the run dir):
    ```bash
-   .agents/skills/monitored-allbrew-install/scripts/run-allbrew-capture.sh \
+   .agents/skills/monitored-install/scripts/run-allbrew-capture.sh \
      --url "<url>" \
      --name "<slug>" \
      --log "$RUN_DIR/allbrew-initial.log" \
@@ -290,7 +290,7 @@ Follow `references/release-and-retry.md` in full. Summary:
 4. Optionally enrich `outcome.json` verification commands/outputs before finalize.
 5. Finalize index + symlink:
    ```bash
-   bun .agents/skills/monitored-allbrew-install/scripts/finalize-run-record.mjs \
+   bun .agents/skills/monitored-install/scripts/finalize-run-record.mjs \
      --run-dir "$RUN_DIR" \
      --status success|fixed_success|failed|blocked \
      --failure-class generate_fail|brew_fail|service_mismatch|prompt_hang|env_fail|null \

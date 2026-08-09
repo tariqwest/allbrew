@@ -64,7 +64,7 @@ These functions are inherently project-specific and remain in allbrew:
 - **`patch-coordinator.mjs`** — host-side fix-package patch application
 - **`reconcile-fix-packages.mjs`** — fix-package post-processing
 - **`bootstrap-workers.mjs`** / **`bootstrap-one-worker.mjs`** — per-worker VM setup
-- **The monitored-allbrew-install and monitored-install-batch skills** — agent judgment/fix loop playbooks
+- **The monitored-install and monitored-install-batch skills** — agent judgment/fix loop playbooks
 
 ## Implementation Steps
 
@@ -203,7 +203,7 @@ These functions are inherently project-specific and remain in allbrew:
 
 **Steps:**
 
-1. **API difference:** allbrew's `initRunRecordHost` shells out to `.agents/skills/monitored-allbrew-install/scripts/init-run-record.mjs` via `spawnSync`. The harness's `initBatchRunRecord` is a direct function that creates the run directory + `metadata.json`. The harness version accepts `{ item, runsRoot, workerId, batchMeta }` and returns `{ runDir, runId }`.
+1. **API difference:** allbrew's `initRunRecordHost` shells out to `.agents/skills/monitored-install/scripts/init-run-record.mjs` via `spawnSync`. The harness's `initBatchRunRecord` is a direct function that creates the run directory + `metadata.json`. The harness version accepts `{ item, runsRoot, workerId, batchMeta }` and returns `{ runDir, runId }`.
 
 2. **Migration approach:** Replace the `spawnSync`-based `initRunRecordHost` with a direct call to the harness's `initBatchRunRecord`. The run record format should be compatible (both write `metadata.json` with item + batch metadata).
 
@@ -245,7 +245,7 @@ These functions are inherently project-specific and remain in allbrew:
    - `--mark-done` → `q.markDone(name, status)`
    - `--status` → `q.status()`
 
-3. **Keep `basePrompt()` and `perUrlPrompt()` in allbrew** — these are project-specific (reference the monitored-allbrew-install skill, allbrew repo paths, allbrew-specific isolation rules).
+3. **Keep `basePrompt()` and `perUrlPrompt()` in allbrew** — these are project-specific (reference the monitored-install skill, allbrew repo paths, allbrew-specific isolation rules).
 
 4. **`slugify` difference:** allbrew's `slugify` truncates to 50 chars; the harness version truncates to 60. Verify this doesn't break existing queue state. If needed, the harness version can be updated to accept a max length parameter, or allbrew can keep its own `slugify` for backward compat with existing queue files.
 
@@ -416,7 +416,7 @@ Update the following in allbrew:
 
 2. **`.agents/skills/monitored-install-batch/SKILL.md`** — update references from `lib/vm-pool.mjs` to `macos-testing-harness/vm-pool`. Update the layout table.
 
-3. **`.agents/skills/monitored-allbrew-install/SKILL.md`** — update if it references `batch-helpers.mjs` functions that have been migrated.
+3. **`.agents/skills/monitored-install/SKILL.md`** — update if it references `batch-helpers.mjs` functions that have been migrated.
 
 4. **`tests/monitored-install-batch/README.md`** — update the architecture description.
 
@@ -445,7 +445,7 @@ Update the following in allbrew:
 ### Modify (documentation)
 - `AGENTS.md`
 - `.agents/skills/monitored-install-batch/SKILL.md`
-- `.agents/skills/monitored-allbrew-install/SKILL.md`
+- `.agents/skills/monitored-install/SKILL.md`
 - `tests/monitored-install-batch/README.md`
 - `package.json` (harness pin)
 

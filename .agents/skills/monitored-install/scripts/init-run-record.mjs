@@ -2,7 +2,7 @@
 /**
  * Create a monitored-install run directory under tests/monitored-install-runs/.
  * Usage:
- *   bun .agents/skills/monitored-allbrew-install/scripts/init-run-record.mjs \
+ *   bun .agents/skills/monitored-install/scripts/init-run-record.mjs \
  *     --url <url> [--slug <name>] [--allbrew-bin <path>] [--repo-root <path>]
  * Prints: RUN_DIR=...
  *         RUN_ID=...
