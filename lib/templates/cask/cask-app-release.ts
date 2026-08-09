@@ -3,6 +3,7 @@ import type { CaskAppReleasePayload } from "../../template-payload.ts";
 export default function renderCaskAppRelease(
   p: CaskAppReleasePayload,
 ): string {
+  const containerBlock = p.containerBlock || "";
   return `cask "${p.name}" do
   version "${p.version}"
   sha256 "${p.sha256}"
@@ -12,7 +13,7 @@ export default function renderCaskAppRelease(
   desc "${p.desc}"
   homepage "${p.homepage}"
 
-${p.containerBlock}  app "${p.appName}"
+${containerBlock}  app "${p.appName}"
 
 ${p.livecheckBlock}${p.zapBlock}end
 `;
