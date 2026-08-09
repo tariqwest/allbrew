@@ -3,7 +3,7 @@
 Parent/orchestrator skill for exhausting the allbrew **monitored-install** URL queue with parallel **child agents**.
 
 - **This skill** = parent: queue state, wave launch, monitor, nudge, mark-done, fix-package post-process  
-- **[monitored-allbrew-install](../monitored-allbrew-install/)** = child: one URL, Phases 0→5, RUN_DIR records  
+- **[monitored-install](../monitored-install/)** = child: one URL, Phases 0→5, RUN_DIR records  
 
 Harness-agnostic: any parent that can run shell, start N children, message them by run id, and receive completion/blocker events can follow `SKILL.md`.
 
@@ -106,6 +106,6 @@ Sample parent prompts: `evals/evals.json`.
 ## See also
 
 - [SKILL.md](./SKILL.md) — full orchestrator instructions  
-- [monitored-allbrew-install](../monitored-allbrew-install/SKILL.md) — single-URL child skill  
+- [monitored-install](../monitored-install/SKILL.md) — single-URL child skill  
 - [tests/monitored-install-batch/README.md](../../../tests/monitored-install-batch/README.md) — VM pool, workers, reconcile CLI  
 - [AGENTS.md](../../../AGENTS.md) — project batching rule  

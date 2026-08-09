@@ -27,7 +27,7 @@ CI=1 ALLBREW_NONINTERACTIVE=1 bun run bin/allbrew.ts "<url>" --name "<slug>" \
 
 Read and follow:
 
-- `.agents/skills/monitored-allbrew-install/SKILL.md`
+- `.agents/skills/monitored-install/SKILL.md`
 - `references/run-records.md`
 - `references/failure-playbook.md`
 - `references/release-and-retry.md` (**local validation only** in batch mode)

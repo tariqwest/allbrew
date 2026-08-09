@@ -18,7 +18,7 @@ metadata:
 
 # Monitored-install batch (orchestrator)
 
-Parent/orchestrator playbook for exhausting `tests/monitored-install-batch/state/agent-queue.json` by running **child agents**, each handling **one** URL via `.agents/skills/monitored-allbrew-install`.
+Parent/orchestrator playbook for exhausting `tests/monitored-install-batch/state/agent-queue.json` by running **child agents**, each handling **one** URL via `.agents/skills/monitored-install`.
 
 Deterministic workers (`run-orchestrator.mjs` / `worker-loop.mjs`) are a separate path. This skill is the **agent-harness** path: you are the parent; children do judgment + VM install + optional Option A fixes.
 
@@ -46,7 +46,7 @@ This skill is **harness-agnostic**. It assumes only that the parent can (1) run 
 | `…/child-agent-privileges.DRAFT.toml` | Required child privileges + sample allow/deny patterns (no named profile) |
 | `…/worktrees/` | Disposable fix worktrees only |
 | `tests/monitored-install-runs/<runId>/` | Per-URL skill records (canonical) |
-| `.agents/skills/monitored-allbrew-install/` | **Child** skill |
+| `.agents/skills/monitored-install/` | **Child** skill |
 
 Work from the allbrew repo root (e.g. `~/Developer/allbrew` or the active clone). `cd` there before every batch command.
 
@@ -236,7 +236,7 @@ Prefer event-driven resume (messages + lifecycle) over tight polling. Between ev
 
 Each child:
 
-1. Follows **monitored-allbrew-install** (local validation only for release docs).
+1. Follows **monitored-install** (local validation only for release docs).
 2. Uses **only** its canonical url/slug.
 3. Runs full install/verify/uninstall via:
 
@@ -291,7 +291,7 @@ Apply only under `tests/monitored-install-batch/worktrees/`. Never promote to `m
 | Nudge text, 3-strike stop, 15-min wall, `skipped` vs fail | `references/nudge-and-blocked.md` |
 | Child isolation + completion schema | `references/child-contract.md` |
 | Child privileges + sample allow/deny patterns | `assets/child-agent-privileges.DRAFT.toml` |
-| Single-URL phases | `.agents/skills/monitored-allbrew-install/SKILL.md` |
+| Single-URL phases | `.agents/skills/monitored-install/SKILL.md` |
 
 ## Handoff / takeover — unwinding in-flight and leftover state (including crash / messy shutdown)
 

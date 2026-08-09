@@ -9,7 +9,7 @@
 # shell commands. Adapt syntax to your harness; denylist usually wins over allow.
 
 [meta]
-purpose = "monitored-allbrew-install batch child agents"
+purpose = "monitored-install batch child agents"
 audience = "parent/orchestrator agent + human operator"
 notes = """
 Children repeatedly hit command-approval gates on:
@@ -80,13 +80,13 @@ host_brew_install_as_success = true
 # RECOMMENDED harness shape: execute-commands = always-allow (or equivalent)
 # for the batch policy, THEN layer allowlist regexes; keep denylist strict.
 
-comprehensive_allowlist_regex = '''^(?:(?:LUME_[A-Z_]+=\S+\s+)*(?:CI=1\s+)?(?:ALLBREW_NONINTERACTIVE=1\s+)?(?:TH_[A-Z_]+=\S+\s+)*(?:PATH=\S+\s+)*)?(?:cd\s+\S+\s+&&\s+)?(?:bun(\s+run)?\s+(bin/allbrew\.ts|test|check|tests/monitored-install-batch/|\.agents/skills/monitored-allbrew-install/|batch:reconcile)|(?:brew)\s+(info|list|update|outdated|search|leaves|deps|uses|cat|formula|cask|install|uninstall|reinstall|upgrade|services)(\s.*)?|(?:git)\s+(status|diff|log|show|branch|checkout|switch|add|commit|fetch|pull|push|worktree|apply|rev-parse|ls-files|stash|restore|reset|clone|remote|config)(\s.*)?|(?:curl|wget)\s+.*|(?:ssh|rsync|scp)\s+.*|(?:mktemp|mkdir|ls|find|rg|grep|cat|head|tail|tee|cp|mv|chmod|touch|dirname|basename|pwd|which|env|printenv|date|stat|wc|sort|uniq|xargs|sed|awk|python3|node)(\s.*)?|(?:lume)(\s.*)?|(?:true|echo|printf|test|\[)(\s.*)?)$'''
+comprehensive_allowlist_regex = '''^(?:(?:LUME_[A-Z_]+=\S+\s+)*(?:CI=1\s+)?(?:ALLBREW_NONINTERACTIVE=1\s+)?(?:TH_[A-Z_]+=\S+\s+)*(?:PATH=\S+\s+)*)?(?:cd\s+\S+\s+&&\s+)?(?:bun(\s+run)?\s+(bin/allbrew\.ts|test|check|tests/monitored-install-batch/|\.agents/skills/monitored-install/|batch:reconcile)|(?:brew)\s+(info|list|update|outdated|search|leaves|deps|uses|cat|formula|cask|install|uninstall|reinstall|upgrade|services)(\s.*)?|(?:git)\s+(status|diff|log|show|branch|checkout|switch|add|commit|fetch|pull|push|worktree|apply|rev-parse|ls-files|stash|restore|reset|clone|remote|config)(\s.*)?|(?:curl|wget)\s+.*|(?:ssh|rsync|scp)\s+.*|(?:mktemp|mkdir|ls|find|rg|grep|cat|head|tail|tee|cp|mv|chmod|touch|dirname|basename|pwd|which|env|printenv|date|stat|wc|sort|uniq|xargs|sed|awk|python3|node)(\s.*)?|(?:lume)(\s.*)?|(?:true|echo|printf|test|\[)(\s.*)?)$'''
 
 allowlist = [
   # --- marathon core ---
   'LUME_[A-Z_]+=\S+\s+bun\s+tests/monitored-install-batch/.*',
   'bun\s+tests/monitored-install-batch/.*',
-  'bun\s+\.agents/skills/monitored-allbrew-install/.*',
+  'bun\s+\.agents/skills/monitored-install/.*',
   'bun\s+run\s+bin/allbrew\.ts(\s.*)?',
   'CI=1\s+ALLBREW_NONINTERACTIVE=1\s+bun\s+run\s+bin/allbrew\.ts(\s.*)?',
   '(?:CI=1\s+)?(?:ALLBREW_NONINTERACTIVE=1\s+)?bun\s+run\s+bin/allbrew\.ts(\s.*)?',

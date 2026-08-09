@@ -274,7 +274,7 @@ async function runOne(session, entry, idx, total) {
       {
         inputShape: { url, name, source: entry.source },
         expected: { packageName: slug },
-        notes: "batch monitored-allbrew-install in Lume VM th-allbrew",
+        notes: "batch monitored-install in Lume VM th-allbrew",
         codebaseObserved: {},
         deltas: [],
       },

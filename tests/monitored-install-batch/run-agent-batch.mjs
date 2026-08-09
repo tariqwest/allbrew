@@ -4,7 +4,7 @@
  *
  * Unlike run-orchestrator.mjs (deterministic heuristics), this emits a queue of
  * per-URL work items for the parent Oz agent to spawn via run_agents, each
- * following monitored-allbrew-install with real judgment + fix intelligence.
+ * following monitored-install with real judgment + fix intelligence.
  *
  * Usage (from parent agent or human):
  *   bun tests/monitored-install-batch/run-agent-batch.mjs --print-wave
@@ -38,7 +38,7 @@ const WAVE_PATH = join(STATE_DIR, "agent-wave.json");
 const AGENT_INDEX = join(STATE_DIR, "agent-index.jsonl");
 const SKILL_PATH = join(
   REPO_ROOT,
-  ".agents/skills/monitored-allbrew-install/SKILL.md",
+  ".agents/skills/monitored-install/SKILL.md",
 );
 
 function envInt(name, fallback) {
@@ -193,7 +193,7 @@ function perUrlPrompt(item) {
 
 ## Steps
 1. cd ${REPO_ROOT}
-2. Read the monitored-allbrew-install SKILL.md and execute Phases 0→5 for THIS url only.
+2. Read the monitored-install SKILL.md and execute Phases 0→5 for THIS url only.
 3. Init run record with slug \`${item.slug}\`.
 4. Independent judgment BEFORE allbrew (real docs fetch).
 5. Install via Homebrew allbrew if available, else document env_fail; still try local bun generate for product bugs.

@@ -52,7 +52,7 @@ stableName = agentName  # url-00NN-slug
 
 ## Steps
 1. cd <REPO_ROOT_ABSOLUTE>
-2. Read monitored-allbrew-install SKILL.md; Phases 0→5 for THIS url only.
+2. Read monitored-install SKILL.md; Phases 0→5 for THIS url only.
 3. Init run record with slug `<slug>`.
 4. Independent judgment BEFORE allbrew (real docs fetch).
 5. Full install/verify/uninstall MUST use:
@@ -123,5 +123,5 @@ Docs-mode skips apply; patch-mode only inside `worktrees/`.
 
 ## Related skills
 
-- **monitored-allbrew-install** — single-URL child work
+- **monitored-install** — single-URL child work
 - **automate-vm-batch** — VM provision / locks / deterministic multi-worker (use when cold-starting infrastructure)

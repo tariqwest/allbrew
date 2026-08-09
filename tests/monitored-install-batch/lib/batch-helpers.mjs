@@ -13,7 +13,7 @@ const currentDir = typeof import.meta.dir === "string" ? import.meta.dir : dirna
 
 export const REPO_ROOT = resolve(currentDir, "../../..");
 export const BATCH_DIR = resolve(currentDir, "..");
-export const SKILL_SCRIPTS = join(REPO_ROOT, ".agents/skills/monitored-allbrew-install/scripts");
+export const SKILL_SCRIPTS = join(REPO_ROOT, ".agents/skills/monitored-install/scripts");
 export const RUNS_ROOT = join(REPO_ROOT, "tests/monitored-install-runs");
 export const BATCH_RUNS = join(BATCH_DIR, "runs");
 export const BATCH_LOGS = join(BATCH_DIR, "logs");

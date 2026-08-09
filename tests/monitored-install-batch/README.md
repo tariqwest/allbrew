@@ -1,6 +1,6 @@
 # Monitored install batch (skill-aligned)
 
-Runs allbrew against URLs from `urls-shuffled.json` inside the Lume e2e VM, with a loop closer to `.agents/skills/monitored-allbrew-install`.
+Runs allbrew against URLs from `urls-shuffled.json` inside the Lume e2e VM, with a loop closer to `.agents/skills/monitored-install`.
 
 ## Agent orchestration skill
 
