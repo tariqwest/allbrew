@@ -421,6 +421,11 @@ describe("isAppAsset", () => {
     expect(isAppAsset("foo-linux-x64.zip")).toBe(false);
   });
 
+  it("rejects browser-extension zips (e.g. opencli-extension-v1.0.22.zip)", () => {
+    expect(isAppAsset("opencli-extension-v1.0.22.zip")).toBe(false);
+    expect(isAppAsset("my-extension-2.0.0.zip")).toBe(false);
+  });
+
   it("rejects non-archive files", () => {
     expect(isAppAsset("README.md")).toBe(false);
   });
