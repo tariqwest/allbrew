@@ -12,6 +12,9 @@ import {
   pickAutoCandidate,
   scoreCandidateUrl,
   enrichGithubReleaseAssets,
+  enrichSparkleAppcast,
+  extractAppcastFeedUrls,
+  extractEnclosureUrlsFromAppcastXml,
   parseGithubRepoHome,
   isImplausibleArtifactUrl,
   isDownloadHubPath,
@@ -729,6 +732,46 @@ describe("MAS iTunes fallback (auth-walled marketing pages)", () => {
     });
     expect(result.chosen?.kind).toBe("mac-app-store");
     expect(result.chosen?.url).toContain("id6739781207");
+  });
+});
+
+describe("sparkle appcast enrichment", () => {
+  it("extracts appcast feed URLs from HTML/JS", () => {
+    const html = `
+      <script>
+        res = await fetch("https://r2.aizen.win/appcast.xml");
+      </script>
+    `;
+    const feeds = extractAppcastFeedUrls(html, "https://aizen.win/");
+    expect(feeds).toContain("https://r2.aizen.win/appcast.xml");
+  });
+
+  it("parses enclosure URLs from appcast XML", () => {
+    const xml = `<?xml version="1.0"?>
+      <rss><channel><item>
+        <enclosure url="https://r2.aizen.win/Aizen-1.0.83.dmg" length="1" type="application/octet-stream" />
+      </item></channel></rss>`;
+    expect(extractEnclosureUrlsFromAppcastXml(xml)).toEqual([
+      "https://r2.aizen.win/Aizen-1.0.83.dmg",
+    ]);
+  });
+
+  it("enriches candidates with DMG from appcast when GitHub has no assets", async () => {
+    const page = "https://aizen.win/";
+    const html = `fetch("https://r2.aizen.win/appcast.xml")`;
+    const list = [
+      scoreCandidateUrl("https://github.com/vivy-company/aizen", page, ["html"]),
+    ];
+    const enriched = await enrichSparkleAppcast(list, page, html, {
+      fetchText: async () => ({
+        body: `<rss><channel><item><enclosure url="https://r2.aizen.win/Aizen-1.0.83.dmg" /></item></channel></rss>`,
+      }),
+    });
+    const dmg = enriched.find((c) => c.url.includes(".dmg"));
+    expect(dmg).toBeTruthy();
+    expect(dmg!.kind).toBe("cask-dmg");
+    expect(dmg!.score).toBeGreaterThan(list[0].score);
+    expect(dmg!.evidence.join(" ")).toMatch(/appcast/);
   });
 });
 

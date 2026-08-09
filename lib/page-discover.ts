@@ -718,6 +718,125 @@ export function parseGithubRepoHome(url: string): { owner: string; repo: string 
 }
 
 /**
+ * Extract Sparkle appcast feed URLs from HTML/JS (common on macOS product sites).
+ */
+export function extractAppcastFeedUrls(html: string, pageUrl: string): string[] {
+  const feeds = new Set<string>();
+  const patterns = [
+    /https?:\/\/[^\s"'<>)\\]]+appcast[^\s"'<>)\\]]*/gi,
+    /["']([^"']*appcast[^"']*\.xml[^"']*)["']/gi,
+    /sparkle:?(?:feed|appcast)[^"'=]*=\s*["']([^"']+)["']/gi,
+  ];
+  for (const re of patterns) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      const raw = (m[1] || m[0] || "").replace(/[),.;]+$/g, "");
+      if (!raw) continue;
+      try {
+        let abs = raw;
+        if (raw.startsWith("//")) abs = "https:" + raw;
+        else if (!/^https?:\/\//i.test(raw)) abs = new URL(raw, pageUrl).href;
+        else abs = new URL(raw).href;
+        assertSafePublicFetchUrl(abs);
+        if (/\.xml(?:\?|#|$)/i.test(abs) || /appcast/i.test(abs)) feeds.add(abs);
+      } catch {
+        /* skip */
+      }
+    }
+  }
+  return [...feeds];
+}
+
+/**
+ * Parse Sparkle/RSS appcast XML and return enclosure URLs (prefer .dmg).
+ */
+export function extractEnclosureUrlsFromAppcastXml(xml: string): string[] {
+  const urls: string[] = [];
+  const encRe = /<enclosure\b[^>]*\burl\s*=\s*["']([^"']+)["'][^>]*>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = encRe.exec(xml)) !== null) {
+    const u = m[1].trim();
+    if (u) urls.push(u);
+  }
+  // fallback: bare dmg urls in feed
+  if (!urls.length) {
+    const bare = xml.match(/https?:\/\/[^\s"'<>]+\.(?:dmg|pkg|zip)/gi) || [];
+    for (const u of bare) urls.push(u.replace(/[),.;]+$/g, ""));
+  }
+  return urls;
+}
+
+/**
+ * When a marketing page references a Sparkle appcast, fetch enclosures so
+ * direct DMG casks beat empty GitHub release tarballs.
+ */
+export async function enrichSparkleAppcast(
+  candidates: DiscoverCandidate[],
+  pageUrl: string,
+  html: string,
+  opts: {
+    log?: (msg: string) => void;
+    fetchText?: (url: string) => Promise<{ body: string }>;
+    maxFeeds?: number;
+  } = {},
+): Promise<DiscoverCandidate[]> {
+  const log = opts.log || (() => {});
+  const maxFeeds = opts.maxFeeds ?? 3;
+  const hasDmg = candidates.some(
+    (c) => c.kind === "cask-dmg" || /\.dmg(?:\?|#|$)/i.test(c.url),
+  );
+  if (hasDmg) return candidates;
+
+  const feeds = extractAppcastFeedUrls(html, pageUrl);
+  if (!feeds.length) return candidates;
+
+  let fetchText = opts.fetchText;
+  if (!fetchText) {
+    fetchText = async (url: string) => {
+      const fetched = await fetchTextLimited(url, {
+        maxBytes: 1_500_000,
+        timeoutMs: 15_000,
+      });
+      return { body: fetched.body };
+    };
+  }
+
+  const extras: DiscoverCandidate[] = [];
+  for (const feed of feeds.slice(0, maxFeeds)) {
+    try {
+      log(`Fetching Sparkle appcast: ${feed}`);
+      const { body } = await fetchText(feed);
+      const enclosures = extractEnclosureUrlsFromAppcastXml(body);
+      for (const assetUrl of enclosures) {
+        try {
+          assertSafePublicFetchUrl(assetUrl);
+        } catch {
+          continue;
+        }
+        if (!/\.(dmg|pkg|zip)(?:\?|#|$)/i.test(assetUrl)) continue;
+        if (
+          /windows|win32|linux|\.exe/i.test(assetUrl) &&
+          !/mac|darwin|osx|\.dmg/i.test(assetUrl)
+        ) {
+          continue;
+        }
+        const scored = scoreCandidateUrl(assetUrl, pageUrl, [
+          "sparkle-appcast",
+          `feed:${feed}`,
+        ]);
+        scored.score += 30;
+        scored.evidence.push("appcast-enrichment");
+        extras.push(scored);
+      }
+    } catch (err: any) {
+      log(`appcast enrich ${feed}: ${err?.message || err}`);
+    }
+  }
+  if (!extras.length) return candidates;
+  return mergeCandidates(candidates, extras);
+}
+
+/**
  * When a marketing page only links GitHub repos (and maybe curl|bash), expand
  * latest-release DMG/PKG/ZIP app assets so macOS desktop installs win over
  * secondary agent install scripts.
@@ -1565,6 +1684,13 @@ export async function discoverPageDownloads(
     candidates = await enrichGithubReleaseAssets(candidates, finalPageUrl, { log });
   } catch {
     /* ignore release enrichment errors */
+  }
+
+  // Tier A.6b: Sparkle appcast feeds (macOS product sites with empty GH release assets)
+  try {
+    candidates = await enrichSparkleAppcast(candidates, finalPageUrl, body, { log });
+  } catch {
+    /* ignore appcast enrichment errors */
   }
 
   // Tier A.7: follow same-site /download hubs when homepage only has nav links
