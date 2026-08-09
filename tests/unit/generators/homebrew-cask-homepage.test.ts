@@ -106,4 +106,20 @@ describe("matchOfficialCaskByHomepage", () => {
     expect(m!.token).toBe("thingsmacsandboxhelper");
   });
 
+  it("returns null for docs subdomain even when registrable domain has an official cask (e.g. docs.warp.dev vs warp GUI cask)", async () => {
+    const m = await matchOfficialCaskByHomepage(
+      "https://docs.warp.dev/cli/quickstart",
+      "warp-agent-cli",
+    );
+    expect(m).toBeNull();
+  });
+
+  it("returns null for documentation-like paths on any host", async () => {
+    const m = await matchOfficialCaskByHomepage(
+      "https://example.com/docs/installation",
+      "some-product",
+    );
+    expect(m).toBeNull();
+  });
+
 });

@@ -45,6 +45,29 @@ function brandCoreLabel(label: string): string {
   return l;
 }
 
+/**
+ * Documentation, support, developer portals, and non-marketing subdomains
+ * should not trigger official cask adoption via homepage domain matching.
+ * E.g. docs.warp.dev describes the Warp Agent CLI; the official cask "warp"
+ * is the GUI app at warp.dev. Matching would install the wrong product.
+ */
+function isDocumentationHost(hostname: string): boolean {
+  const h = String(hostname || "").toLowerCase().replace(/^www\./, "");
+  if (
+    /^(docs?|support|help|learn|developer|dev\.|handbook|guides|status|blog|changelog|gitbook|notion|readme|devdocs)\./.test(
+      h,
+    )
+  )
+    return true;
+  if (/^api\./.test(h)) return true;
+  return false;
+}
+
+function isDocumentationPath(pathname: string): boolean {
+  const p = String(pathname || "").toLowerCase();
+  return /\/(docs?|documentation|quickstart|guide|guides|cli|sdk|api-reference)\b/.test(p);
+}
+
 /** Satellite / helper casks that share a vendor domain with the main product. */
 function isSatelliteHelperToken(token: string): boolean {
   return /(?:mac)?sandboxhelper|sandboxing-helper|helper|companion|uninstaller|quicklook/i.test(
@@ -132,12 +155,26 @@ export async function matchOfficialCaskByHomepage(
   preferredName?: string | null,
 ): Promise<{ token: string; version?: string; homepage?: string } | null> {
   let pageHost = "";
+  let rawHost = "";
+  let rawPath = "";
   try {
-    pageHost = registrableHost(new URL(pageUrl).hostname);
+    const u = new URL(pageUrl);
+    rawHost = u.hostname.toLowerCase().replace(/^www\./, "");
+    rawPath = u.pathname;
+    pageHost = registrableHost(rawHost);
   } catch {
     return null;
   }
   if (!pageHost) return null;
+
+  // Never treat docs/support/developer subdomains or doc-like paths as the
+  // product's marketing homepage for the purpose of adopting an official cask.
+  // The homepage match is intended for the actual product site (e.g. warp.dev),
+  // not docs.warp.dev or similar.
+  if (isDocumentationHost(rawHost) || isDocumentationPath(rawPath)) {
+    return null;
+  }
+
   const pageLabel = hostSldLabel(pageHost);
   const pageCore = brandCoreLabel(pageLabel);
 
