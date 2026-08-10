@@ -243,6 +243,12 @@ Between waves the parent runs `bun tests/monitored-install-batch/cleanup-post-ru
 
    The parent marks `bun tests/monitored-install-batch/run-agent-batch.mjs --mark-done <agentName> <status>` and later reconciles patches without ever having host-polluted `main`.
 
+## Sub-skills
+
+| Sub-skill | When to use |
+|-----------|-------------|
+| [`unblock-myself`](./unblock-myself/SKILL.md) | Child detects itself blocked/stalled (~3min no RUN_DIR/vm-meta progress, `acquiring-prefix` hang, `ENOSPC`, `bootsnap`, or approval gate) and needs to self-diagnose and recover without waiting for parent nudge. See `tests/monitored-install-batch/BLOCKERS.md` (B1–B7). |
+
 ## Anti-patterns (batch-child) — any is a guardrail violation
 
 * Host `brew install`/`brew uninstall`/`allbrew …` on host for any reason (including `CI=1 … --tap $(mktemp -d)` "fast debug") → must be VM

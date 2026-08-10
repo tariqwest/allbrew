@@ -432,6 +432,12 @@ After the unwind:
 
 If you arrived with zero live children and all `running` rows were reaped or marked `failed-agent-runtime`, the next `print-wave` / `print-wave-ensured` will produce a full refill wave (cap `TH_BATCH_CONCURRENCY`) — this is the elegant “catch up from where we left off” handoff. If some orphans are still live, refill only `free = concurrency - liveRunning` slots (e.g. 2 live → 4 new) — never oversubscribe the 3 VM endpoints.
 
+## Sub-skills
+
+| Sub-skill | When to use |
+|-----------|-------------|
+| [`unblock-child`](./unblock-child/SKILL.md) | Parent detects a child blocked/stalled (~3min no progress, VM infra, approval gate, or 15min wall-clock). See `references/nudge-and-blocked.md` + `tests/monitored-install-batch/BLOCKERS.md` (B1–B7). |
+
 ## Done criteria
 
 - No `queued`/`retry` left (or only deferred retries; `skipped` heavy items stay terminal unless the user requeues)
