@@ -51,7 +51,9 @@
     "vm:clone": "macos-test-harness clone",
     "vm:teardown": "macos-test-harness teardown",
     "batch:reconcile-fixes": "node tests/monitored-install-batch/reconcile-fix-packages.mjs",
-    "batch:vm-health": "bun tests/monitored-install-batch/vm-guest-health.mjs"
+    "batch:vm-health": "bun tests/monitored-install-batch/vm-guest-health.mjs",
+    "batch:ops": "bun tests/monitored-install-batch/batch-ops.mjs",
+    "batch:archive": "bun scripts/archive-batch-artifacts.mjs"
   },
   "keywords": [
     "homebrew",
