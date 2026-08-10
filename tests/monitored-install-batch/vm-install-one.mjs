@@ -247,21 +247,36 @@ try {
     `uninstall-${pkg}`,
     { timeout: 300000 },
   );
-  // post-uninstall hygiene: brew cleanup + disk avail so parent can distinguish env_fail (no space) from brew_fail
+  // post-uninstall hygiene: brew cleanup + disk avail + VM ephemera purge so batch doesn't leak
   try {
     const hygiene = await guest(
       h.runAsProjectUser,
       session,
       `${`export PATH="${mountPoint}/bin:$HOME/.bun/bin:$PATH"`}
-brew cleanup --prune=all 2>&1 | tail -5; echo CLEANUP_OK
-df -h / 2>&1 | head -5; echo DF_OK
-brew trust 2>&1 | head -20; echo TRUST_OK`,
+brew services stop --all 2>&1 || true
+brew cleanup --prune=all 2>&1 | tail -10; echo CLEANUP_OK
+brew autoremove 2>&1 | tail -10 || true
+rm -rf /tmp/allbrew-* /private/tmp/allbrew-* 2>/dev/null || true
+rm -rf "$TMPDIR"/allbrew-* 2>/dev/null || true
+rm -rf ~/Library/Caches/Homebrew/* 2>/dev/null || true
+df -h / 2>&1 | head -10; echo DF_OK
+df -h ${mountPoint} 2>&1 | head -10; echo DF_HB_OK
+brew trust 2>&1 | head -20; echo TRUST_OK
+# compact sparsebundle if not mounted (shrinks host qcow2 bloat from brew Cellar churn)
+if ! mount | grep -q " on ${mountPoint} "; then
+  SPARSE="$HOME/Library/LumeHomebrew/homebrew.sparsebundle"
+  if [ -d "$SPARSE" ] && [ -f "$SPARSE/Info.plist" ]; then
+    echo "compact start $SPARSE"
+    hdiutil compact "$SPARSE" 2>&1 | tail -20; echo COMPACT_OK
+  fi
+fi
+`,
       `hygiene-${pkg}`,
-      { timeout: 120000 },
+      { timeout: 180000 },
     );
     writeFileSync(hostLog + ".hygiene.txt", hygiene.stdout || "");
     const dfM = (hygiene.stdout || "").match(/\/dev\/\S+\s+\S+\s+\S+\s+(\S+)\s+\d+%/);
-    writeMeta({ phase: "uninstalled", pkg, verifyOk, exitCode, hygiene: (hygiene.stdout || "").slice(0, 800), diskAvail: dfM ? dfM[1] : null });
+    writeMeta({ phase: "uninstalled", pkg, verifyOk, exitCode, hygiene: (hygiene.stdout || "").slice(0, 1000), diskAvail: dfM ? dfM[1] : null });
   } catch {
     writeMeta({ phase: "uninstalled", pkg, verifyOk, exitCode });
   }

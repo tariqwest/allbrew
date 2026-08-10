@@ -203,6 +203,27 @@ Batch children **never** `git push origin main`, `git push --force`, or `bun run
    but the batch parent's `--mark-done` is authoritative.
 
 5. **Report to parent** (harness message / status event) — include VM barrier state:
+   ```bash
+   # (harness delivers COMPLETION with vmHelperUsed, endpointId, poolWaitMs, etc.)
+   ```
+   The parent marks `bun tests/monitored-install-batch/run-agent-batch.mjs --mark-done <agentName> <status>` and later reconciles patches without ever having host-polluted `main`.
+
+6. **Post-run cleanup — remove traces/side-effects/ephemera (host + VM) — MUST run before child exits:**
+   ```bash
+   # Host: remove disposable worktree (patch already exported to $RUN_DIR/fix-package + fix-packages/<slug>)
+   git worktree remove --force "$WT" 2>&1 || rm -rf "$WT"
+   git worktree prune 2>&1; rm -rf /private/tmp/allbrew-wt-* 2>&1 || true
+   # Host: brew cache + tmp (safe, host never installs)
+   brew cleanup --prune=all 2>&1 | tail -5; rm -rf /tmp/allbrew-* 2>&1 || true
+   # Host: parent reaper also runs tests/monitored-install-batch/cleanup-post-run.mjs --host-only
+   bun tests/monitored-install-batch/cleanup-post-run.mjs --host-only 2>&1 | tail -20
+   ```
+   VM ephemera (`brew services stop --all`, `brew cleanup --prune=all`, `brew autoremove`, `rm -rf /tmp/* $TMPDIR/* ~/Library/Caches/*`, `hdiutil compact` of sparsebundle when not mounted, `df -h` hygiene) is already handled inside `vm-install-one.mjs`'s post-uninstall `finally` (see `vm-install-one.mjs: hygiene` block). Verify `hostClean=true` and `vmMeta.hygiene` contains `CLEANUP_OK`/`DF_OK`. Leave `RUN_DIR` + `fix-package` for archiving; worktree itself is ephemera and must be removed per-item. Do not report COMPLETION until cleanup is done.
+
+## Cleanup verification (parent reaper between waves)
+Between waves the parent runs `bun tests/monitored-install-batch/cleanup-post-run.mjs --host-only` and `bun tests/monitored-install-batch/vm-guest-health.mjs --clear-stale` to reap orphaned `worktrees/*` (prunable), `/private/tmp/allbrew-wt-*`, and `vm-mutex-*.lockdir` where holder pid is dead. Confirm `git worktree list | grep prunable` is empty and `vm-guest-health` shows `usable` >0 before next wave.
+
+## Report template (for harness)
    ```
    COMPLETION launchName=… agentName=… idx=…
    URL: …
