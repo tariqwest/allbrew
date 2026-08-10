@@ -1,0 +1,136 @@
+diff --git a/lib/generators/gem-package.ts b/lib/generators/gem-package.ts
+index 642edfa..829bb61 100644
+--- a/lib/generators/gem-package.ts
++++ b/lib/generators/gem-package.ts
+@@ -39,6 +39,37 @@ export async function collectGemPackagePayload(
+ 
+   const urlLines = `  url ${rubyString(downloadUrl)}\n  sha256 ${rubyString(sha256)}\n  version ${rubyString(version)}\n`;
+ 
++  let primaryBin: string | null = options.binName || null;
++  let hasExecutable = false;
++  if (!primaryBin) {
++    try {
++      const exes = await fetchGemExecutables(downloadUrl);
++      if (exes.length > 0) {
++        primaryBin = exes[0];
++        hasExecutable = true;
++      }
++    } catch {
++      // fall back
++    }
++  } else {
++    hasExecutable = true;
++  }
++  if (!primaryBin) primaryBin = gemName || name;
++  if (!hasExecutable) {
++    const exesFallback = await fetchGemExecutables(downloadUrl).catch(() => [] as string[]);
++    hasExecutable = exesFallback.length > 0;
++    if (hasExecutable) primaryBin = exesFallback[0];
++  }
++
++  const testBinName = rubyEscape(primaryBin);
++  let testCommand: string;
++  if (hasExecutable) {
++    testCommand = `shell_output("#{bin}/${testBinName} --version")`;
++  } else {
++    const requireName = gemName.replace(/-/g, "/");
++    testCommand = `shell_output("GEM_HOME=#{libexec} ruby -r ${requireName} -e \\"puts Gem.loaded_specs['${gemName}'].version\\"")`;
++  }
++
+   return {
+     template: "gem_package",
+     name,
+@@ -51,9 +82,8 @@ export async function collectGemPackagePayload(
+     urlLines,
+     livecheckBlock: rubyGemsLivecheckBlock(gemName),
+     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+-    // Gem executables usually match the gem name (underscores), not the
+-    // hyphenated Homebrew formula token (e.g. license_finder vs license-finder).
+-    testBinName: rubyEscape(options.binName || gemName || name),
++    testBinName,
++    testCommand,
+     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+   };
+ }
+@@ -89,6 +119,56 @@ async function fetchRubyGemsData(gemName: string) {
+   };
+ }
+ 
++async function fetchGemExecutables(gemUrl: string): Promise<string[]> {
++  try {
++    const res = await fetch(gemUrl, { headers: { "User-Agent": "allbrew/1.0" }, signal: AbortSignal.timeout(30000) });
++    if (!res.ok) return [];
++    const buf = await res.arrayBuffer();
++    const tmp = await import("node:fs/promises");
++    const os = await import("node:os");
++    const path = await import("node:path");
++    const dir = await tmp.mkdtemp(path.join(os.tmpdir(), "allbrew-gem-"));
++    const gemPath = path.join(dir, "pkg.gem");
++    await tmp.writeFile(gemPath, Buffer.from(buf));
++    try {
++      const zlib = await import("node:zlib");
++      const fs = await import("node:fs");
++      const gzPath = path.join(dir, "metadata.gz");
++      const { execSync } = await import("node:child_process");
++      execSync(`tar -xzf ${JSON.stringify(gemPath)} -C ${JSON.stringify(dir)} 2>/dev/null`, { timeout: 10000 });
++      if (!fs.existsSync(gzPath)) {
++        await tmp.rm(dir, { recursive: true, force: true });
++        return [];
++      }
++      const gz = fs.readFileSync(gzPath);
++      const yaml = zlib.gunzipSync(gz).toString("utf8");
++      const exes: string[] = [];
++      const m = yaml.match(/executables:\s*\n((?:- \s*\S+\s*\n?)+)/);
++      if (m) {
++        for (const line of m[1].split("\n")) {
++          const mm = line.match(/-\s*(\S+)/);
++          if (mm) exes.push(mm[1]);
++        }
++      } else {
++        const inline = yaml.match(/executables:\s*\[([^\]]*)\]/);
++        if (inline) {
++          for (const tok of inline[1].split(",")) {
++            const t = tok.trim().replace(/^["']|["']$/g, "");
++            if (t) exes.push(t);
++          }
++        }
++      }
++      await tmp.rm(dir, { recursive: true, force: true });
++      return exes;
++    } catch {
++      try { await tmp.rm(dir, { recursive: true, force: true }); } catch {}
++      return [];
++    }
++  } catch {
++    return [];
++  }
++}
++
+ function rubyGemsLivecheckBlock(gemName: string) {
+   const base = process.env.RUBYGEMS_URL || "https://rubygems.org";
+   const url = `${base}/api/v1/gems/${encodeURIComponent(gemName)}.json`;
+diff --git a/lib/template-payload.ts b/lib/template-payload.ts
+index d25e32b..4f8400d 100644
+--- a/lib/template-payload.ts
++++ b/lib/template-payload.ts
+@@ -195,6 +195,7 @@ export type GemPackagePayload = FormulaCommonFields & {
+   licenseLine: string;
+   urlLines: string;
+   livecheckBlock: string;
++  testCommand: string;
+ };
+ 
+ export type MintPackagePayload = FormulaCommonFields & {
+diff --git a/lib/templates/formula/gem-package.ts b/lib/templates/formula/gem-package.ts
+index feb0aba..9e46b30 100644
+--- a/lib/templates/formula/gem-package.ts
++++ b/lib/templates/formula/gem-package.ts
+@@ -14,7 +14,7 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
+   end
+ 
+ ${p.serviceBlock}  test do
+-    assert_match version.to_s, shell_output("#{bin}/${p.testBinName} --version")
++    assert_match version.to_s, ${p.testCommand}
+   end
+ end
+ `;

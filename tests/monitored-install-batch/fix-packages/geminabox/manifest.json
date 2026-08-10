@@ -1,0 +1,9 @@
+{
+  "slug": "geminabox",
+  "url": "https://rubygems.org/gems/geminabox",
+  "generator": "gem-package",
+  "failureClass": "brew_fail",
+  "branch": "agent/geminabox-20260810T210443Z",
+  "worktree": "tests/monitored-install-batch/worktrees/geminabox-20260810T210443Z",
+  "patches": ["patches/geminabox-gem-no-executable.patch"]
+}

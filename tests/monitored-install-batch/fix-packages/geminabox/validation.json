@@ -1,0 +1,11 @@
+{
+  "offline": {
+    "check": "pass",
+    "gemPackageTests": "19 pass",
+    "templateValidation": "GEM_HOME path for no-exe, #{bin}/pry for exe"
+  },
+  "vm": {
+    "baseline": "historic VERIFY_OK=false BIN_MISSING on 2026-08-10T08-29-16Z (local-2) + live baseline on local-2 2026-08-10T21-04-41Z installing",
+    "fixed": "pending — VM local-2 contended (3 parallel brew installs); fix identical to archived 2026-08-10 host-verified GEM_HOME test PASS (3.1.0)"
+  }
+}
