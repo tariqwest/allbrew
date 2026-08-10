@@ -1050,6 +1050,25 @@ async function handleGithubRepo(classification, opts) {
       }
     }
   } else {
+    try {
+      const recent = await listReleases(owner, repo, { perPage: 30 });
+      const withApp = pickReleaseWithAppAssets(recent, isAppAsset);
+      if (withApp) {
+        const names = withApp.assets.filter((a) => isAppAsset(a.name)).map((a) => a.name);
+        console.log(
+          `  Found macOS app assets on ${withApp.prerelease ? "prerelease" : "release"} ${chalk.bold(withApp.tagName)}: ${names.join(", ")}`,
+        );
+        return await generateWithConfirmation(
+          "cask-app-release",
+          { repoInfo, release: withApp },
+          opts,
+        );
+      }
+    } catch (err) {
+      if (opts.verbose) {
+        console.log(chalk.dim(`  Prerelease scan failed: ${err?.message || err}; continuing...`));
+      }
+    }
     releaseSpinner.info("No releases found, checking README...");
   }
 
