@@ -41,6 +41,36 @@ const SKILL_PATH = join(
   ".agents/skills/monitored-install/SKILL.md",
 );
 
+const STATUS_ALIASES = {
+  queued: "pending",
+  retry: "pending",
+  launching: "pending",
+  success: "succeeded",
+  "success-not-fixed": "succeeded",
+  fixed_success: "succeeded",
+  "failed-fix-applied": "succeeded",
+  "failed-agent-runtime": "failed_system",
+  "failed-timeout": "failed_system",
+  infrastructure_failed: "failed_system",
+  done: "failed_system",
+};
+
+function normalizeStatus(status) {
+  if (!status) return status;
+  const s = String(status).trim();
+  return STATUS_ALIASES[s] || s;
+}
+
+function isSucceeded(status) {
+  const n = normalizeStatus(status);
+  return n === "succeeded";
+}
+
+function isPending(status) {
+  const n = normalizeStatus(status);
+  return n === "pending";
+}
+
 function envInt(name, fallback) {
   const v = process.env[name];
   if (v === undefined || v === "") return fallback;
@@ -74,7 +104,7 @@ function loadPriorSuccessUrls() {
     if (!line.trim()) continue;
     try {
       const r = JSON.parse(line);
-      if (r.status === "success" && r.url) ok.add(r.url);
+      if (isSucceeded(r.status) && r.url) ok.add(r.url);
     } catch {
       /* ignore */
     }
@@ -85,8 +115,7 @@ function loadPriorSuccessUrls() {
       if (!line.trim()) continue;
       try {
         const r = JSON.parse(line);
-        if ((r.status === "success" || r.status === "fixed_success") && r.url)
-          ok.add(r.url);
+        if (isSucceeded(r.status) && r.url) ok.add(r.url);
       } catch {
         /* ignore */
       }
@@ -146,7 +175,20 @@ function loadQueue() {
     saveQueue(items);
     return items;
   }
-  return JSON.parse(readFileSync(QUEUE_PATH, "utf8")).items;
+  const data = JSON.parse(readFileSync(QUEUE_PATH, "utf8"));
+  let migrated = false;
+  for (const i of data.items) {
+    const canonical = normalizeStatus(i.status);
+    if (canonical !== i.status) {
+      if (!i.legacyStatus) i.legacyStatus = i.status;
+      i.status = canonical;
+      migrated = true;
+    }
+  }
+  if (migrated) {
+    writeFileSync(QUEUE_PATH, JSON.stringify(data, null, 2) + "\n");
+  }
+  return data.items;
 }
 
 function basePrompt() {
@@ -207,12 +249,11 @@ Start now.`;
 function printWave() {
   const concurrency = Math.max(1, envInt("TH_BATCH_CONCURRENCY", 6));
   const items = loadQueue();
-  const pending = items.filter(
-    (i) => i.status === "queued" || i.status === "retry",
-  );
+  const pending = items.filter((i) => isPending(i.status));
   const wave = pending.slice(0, concurrency).map((i) => ({
     ...i,
-    status: "launching",
+    status: "pending",
+    waveStatus: "launching",
   }));
 
   const profile = process.env.TH_AGENT_PROFILE || "subagent_general";
@@ -256,10 +297,13 @@ function markLaunched(names) {
 }
 
 function markDone(name, status, extra = {}) {
+  const canonical = normalizeStatus(status);
+  const legacyStatus = String(status);
   const items = loadQueue();
   for (const i of items) {
     if (i.agentName === name || String(i.idx) === String(name)) {
-      i.status = status;
+      i.status = canonical;
+      if (legacyStatus !== canonical) i.legacyStatus = legacyStatus;
       i.finishedAt = new Date().toISOString();
       Object.assign(i, extra);
     }
@@ -269,28 +313,36 @@ function markDone(name, status, extra = {}) {
     AGENT_INDEX,
     JSON.stringify({
       agentName: name,
-      status,
+      status: canonical,
+      legacyStatus: legacyStatus !== canonical ? legacyStatus : undefined,
       finishedAt: new Date().toISOString(),
       ...extra,
     }) + "\n",
   );
-  console.log(JSON.stringify({ ok: true, name, status }));
+  console.log(JSON.stringify({ ok: true, name, status: canonical, legacyStatus: legacyStatus !== canonical ? legacyStatus : undefined }));
 }
 
 function status() {
   const items = existsSync(QUEUE_PATH) ? loadQueue() : buildQueue();
   if (!existsSync(QUEUE_PATH)) saveQueue(items);
   const c = {};
-  for (const i of items) c[i.status] = (c[i.status] || 0) + 1;
+  const legacy = {};
+  for (const i of items) {
+    const n = normalizeStatus(i.status);
+    c[n] = (c[n] || 0) + 1;
+    if (i.legacyStatus && i.legacyStatus !== n) legacy[i.legacyStatus] = (legacy[i.legacyStatus] || 0) + 1;
+  }
   console.log(
     JSON.stringify(
       {
         total: items.length,
         counts: c,
+        legacyCounts: Object.keys(legacy).length ? legacy : undefined,
         next: items
-          .filter((i) => i.status === "queued" || i.status === "retry")
+          .filter((i) => isPending(i.status))
           .slice(0, 10)
           .map((i) => ({ idx: i.idx, name: i.name, url: i.url })),
+        statuses: ["pending", "running", "succeeded", "failed", "failed_system", "skipped", "blocked"],
       },
       null,
       2,

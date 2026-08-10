@@ -136,24 +136,21 @@ If export is missing:
 
 After launch, `--mark-launched` with **agentName** (not only launchName) so the minimal CLI updates the queue.
 
-## Status vocabulary
+## Status vocabulary (canonical, human-readable)
 
-| Status | Meaning |
-|--------|---------|
-| `queued` / `retry` | Pending |
-| `launching` | Wave prepared, not confirmed running |
-| `running` | Child live |
-| `success` / `success-not-fixed` / `fixed_success` | Good terminal |
-| `failed` | Terminal fail (see RUN_DIR `failureClass`) |
-| `failed-fix-applied` | Fix landed + verified |
-| `failed-agent-runtime` | Parent stopped child / harness runtime death |
-| `failed-timeout` | Hit wall-clock cap while **stalled** / hung |
-| `skipped` | Hit wall-clock cap while **legitimately still active** (too heavy for the 15‑min budget); free the slot |
-| `blocked` | Rate-limit or wait (not always terminal) |
+| Status | Meaning | Legacy aliases |
+|--------|---------|----------------|
+| `pending` | Queued, not yet running — includes former `queued`/`retry`/`launching` (`launching` = pending with `waveId`) | `queued`, `retry`, `launching` |
+| `running` | Child live (`launchedAt` + run id) — parent watches `RUN_DIR/outcome.json` + `vm-meta.json` + `vm-install.log` | — |
+| `succeeded` | VM `VERIFY_OK` — `fixed:true` if patch applied+re-verified (`--allbrew-src`), else `fixed:false` | `success`, `success-not-fixed`, `fixed_success`, `failed-fix-applied` |
+| `failed` | App/brew failure (`generate_fail`, `brew_fail`, `service_mismatch`) — `fix-package` may exist | `failed` |
+| `failed_system` | Infrastructure/VM/harness failure — parent/harness/VM died or hung, not the app | `failed-agent-runtime`, `failed-timeout`, `infrastructure_failed` |
+| `skipped` | Hit 15 min wall while **legitimately active** (`too_heavy`) — `skipReason: wall_clock_cap`, frees slot | `skipped` |
+| `blocked` | Rate-limit/wait (`github_rate_limit`, `trust`, `diskAvail<2G`) — parent retries after `vm-guest-health`/`ensure-vms` | `blocked` |
 
-Common **failureClass** / skip notes: `generate_fail`, `brew_fail`, `env_fail`, `prompt_hang`, `service_mismatch`, `github_rate_limit`, `too_heavy`, `wall_clock_cap`, …
+Common **failureClass** / `skipReason`: `generate_fail`, `brew_fail`, `env_fail`, `prompt_hang`, `service_mismatch`, `github_rate_limit`, `too_heavy`, `wall_clock_cap`, …
 
-Mark from child `outcome.json` when present. `failed` for generate_fail-with-fix-package is fine when that is what children report.
+`--mark-done` normalizes legacy aliases to canonical (stores `legacyStatus` for backward compat, appends both to `agent-index.jsonl`). Mark from child `outcome.json` when present; `failed` for `generate_fail`-with-`fix-package` remains correct.
 
 ## Parent loop (resume anytime)
 
