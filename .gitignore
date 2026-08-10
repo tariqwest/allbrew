@@ -21,6 +21,9 @@ tests/monitored-install-batch/runs/
 tests/monitored-install-batch/logs/
 tests/monitored-install-batch/state/
 tests/monitored-install-batch/summary/
+tests/monitored-install-batch/fix-packages/
+tests/monitored-install-batch/archive/*.tar.*
+!tests/monitored-install-batch/archive/manifest.json
 
 # Monitored install batch transient state and run output files
 # Note: Future refactor should relocate these transient outputs to ./tests/monitored-install-batch/state/

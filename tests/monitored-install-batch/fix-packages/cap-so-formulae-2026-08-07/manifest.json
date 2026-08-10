@@ -1,8 +1,0 @@
-{
-  "slug": "cap-so",
-  "url": "https://formulae.brew.sh/cask/cap",
-  "mode": "docs",
-  "caseC": true,
-  "headCommitWithFix": "5e7a04e",
-  "note": "Fix already on main; bottle 0.0.24 lacks homebrew-cask classifier. Patch shared with devonthink-formulae."
-}

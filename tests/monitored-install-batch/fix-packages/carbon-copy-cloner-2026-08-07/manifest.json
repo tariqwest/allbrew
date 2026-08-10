@@ -1,7 +1,0 @@
-{
-  "slug": "carbon-copy-cloner",
-  "url": "https://bombich.com",
-  "mode": "patch",
-  "patches": ["patches/0001-case-c-homebrew-cask-prefer.patch"],
-  "summary": "Case C: prefer homebrew/cask carbon-copy-cloner for bombich.com + --name before MAS mobile discovery"
-}

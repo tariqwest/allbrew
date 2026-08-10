@@ -1,9 +1,0 @@
-{
-  "slug": "verdaccio",
-  "url": "https://npmjs.com/package/verdaccio",
-  "patches": [
-    "patches/0001-npm-service-from-registry-readme.patch",
-    "patches/0002-verdaccio-service-unit-test.patch"
-  ],
-  "files": ["lib/cli.ts", "tests/unit/analyzer.test.ts"]
-}

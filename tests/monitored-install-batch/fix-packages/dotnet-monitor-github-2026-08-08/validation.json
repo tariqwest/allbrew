@@ -1,7 +1,0 @@
-{
-  "unitTests": "pass",
-  "localGenerate": "dotnet-package",
-  "localBrewInstallHost": "ok_not_success_criterion",
-  "packageVersion": "10.0.3",
-  "vmStatus": "pending"
-}

@@ -1,6 +1,0 @@
-{
-  "slug": "pry",
-  "mode": "patch",
-  "files": ["lib/analyzer.ts", "lib/cli.ts", "tests/unit/analyzer.test.ts"],
-  "patches": ["patches/0001-gem-package-github-detect.patch"]
-}

@@ -1,9 +1,0 @@
-{
-  "discoveryFixed": true,
-  "chosenUrl": "https://zoom.us/client/latest/zoomusInstallerFull.pkg",
-  "chosenKind": "cask-dmg",
-  "unitTests": "pass",
-  "fullGenerateSha": "blocked_enospc",
-  "vmInstall": "env_fail",
-  "service": false
-}

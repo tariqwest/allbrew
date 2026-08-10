@@ -1,0 +1,22 @@
+{
+  "date": "2026-08-10",
+  "dest": "/Users/tariqwest/.cache/allbrew/batch-artifacts/2026-08-10",
+  "tarball": "batch-2026-08-10.tar.zst",
+  "tarPath": "/Users/tariqwest/.cache/allbrew/batch-artifacts/2026-08-10/batch-2026-08-10.tar.zst",
+  "sha256": "01af8e05ce44d57839c08e304c7c4eba106836ba5a532a9a5789b429fd54ba81",
+  "size": 9679747,
+  "sizeHuman": "9.2M",
+  "createdAt": "2026-08-10T19:17:27.265Z",
+  "gitSha": "2fc0d66b2aa1fec9655129ec7676089a79c41ea9",
+  "branch": "main",
+  "counts": {
+    "fixPackages": 213,
+    "runs": 1501,
+    "logs": 1516
+  },
+  "sources": [
+    "tests/monitored-install-batch/fix-packages",
+    "tests/monitored-install-runs",
+    "tests/monitored-install-batch/logs"
+  ]
+}
