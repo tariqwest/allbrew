@@ -307,6 +307,7 @@ Apply only under `tests/monitored-install-batch/worktrees/`. Never promote to `m
 | Wave JSON, launch math, message templates | `references/orchestrator-loop.md` |
 | State schemas, status enums, index rows | `references/state-and-queue.md` |
 | Nudge text, 3-strike stop, 15-min wall, `skipped` vs fail | `references/nudge-and-blocked.md` |
+| Current + archived search, restore, reconcile, batch requeue | `.agents/skills/batch-ops/SKILL.md` (`bun run batch:ops`) |
 | Child isolation + completion schema (batch-child, VM + patches) | `references/child-contract.md` + `.agents/skills/monitored-install-batch-child/SKILL.md` |
 | Child privileges + sample allow/deny patterns | `assets/child-agent-privileges.DRAFT.toml` |
 | Single-URL phases | `.agents/skills/monitored-install/SKILL.md` |
