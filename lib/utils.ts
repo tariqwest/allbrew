@@ -692,7 +692,29 @@ export function isAppAsset(assetName) {
   // are commonly single-platform macOS .app distributions. cask-app-release still
   // peeks inside for a real .app before emitting a cask.
   if (!hasCpuArch && isVersionedProductZipName(lower)) return true;
+  // Bare product name zips without version/arch (e.g. Clipped.zip) are also
+  // common for single-platform macOS .app releases where version is in tag not filename.
+  if (!hasCpuArch && isBareAppZipName(lower)) return true;
   return false;
+}
+
+function isBareAppZipName(lowerName: string): boolean {
+  if (!lowerName.endsWith(".zip")) return false;
+  if (
+    /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions)(?:[^a-z]|$)/i.test(
+      lowerName,
+    )
+  ) {
+    return false;
+  }
+  const base = lowerName.slice(0, -".zip".length);
+  if (!/^[a-z]/.test(base)) return false;
+  if (base.length < 3 || base.length > 64) return false;
+  if (!/^[a-z][a-z0-9._-]*$/i.test(base)) return false;
+  if (/^\d+$/.test(base)) return false;
+  // Avoid bare names with dots that look like extensions without version
+  if (base.includes(".") && !/\d/.test(base)) return false;
+  return true;
 }
 
 /** Foo-1.2.3.zip / Foo_1.2.3.zip product release names (no platform/arch tags). */
