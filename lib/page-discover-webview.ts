@@ -136,14 +136,15 @@ export async function discoverWithWebView(
 
   return withTimeout<DiscoverCandidate[]>(
     (async () => {
-      // Prefer chrome backend for Network.* CDP events when possible.
+      // Use webkit on macOS (WKWebView, ephemeral, no visible browser) — chrome would drive Brave/Chrome via CDP and pop windows. On Linux/Windows chrome is required.
       let view;
       try {
+        const backend = process.platform === "darwin" ? "webkit" : "chrome";
         view = new Bun.WebView({
           width: 1280,
           height: 900,
           dataStore: "ephemeral",
-          backend: "chrome",
+          backend,
         });
       } catch {
         view = new Bun.WebView({

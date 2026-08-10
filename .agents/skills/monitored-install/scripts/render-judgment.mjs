@@ -120,8 +120,9 @@ async function renderWithWebView(targetUrl, opts = {}) {
   if (!B || typeof B.WebView !== "function") return null;
   let view;
   try {
+    const backend = process.platform === "darwin" ? "webkit" : "chrome";
     try {
-      view = new B.WebView({ width: 1280, height: 900, dataStore: "ephemeral", backend: "chrome" });
+      view = new B.WebView({ width: 1280, height: 900, dataStore: "ephemeral", backend });
     } catch {
       view = new B.WebView({ width: 1280, height: 900, dataStore: "ephemeral" });
     }
