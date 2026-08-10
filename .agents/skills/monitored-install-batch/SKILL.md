@@ -13,7 +13,7 @@ description: >
   scripting whenever orchestration, concurrency, or child-agent lifecycle is
   involved — even if the user only says "keep going" after a prior batch session.
 metadata:
-  version: "1.4"
+  version: "1.5"
 ---
 
 # Monitored-install batch (orchestrator)
@@ -27,9 +27,10 @@ This skill is **harness-agnostic**. It assumes only that the parent can (1) run 
 ## Goals
 
 1. Keep concurrency filled (`TH_BATCH_CONCURRENCY`, default **6** — above the 3 VM endpoints so judgment/fix work does not leave installs idle).
-2. Never treat **host** `brew install` / host tap auto-install as success (VM only).
-3. Mark completions from child messages + RUN_DIR artifacts; refill until the queue is empty (or only intentionally deferred retries remain).
-4. Nudge stalled children; stop after 3 failed nudges **or ~15 min wall clock** (see stale policy); post-process fix-packages without auto-release unless the user asks.
+2. **Always VM** — never treat **host** `brew install` / host tap auto-install as success (VM only). Every install/verify is `LUME_REMOTE_ENABLED=true …/vm-install-one.mjs`.
+3. **Always patch artifacts** — children never live-patch host `main`; code fixes are `fix-package/patches/*.patch` in a disposable worktree (`tests/monitored-install-batch/worktrees/`) for later parent-side integration (`batch:reconcile-fixes`). Host `main` stays clean.
+4. Mark completions from child messages + RUN_DIR artifacts; refill until the queue is empty (or only intentionally deferred retries remain).
+5. Nudge stalled children; stop after 3 failed nudges **or ~15 min wall clock** (see stale policy); post-process fix-packages without auto-release unless the user asks.
 
 ## Layout (source of truth)
 
@@ -46,7 +47,7 @@ This skill is **harness-agnostic**. It assumes only that the parent can (1) run 
 | `…/child-agent-privileges.DRAFT.toml` | Required child privileges + sample allow/deny patterns (no named profile) |
 | `…/worktrees/` | Disposable fix worktrees only |
 | `tests/monitored-install-runs/<runId>/` | Per-URL skill records (canonical) |
-| `.agents/skills/monitored-install/` | **Child** skill |
+| `.agents/skills/monitored-install-batch-child/` | **Child** skill (VM-isolated judge→try→fix→verify; patch artifacts, no host live-fix; see `.agents/skills/monitored-install/SKILL.md` for single-URL human loop) |
 
 Work from the allbrew repo root (e.g. `~/Developer/allbrew` or the active clone). `cd` there before every batch command.
 
@@ -234,20 +235,21 @@ Prefer event-driven resume (messages + lifecycle) over tight polling. Between ev
 
 ### 6. Child contract
 
-Each child:
+Each child follows **`.agents/skills/monitored-install-batch-child`** (VM-isolated, patch-artifact) — not the host single-URL `monitored-install`. Same judge→try→fix→verify loop, but with batch guardrails (VM-only success, disposable worktree patches, no host live-fix):
 
-1. Follows **monitored-install** (local validation only for release docs).
+1. Follows **monitored-install-batch-child** (local validation only; no `bun run release`).
 2. Uses **only** its canonical url/slug.
-3. Runs full install/verify/uninstall via:
+3. Runs full install/verify/uninstall **only** via isolated VM:
 
    ```bash
    LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
      --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log"
    ```
 
-4. Local generate: temp tap + `CI=1 ALLBREW_NONINTERACTIVE=1`.
-5. Fixes in disposable worktree → `fix-package/` (Option A). No release/push main unless parent orders it.
-6. Reports start, blockers, completion (launchName, agentName, RUN_DIR, status, fix-package, vmHelperUsed).
+   Host `brew install` is never the success path (`vmHelperUsed` must be true).
+4. Local generate only for fast debug: temp tap + `CI=1 ALLBREW_NONINTERACTIVE=1`.
+5. Fixes **only** in disposable worktree → `fix-package/patches/*.patch` artifacts + `FIX.md` (Option A). Never live-patch host `main`.
+6. Reports start, blockers, completion (launchName, agentName, RUN_DIR, status, fix-package patch artifact, vmHelperUsed, hostClean).
 
 ### 7. Post-process
 
@@ -289,7 +291,7 @@ Apply only under `tests/monitored-install-batch/worktrees/`. Never promote to `m
 | Wave JSON, launch math, message templates | `references/orchestrator-loop.md` |
 | State schemas, status enums, index rows | `references/state-and-queue.md` |
 | Nudge text, 3-strike stop, 15-min wall, `skipped` vs fail | `references/nudge-and-blocked.md` |
-| Child isolation + completion schema | `references/child-contract.md` |
+| Child isolation + completion schema (batch-child, VM + patches) | `references/child-contract.md` + `.agents/skills/monitored-install-batch-child/SKILL.md` |
 | Child privileges + sample allow/deny patterns | `assets/child-agent-privileges.DRAFT.toml` |
 | Single-URL phases | `.agents/skills/monitored-install/SKILL.md` |
 

@@ -1,36 +1,37 @@
-# Child contract
+# Child contract (batch-child, VM + patch artifacts)
 
-What every child agent must do for one queue URL.
+What every batch-child agent must do for one queue URL. See `.agents/skills/monitored-install-batch-child/SKILL.md` for the full VM-isolated judge→try→fix→verify loop — this file is the concise parent-side view of the same contract.
 
-## Isolation
+## Isolation (host-clean, always VM)
 
-1. **No host Homebrew success path** — do not use host `brew install`, host tap auto-install, or host `brew services` as the green path.
-2. **VM helper required** for full install/verify/uninstall:
+1. **No host Homebrew success path** — do not use host `brew install`, host tap auto-install, or host `brew services` as the green path. Host `brew` is only for Lume/`vm-install-one.mjs` plumbing and temp-tap debug.
+2. **VM helper required** — the **only** `VERIFY_OK` signal is from:
 
 ```bash
 LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
   --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log"
 ```
 
-3. **Local generate/debug only** with a temp tap:
+3. **Local generate/debug only** with a temp tap (no VM verdict):
 
 ```bash
 CI=1 ALLBREW_NONINTERACTIVE=1 bun run bin/allbrew.ts "<url>" --name "<slug>" \
   --tap "$(mktemp -d)" --verbose
 ```
 
-4. **Code fixes** only in a disposable git worktree; export `fix-package/` (Option A). No commit/push/release to main unless the parent explicitly asks.
-5. **No `--service` / `--no-service`** — auto-detect only; mismatches are product bugs.
-6. **Assignment integrity** — only the canonical url/slug from the parent prompt.
+4. **Code fixes only in a disposable git worktree** under `tests/monitored-install-batch/worktrees/<slug>-<ts>/`; export **patch artifacts** `fix-package/patches/*.patch` + `FIX.md` (Option A) under `$RUN_DIR/fix-package/` (mirrored to `fix-packages/<slug>/`). **Never** `git add/commit/push` to host `main`, **never** `bun run release` — parent reconciles via `batch:reconcile-fixes` inside `worktrees/` only.
+5. **No `--service` / `--no-service`** — auto-detect only; mismatches are product bugs (`service_mismatch` → Phase 3).
+6. **Assignment integrity** — only the canonical url/slug from the parent prompt. No URL substitution.
 
 ## Skill
 
 Read and follow:
 
-- `.agents/skills/monitored-install/SKILL.md`
+- `.agents/skills/monitored-install-batch-child/SKILL.md` (**batch-child**, VM-isolated, patch artifacts — this is the child skill)
+- `.agents/skills/monitored-install/SKILL.md` (single-URL human loop — only for Phase shape / service expectation reference)
 - `references/run-records.md`
 - `references/failure-playbook.md`
-- `references/release-and-retry.md` (**local validation only** in batch mode)
+- `references/release-and-retry.md` (**local validation only** in batch mode — no `release`)
 
 ## Reporting to parent
 
