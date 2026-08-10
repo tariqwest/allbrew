@@ -16,9 +16,9 @@ This is the **only** skill batch children should follow for one queue URL. The h
 | Concern | Rule |
 |---------|------|
 | **Host working tree** | **Never** `git add/commit/push` to `main`, `origin/main`, or the host's `~/Developer/allbrew` checkout. All edits live in a **disposable `git worktree`** under `tests/monitored-install-batch/worktrees/<slug>-<ts>/` (or `worktrees/<slug>`). Host `main` stays clean. |
-| **Host Homebrew** | **Never** `brew install`, `brew uninstall`, `brew services`, or `allbrew` host-tap auto-install as the green path. `brew` on host is only for `Lume`/`vm-install-one.mjs` plumbing, `git worktree`, and temp-tap *debug* (`CI=1 ALLBREW_NONINTERACTIVE=1 … --tap $(mktemp -d)`). Success = **VM** `VERIFY_OK=true`. |
+| **Host Homebrew** | **Never** `brew install`, `brew uninstall`, `brew services`, or `allbrew` host install. Host `brew`/`allbrew` is **never** the success path. `brew` on host is only for `Lume`/`vm-install-one.mjs` orchestration + `git worktree` plumbing — **not** for `allbrew …`/`brew install`/`brew uninstall` even with `--tap $(mktemp -d)`. Success = **VM-only** `VERIFY_OK=true` from `vm-install-one.mjs`. |
 | **Fix output** | **Never** live-patch host. On failure, export `fix-package/` as **patch artifacts** (`FIX.md`, `manifest.json`, `patches/*.patch`, `validation.json`) under `$RUN_DIR/fix-package/` and the worktree's `tests/monitored-install-batch/fix-packages/<slug>/`. Parent reconciles via `bun run batch:reconcile-fixes` inside `worktrees/` — no auto-release. |
-| **VM isolation** | **Always** VM for full `install/verify/uninstall`. Local `bun run bin/allbrew.ts` is only for *fast* generator debug against a **temp tap** (`$(mktemp -d)`), not for the success verdict. |
+| **VM isolation** | **Always VM for every `allbrew`/`brew install`/`brew services`/`verify`. There is no host fallback — not even `CI=1 … --tap $(mktemp -d)` for "fast debug". `vm-install-one.mjs` is the **only** `brew install`-capable path. Local `bun run check`/`bun test` is host-safe; any generation that would invoke `brew` must run inside the VM. |
 | **Release** | **Never** `bun run release` / `git push --force` / `sudo`. Releases are parent/user-gated. |
 | **Assignment** | Only the canonical `url`/`slug` from the parent prompt. No URL substitution. |
 
@@ -89,26 +89,20 @@ Before any VM work, form the agent oracle. **Do not** trust the eventual `vm-ins
 
 3. Leave `codebaseObserved`/`deltas` for Phase 1.5. This judgment is the VM-consistent oracle — it must match what `lib/page-discover-webview.ts:discoverWithWebView` will find inside the VM (same `innerText` + `detectScriptInstall` logic).
 
-## Phase 1 — VM-isolated try (no host success path)
+## Phase 1 — VM-isolated try (no host install at all)
 
-**Host `brew install` is not a success signal.** Use **only**:
+**Host `brew install` is forbidden — not just "not a success signal".** The only `brew install`-capable path is the VM helper. Do **not** run `bun run bin/allbrew.ts … --tap $(mktemp -d)` on the host, even for "fast debug" — that still writes to host `Caskroom`/`/Applications` and contaminates the host. All `allbrew`/`brew` work happens inside the VM.
 
-1. **Full install/verify/uninstall via VM helper** (counts for `VERIFY_OK`):
+1. **Full install/verify/uninstall via `vm-install-one.mjs`** — the **only** `VERIFY_OK` source:
    ```bash
    LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
      --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log"
    ```
    - Acquires a Lume VM from `vm-pool.json` (3 endpoints: 2 local + homeserver), exclusive `/opt/homebrew` sparsebundle, `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`, runs the full `allbrew` → `brew install` → verify → `brew uninstall` + `assertUninstallResiduals` **inside the VM**, then detaches prefix in `finally`.
-   - Logs to `$RUN_DIR/vm-install.log` (parent tails this for liveness). `VERIFY_OK=true` in this log is the **only** green path.
+   - Logs to `$RUN_DIR/vm-install.log` (parent tails this for liveness). `VERIFY_OK=true` in this log is the **only** green path. Host `brew list`/`--version` is meaningless.
+   - **Do not** supplement with a host `allbrew-initial.log`. Any "local generation" that would invoke `brew` must be done inside the VM (e.g., by re-running `vm-install-one.mjs` after a worktree patch sync). Host-side validation is limited to `bun run check` / `bun test` (offline) — never `allbrew`/`brew`.
 
-2. **Local generator debug (optional, temp tap only):**
-   ```bash
-   CI=1 ALLBREW_NONINTERACTIVE=1 bun run bin/allbrew.ts "<url>" --name "<slug>" \
-     --tap "$(mktemp -d)" --verbose 2>&1 | tee "$RUN_DIR/allbrew-initial.log"
-   ```
-   This exercises `lib/` without touching host `brew` or the tap. Use it to iterate on a fix inside the **worktree** (`$WT`), not host `main`. Never treat `host` `brew list`/`--version` from this leg as success.
-
-3. Record `codebaseObserved` from the VM log + generated Ruby (when temp-tap leg ran): `strategy`, `generator`, `packageNameDetected`, `serviceDetected`/`serviceCommand`, `formulaPath`, `logSignals`. Preserve `vmHelperUsed=true` for the completion report.
+2. Record `codebaseObserved` **only** from the VM log + VM-generated Ruby (`$RUN_DIR/vm-install.log` + `.formula.rb`): `strategy`, `generator`, `packageNameDetected`, `serviceDetected`/`serviceCommand`, `formulaPath`, `logSignals`. Preserve `vmHelperUsed=true` for the completion report. There is no `allbrew-initial.log` host leg.
 
 **Pre-filter (do not VM):** `https://formulae.brew.sh/formula/*` bulk-mark `skipped` (`formulae_brew_sh_formula`) — not monorepo source-build. Report `blocked` with `fix-package` = null.
 
@@ -162,7 +156,7 @@ The VM helper already verified:
    ## Fix (worktree $WT, not host main)
    … (files, regex, score boost, template env)
    ## Validation
-   … (bun run check, bun test, temp-tap `bun run bin/allbrew.ts … --tap $(mktemp -d)` inside $WT)
+   … (bun run check, bun test — **no host `allbrew … --tap $(mktemp -d)`**; VM re-verify below is the only brew validation)
    MD
    cp -r "$RUN_DIR/fix-package" "tests/monitored-install-batch/fix-packages/<slug>/"
    # Do NOT git push, do NOT bun run release, do NOT brew upgrade.
@@ -171,16 +165,16 @@ The VM helper already verified:
 
    Mode `docs` = diagnosis only; `patch` = machine-applyable `*.patch`. Parent `bun run batch:reconcile-fixes -- --dry-run` later applies patches **only inside `worktrees/`** for integration.
 
-4. **Validate fix in worktree (still VM-isolated):**
+4. **Validate fix — VM only (no host brew):**
    ```bash
    cd "$WT"
    bun run check && bun test tests/unit/<area>
-   CI=1 ALLBREW_NONINTERACTIVE=1 bun run bin/allbrew.ts "<url>" --name "<slug>" --tap "$(mktemp -d)" --verbose
-   # optional VM re-verify of the fix:
+   # Sync worktree changes into the VM by rsyncing the patch or by having the VM pull the branch,
+   # then VM re-verify — this is the ONLY brew validation:
    LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
      --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install-fixed.log"
    ```
-   Only if VM `VERIFY_OK=true` and Phase 1.5 now matches does the patch count as verified (`validation.json`).
+   Do **not** run `CI=1 … bun run bin/allbrew.ts … --tap $(mktemp -d)` on the host for validation — that is a host `brew install` and is forbidden. Only if VM `VERIFY_OK=true` and Phase 1.5 now matches does the patch count as verified (`validation.json`).
 
 ## Phase 4 — No host commit/push/release
 
@@ -189,7 +183,7 @@ Batch children **never** `git push origin main`, `git push --force`, or `bun run
 ## Phase 5 — Persist run record + patch artifacts + report to parent
 
 1. Ensure `$RUN_DIR/agent-judgment.json` is complete (inputShape, expected, codebaseObserved, deltas, notes, proposedRule, `_renderMeta` with `mode=webview` when used).
-2. Copy logs: `allbrew-initial.log` (temp-tap debug), `vm-install.log` (VM, the only `VERIFY_OK` source), optionally `vm-install-fixed.log`, `formula.rb`/`cask.rb` when useful, and `fix-package/` (if any) into `$RUN_DIR/`.
+2. Copy logs: `vm-install.log` (VM, the **only** `VERIFY_OK` source), optionally `vm-install-fixed.log`, `formula.rb`/`cask.rb` when useful, and `fix-package/` (if any) into `$RUN_DIR/`. There is no `allbrew-initial.log` — host `allbrew` is never run.
 3. Write `$RUN_DIR/summary.md` (thought process, failure class, fix as patch artifact path, residual risk, host-clean note).
 4. Finalize the batch record (do **not** use the single-URL `finalize-run-record.mjs` alone — the batch parent marks via `run-agent-batch.mjs`):
    ```bash
@@ -221,11 +215,12 @@ Batch children **never** `git push origin main`, `git push --force`, or `bun run
 
    The parent marks `bun tests/monitored-install-batch/run-agent-batch.mjs --mark-done <agentName> <status>` and later reconciles patches without ever having host-polluted `main`.
 
-## Anti-patterns (batch-child)
+## Anti-patterns (batch-child) — any is a guardrail violation
 
-* Host `brew install --cask` or `brew list` as success → must be VM
-* `git commit`/`push` to host `main` from child → must be worktree patch
+* Host `brew install`/`brew uninstall`/`allbrew …` on host for any reason (including `CI=1 … --tap $(mktemp -d)` "fast debug") → must be VM
+* Host `brew install --cask` or `brew list`/`--version` on host as `VERIFY_OK` → must be VM (`vmHelperUsed`)
+* `git commit`/`push` to host `main` from child → must be worktree patch artifact
 * `bun run release` / `git push --force` from child → parent-gated
 * `rm -rf ~` / `sudo` / `diskutil` → forbidden (see `assets/child-agent-privileges.DRAFT.toml`)
 * Waiting on interactive approval UI → bypass or finalize partial + report `blocked_action`
-* Launching without `vm-install-one.mjs` (host-only) → violates VM guardrail
+* Launching without `vm-install-one.mjs` (host-only) → violates VM guardrail; `vm-install-one.mjs` is the **only** `brew install`-capable path

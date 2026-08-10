@@ -2,23 +2,17 @@
 
 What every batch-child agent must do for one queue URL. See `.agents/skills/monitored-install-batch-child/SKILL.md` for the full VM-isolated judge→try→fix→verify loop — this file is the concise parent-side view of the same contract.
 
-## Isolation (host-clean, always VM)
+## Isolation (host-clean, always VM — no host brew)
 
-1. **No host Homebrew success path** — do not use host `brew install`, host tap auto-install, or host `brew services` as the green path. Host `brew` is only for Lume/`vm-install-one.mjs` plumbing and temp-tap debug.
-2. **VM helper required** — the **only** `VERIFY_OK` signal is from:
+1. **No host Homebrew at all** — do not use host `brew install`, `brew uninstall`, `brew services`, host tap auto-install, or `bun run bin/allbrew.ts … --tap $(mktemp -d)` (even for "fast debug") as a success or debug path. Host `brew`/`allbrew` is never the green path. Host `brew` is only for `Lume`/`vm-install-one.mjs` orchestration + `git worktree` plumbing.
+2. **VM helper required** — the **only** `brew install`-capable path and the **only** `VERIFY_OK` signal is:
 
 ```bash
 LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
   --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log"
 ```
 
-3. **Local generate/debug only** with a temp tap (no VM verdict):
-
-```bash
-CI=1 ALLBREW_NONINTERACTIVE=1 bun run bin/allbrew.ts "<url>" --name "<slug>" \
-  --tap "$(mktemp -d)" --verbose
-```
-
+3. **Host-side validation is offline only** — `bun run check` / `bun test` (no `allbrew`/`brew`). Any generation that would invoke `brew` must run inside the VM via `vm-install-one.mjs` (re-run after syncing worktree patch). There is no host `--tap $(mktemp -d)` leg.
 4. **Code fixes only in a disposable git worktree** under `tests/monitored-install-batch/worktrees/<slug>-<ts>/`; export **patch artifacts** `fix-package/patches/*.patch` + `FIX.md` (Option A) under `$RUN_DIR/fix-package/` (mirrored to `fix-packages/<slug>/`). **Never** `git add/commit/push` to host `main`, **never** `bun run release` — parent reconciles via `batch:reconcile-fixes` inside `worktrees/` only.
 5. **No `--service` / `--no-service`** — auto-detect only; mismatches are product bugs (`service_mismatch` → Phase 3).
 6. **Assignment integrity** — only the canonical url/slug from the parent prompt. No URL substitution.
