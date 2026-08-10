@@ -18,8 +18,8 @@
  *   VERIFY_OK=true|false
  *   LOG=...
  */
-import { writeFileSync, mkdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { writeFileSync, mkdirSync, appendFileSync, existsSync } from "node:fs";
+import { resolve, dirname } from "node:path";
 import {
   loadHarness,
   guest,
@@ -69,10 +69,15 @@ const hostLog =
     `vm-install-${name}-${Date.now()}.log`,
   );
 mkdirSync(resolve(hostLog, ".."), { recursive: true });
+// truncate host log early so parent can tail it while VM streams
+try { writeFileSync(hostLog, ""); } catch {}
+try { writeFileSync(hostLog + ".verify.txt", ""); } catch {}
+try { writeFileSync(hostLog + ".formula.rb", ""); } catch {}
 
 const token = process.env.GITHUB_TOKEN || "";
 const allbrewSrc = arg("--allbrew-src");
 const allbrewBranch = arg("--allbrew-branch");
+const runDir = arg("--run-dir");
 
 // Acquire a pool slot (homeserver or local) BEFORE loading harness so config sees endpoint env.
 let poolLease = null;
@@ -103,9 +108,34 @@ let pkg = name;
 let verifyOk = false;
 let formulaText = "";
 const endpointId = poolLease?.endpoint?.id || "unknown";
+const metaPath = runDir ? resolve(runDir, "vm-meta.json") : resolve(dirname(hostLog), `${name}-vm-meta.json`);
+const poolAcquiredAt = Date.now();
+let lockAcquiredAt = null;
+function writeMeta(extra = {}) {
+  try {
+    mkdirSync(dirname(metaPath), { recursive: true });
+    const payload = {
+      endpointId,
+      runName: name,
+      hostLog,
+      metaPath,
+      poolAcquiredAt,
+      lockAcquiredAt,
+      lastLogAt: Date.now(),
+      hostClean: true,
+      vmSrc: allbrewSrc ? resolve(allbrewSrc) : null,
+      ...extra,
+    };
+    writeFileSync(metaPath, JSON.stringify(payload, null, 2));
+  } catch {}
+}
+writeMeta({ phase: "pool-acquired" });
 
 try {
+  writeMeta({ phase: "acquiring-prefix" });
   session = await acquireHomebrewPrefixDurable(h);
+  lockAcquiredAt = Date.now();
+  writeMeta({ phase: "prefix-acquired", lockAcquiredAt, poolWaitMs: lockAcquiredAt - poolAcquiredAt });
   await ensureAllbrew(h, session, mountPoint);
   await ensureTapConfigured(h, session, mountPoint, tapPath);
 
@@ -113,9 +143,11 @@ try {
   if (allbrewSrc) {
     const hostPath = resolve(allbrewSrc);
     console.log(`[vm-install-one] syncing allbrew src ${hostPath} to VM...`);
+    writeMeta({ phase: "syncing-src", hostSrc: hostPath });
     const sync = await syncAllbrewSrcToVM(h, hostPath);
     vmSrcPath = sync.dest;
     console.log(`[vm-install-one] src ready on branch ${sync.branch} at ${vmSrcPath}`);
+    writeMeta({ phase: "src-synced", vmSrcPath, branch: sync.branch });
     if (allbrewBranch && allbrewBranch !== sync.branch) {
       console.log(`[vm-install-one] note: requested --allbrew-branch ${allbrewBranch} resolved to ${sync.branch}`);
     }
@@ -138,10 +170,17 @@ try {
         guestLog,
         token: token || undefined,
       });
+  writeMeta({ phase: "installing", guestLog });
+  // stream VM stdout into hostLog incrementally so parent can tail during long downloads
   const result = await guest(h.runAsProjectUser, session, cmd, `allbrew-${name}`, {
     timeout: Number(process.env.TH_BATCH_INSTALL_TIMEOUT_MS || 720000),
     stream: true,
+    onChunk: (chunk) => {
+      try { appendFileSync(hostLog, chunk); } catch {}
+      writeMeta({ phase: "installing", lastChunkAt: Date.now(), lastChunkLen: chunk.length });
+    },
   });
+  // ensure hostLog has the full guestLog plus any streamed stdout
   const fetch = await guest(
     h.runAsProjectUser,
     session,
@@ -150,7 +189,9 @@ try {
     { timeout: 120000 },
   );
   installLog = fetch.stdout || result.stdout || "";
+  // if streaming already wrote, overwrite with authoritative guestLog to avoid duplication
   writeFileSync(hostLog, installLog);
+  writeMeta({ phase: "install-done", exitCode: result.exitCode, guestLogPresent: !/MISSING_LOG/.test(fetch.stdout || "") });
   exitCode = extractExitCode(installLog, result.exitCode ?? 1) ?? 1;
 
   // package name heuristic
@@ -162,6 +203,7 @@ try {
     installLog.match(/(?:Wrote|Generated)(?:\s+(?:formula|cask))?:?\s+.*?(?:Formula|Casks)\/([A-Za-z0-9][A-Za-z0-9@._+-]*)\.rb/i);
   if (pm) pkg = pm[1].split("/").pop();
 
+  writeMeta({ phase: exitCode === 0 ? "verifying" : "skipping-verify", pkg, exitCode });
   if (exitCode === 0) {
     const v = await guest(
       h.runAsProjectUser,
@@ -171,6 +213,7 @@ try {
       { timeout: 180000 },
     );
     writeFileSync(hostLog + ".verify.txt", v.stdout || "");
+    writeMeta({ phase: "verified", verifyOkRaw: (v.stdout || "").slice(0, 400) });
     verifyOk =
       /MANIFEST_OK/.test(v.stdout || "") &&
       (/FORMULA_LISTED=1/.test(v.stdout || "") ||
@@ -192,7 +235,22 @@ try {
     writeFileSync(hostLog + ".formula.rb", formulaText);
   }
 
-  // always uninstall for hygiene
+  writeMeta({ phase: "fetching-formula", pkg });
+  const fr = await guest(
+    h.runAsProjectUser,
+    session,
+    fetchFormulaCmd({ pkg, mountPoint, tapPath }),
+    `formula-${pkg}`,
+    { timeout: 60000 },
+  );
+  formulaText = fr.stdout || "";
+  if (formulaText && !formulaText.includes("MISSING_FORMULA")) {
+    writeFileSync(hostLog + ".formula.rb", formulaText);
+    writeMeta({ phase: "formula-fetched", pkg, formulaLen: formulaText.length });
+  }
+
+  // always uninstall + VM hygiene (disk, brew cache)
+  writeMeta({ phase: "uninstalling", pkg });
   await guest(
     h.runAsProjectUser,
     session,
@@ -200,6 +258,24 @@ try {
     `uninstall-${pkg}`,
     { timeout: 300000 },
   );
+  // post-uninstall hygiene: brew cleanup + disk avail so parent can distinguish env_fail (no space) from brew_fail
+  try {
+    const hygiene = await guest(
+      h.runAsProjectUser,
+      session,
+      `${`export PATH="${mountPoint}/bin:$HOME/.bun/bin:$PATH"`}
+brew cleanup --prune=all 2>&1 | tail -5; echo CLEANUP_OK
+df -h / 2>&1 | head -5; echo DF_OK
+brew trust 2>&1 | head -20; echo TRUST_OK`,
+      `hygiene-${pkg}`,
+      { timeout: 120000 },
+    );
+    writeFileSync(hostLog + ".hygiene.txt", hygiene.stdout || "");
+    const dfM = (hygiene.stdout || "").match(/\/dev\/\S+\s+\S+\s+\S+\s+(\S+)\s+\d+%/);
+    writeMeta({ phase: "uninstalled", pkg, verifyOk, exitCode, hygiene: (hygiene.stdout || "").slice(0, 800), diskAvail: dfM ? dfM[1] : null });
+  } catch {
+    writeMeta({ phase: "uninstalled", pkg, verifyOk, exitCode });
+  }
 } finally {
   try {
     await releaseHomebrewPrefixDurable(h, session);
