@@ -71,7 +71,7 @@ Work from the **allbrew repo root** (`git rev-parse --show-toplevel` or the acti
    # On success with no fix, simply `git worktree remove --force "$WT"`.
    ```
 
-## Phase 0.5 — Independent judgment (JS-rendered, host FS)
+## Phase 1 — Independent judgment (JS-rendered, host FS)
 
 Before any VM work, form the agent oracle. **Do not** trust the eventual `vm-install-one` log yet.
 
@@ -87,9 +87,9 @@ Before any VM work, form the agent oracle. **Do not** trust the eventual `vm-ins
 
    Service expectation follows `.agents/skills/monitored-install/SKILL.md` § Service expectation (`true` only for long-lived supervised daemon with `brew services`/launchd + blocking `serve` on a port; `false` for one-shot CLI, stdio MCP, optional `serve`, casks, libraries).
 
-3. Leave `codebaseObserved`/`deltas` for Phase 1.5. This judgment is the VM-consistent oracle — it must match what `lib/page-discover-webview.ts:discoverWithWebView` will find inside the VM (same `innerText` + `detectScriptInstall` logic).
+3. Leave `codebaseObserved`/`deltas` for Phase 3. This judgment is the VM-consistent oracle — it must match what `lib/page-discover-webview.ts:discoverWithWebView` will find inside the VM (same `innerText` + `detectScriptInstall` logic).
 
-## Phase 1 — VM-isolated try (no host install at all)
+## Phase 2 — VM-isolated try (no host install at all)
 
 **Host `brew install` is forbidden — not just "not a success signal".** The only `brew install`-capable path is the VM helper. Do **not** run `bun run bin/allbrew.ts … --tap $(mktemp -d)` on the host, even for "fast debug" — that still writes to host `Caskroom`/`/Applications` and contaminates the host. All `allbrew`/`brew` work happens inside the VM.
 
@@ -99,7 +99,7 @@ Before any VM work, form the agent oracle. **Do not** trust the eventual `vm-ins
      --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log" --run-dir "$RUN_DIR"
    ```
    - Acquires a Lume VM from `vm-pool.json` (3 endpoints: 2 local + homeserver), exclusive `/opt/homebrew` sparsebundle, `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`, runs the full `allbrew` → `brew install` → verify → `brew uninstall` + `assertUninstallResiduals` **inside the VM**, then detaches prefix in `finally`.
-   - Uses the **released** `allbrew` bottle inside the VM (`brew upgrade allbrew`). For patch validation (Phase 3) add `--allbrew-src "$WT"` — the helper pushes the worktree branch `agent/*` to `origin` and VM fetches/checks-out + `bun install`, then runs `bun --cwd <vmSrc> run bin/allbrew.ts` inside the VM (no host `brew`).
+   - Uses the **released** `allbrew` bottle inside the VM (`brew upgrade allbrew`). For patch validation (Phase 5) add `--allbrew-src "$WT"` — the helper pushes the worktree branch `agent/*` to `origin` and VM fetches/checks-out + `bun install`, then runs `bun --cwd <vmSrc> run bin/allbrew.ts` inside the VM (no host `brew`).
    - Streams VM stdout incrementally into `$RUN_DIR/vm-install.log` (via `onChunk` + `appendFileSync`) and maintains `$RUN_DIR/vm-meta.json` (`endpointId`, `poolWaitMs`, `phase`, `lastLogAt`, `hostClean`) so the parent can distinguish pool-wait vs hung vs installing. Parent tails `vm-install.log` + `vm-meta.json` for 3-min nudge decisions — no heartbeat is treated as stalled.
    - `VERIFY_OK=true` in `vm-install.log` is the **only** green path. Host `brew list`/`--version` is meaningless.
    - **Do not** supplement with a host `allbrew-initial.log`. Host-side validation is limited to `bun run check` / `bun test` (offline) — never `allbrew`/`brew`. Any `brew`-involving re-try must be a second `vm-install-one.mjs` call (with `--allbrew-src "$WT"` for unreleased code).
@@ -108,22 +108,22 @@ Before any VM work, form the agent oracle. **Do not** trust the eventual `vm-ins
 
 **Pre-filter (do not VM):** `https://formulae.brew.sh/formula/*` bulk-mark `skipped` (`formulae_brew_sh_formula`) — not monorepo source-build. Report `blocked` with `fix-package` = null.
 
-## Phase 1.5 — Service expectation vs VM decision
+## Phase 3 — Service expectation vs VM decision
 
-Compare `agent_service_expectation` (`expected.service` from Phase 0.5) vs `allbrew_service_decision` (from VM log + Ruby `service do`):
+Compare `agent_service_expectation` (`expected.service` from Phase 1) vs `allbrew_service_decision` (from VM log + Ruby `service do`):
 
 | expectation | decision | Result |
 |-------------|----------|--------|
 | true | true | OK if `run` is real argv (not prose) |
 | false | false | OK |
-| true | false | `service_mismatch` → Phase 3 |
-| false | true | `service_mismatch` → Phase 3 |
+| true | false | `service_mismatch` → Phase 5 |
+| false | true | `service_mismatch` → Phase 5 |
 
 Also record generator/parameter `deltas` into `agent-judgment.json` (packageName, generator, binName…). `error` if it would cause failure; `warn` if wrong shape but VM still passed.
 
 When any `error`/`warn` delta exists, prepare a **patch artifact** (not a live host commit): ` $RUN_DIR/fix-package/patches/<rule>.patch` + `FIX.md` inside the **worktree**.
 
-## Phase 2 — VM verification (already done by vm-install-one)
+## Phase 4 — VM verification (already done by vm-install-one)
 
 The VM helper already verified:
 
@@ -132,9 +132,9 @@ The VM helper already verified:
 * `~/.config/allbrew/packages/<name>.json` manifest in VM
 * `assertUninstallResiduals` after `brew uninstall` (VM)
 
-**Do not** re-verify on host (`which <bin>` on host is host pollution). If VM `VERIFY_OK=true` and Phase 1.5 passed, report `success` (or `fixed_success` if a patch was produced and re-verified in VM).
+**Do not** re-verify on host (`which <bin>` on host is host pollution). If VM `VERIFY_OK=true` and Phase 3 passed, report `success` (or `fixed_success` if a patch was produced and re-verified in VM).
 
-## Phase 3 — Fix in disposable worktree → patch artifacts (host never dirty)
+## Phase 5 — Fix in disposable worktree → patch artifacts (host never dirty)
 
 **Never** `git add/commit` to host `main`. All fixes live in `$WT`.
 
@@ -177,13 +177,13 @@ The VM helper already verified:
      --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install-fixed.log" \
      --run-dir "$RUN_DIR" --allbrew-src "$WT"
    ```
-   Do **not** run `CI=1 … bun run bin/allbrew.ts … --tap $(mktemp -d)` on the host for validation — that is a host `brew install` and is forbidden. Only if VM `VERIFY_OK=true` (from `vm-install-fixed.log`) and Phase 1.5 now matches does the patch count as verified (`validation.json`).
+   Do **not** run `CI=1 … bun run bin/allbrew.ts … --tap $(mktemp -d)` on the host for validation — that is a host `brew install` and is forbidden. Only if VM `VERIFY_OK=true` (from `vm-install-fixed.log`) and Phase 3 now matches does the patch count as verified (`validation.json`).
 
-## Phase 4 — No host commit/push/release
+## Phase 6 — No host commit/push/release
 
 Batch children **never** `git push origin main`, `git push --force`, or `bun run release`. The patch artifact + `RUN_DIR` is the deliverable. The parent/user decides when to integrate (`reconcile-fixes` → `worktrees/` → PR → `main` → `release patch` → `brew upgrade allbrew` + final retry).
 
-## Phase 5 — Persist run record + patch artifacts + report to parent
+## Phase 7 — Persist run record + patch artifacts + report to parent
 
 1. Ensure `$RUN_DIR/agent-judgment.json` is complete (inputShape, expected, codebaseObserved, deltas, notes, proposedRule, `_renderMeta` with `mode=webview` when used).
 2. Copy logs: `vm-install.log` (VM, the **only** `VERIFY_OK` source — already streamed to `$RUN_DIR/vm-install.log` during install), optionally `vm-install-fixed.log`, `formula.rb`/`cask.rb`, `vm-meta.json` (phase/endpoint/poolWait/lastLogAt), and `fix-package/` (if any) into `$RUN_DIR/`. There is no `allbrew-initial.log` — host `allbrew` is never run.

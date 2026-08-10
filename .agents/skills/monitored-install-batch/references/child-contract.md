@@ -14,7 +14,7 @@ LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
 
 3. **Host-side validation is offline only** — `bun run check` / `bun test` (no `allbrew`/`brew`). Any generation that would invoke `brew` must run inside the VM via `vm-install-one.mjs` (re-run after syncing worktree patch). There is no host `--tap $(mktemp -d)` leg.
 4. **Code fixes only in a disposable git worktree** under `tests/monitored-install-batch/worktrees/<slug>-<ts>/`; export **patch artifacts** `fix-package/patches/*.patch` + `FIX.md` (Option A) under `$RUN_DIR/fix-package/` (mirrored to `fix-packages/<slug>/`). **Never** `git add/commit/push` to host `main`, **never** `bun run release` — parent reconciles via `batch:reconcile-fixes` inside `worktrees/` only.
-5. **No `--service` / `--no-service`** — auto-detect only; mismatches are product bugs (`service_mismatch` → Phase 3).
+5. **No `--service` / `--no-service`** — auto-detect only; mismatches are product bugs (`service_mismatch` → Phase 5).
 6. **Assignment integrity** — only the canonical url/slug from the parent prompt. No URL substitution.
 
 ## Skill

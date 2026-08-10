@@ -59,7 +59,7 @@ One JSON object per line. Mixed producers (parent marks + child finalize). Riche
 | `metadata.json` | started/finished, url, slug |
 | `outcome.json` | status, failureClass, fix.applied, verification.ok |
 | `summary.md` | narrative |
-| `agent-judgment.json` | Phase 0.5 |
+| `agent-judgment.json` | Phase 1 |
 | `vm-install.log` | VM helper / EXIT_CODE |
 | `fix-package/` | Option A |
 

@@ -23,7 +23,7 @@ Every run is persisted under `tests/monitored-install-runs/` as a dogfood flat-f
 
 Work from the allbrew repo root: `~/Developer/allbrew` (or the active clone). Prefer the **Homebrew-installed** binary at `/opt/homebrew/bin/allbrew` for user-facing install attempts. Use local `bun run bin/allbrew.ts` only when validating an unreleased fix before release.
 
-**Service blocks:** do **not** pass `--service` or `--no-service`. allbrew must auto-detect whether a Homebrew `service` stanza is appropriate. Independently evaluate the URL/docs first (Phase 0.5) and treat a mismatch with allbrew’s outcome as a product bug (`service_mismatch` → Phase 3).
+**Service blocks:** do **not** pass `--service` or `--no-service`. allbrew must auto-detect whether a Homebrew `service` stanza is appropriate. Independently evaluate the URL/docs first (Phase 1) and treat a mismatch with allbrew’s outcome as a product bug (`service_mismatch` → Phase 5).
 
 ## Success criteria
 
@@ -64,7 +64,7 @@ Stop when all of the following hold:
    ```
    Keep `RUN_DIR` for the rest of the workflow. Point capture logs into it (e.g. `--log "$RUN_DIR/allbrew-initial.log"`).
 
-## Phase 0.5 — Independent agent classification (service + generator)
+## Phase 1 — Independent agent classification (service + generator)
 
 Before running allbrew, form an independent judgment from the URL and primary docs (README, homepage, `package.json` bin/scripts, release notes). Do **not** trust allbrew’s detector yet.
 
@@ -75,8 +75,8 @@ Before running allbrew, form an independent judgment from the URL and primary do
 > ```
 >  - Under `bun` with `Bun.WebView` (macOS, WebView backend `chrome`), this navigates 1280×900 ephemeral, waits ~3s for hydration, evaluates `document.body.innerText` + `documentElement.outerHTML` + `pre,code` text, then matches `CURL_PIPE_SHELL_RE` / `SHELL_PROCESS_SUBST_RE` / `BARE_SCRIPT_URL_RE` (same regexes as `lib/analyzer.ts` and `lib/page-discover.ts` `install-command` +85 boost).
 >  - If a `https://…` bashinstall URL is found, it sets `inputShape.kind=bash-script`, `expected={strategy:bash-script, generator:install-script, packageName:<scriptUrl>, service:false}` and annotates `notes`/`_renderMeta` with `mode=webview`, hit URL/evidence. Otherwise it annotates `js-rendered-<mode> no-bashinstall` and leaves manual judgment for you to fill.
->  - Falls back to static fetch when `Bun.WebView` is unavailable (e.g. `node` via `tsx`). Always run this helper **before** Phase 1 when the URL is `unknown` via `lib/classifier.ts` but the page is JS-driven; re-run with `--force` if you already hand-wrote `expected`.
->  This keeps the *agent* side oracle consistent with the production `lib/page-discover-webview.ts` discovery path (which also JS-renders for `discoverWithWebView`), so a `bash-script` page like `https://developer.meta.com/ai/lp/muse-code` is judged as `install-script` and later compared correctly in Phase 1.5.
+>  - Falls back to static fetch when `Bun.WebView` is unavailable (e.g. `node` via `tsx`). Always run this helper **before** Phase 2 when the URL is `unknown` via `lib/classifier.ts` but the page is JS-driven; re-run with `--force` if you already hand-wrote `expected`.
+>  This keeps the *agent* side oracle consistent with the production `lib/page-discover-webview.ts` discovery path (which also JS-renders for `discoverWithWebView`), so a `bash-script` page like `https://developer.meta.com/ai/lp/muse-code` is judged as `install-script` and later compared correctly in Phase 3.
 
 Write/update `$RUN_DIR/agent-judgment.json` as docs are read (the helper above may have pre-filled `bash-script`/`install-script` when a `curl|bash` one-liner was rendered; preserve that and fill the rest):
 
@@ -124,7 +124,7 @@ expected_command: foo server
 
 If service evidence is ambiguous, set `expected.service` to `null` / unclear and prefer observing allbrew’s choice, but still flag nonsense service **commands** (prose fragments, truncated markdown) as `service_mismatch`.
 
-## Phase 1 — Baseline install attempt (Homebrew allbrew)
+## Phase 2 — Baseline install attempt (Homebrew allbrew)
 
 1. Derive a short package slug from the URL (repo name / npm name / filename).
 2. Prefer non-interactive flags so prompts cannot hang the run:
@@ -164,13 +164,13 @@ Also capture `allbrew_service_command` from the `service do` / `run […]` stanz
 
 | Signal | Class |
 |--------|--------|
-| exit 0 + formula written + brew install ok | **install_ok** → Phase 1.5 then Phase 2 |
-| generation error (registry 404, hash fail, classify fail, template throw) | **generate_fail** → Phase 3 |
-| generation ok, `brew install` / link / test fails | **brew_fail** → Phase 3 |
+| exit 0 + formula written + brew install ok | **install_ok** → Phase 3 then Phase 4 |
+| generation error (registry 404, hash fail, classify fail, template throw) | **generate_fail** → Phase 5 |
+| generation ok, `brew install` / link / test fails | **brew_fail** → Phase 5 |
 | hung on interactive prompt | **prompt_hang** → re-run with stronger non-service flags; if still ambiguous, **generate_fail** |
-| allbrew missing / wrong tap | **env_fail** → fix env, restart Phase 1 (no product code change) |
+| allbrew missing / wrong tap | **env_fail** → fix env, restart Phase 2 (no product code change) |
 
-## Phase 1.5 — Service expectation vs allbrew decision
+## Phase 3 — Service expectation vs allbrew decision
 
 After a successful generate (and again after local fix validation), compare:
 
@@ -182,7 +182,7 @@ After a successful generate (and again after local fix validation), compare:
 | `false` | `true` | **`service_mismatch`** — allbrew over-detected |
 | `unclear` | any | OK only if command (when present) is coherent; else **`service_mismatch`** |
 
-Raise **`service_mismatch`** (treat like generate_fail → Phase 3) when:
+Raise **`service_mismatch`** (treat like generate_fail → Phase 5) when:
 
 1. Boolean expectation disagrees with allbrew’s stanza presence, or
 2. A service block exists but `run` is empty, prose, markdown-truncated (`This starts the server on \``), or clearly not an executable invocation, or
@@ -194,9 +194,9 @@ When any `error`/`warn` delta exists, write `$RUN_DIR/classifier-rule.mjs` expor
 
 Do **not** “fix” a mismatch by re-running with `--service` / `--no-service` as the permanent path. Fix detector/generator logic (usually `lib/analyzer.ts` service helpers and/or `lib/generators/service.ts`), add tests, release, and retry with auto-detect still enabled.
 
-## Phase 2 — Post-install verification
+## Phase 4 — Post-install verification
 
-When install appears successful and Phase 1.5 passed:
+When install appears successful and Phase 3 passed:
 
 1. Resolve the installed name from the formula/cask path or allbrew summary line.
 2. For formulae:
@@ -219,14 +219,14 @@ When install appears successful and Phase 1.5 passed:
    ls "$HOME/Applications" /Applications | rg -i '<app>'
    ```
 5. Confirm the allbrew manifest exists: `~/.config/allbrew/packages/<name>.json`.
-6. If verification fails, treat as **brew_fail** and continue to Phase 3.
+6. If verification fails, treat as **brew_fail** and continue to Phase 5.
 7. If verification passes and no code fix was required, report success and stop.
 
-## Phase 3 — Failure path (test case + fix)
+## Phase 5 — Failure path (test case + fix)
 
 Do **not** ship a one-off tap-only workaround without fixing allbrew source when the failure is an allbrew bug (bad parsing, missing cleaner, hash/redirect, generator selection, service detection, etc.).
 
-### 3a. Invoke `add-test-case`
+### 5a. Invoke `add-test-case`
 
 Read and follow `.agents/skills/add-test-case/SKILL.md` with this URL:
 
@@ -241,7 +241,7 @@ Read and follow `.agents/skills/add-test-case/SKILL.md` with this URL:
    bun run test
    ```
 
-### 3b. Root-cause the allbrew bug
+### 5b. Root-cause the allbrew bug
 
 Use the captured log + `references/failure-playbook.md`.
 
@@ -257,7 +257,7 @@ Typical investigation order:
 3. Prefer the smallest durable fix at the earliest wrong layer (e.g. strip `pkg@latest` in analyzer rather than special-casing one app; fix service command extraction rather than hardcoding one formula).
 4. Add/adjust unit tests beside the fix so the regression is locked.
 
-### 3c. Validate the fix locally (before release)
+### 5c. Validate the fix locally (before release)
 
 1. `bun run check && bun run test` (and targeted `bun test path/to/file`).
 2. Generate against a **temporary tap path** when possible to avoid polluting the real tap mid-debug:
@@ -266,10 +266,10 @@ Typical investigation order:
    mkdir -p "$TMP_TAP/Formula" "$TMP_TAP/Casks"
    bun run bin/allbrew.ts "<url>" --name "<slug>" --tap "$TMP_TAP" --verbose
    ```
-3. Re-run Phase 1.5 against the temp formula (service expectation must now match).
+3. Re-run Phase 3 against the temp formula (service expectation must now match).
 4. When the local generator payload + Ruby look correct, proceed to commit.
 
-## Phase 4 — Commit, push, release, upgrade, retry
+## Phase 6 — Commit, push, release, upgrade, retry
 
 Follow `references/release-and-retry.md` in full. Summary:
 
@@ -287,12 +287,12 @@ Follow `references/release-and-retry.md` in full. Summary:
    brew upgrade allbrew || brew reinstall allbrew
    allbrew --version   # must match the new release
    ```
-7. **Retry Phase 0.5 → Phase 1 → Phase 1.5 → Phase 2** using `/opt/homebrew/bin/allbrew` (not the local bun entry) against the same URL, still without service force-flags.
-8. On retry failure, return to Phase 3 (do not loop more than twice without reporting a hard blocker).
+7. **Retry Phase 1 → Phase 2 → Phase 3 → Phase 4** using `/opt/homebrew/bin/allbrew` (not the local bun entry) against the same URL, still without service force-flags.
+8. On retry failure, return to Phase 5 (do not loop more than twice without reporting a hard blocker).
 
-## Phase 5 — Persist run record + report
+## Phase 7 — Persist run record + report
 
-### 5a. Finalize the flat-file run record (required)
+### 7a. Finalize the flat-file run record (required)
 
 1. Ensure `$RUN_DIR/agent-judgment.json` is complete (inputShape, expected, codebaseObserved, deltas, notes, proposedRule).
 2. Copy final retry log to `$RUN_DIR/allbrew-final.log` when a retry ran; copy generated formula/cask to `$RUN_DIR/formula.rb` when useful.
@@ -315,7 +315,7 @@ Follow `references/release-and-retry.md` in full. Summary:
 
 Do this even on failure. Redact secrets from any copied logs. Run artifacts stay local (gitignored); promote learnings into unit tests / fixtures deliberately.
 
-### 5b. Chat report
+### 7b. Chat report
 
 Report a short structured summary:
 
@@ -339,7 +339,7 @@ Report a short structured summary:
 - Do not mark E2E catalog entries `skip: false` unless the user explicitly wants a live brew install in CI/E2E.
 - Cap automated fix→release→retry loops at **2** releases per URL; escalate with findings after that.
 - Keep product fixes in `lib/` + tests; do not “fix” by only hand-editing the generated tap `.rb` as the permanent solution.
-- Always write a monitored-install run record; never skip Phase 5a because the install “mostly worked.”
+- Always write a monitored-install run record; never skip Phase 7a because the install “mostly worked.”
 - Do not commit `tests/monitored-install-runs/**` contents (gitignored). Do commit skill helpers/schema and any promoted unit fixtures derived from runs.
 
 ## Resources

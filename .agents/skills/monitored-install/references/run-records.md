@@ -24,7 +24,7 @@ tests/monitored-install-runs/
 
 ## When to write
 
-**Always** at the end of a monitored run (Phase 5), whether success or failure — including env failures after a URL was attempted. Create the run dir at Phase 0.5/1 start so logs can stream into it; finalize `outcome.json` + `index.jsonl` in Phase 5.
+**Always** at the end of a monitored run (Phase 7), whether success or failure — including env failures after a URL was attempted. Create the run dir at Phase 0/1 start so logs can stream into it; finalize `outcome.json` + `index.jsonl` in Phase 7.
 
 ## Run id
 
@@ -50,7 +50,7 @@ Machine-readable envelope:
 | `host` | object | `os`, `arch`, `node` (optional), `brewPrefix` |
 | `allbrew` | object | `binary`, `versionInitial`, `versionFinal`, `tapPath`, `sourceGitSha` |
 | `attempts` | array | each install attempt: `{phase, binary, logFile, exitCode, startedAt, finishedAt}` |
-| `release` | object\|null | `{tag, commit, bumped}` if Phase 4 ran |
+| `release` | object\|null | `{tag, commit, bumped}` if Phase 6 ran |
 | `files` | object | relative paths of artifacts in the run dir |
 
 ### `agent-judgment.json` (required)
@@ -171,7 +171,7 @@ Human narrative: thought process, what failed, what was fixed, residual risk. Sa
 
 ### Logs
 
-Copy or tee Phase 1 / final retry logs into the run dir (`allbrew-initial.log`, `allbrew-final.log`). Redact tokens if any leak into output.
+Copy or tee Phase 2 / final retry logs into the run dir (`allbrew-initial.log`, `allbrew-final.log`). Redact tokens if any leak into output.
 
 ## `index.jsonl`
 

@@ -21,7 +21,7 @@ NUDGE (<n>/3) for launchName=<…> agentName=<…> slug=<…>
 
 You appear stalled or blocked.
 1. Report exact blocked_action or last command (one line).
-2. Current phase (0.5 / generate / VM / fix / finalize).
+2. Current phase (1 / 2 / 3 / 4 / 5 / 6 / 7 — e.g. judgment / generate / VM / fix / finalize).
 3. Bypass interactive approval: use noninteractive flags, temp tap, or finalize partial.
 4. If stuck >60s on a gated command: abandon it, document, continue or finalize.
 5. Playbook hint: <A–K letter and one sentence>.

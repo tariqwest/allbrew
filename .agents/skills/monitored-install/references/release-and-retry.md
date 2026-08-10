@@ -103,7 +103,7 @@ Confirm:
 
 Re-run the **same URL** with the bottle, not `bun run bin/allbrew.ts`.
 
-1. Refresh Phase 0.5 service expectation from docs (should match the fix intent).
+1. Refresh Phase 1 service expectation from docs (should match the fix intent).
 2. Run without service force-flags:
 
 ```bash

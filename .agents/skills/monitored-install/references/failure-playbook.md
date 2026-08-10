@@ -6,7 +6,7 @@ Map install logs to likely code locations and durable fixes.
 
 1. **Capture** — full verbose log from Homebrew `allbrew`.
 2. **Classify stage** — classify URL → detect install method → service decision → collect payload → write formula → `brew update`/`brew install` → runtime binary.
-3. **Compare service expectation** — agent Phase 0.5 vs formula `service do` / log hints.
+3. **Compare service expectation** — agent Phase 1 vs formula `service do` / log hints.
 4. **Reproduce offline** when possible with unit tests; use live registries only in integration tests.
 5. **Fix earliest wrong layer** so every generator benefits.
 6. **Lock with tests** that fail before the fix and pass after.

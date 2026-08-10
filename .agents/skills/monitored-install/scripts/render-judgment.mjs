@@ -243,7 +243,7 @@ async function main() {
       `bashinstall pattern ${scriptHit.evidence} → ${scriptHit.url}`,
       originalNotes ? `prev: ${originalNotes}` : "",
     ].filter(Boolean).join(" ");
-    // preserve deltas/proposedRule for later Phase 1.5
+    // preserve deltas/proposedRule for later Phase 3
   } else {
     // No bashinstall — keep or set generic marketing/unknown note but mark that render was done
     const hint = `js-rendered-${mode} no-bashinstall`;

@@ -50,7 +50,7 @@ Send to the child's **run id** (opaque id from launch):
 NUDGE (<n>/3) for launchName=<…> agentName=<…> slug=<…>
 
 You are stalled/blocked on <B1–B7 or approval blocked_action>.
-1. Report blocked_action or last command (one line) and phase (0.5/generate/VM/fix/finalize).
+1. Report blocked_action or last command (one line) and phase (1 / 2 / 3 / 4 / 5 / 6 / 7 — e.g. judgment / generate / VM / fix / finalize).
 2. For approval: abandon that exact command, use alternate non-interactive flag or finalize partial; include blocked_action so parent can widen policy.
 3. For B1 lock: backoff 15s then retry once on a different endpoint (local-2 vs homeserver) — do not busy-loop.
 4. For B2/B5 sparsebundle/endpoint: do not retry forever; finalize as blocked env_fail if local generate ok.
@@ -104,7 +104,7 @@ Do **not** auto-requeue `skipped` in same wave. For permission gates, update the
 ## 5. Prevent repeat blocks
 
 - Keep concurrency ≤ VM endpoints (3: `homeserver` + `local-1` + `local-2`) — stagger waves so judgment/fix work overlaps installs without idle prefix.
-- Ensure `warp-agent-permissions.template.toml` (or per-client templates in `templates/projects/` + `templates/agents/`) is applied with `execute_commands = always_allow` for batch policy and **without** `curl/rm/ssh/bash` on `command_denylist` — otherwise every child stalls at Phase 0.5 (see `BLOCKERS.md: How to distinguish permission vs infra`).
+- Ensure `warp-agent-permissions.template.toml` (or per-client templates in `templates/projects/` + `templates/agents/`) is applied with `execute_commands = always_allow` for batch policy and **without** `curl/rm/ssh/bash` on `command_denylist` — otherwise every child stalls at Phase 1 (see `BLOCKERS.md: How to distinguish permission vs infra`).
 - Between waves, verify `git worktree list | grep prunable` empty and `vm-guest-health: usable>0` before refill.
 
 Child self-help is `.agents/skills/monitored-install-batch-child/unblock-myself` — call it proactively when you see a child’s `vm-meta.json lastLogAt` stalled >3min.

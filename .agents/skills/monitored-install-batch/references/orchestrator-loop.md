@@ -52,7 +52,7 @@ stableName = agentName  # url-00NN-slug
 
 ## Steps
 1. cd <REPO_ROOT_ABSOLUTE>
-2. Read monitored-install SKILL.md; Phases 0→5 for THIS url only.
+2. Read monitored-install SKILL.md; Phases 0→7 for THIS url only.
 3. Init run record with slug `<slug>`.
 4. Independent judgment BEFORE allbrew (real docs fetch).
 5. Full install/verify/uninstall MUST use:
