@@ -1173,16 +1173,37 @@ async function handleGithubRepo(classification, opts) {
             },
             opts,
           );
-        case "pip":
-          return await generateWithConfirmation(
-            "pip-package",
-            {
-              packageName: opts.package || method.package,
-              repoInfo,
-              serviceConfig: serviceConfigFromReadme,
-            },
-            opts,
-          );
+        case "pip": {
+          try {
+            return await generateWithConfirmation(
+              "pip-package",
+              {
+                packageName: opts.package || method.package,
+                repoInfo,
+                serviceConfig: serviceConfigFromReadme,
+              },
+              opts,
+            );
+          } catch (err: any) {
+            const msg = String(err?.message || "");
+            if (msg.includes("PyPI lookup failed") && repoInfo) {
+              console.log(
+                `  PyPI package ${opts.package || method.package} not found (404) — falling back to source-build (python, head) for ${repoInfo.fullName}`,
+              );
+              return await generateWithConfirmation(
+                "source-build",
+                {
+                  repoInfo,
+                  release,
+                  buildSystem: { system: "python" },
+                  serviceConfig: serviceConfigFromReadme,
+                },
+                opts,
+              );
+            }
+            throw err;
+          }
+        }
         case "cargo":
           return await generateWithConfirmation(
             "cargo-package",
@@ -1416,16 +1437,37 @@ async function handleGithubRepo(classification, opts) {
           opts,
         );
       }
-      case "pip":
-        return await generateWithConfirmation(
-          "pip-package",
-          {
-            packageName: opts.package || repoInfo.name,
-            repoInfo,
-            serviceConfig,
-          },
-          opts,
-        );
+      case "pip": {
+        try {
+          return await generateWithConfirmation(
+            "pip-package",
+            {
+              packageName: opts.package || repoInfo.name,
+              repoInfo,
+              serviceConfig,
+            },
+            opts,
+          );
+        } catch (err: any) {
+          const msg = String(err?.message || "");
+          if (msg.includes("PyPI lookup failed") && repoInfo) {
+            console.log(
+              `  PyPI package ${opts.package || repoInfo.name} not found (404) — falling back to source-build (python, head) for ${repoInfo.fullName}`,
+            );
+            return await generateWithConfirmation(
+              "source-build",
+              {
+                repoInfo,
+                release,
+                buildSystem: { system: "python" },
+                serviceConfig,
+              },
+              opts,
+            );
+          }
+          throw err;
+        }
+      }
       case "cargo": {
         const cargoToml = await getFileContent(owner, repo, "Cargo.toml");
         const resolved = await resolveCargoGithubInstall(
