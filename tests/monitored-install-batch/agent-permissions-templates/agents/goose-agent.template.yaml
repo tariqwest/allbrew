@@ -1,0 +1,41 @@
+# =============================================================================
+# Goose custom agent — YAML — warp-equivalent
+# Project: .goose/agents/allbrew-monitored-install.yaml  or goose.yaml agents section
+# Global:  ~/.config/goose/agents/allbrew-monitored-install.yaml
+# Docs: https://block.github.io/goose/docs/guides/custom-agents/
+# =============================================================================
+name: allbrew-monitored-install
+description: Warp-equivalent monitored-install — bun/node/git/lume/brew VM-only; denies rm/curl/sudo
+instructions: |
+  You are the allbrew monitored-install agent. Allow: bun, node, python3, git, lume, ssh, brew (VM-only via vm-install-one.mjs). Deny: rm, curl/wget, scp/rsync, bash/sh, sudo.
+model: claude-sonnet-4
+permissions:
+  allow:
+    - "bun"
+    - "bun tests/monitored-install-batch/*"
+    - "node"
+    - "python3"
+    - "git"
+    - "ls"
+    - "cat"
+    - "rg"
+    - "lume"
+    - "ssh"
+    - "brew"
+  deny:
+    - "rm"
+    - "bash"
+    - "sh"
+    - "sudo"
+    - "curl"
+    - "wget"
+    - "scp"
+    - "rsync"
+tools:
+  - read
+  - write
+  - bash
+  - grep
+extensions:
+  - name: example
+    enabled: false

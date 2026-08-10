@@ -1,0 +1,71 @@
+# =============================================================================
+# Codex custom agent — TOML — warp-equivalent
+# Global:  ~/.codex/agents/allbrew-monitored-install.toml
+# Project: .codex/agents/allbrew-monitored-install.toml  or agents/*.toml
+# Docs: https://developers.openai.com/codex/subagents — Custom agents in ~/.codex/agents/*.toml
+# =============================================================================
+
+[agent]
+name = "allbrew-monitored-install"
+description = "Warp-equivalent monitored-install agent — bun/node/python3/git/lume/ssh/brew VM-only; denies rm/curl/scp/shells/sudo"
+model = "gpt-5"  # or gpt-5.3-codex-spark for speed
+# instructions file (AGENTS.md hierarchy still applies: ~/.codex/AGENTS.md → ./AGENTS.md → ./subdir/AGENTS.md)
+instructions = """
+You are the allbrew monitored-install agent. Allow: bun, node, python3, git, lume, ssh, brew (VM-only via vm-install-one.mjs), read-only tools (ls/cat/rg). Deny: rm, curl/wget, scp/rsync, bash/sh/zsh, sudo. Use `bun tests/monitored-install-batch/vm-install-one.mjs --url <url> --name <slug>` for installs — never host brew install. Export patch artifacts on failure.
+"""
+
+[agent.permissions]
+# Codex uses prefix lists; maps Warp allowlist/denylist
+allowed_commands = [
+  "bun",
+  "node",
+  "python3",
+  "git",
+  "ls",
+  "cat",
+  "head",
+  "tail",
+  "wc",
+  "rg",
+  "grep",
+  "find",
+  "which",
+  "echo",
+  "date",
+  "pwd",
+  "mktemp",
+  "mkdir",
+  "lume",
+  "ssh",
+  "brew",
+]
+denied_commands = [
+  "rm",
+  "bash",
+  "sh",
+  "zsh",
+  "fish",
+  "pwsh",
+  "sudo",
+  "curl",
+  "wget",
+  "scp",
+  "rsync",
+  "telnet",
+  "dig",
+  "nslookup",
+  "host",
+]
+
+[agent.sandbox]
+default_mode = "workspace-write"
+network_access = false
+
+[agent.approval]
+policy = "on-request"
+# trusted_commands = ["ls","cat"]  # auto-approve without asking
+
+# Optional: per-agent MCP servers
+# [agent.mcp_servers.example]
+# command = "npx"
+# args = ["-y", "@example/mcp-server"]

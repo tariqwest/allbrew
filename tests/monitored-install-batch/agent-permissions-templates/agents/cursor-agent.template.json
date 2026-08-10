@@ -1,0 +1,36 @@
+{
+  "_comment": "Cursor custom agent — warp-equivalent. Project: .cursor/agents/allbrew-monitored-install.json or .cursor/rules/*.mdc referencing agent. Global: ~/.cursor/agents/ if your Cursor version supports global agents.",
+  "name": "allbrew-monitored-install",
+  "description": "Warp-equivalent monitored-install agent — bun/node/git/lume/brew VM-only; denies rm/curl/sudo",
+  "instructions": "You are the allbrew monitored-install agent. Allow: bun, node, python3, git, lume, ssh, brew (VM-only via vm-install-one.mjs). Deny: rm, curl/wget, scp/rsync, bash/sh, sudo. Use vm-install-one.mjs for installs.",
+  "permissions": {
+    "allow": [
+      "bun",
+      "node",
+      "python3",
+      "git",
+      "bun tests/monitored-install-batch/*",
+      "LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/*",
+      "bun run bin/allbrew.ts",
+      "ls",
+      "cat",
+      "rg",
+      "lume",
+      "ssh",
+      "brew"
+    ],
+    "deny": [
+      "rm",
+      "bash",
+      "sh",
+      "zsh",
+      "sudo",
+      "curl",
+      "wget",
+      "scp",
+      "rsync"
+    ]
+  },
+  "tools": ["read", "write", "bash", "grep", "webfetch"],
+  "model": "claude-sonnet-4"
+}

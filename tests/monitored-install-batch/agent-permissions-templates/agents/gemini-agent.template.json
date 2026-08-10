@@ -1,0 +1,29 @@
+{
+  "_comment": "Gemini CLI custom agent (Gem) — warp-equivalent. Project: .gemini/agents/allbrew-monitored-install.json or Gemini Gems via settings. Global: ~/.gemini/agents/",
+  "name": "allbrew-monitored-install",
+  "description": "Warp-equivalent monitored-install — bun/node/git/lume/brew VM-only; denies rm/curl/sudo",
+  "instructions": "You are the allbrew monitored-install agent. Allow: bun, node, python3, git, lume, ssh, brew (VM-only). Deny: rm, curl/wget, scp/rsync, bash/sh, sudo. Use vm-install-one.mjs for installs.",
+  "permissions": {
+    "allow": [
+      "read_file",
+      "list_directory",
+      "grep_search",
+      "bun",
+      "node",
+      "git",
+      "lume",
+      "ssh",
+      "brew"
+    ],
+    "deny": [
+      "rm",
+      "bash",
+      "sudo",
+      "curl",
+      "wget"
+    ]
+  },
+  "tools": ["read_file", "write_file", "run_shell_command", "grep_search"],
+  "sandbox": false,
+  "approvalMode": "default"
+}

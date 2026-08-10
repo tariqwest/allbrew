@@ -1,0 +1,30 @@
+{
+  "_comment": "Cline custom mode / Kilo custom agent — warp-equivalent. Cline: .clinerules or .vscode/settings.json custom modes. Kilo: .kilo/agents/allbrew-monitored-install.md or kilo.jsonc. This JSON maps to Kilo's mode definition; Cline uses same shape via .roomodes.",
+  "name": "allbrew-monitored-install",
+  "slug": "allbrew-monitored-install",
+  "description": "Warp-equivalent monitored-install — bun/node/git/lume/brew VM-only; denies rm/curl/sudo",
+  "roleDefinition": "You are the allbrew monitored-install agent. Allow: bun, node, python3, git, lume, ssh, brew (VM-only). Deny: rm, curl/wget, scp/rsync, bash/sh, sudo. Use vm-install-one.mjs for installs.",
+  "groups": ["read", "edit", "browser", "command"],
+  "permissions": {
+    "allow": [
+      "read_file",
+      "list_directory",
+      "grep_search",
+      "bun*",
+      "node*",
+      "git*",
+      "lume*",
+      "ssh*",
+      "brew*"
+    ],
+    "deny": [
+      "rm*",
+      "bash*",
+      "sudo*",
+      "curl*",
+      "wget*"
+    ]
+  },
+  "tools": ["read_file", "write_file", "execute_command", "grep_search", "web_fetch"],
+  "source": "Generated from warp-agent-permissions.template.toml"
+}
