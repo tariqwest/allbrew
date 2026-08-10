@@ -29,6 +29,8 @@ export const KNOWN_BIN_NAMES: Record<string, string> = {
   "shell-gpt": "sgpt",
   graphifyy: "graphify",
   "nanobot-ai": "nanobot",
+  /** Textualize toolong ships console_script `tl`, not `toolong`. */
+  toolong: "tl",
 };
 
 /**

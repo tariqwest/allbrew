@@ -615,6 +615,7 @@ describe("pip requirement parsing helpers", () => {
 
   it("knows shell-gpt binary alias", () => {
     expect(KNOWN_BIN_NAMES["shell-gpt"]).toBe("sgpt");
+    expect(KNOWN_BIN_NAMES["toolong"]).toBe("tl");
   });
 });
 
