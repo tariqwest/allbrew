@@ -1,30 +1,47 @@
 {
-  "_comment": "Cline custom mode / Kilo custom agent — warp-equivalent. Cline: .clinerules or .vscode/settings.json custom modes. Kilo: .kilo/agents/allbrew-monitored-install.md or kilo.jsonc. This JSON maps to Kilo's mode definition; Cline uses same shape via .roomodes.",
+  "_comment": "Cline custom mode / Roo mode — warp-equivalent full marathon allowlist. Project: .vscode/settings.json custom modes + .clinerules. See child-agent-privileges.DRAFT.toml.",
   "name": "allbrew-monitored-install",
   "slug": "allbrew-monitored-install",
-  "description": "Warp-equivalent monitored-install — bun/node/git/lume/brew VM-only; denies rm/curl/sudo",
-  "roleDefinition": "You are the allbrew monitored-install agent. Allow: bun, node, python3, git, lume, ssh, brew (VM-only). Deny: rm, curl/wget, scp/rsync, bash/sh, sudo. Use vm-install-one.mjs for installs.",
+  "description": "Warp-equivalent monitored-install — bun/lume-ssh/git worktrees/brew-VM + network + FS plumbing; denies only destructive",
+  "roleDefinition": "You are the allbrew monitored-install agent. AUTO-RUN: LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs + render-judgment.mjs + bun run check/test + git worktree + curl/wget + brew + FS plumbing (mktemp/mkdir/ls/rg/grep/cat etc.). DENY: sudo, rm -rf /, dd/mkfs, bun run release, git push main/--force.",
   "groups": ["read", "edit", "browser", "command"],
   "permissions": {
     "allow": [
       "read_file",
       "list_directory",
       "grep_search",
-      "bun*",
-      "node*",
-      "git*",
-      "lume*",
+      "web_fetch",
+      "LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/*",
+      "bun tests/monitored-install-batch/*",
+      "bun .agents/skills/monitored-install/*",
+      "bun run bin/allbrew.ts",
+      "bun run check",
+      "bun test",
+      "git worktree*",
+      "git -C*",
+      "git status*",
+      "git diff*",
+      "git push -u origin agent/*",
+      "curl*",
+      "wget*",
       "ssh*",
-      "brew*"
+      "lume*",
+      "brew*",
+      "mktemp*",
+      "mkdir*",
+      "ls*",
+      "rg*",
+      "cat*"
     ],
     "deny": [
-      "rm*",
-      "bash*",
+      "rm -rf /*",
+      "rm -rf ~*",
       "sudo*",
-      "curl*",
-      "wget*"
+      "dd*",
+      "bun run release*",
+      "git push *main*",
+      "git push --force*"
     ]
   },
-  "tools": ["read_file", "write_file", "execute_command", "grep_search", "web_fetch"],
-  "source": "Generated from warp-agent-permissions.template.toml"
+  "tools": ["read_file", "write_file", "execute_command", "grep_search", "web_fetch"]
 }

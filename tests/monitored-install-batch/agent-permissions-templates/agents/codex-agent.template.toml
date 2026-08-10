@@ -1,60 +1,143 @@
 # =============================================================================
-# Codex custom agent — TOML — warp-equivalent
+# Codex custom agent — TOML — warp-equivalent (autonomous marathon)
 # Global:  ~/.codex/agents/allbrew-monitored-install.toml
 # Project: .codex/agents/allbrew-monitored-install.toml  or agents/*.toml
-# Docs: https://developers.openai.com/codex/subagents — Custom agents in ~/.codex/agents/*.toml
+# Docs: https://developers.openai.com/codex/subagents
 # =============================================================================
 
 [agent]
 name = "allbrew-monitored-install"
-description = "Warp-equivalent monitored-install agent — bun/node/python3/git/lume/ssh/brew VM-only; denies rm/curl/scp/shells/sudo"
-model = "gpt-5"  # or gpt-5.3-codex-spark for speed
-# instructions file (AGENTS.md hierarchy still applies: ~/.codex/AGENTS.md → ./AGENTS.md → ./subdir/AGENTS.md)
+description = "Warp-equivalent monitored-install — full marathon allowlist: bun/node/python3/git worktrees/lume-ssh/brew-VM + network fetch + FS plumbing; denies only destructive/priv-esc"
+model = "gpt-5"  # or gpt-5.3-codex-spark
 instructions = """
-You are the allbrew monitored-install agent. Allow: bun, node, python3, git, lume, ssh, brew (VM-only via vm-install-one.mjs), read-only tools (ls/cat/rg). Deny: rm, curl/wget, scp/rsync, bash/sh/zsh, sudo. Use `bun tests/monitored-install-batch/vm-install-one.mjs --url <url> --name <slug>` for installs — never host brew install. Export patch artifacts on failure.
+You are the allbrew monitored-install agent. AUTO-RUN without asking: bun (with LUME_*, CI=1, ALLBREW_NONINTERACTIVE) for vm-install-one.mjs / render-judgment.mjs / init-run-record / batch helpers / bun run check|test; git worktree add/list/remove/prune and git -C / status/diff/log/show/branch/checkout/add/commit/fetch/pull/push (agent/* only) + rev-parse/apply; lume/ssh/rsync/scp with LUME_ env; curl/wget for docs judgment; brew (read + VM helper install/uninstall/services/cleanup/trust) — never host brew install as success; FS plumbing mktemp/mkdir/ls/rg/grep/cat/head/tail/tee/cp/mv/chmod etc. into worktrees/, tests/monitored-install-runs/, state/, fix-packages/, temp dirs. DENY: sudo/su, rm -rf / or ~, dd/mkfs/diskutil erase, bun run release, git push main/origin main/--force.
+Use `LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs --url <url> --name <slug> --log $RUN_DIR/vm-install.log --run-dir $RUN_DIR` for EVERY install — VM-only VERIFY_OK is the only success.
 """
 
 [agent.permissions]
-# Codex uses prefix lists; maps Warp allowlist/denylist
+# Maps child-agent-privileges.DRAFT.toml allowlist — prefix list (Codex matches prefixes)
 allowed_commands = [
+  # bun / node / batch helpers
   "bun",
+  "LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/",
+  "bun tests/monitored-install-batch/",
+  "bun .agents/skills/monitored-install/",
+  "bun run bin/allbrew.ts",
+  "CI=1 ALLBREW_NONINTERACTIVE=1 bun run bin/allbrew.ts",
+  "bun run check",
+  "bun test",
+  "bun run batch:reconcile-fixes",
   "node",
   "python3",
-  "git",
+  # git / worktrees
+  "git worktree",
+  "git -C",
+  "git status",
+  "git diff",
+  "git log",
+  "git show",
+  "git branch",
+  "git checkout",
+  "git switch",
+  "git add",
+  "git commit",
+  "git fetch",
+  "git pull",
+  "git push",
+  "git push -u origin agent/",
+  "git rev-parse",
+  "git ls-files",
+  "git apply",
+  "git stash",
+  "git restore",
+  "git remote",
+  "git config",
+  "git clone",
+  "git reset",
+  # brew (VM helper / read)
+  "brew info",
+  "brew list",
+  "brew update",
+  "brew outdated",
+  "brew search",
+  "brew leaves",
+  "brew deps",
+  "brew uses",
+  "brew cat",
+  "brew formula",
+  "brew cask",
+  "brew doctor",
+  "brew config",
+  "brew env",
+  "brew --prefix",
+  "brew install",
+  "brew uninstall",
+  "brew reinstall",
+  "brew upgrade",
+  "brew tap",
+  "brew untap",
+  "brew services",
+  "brew cleanup",
+  "brew autoremove",
+  "brew trust",
+  # network / Lume
+  "curl",
+  "wget",
+  "ssh",
+  "rsync",
+  "scp",
+  "lume",
+  # FS plumbing
+  "cd",
+  "mktemp",
+  "mkdir",
   "ls",
+  "find",
+  "rg",
+  "grep",
   "cat",
   "head",
   "tail",
-  "wc",
-  "rg",
-  "grep",
-  "find",
-  "which",
-  "echo",
-  "date",
+  "tee",
+  "cp",
+  "mv",
+  "chmod",
+  "touch",
+  "dirname",
+  "basename",
   "pwd",
-  "mktemp",
-  "mkdir",
-  "lume",
-  "ssh",
-  "brew",
+  "which",
+  "env",
+  "printenv",
+  "date",
+  "stat",
+  "wc",
+  "sort",
+  "uniq",
+  "xargs",
+  "sed",
+  "awk",
+  "echo",
+  "printf",
+  "true",
+  "test",
 ]
+# Must never auto-approve — denylist always wins (child-agent-privileges.DRAFT.toml:denylist)
 denied_commands = [
-  "rm",
-  "bash",
-  "sh",
-  "zsh",
-  "fish",
-  "pwsh",
   "sudo",
-  "curl",
-  "wget",
-  "scp",
-  "rsync",
-  "telnet",
-  "dig",
-  "nslookup",
-  "host",
+  "su",
+  "rm -rf /",
+  "rm -rf ~",
+  "rm -rf $HOME",
+  "dd",
+  "mkfs",
+  "diskutil erase",
+  "launchctl bootout system/",
+  "killall -9",
+  "bun run release",
+  "git push main",
+  "git push origin main",
+  "git push --force",
 ]
 
 [agent.sandbox]
@@ -63,9 +146,3 @@ network_access = false
 
 [agent.approval]
 policy = "on-request"
-# trusted_commands = ["ls","cat"]  # auto-approve without asking
-
-# Optional: per-agent MCP servers
-# [agent.mcp_servers.example]
-# command = "npx"
-# args = ["-y", "@example/mcp-server"]

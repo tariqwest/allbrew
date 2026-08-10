@@ -1,29 +1,46 @@
 {
-  "_comment": "Gemini CLI custom agent (Gem) — warp-equivalent. Project: .gemini/agents/allbrew-monitored-install.json or Gemini Gems via settings. Global: ~/.gemini/agents/",
+  "_comment": "Gemini CLI custom agent (Gem) — warp-equivalent full marathon allowlist. Project: .gemini/agents/*.json. Global: ~/.gemini/agents/*.json. See child-agent-privileges.DRAFT.toml.",
   "name": "allbrew-monitored-install",
-  "description": "Warp-equivalent monitored-install — bun/node/git/lume/brew VM-only; denies rm/curl/sudo",
-  "instructions": "You are the allbrew monitored-install agent. Allow: bun, node, python3, git, lume, ssh, brew (VM-only). Deny: rm, curl/wget, scp/rsync, bash/sh, sudo. Use vm-install-one.mjs for installs.",
+  "description": "Warp-equivalent monitored-install — autonomous: bun/lume-ssh/git worktrees/brew-VM + network + FS plumbing; denies only destructive",
+  "instructions": "AUTO-RUN: LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs --url <url> + render-judgment.mjs + bun run check/test + git worktree + curl/wget + brew + FS plumbing. DENY: sudo, rm -rf /, dd/mkfs, bun run release, git push main/--force.",
   "permissions": {
     "allow": [
       "read_file",
       "list_directory",
       "grep_search",
-      "bun",
-      "node",
-      "git",
-      "lume",
+      "web_fetch",
+      "LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/*",
+      "bun tests/monitored-install-batch/*",
+      "bun .agents/skills/monitored-install/*",
+      "bun run bin/allbrew.ts",
+      "bun run check",
+      "bun test",
+      "git worktree",
+      "git -C",
+      "git push -u origin agent/",
+      "curl",
+      "wget",
       "ssh",
-      "brew"
+      "lume",
+      "brew",
+      "mktemp",
+      "mkdir",
+      "ls",
+      "rg",
+      "cat"
     ],
     "deny": [
-      "rm",
-      "bash",
+      "rm -rf /",
+      "rm -rf ~",
       "sudo",
-      "curl",
-      "wget"
+      "su",
+      "dd",
+      "bun run release",
+      "git push main",
+      "git push --force"
     ]
   },
-  "tools": ["read_file", "write_file", "run_shell_command", "grep_search"],
+  "tools": ["read_file", "write_file", "run_shell_command", "grep_search", "web_fetch"],
   "sandbox": false,
   "approvalMode": "default"
 }
