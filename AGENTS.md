@@ -236,6 +236,17 @@ Each test run produces a timestamped record under `tests/e2e-runs/<timestamp>/`:
 
 A `latest` symlink points to the most recent run. These records persist across resets, providing a full history of what was tested, what passed/failed, and the final system state.
 
+### Batch artifact archiving (monitored-install-batch)
+
+Large batch artifacts (`fix-packages/` 13M + `monitored-install-runs/` 94M + `logs/` 7M → ~107M per wave, 200+ patches) are archived to keep `main` lean:
+
+* **Archive:** `~/.cache/allbrew/batch-artifacts/<date>/batch-<date>.tar.zst` (e.g. `2026-08-10` → 9.2M, 23k entries, sha256 `01af8e`, 213 fix-packages + 1501 runs + 1516 logs) via `scripts/archive-batch-artifacts.mjs`.
+* **Manifest (tracked):** `tests/monitored-install-batch/archive/manifest.json` stays on `main` (`date`, `tarball`, `sha256`, `size`, `counts`, `gitSha`) so `reconcile-fixes` can locate the tarball without the blobs.
+* **Lean repo:** `tests/monitored-install-batch/fix-packages/` + `tests/monitored-install-runs/` + `logs/*.log` are `.gitignore`d (`archive/*.tar.*` ignored, `manifest.json` allowed) — `git status` goes from 70 `??` to 0, `fix-index.jsonl`/`agent-index.jsonl` remain as the committed index.
+* **Find/apply:** list archived patches `tar tf ~/.cache/.../batch-2026-08-10.tar.zst | grep fix-packages`, restore `tar -xf ~/.cache/.../batch-2026-08-10.tar.zst -C ~/Developer/allbrew` or `bun run batch:reconcile-fixes --path ~/.cache/.../fix-packages/<slug> --json`, then `git apply` inside `tests/monitored-install-batch/worktrees/<slug>`.
+
+Run `bun scripts/archive-batch-artifacts.mjs --dry-run` to preview, `--verify --prune-move` to archive + prune (keeps `.keep` placeholders, restorable via `tar -xf`).
+
 ## Code style
 
 - **`tsc --noEmit` must pass with zero errors** — currently `tsconfig.json` has `strict: false`, so the project compiles under loose settings. Treat the intent as strict: prefer typed payloads over `any`, avoid unsafe casts, and do not rely on the loose compiler setting. A migration to `strict: true` (or at least `strictNullChecks`) is planned.

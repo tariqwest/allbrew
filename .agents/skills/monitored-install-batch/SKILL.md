@@ -37,16 +37,19 @@ This skill is **harness-agnostic**. It assumes only that the parent can (1) run 
 | Path | Role |
 |------|------|
 | `tests/monitored-install-batch/` | Batch harness root (often gitignored) |
-| `…/state/agent-queue.json` | Queue items + statuses |
+| `…/state/agent-queue.json` | Queue items + statuses (`pending/running/succeeded/failed/failed_system/skipped/blocked`) |
 | `…/state/agent-wave.json` | Last prepared wave (basePrompt + agents[]) |
 | `…/state/agent-index.jsonl` | Parent marks + child appends |
-| `…/state/fix-index.jsonl` | Fix reconcile events |
+| `…/state/fix-index.jsonl` | Fix reconcile events (tracked — points to archived patches) |
+| `…/archive/manifest.json` | **Tracked** archive index (`tarball`, `sha256`, `counts`, `gitSha`); blobs live in `~/.cache/allbrew/batch-artifacts/<date>/` |
+| `…/fix-packages/` | **Archived** fix patches (`.gitignore`d; in `~/.cache/allbrew/batch-artifacts/<date>/batch-<date>.tar.zst`, 9.2M for 2026-08-10) |
+| `…/worktrees/` | Disposable fix worktrees only (gitignored, pruned after archive) |
+| `…/logs/` | Per-run `vm-install.log` + `vm-meta.json` (archived) |
 | `…/urls-shuffled.json` | Catalog source for `--rebuild-queue` |
 | `…/run-agent-batch.mjs` | Queue CLI for the parent |
-| `…/vm-install-one.mjs` | **Required** VM install helper for children |
+| `…/vm-install-one.mjs` | **Required** VM install helper for children (streams to `vm-install.log`, emits `vm-meta.json`) |
 | `…/child-agent-privileges.DRAFT.toml` | Required child privileges + sample allow/deny patterns (no named profile) |
-| `…/worktrees/` | Disposable fix worktrees only |
-| `tests/monitored-install-runs/<runId>/` | Per-URL skill records (canonical) |
+| `tests/monitored-install-runs/<runId>/` | Per-URL skill records (canonical) — archived to tarball, `manifest.json` + `fix-index.jsonl` remain |
 | `.agents/skills/monitored-install-batch-child/` | **Child** skill (VM-isolated judge→try→fix→verify; patch artifacts, no host live-fix; see `.agents/skills/monitored-install/SKILL.md` for single-URL human loop) |
 
 Work from the allbrew repo root (e.g. `~/Developer/allbrew` or the active clone). `cd` there before every batch command.
@@ -263,9 +266,15 @@ Each child follows **`.agents/skills/monitored-install-batch-child`** (VM-isolat
 ```bash
 bun run batch:reconcile-fixes -- --dry-run
 bun run batch:reconcile-fixes -- --path tests/monitored-install-runs/<id> --json
+# from archive:
+bun run batch:reconcile-fixes -- --path ~/.cache/allbrew/batch-artifacts/2026-08-10/fix-packages/<slug> --json
+tar tf ~/.cache/allbrew/batch-artifacts/2026-08-10/batch-2026-08-10.tar.zst | grep fix-packages | head
+tar -xf ~/.cache/allbrew/batch-artifacts/2026-08-10/batch-2026-08-10.tar.zst -C ~/Developer/allbrew -- tests/monitored-install-batch/fix-packages/<slug>
 ```
 
 Apply only under `tests/monitored-install-batch/worktrees/`. Never promote to `main` without an explicit user request.
+
+**Archived patches:** `fix-packages/` + `monitored-install-runs/` + `logs/` are not on `main` — they live in `~/.cache/allbrew/batch-artifacts/<date>/batch-<date>.tar.zst` (see `tests/monitored-install-batch/archive/manifest.json` for `sha256`/`counts`/`gitSha`). Use `scripts/archive-batch-artifacts.mjs --dry-run` to preview, `--verify --prune-move` to archive next wave. Restore via `tar -xf` as above.
 
 ## Failure classes parents see often
 

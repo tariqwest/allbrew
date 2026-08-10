@@ -241,6 +241,20 @@ Now `brew update` runs `allbrew update-formulas` afterwards.
 5. **MAS URL lookup:** accept app names/IDs in addition to full Store URLs.
 6. **Strict mode & type cleanup:** enable `strict: true` in `tsconfig.json` and remove `any` types.
 
+## Batch artifacts (archived, repo stays lean)
+
+Batch fixes are **not** kept on `main` — they are archived:
+
+```bash
+bun scripts/archive-batch-artifacts.mjs --dry-run   # preview 213 patches + 1501 runs → ~/.cache/allbrew/batch-artifacts/2026-08-10.tar.zst (9.2M)
+tar tf ~/.cache/allbrew/batch-artifacts/2026-08-10/batch-2026-08-10.tar.zst | grep fix-packages | head   # find archived patch
+tar -xf ~/.cache/allbrew/batch-artifacts/2026-08-10/batch-2026-08-10.tar.zst -C .   # restore
+bun run batch:reconcile-fixes -- --path ~/.cache/allbrew/batch-artifacts/2026-08-10/fix-packages/<slug> --json  # apply
+cat tests/monitored-install-batch/archive/manifest.json | python3 -m json.tool   # locate archive (sha256, counts, gitSha)
+```
+
+`tests/monitored-install-batch/fix-packages/` + `tests/monitored-install-runs/` + `logs/` are `.gitignore`d; only `archive/manifest.json` + `state/fix-index.jsonl` stay tracked.
+
 ## Development
 
 ```bash
