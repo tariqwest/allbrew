@@ -281,6 +281,92 @@ exit 0
 `;
 }
 
+export function installCmdFromSrc({ url, slug, mountPoint, guestLog, token, vmSrcPath }) {
+  const tokenExport = token ? `export GITHUB_TOKEN=${JSON.stringify(token)}\n` : "";
+  const src = vmSrcPath || `${"$HOME"}/Developer/allbrew`;
+  return `${brewEnvPreamble(mountPoint)}
+${tokenExport}
+if ! allbrew config show >/dev/null 2>&1; then echo "allbrew not configured" >&2; exit 2; fi
+LOG=${JSON.stringify(guestLog)}
+URL=${JSON.stringify(url)}
+NAME=${JSON.stringify(slug)}
+SRC=${JSON.stringify(src)}
+if [ ! -f "$SRC/bin/allbrew.ts" ]; then echo "SRC_MISSING $SRC" >&2; exit 2; fi
+# Prefer running the synced source directly (unreleased patch) over the bottled allbrew
+bun --cwd "$SRC" run bin/allbrew.ts "$URL" --name "$NAME" --verbose >"$LOG" 2>&1
+EC=$?
+echo EXIT_CODE=$EC | tee -a "$LOG"
+exit 0
+`;
+}
+
+export async function syncAllbrewSrcToVM(h, hostSrcPath, vmDest) {
+  const dest = vmDest || h.config.vmWorkspace || `/Users/${h.config.projectUser}/Developer/allbrew`;
+  const hostQ = h.q(hostSrcPath);
+  const destQ = h.q(dest);
+  const branch = await h.execHost(`git -C ${hostQ} rev-parse --abbrev-ref HEAD 2>/dev/null || git -C ${hostQ} branch --show-current 2>/dev/null || echo HEAD`, { nothrow: true });
+  const branchName = (branch.stdout || "").trim() || "HEAD";
+  const isHead = branchName === "HEAD";
+  const pushRef = isHead ? `HEAD:refs/heads/agent/batch-src-${Date.now()}` : `${branchName}:${branchName}`;
+  const pushBranch = isHead ? `agent/batch-src-${Date.now()}` : branchName;
+
+  // Push host worktree branch to origin so VM can fetch it (works for both local and remote VMs)
+  const pushRes = await h.execHost(`git -C ${hostQ} push origin ${pushRef} --force 2>&1`, { timeout: 120000, nothrow: true });
+  if (pushRes.exitCode !== 0 && !/Everything up-to-date/.test(pushRes.stdout || "") && !/To /.test(pushRes.stdout || "")) {
+    throw new Error(`failed to push allbrew src branch ${pushBranch} to origin:\n${pushRes.stdout}\n${pushRes.stderr}`);
+  }
+  const effectiveBranch = isHead ? pushBranch : branchName;
+
+  const remoteUrlRes = await h.execHost(`git -C ${hostQ} remote get-url origin 2>/dev/null || echo https://github.com/tariqwest/allbrew.git`, { nothrow: true });
+  const remoteUrl = (remoteUrlRes.stdout || "https://github.com/tariqwest/allbrew.git").trim();
+
+  const script = [
+    "#!/bin/bash",
+    "set -euo pipefail",
+    `SRC=${destQ}`,
+    `BRANCH=${h.q(effectiveBranch)}`,
+    `REMOTE=${h.q(remoteUrl)}`,
+    `echo "[sync-src] branch=$BRANCH remote=$REMOTE dest=$SRC"`,
+    `if [ -d "$SRC/.git" ]; then`,
+    `  echo "[sync-src] existing git repo, fetching branch"`,
+    `  git -C "$SRC" remote set-url origin "$REMOTE" 2>/dev/null || git -C "$SRC" remote add origin "$REMOTE"`,
+    `  git -C "$SRC" fetch origin "$BRANCH" --depth 1 2>&1 || git -C "$SRC" fetch origin --depth 1 2>&1`,
+    `  git -C "$SRC" checkout -B "$BRANCH" "origin/$BRANCH" 2>&1 || git -C "$SRC" checkout "$BRANCH" 2>&1 || true`,
+    `  git -C "$SRC" reset --hard "origin/$BRANCH" 2>&1 || true`,
+    `else`,
+    `  echo "[sync-src] cloning fresh"`,
+    `  rm -rf "$SRC"`,
+    `  mkdir -p "$(dirname "$SRC")"`,
+    `  git clone --depth 1 --branch "$BRANCH" "$REMOTE" "$SRC" 2>&1 || git clone --depth 1 "$REMOTE" "$SRC" 2>&1`,
+    `  git -C "$SRC" fetch origin "$BRANCH" --depth 1 2>&1 || true`,
+    `  git -C "$SRC" checkout "$BRANCH" 2>&1 || true`,
+    `fi`,
+    `echo "[sync-src] bun install in $SRC"`,
+    `if [ -f "$SRC/package.json" ]; then`,
+    `  bun --cwd "$SRC" install --frozen-lockfile 2>&1 | tail -20 || bun --cwd "$SRC" install 2>&1 | tail -20 || true`,
+    `fi`,
+    `test -f "$SRC/bin/allbrew.ts" || { echo "SRC_MISSING after sync: $SRC/bin/allbrew.ts" >&2; exit 1; }`,
+    `echo "[sync-src] ready $(git -C "$SRC" rev-parse --short HEAD 2>/dev/null || echo unknown)"`,
+  ].join("\n");
+
+  const encoded = Buffer.from(script).toString("base64");
+  const scriptPath = `/tmp/th-sync-src-${process.pid}.sh`;
+  const inner = [
+    `echo ${h.q(encoded)} | openssl base64 -d -A > ${h.q(scriptPath)}`,
+    `chmod +x ${h.q(scriptPath)}`,
+    h.q(scriptPath),
+    `rc=$?`,
+    `rm -f ${h.q(scriptPath)}`,
+    `exit $rc`,
+  ].join("\n");
+
+  const res = await h.lumeSshExec(inner, { nothrow: true, timeout: 300000 });
+  if (res.exitCode !== 0) {
+    throw new Error(`syncAllbrewSrcToVM failed (branch ${effectiveBranch}):\n${res.stdout}\n${res.stderr}`);
+  }
+  return { branch: effectiveBranch, dest, stdout: res.stdout };
+}
+
 export function strictVerifyCmd({ pkg, mountPoint }) {
   return `${brewEnvPreamble(mountPoint)}
 NAME=${JSON.stringify(pkg)}

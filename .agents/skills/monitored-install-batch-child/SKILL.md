@@ -99,8 +99,9 @@ Before any VM work, form the agent oracle. **Do not** trust the eventual `vm-ins
      --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log"
    ```
    - Acquires a Lume VM from `vm-pool.json` (3 endpoints: 2 local + homeserver), exclusive `/opt/homebrew` sparsebundle, `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`, runs the full `allbrew` → `brew install` → verify → `brew uninstall` + `assertUninstallResiduals` **inside the VM**, then detaches prefix in `finally`.
+   - Uses the **released** `allbrew` bottle inside the VM (`brew upgrade allbrew`). For patch validation (Phase 3) add `--allbrew-src "$WT"` — the helper pushes the worktree branch `agent/*` to `origin` and VM fetches/checks-out + `bun install`, then runs `bun --cwd <vmSrc> run bin/allbrew.ts` inside the VM (no host `brew`).
    - Logs to `$RUN_DIR/vm-install.log` (parent tails this for liveness). `VERIFY_OK=true` in this log is the **only** green path. Host `brew list`/`--version` is meaningless.
-   - **Do not** supplement with a host `allbrew-initial.log`. Any "local generation" that would invoke `brew` must be done inside the VM (e.g., by re-running `vm-install-one.mjs` after a worktree patch sync). Host-side validation is limited to `bun run check` / `bun test` (offline) — never `allbrew`/`brew`.
+   - **Do not** supplement with a host `allbrew-initial.log`. Host-side validation is limited to `bun run check` / `bun test` (offline) — never `allbrew`/`brew`. Any `brew`-involving re-try must be a second `vm-install-one.mjs` call (with `--allbrew-src "$WT"` for unreleased code).
 
 2. Record `codebaseObserved` **only** from the VM log + VM-generated Ruby (`$RUN_DIR/vm-install.log` + `.formula.rb`): `strategy`, `generator`, `packageNameDetected`, `serviceDetected`/`serviceCommand`, `formulaPath`, `logSignals`. Preserve `vmHelperUsed=true` for the completion report. There is no `allbrew-initial.log` host leg.
 
@@ -169,12 +170,13 @@ The VM helper already verified:
    ```bash
    cd "$WT"
    bun run check && bun test tests/unit/<area>
-   # Sync worktree changes into the VM by rsyncing the patch or by having the VM pull the branch,
-   # then VM re-verify — this is the ONLY brew validation:
+   # VM re-verify with the synced worktree source — this is the ONLY brew validation
+   # (--allbrew-src pushes agent/* to origin, VM fetches + bun install + runs bin/allbrew.ts):
    LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
-     --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install-fixed.log"
+     --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install-fixed.log" \
+     --allbrew-src "$WT"
    ```
-   Do **not** run `CI=1 … bun run bin/allbrew.ts … --tap $(mktemp -d)` on the host for validation — that is a host `brew install` and is forbidden. Only if VM `VERIFY_OK=true` and Phase 1.5 now matches does the patch count as verified (`validation.json`).
+   Do **not** run `CI=1 … bun run bin/allbrew.ts … --tap $(mktemp -d)` on the host for validation — that is a host `brew install` and is forbidden. Only if VM `VERIFY_OK=true` (from `vm-install-fixed.log`) and Phase 1.5 now matches does the patch count as verified (`validation.json`).
 
 ## Phase 4 — No host commit/push/release
 

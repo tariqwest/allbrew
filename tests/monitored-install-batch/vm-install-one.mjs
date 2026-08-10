@@ -5,7 +5,12 @@
  *
  * Usage:
  *   LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
- *     --url <url> --name <slug> [--log <host-path>]
+ *     --url <url> --name <slug> [--log <host-path>] [--allbrew-src <hostWorktreePath>]
+ *
+ * --allbrew-src: when set, sync the host worktree/branch to the VM (git push
+ *   agent/* + VM git fetch/checkout + bun install) and run the install via
+ *   `bun --cwd <vmSrc> run bin/allbrew.ts` instead of the bottled `allbrew`.
+ *   This lets batch-child validate unreleased patches without host brew.
  *
  * Prints:
  *   EXIT_CODE=...
@@ -21,6 +26,8 @@ import {
   ensureAllbrew,
   ensureTapConfigured,
   installCmd,
+  installCmdFromSrc,
+  syncAllbrewSrcToVM,
   strictVerifyCmd,
   uninstallCmd,
   fetchFormulaCmd,
@@ -50,7 +57,7 @@ const url = arg("--url");
 const name = arg("--name");
 const endpointOverride = arg("--endpoint", process.env.TH_VM_ENDPOINT || "");
 if (!url || !name) {
-  console.error("Usage: --url <url> --name <slug> [--log path] [--endpoint homeserver|local]");
+  console.error("Usage: --url <url> --name <slug> [--log path] [--endpoint homeserver|local] [--allbrew-src <hostPath>]");
   process.exit(2);
 }
 
@@ -64,6 +71,8 @@ const hostLog =
 mkdirSync(resolve(hostLog, ".."), { recursive: true });
 
 const token = process.env.GITHUB_TOKEN || "";
+const allbrewSrc = arg("--allbrew-src");
+const allbrewBranch = arg("--allbrew-branch");
 
 // Acquire a pool slot (homeserver or local) BEFORE loading harness so config sees endpoint env.
 let poolLease = null;
@@ -100,14 +109,35 @@ try {
   await ensureAllbrew(h, session, mountPoint);
   await ensureTapConfigured(h, session, mountPoint, tapPath);
 
+  let vmSrcPath = null;
+  if (allbrewSrc) {
+    const hostPath = resolve(allbrewSrc);
+    console.log(`[vm-install-one] syncing allbrew src ${hostPath} to VM...`);
+    const sync = await syncAllbrewSrcToVM(h, hostPath);
+    vmSrcPath = sync.dest;
+    console.log(`[vm-install-one] src ready on branch ${sync.branch} at ${vmSrcPath}`);
+    if (allbrewBranch && allbrewBranch !== sync.branch) {
+      console.log(`[vm-install-one] note: requested --allbrew-branch ${allbrewBranch} resolved to ${sync.branch}`);
+    }
+  }
+
   const guestLog = `/tmp/allbrew-agent-${name}.log`;
-  const cmd = installCmd({
-    url,
-    slug: name,
-    mountPoint,
-    guestLog,
-    token: token || undefined,
-  });
+  const cmd = vmSrcPath
+    ? installCmdFromSrc({
+        url,
+        slug: name,
+        mountPoint,
+        guestLog,
+        token: token || undefined,
+        vmSrcPath,
+      })
+    : installCmd({
+        url,
+        slug: name,
+        mountPoint,
+        guestLog,
+        token: token || undefined,
+      });
   const result = await guest(h.runAsProjectUser, session, cmd, `allbrew-${name}`, {
     timeout: Number(process.env.TH_BATCH_INSTALL_TIMEOUT_MS || 720000),
     stream: true,
@@ -185,4 +215,20 @@ console.log(`VERIFY_OK=${verifyOk}`);
 console.log(`ENDPOINT=${endpointId}`);
 console.log(`LOG=${hostLog}`);
 console.log(`FORMULA_LOG=${hostLog}.formula.rb`);
+try {
+  const status = {
+    url,
+    name,
+    pkg,
+    exitCode,
+    verifyOk,
+    endpointId,
+    hostLog,
+    formulaLog: `${hostLog}.formula.rb`,
+    verifyLog: `${hostLog}.verify.txt`,
+    finishedAt: new Date().toISOString(),
+  };
+  writeFileSync(`${hostLog}.status.json`, JSON.stringify(status, null, 2));
+  writeFileSync(`${hostLog}.done`, "");
+} catch {}
 process.exit(exitCode === 0 && verifyOk ? 0 : 1);

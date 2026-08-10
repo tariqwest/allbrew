@@ -54,6 +54,22 @@ export async function hasSetappCliFormula(tapPath: string) {
 }
 
 export async function ensureSetappPrerequisites(tapPath: string) {
+  const isBatch = process.env.CI === "1" || process.env.ALLBREW_NONINTERACTIVE === "1" || process.env.TH_BATCH_WORKER_TAP !== undefined;
+  if (isBatch) {
+    if (!(await hasSetappCliFormula(tapPath))) {
+      const spinner = ora("Generating setapp-cli formula...").start();
+      try {
+        const repoInfo = await getRepoInfo(SETAPP_CLI_OWNER, SETAPP_CLI_REPO);
+        const release = await getLatestRelease(SETAPP_CLI_OWNER, SETAPP_CLI_REPO);
+        const { generateSetappCliFormula } = await import("./generators/setapp-cli-formula.ts");
+        await generateSetappCliFormula(repoInfo, release, { tapPath, name: SETAPP_CLI_FORMULA });
+        spinner.succeed("setapp-cli formula generated");
+      } catch (err: any) {
+        spinner.warn(`setapp-cli formula generation failed: ${err.message}`);
+      }
+    }
+    return;
+  }
   if (!(await hasSetappCliFormula(tapPath))) {
     const spinner = ora("Generating setapp-cli formula...").start();
     try {
