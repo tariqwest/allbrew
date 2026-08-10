@@ -196,10 +196,35 @@ export async function collectBinaryReleasePayload(
   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
 
   const archAssets: Record<string, any> = {};
+  function scoreAssetCandidate(assetName: string, preferredName: string): number {
+    const lower = assetName.toLowerCase();
+    const pref = preferredName.toLowerCase();
+    let score = 0;
+    const bare = lower.replace(/\.(tar\.gz|tgz|tar\.bz2|tar\.xz|zip)$/i, "");
+    const stripped = bare
+      .replace(/[-_.]?(darwin|macos|osx|linux|windows|win32|apple|unknown|pc|gnu|musl)[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal|all)?/gi, " ")
+      .replace(/[-_.]+/g, " ")
+      .trim();
+    const firstToken = stripped.split(/\s+/)[0] || "";
+    if (firstToken === pref) score += 100;
+    else if (firstToken.startsWith(pref)) score += 50;
+    else if (bare.toLowerCase().startsWith(pref + "-")) score += 40;
+    if (lower.includes("-server") || lower.includes("_server")) score -= 30;
+    score -= bare.length * 0.1;
+    return score;
+  }
   for (const asset of release.assets) {
     if (!isBinaryAsset(asset.name)) continue;
     const arch = matchAssetToArch(asset.name);
-    if (arch) archAssets[arch] = asset;
+    if (!arch) continue;
+    const existing = archAssets[arch];
+    if (!existing) {
+      archAssets[arch] = asset;
+    } else {
+      const existingScore = scoreAssetCandidate(existing.name, name);
+      const candidateScore = scoreAssetCandidate(asset.name, name);
+      if (candidateScore > existingScore) archAssets[arch] = asset;
+    }
   }
 
   if (archAssets.macosUniversal) {
