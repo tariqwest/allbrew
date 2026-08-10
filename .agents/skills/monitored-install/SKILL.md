@@ -68,11 +68,21 @@ Stop when all of the following hold:
 
 Before running allbrew, form an independent judgment from the URL and primary docs (README, homepage, `package.json` bin/scripts, release notes). Do **not** trust allbrew’s detector yet.
 
-Write/update `$RUN_DIR/agent-judgment.json` as docs are read:
+> **JS-rendered judgment (Bun.WebView):** For any homepage/marketing URL where the install hint is JS-hydrated (e.g. `curl … | sh` one-liners, SPA shells), render with JS before judging. Run the WebView judgment helper — it JS-renders the page (Bun.WebView when available, static fetch fallback), runs `lib/analyzer.ts:detectScriptInstall` over rendered `innerText`/`outerHTML`/`pre,code` blocks, and patches `agent-judgment.json` in-place:
+> ```bash
+> bun .agents/skills/monitored-install/scripts/render-judgment.mjs \
+>   --url "<url>" --run-dir "$RUN_DIR" [--slug <slug>] [--force]
+> ```
+>  - Under `bun` with `Bun.WebView` (macOS, WebView backend `chrome`), this navigates 1280×900 ephemeral, waits ~3s for hydration, evaluates `document.body.innerText` + `documentElement.outerHTML` + `pre,code` text, then matches `CURL_PIPE_SHELL_RE` / `SHELL_PROCESS_SUBST_RE` / `BARE_SCRIPT_URL_RE` (same regexes as `lib/analyzer.ts` and `lib/page-discover.ts` `install-command` +85 boost).
+>  - If a `https://…` bashinstall URL is found, it sets `inputShape.kind=bash-script`, `expected={strategy:bash-script, generator:install-script, packageName:<scriptUrl>, service:false}` and annotates `notes`/`_renderMeta` with `mode=webview`, hit URL/evidence. Otherwise it annotates `js-rendered-<mode> no-bashinstall` and leaves manual judgment for you to fill.
+>  - Falls back to static fetch when `Bun.WebView` is unavailable (e.g. `node` via `tsx`). Always run this helper **before** Phase 1 when the URL is `unknown` via `lib/classifier.ts` but the page is JS-driven; re-run with `--force` if you already hand-wrote `expected`.
+>  This keeps the *agent* side oracle consistent with the production `lib/page-discover-webview.ts` discovery path (which also JS-renders for `discoverWithWebView`), so a `bash-script` page like `https://developer.meta.com/ai/lp/muse-code` is judged as `install-script` and later compared correctly in Phase 1.5.
 
-1. **`inputShape`** — URL kind (`github-repo`, `npm-package`, `pypi`, `cask-url`, …), host/owner/repo, and free-form `hints` (e.g. `readme-npm-global`, `npx`, `mcp-stdio`, `dmg-direct`).
+Write/update `$RUN_DIR/agent-judgment.json` as docs are read (the helper above may have pre-filled `bash-script`/`install-script` when a `curl|bash` one-liner was rendered; preserve that and fill the rest):
+
+1. **`inputShape`** — URL kind (`github-repo`, `npm-package`, `pypi`, `cask-url`, …), host/owner/repo, and free-form `hints` (e.g. `readme-npm-global`, `npx`, `mcp-stdio`, `dmg-direct`, plus `js-rendered-webview`/`bashinstall:curl|bash` when the helper ran).
 2. **`expected`** — generator, package/formula/bin names, `service` boolean + command, suggested `allbrewArgs`, and `rationale`.
-3. **`notes`** — short thought process (why this generator, why service true/false, ambiguous signals).
+3. **`notes`** — short thought process (why this generator, why service true/false, ambiguous signals; mention `render-judgment mode=webview/static` when used).
 
 ### Service expectation
 

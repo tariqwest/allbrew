@@ -3,6 +3,7 @@ import {
   type DiscoverCandidate,
 } from "./page-discover.ts";
 import { assertSafePublicFetchUrl } from "./utils.ts";
+import { detectScriptInstall } from "./analyzer.ts";
 
 declare const Bun: any;
 
@@ -225,6 +226,34 @@ export async function discoverWithWebView(
           }
         } catch {}
 
+        // --- WebView-rendered install-command extraction (JS-hydrated bashinstall) ---
+        // For JS SPA shells (e.g. developer.meta.com / llama.com) the curl|bash one-liner
+        // is not in static HTML or hrefs but in rendered innerText (pre,code, visible text).
+        // Run the same analyzer regexes as static extractCandidatesFromHtml over rendered text.
+        let renderedTextForScript = "";
+        let renderedCodeTextForScript = "";
+        try {
+          const t = await view.evaluate(`document.body ? document.body.innerText : ""`);
+          renderedTextForScript = typeof t === "string" ? t : (t != null ? String(t) : "");
+          if (renderedTextForScript.startsWith('"') && renderedTextForScript.endsWith('"')) {
+            try {
+              renderedTextForScript = JSON.parse(renderedTextForScript);
+            } catch {}
+          }
+        } catch {}
+        try {
+          const c = await view.evaluate(
+            `Array.from(document.querySelectorAll("pre, code")).map(e=>e.textContent||"").join("\\n")`,
+          );
+          let s = typeof c === "string" ? c : "";
+          if (s.startsWith('"') && s.endsWith('"')) {
+            try {
+              s = JSON.parse(s);
+            } catch {}
+          }
+          renderedCodeTextForScript = s;
+        } catch {}
+
         const candidates = [];
         const seen = new Set();
         const add = (url, evidence) => {
@@ -276,6 +305,23 @@ export async function discoverWithWebView(
         for (const u of navigated) add(u, "navigated");
         for (const n of networkUrls) add(n.url, n.why);
 
+        // Patch rendered bashinstall one-liner as install-command candidate (webview variant of
+        // extractCandidatesFromHtml -> detectScriptInstall). This is what the monitored-install
+        // render-judgment helper does for agent judgment, and must also happen in production.
+        try {
+          const combinedForDetect = [renderedTextForScript, renderedCodeTextForScript]
+            .filter(Boolean)
+            .join("\n");
+          const hit =
+            detectScriptInstall(combinedForDetect) ||
+            detectScriptInstall(renderedTextForScript) ||
+            detectScriptInstall(renderedCodeTextForScript);
+          if (hit?.url) {
+            // scoreCandidateUrl will promote unknown->bash-script and add +85 install-command-boost
+            add(hit.url, "install-command");
+          }
+        } catch {}
+
         const hasStrongArtifact = candidates.some(
           (c) => c.score >= 70 && looksLikeArtifactUrl(c.url),
         );
@@ -324,6 +370,18 @@ export async function discoverWithWebView(
                     ? again
                     : [];
                 for (const item of more) add(item?.url, `post-click:${cta.text}`);
+              } catch {}
+              // Re-check rendered text after click for newly revealed curl|bash one-liners
+              try {
+                const t2 = await view.evaluate(`document.body ? document.body.innerText : ""`);
+                let text2 = typeof t2 === "string" ? t2 : t2 != null ? String(t2) : "";
+                if (text2.startsWith('"') && text2.endsWith('"')) {
+                  try {
+                    text2 = JSON.parse(text2);
+                  } catch {}
+                }
+                const hit2 = detectScriptInstall(text2);
+                if (hit2?.url) add(hit2.url, "install-command");
               } catch {}
 
               if (candidates.some((c) => looksLikeArtifactUrl(c.url) && c.score >= 90)) {
