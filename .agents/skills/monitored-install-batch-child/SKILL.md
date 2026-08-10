@@ -96,11 +96,12 @@ Before any VM work, form the agent oracle. **Do not** trust the eventual `vm-ins
 1. **Full install/verify/uninstall via `vm-install-one.mjs`** — the **only** `VERIFY_OK` source:
    ```bash
    LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
-     --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log"
+     --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log" --run-dir "$RUN_DIR"
    ```
    - Acquires a Lume VM from `vm-pool.json` (3 endpoints: 2 local + homeserver), exclusive `/opt/homebrew` sparsebundle, `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`, runs the full `allbrew` → `brew install` → verify → `brew uninstall` + `assertUninstallResiduals` **inside the VM**, then detaches prefix in `finally`.
    - Uses the **released** `allbrew` bottle inside the VM (`brew upgrade allbrew`). For patch validation (Phase 3) add `--allbrew-src "$WT"` — the helper pushes the worktree branch `agent/*` to `origin` and VM fetches/checks-out + `bun install`, then runs `bun --cwd <vmSrc> run bin/allbrew.ts` inside the VM (no host `brew`).
-   - Logs to `$RUN_DIR/vm-install.log` (parent tails this for liveness). `VERIFY_OK=true` in this log is the **only** green path. Host `brew list`/`--version` is meaningless.
+   - Streams VM stdout incrementally into `$RUN_DIR/vm-install.log` (via `onChunk` + `appendFileSync`) and maintains `$RUN_DIR/vm-meta.json` (`endpointId`, `poolWaitMs`, `phase`, `lastLogAt`, `hostClean`) so the parent can distinguish pool-wait vs hung vs installing. Parent tails `vm-install.log` + `vm-meta.json` for 3-min nudge decisions — no heartbeat is treated as stalled.
+   - `VERIFY_OK=true` in `vm-install.log` is the **only** green path. Host `brew list`/`--version` is meaningless.
    - **Do not** supplement with a host `allbrew-initial.log`. Host-side validation is limited to `bun run check` / `bun test` (offline) — never `allbrew`/`brew`. Any `brew`-involving re-try must be a second `vm-install-one.mjs` call (with `--allbrew-src "$WT"` for unreleased code).
 
 2. Record `codebaseObserved` **only** from the VM log + VM-generated Ruby (`$RUN_DIR/vm-install.log` + `.formula.rb`): `strategy`, `generator`, `packageNameDetected`, `serviceDetected`/`serviceCommand`, `formulaPath`, `logSignals`. Preserve `vmHelperUsed=true` for the completion report. There is no `allbrew-initial.log` host leg.
@@ -174,7 +175,7 @@ The VM helper already verified:
    # (--allbrew-src pushes agent/* to origin, VM fetches + bun install + runs bin/allbrew.ts):
    LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
      --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install-fixed.log" \
-     --allbrew-src "$WT"
+     --run-dir "$RUN_DIR" --allbrew-src "$WT"
    ```
    Do **not** run `CI=1 … bun run bin/allbrew.ts … --tap $(mktemp -d)` on the host for validation — that is a host `brew install` and is forbidden. Only if VM `VERIFY_OK=true` (from `vm-install-fixed.log`) and Phase 1.5 now matches does the patch count as verified (`validation.json`).
 
@@ -185,7 +186,7 @@ Batch children **never** `git push origin main`, `git push --force`, or `bun run
 ## Phase 5 — Persist run record + patch artifacts + report to parent
 
 1. Ensure `$RUN_DIR/agent-judgment.json` is complete (inputShape, expected, codebaseObserved, deltas, notes, proposedRule, `_renderMeta` with `mode=webview` when used).
-2. Copy logs: `vm-install.log` (VM, the **only** `VERIFY_OK` source), optionally `vm-install-fixed.log`, `formula.rb`/`cask.rb` when useful, and `fix-package/` (if any) into `$RUN_DIR/`. There is no `allbrew-initial.log` — host `allbrew` is never run.
+2. Copy logs: `vm-install.log` (VM, the **only** `VERIFY_OK` source — already streamed to `$RUN_DIR/vm-install.log` during install), optionally `vm-install-fixed.log`, `formula.rb`/`cask.rb`, `vm-meta.json` (phase/endpoint/poolWait/lastLogAt), and `fix-package/` (if any) into `$RUN_DIR/`. There is no `allbrew-initial.log` — host `allbrew` is never run.
 3. Write `$RUN_DIR/summary.md` (thought process, failure class, fix as patch artifact path, residual risk, host-clean note).
 4. Finalize the batch record (do **not** use the single-URL `finalize-run-record.mjs` alone — the batch parent marks via `run-agent-batch.mjs`):
    ```bash
@@ -201,7 +202,7 @@ Batch children **never** `git push origin main`, `git push --force`, or `bun run
    ```
    but the batch parent's `--mark-done` is authoritative.
 
-5. **Report to parent** (harness message / status event):
+5. **Report to parent** (harness message / status event) — include VM barrier state:
    ```
    COMPLETION launchName=… agentName=… idx=…
    URL: …
@@ -209,6 +210,10 @@ Batch children **never** `git push origin main`, `git push --force`, or `bun run
    failureClass: …|null
    RUN_DIR: tests/monitored-install-runs/…
    vmHelperUsed: true
+   endpointId: homeserver|local-1|local-2
+   poolWaitMs: 1234
+   vmMeta: tests/monitored-install-runs/…/vm-meta.json
+   vmLogTail: last 20 lines of vm-install.log
    fixPackage: tests/monitored-install-runs/…/fix-package (or null)
    patchArtifact: tests/monitored-install-batch/fix-packages/<slug>/patches/… (or null)
    residualRisk: …

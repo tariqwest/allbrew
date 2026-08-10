@@ -191,12 +191,14 @@ Triggers: structured child completion message; lifecycle/status `succeeded`/`fai
 
 | Signal | Action |
 |--------|--------|
-| No RUN_DIR FS progress **~3 min** | Nudge #1–3 with playbook letter (A–K) |
-| Child status `blocked` | Nudge: report blocked action, bypass interactive approval gates, finalize partial if stuck >60s |
+| No RUN_DIR FS progress **~3 min** **and** `vm-meta.json` `lastLogAt` stale + `vm-guest-health` says endpoint `unusable`/`sshAvailable=false` | **Env nudge** — parent runs `vm-guest-health --clear-stale` + `run-agent-batch --ensure-vms`; if child still stale after 60s, mark `failed-agent-runtime`/`env_fail` and requeue once (don’t burn 15 min) |
+| No `vm-meta.json` at all **~3 min** after `launchedAt` (child never reached VM `pool-acquired`) | `failed-agent-runtime` — VM pool/host mutex contention; see `logs/vm-mutex-*.lockdir` + `hygiene.txt` |
+| No RUN_DIR FS progress **~3 min** but `vm-meta.json` `phase=installing` and `lastLogAt` fresh (<60s) | **Do not nudge** — pool-wait or heavy download (Warp 300M) still streaming to `vm-install.log`; tail the log |
+| Child status `blocked` (e.g. `trust` warning `warpdotdev/warp not trusted`, `diskAvail <2G`) | Nudge: report blocked action, include `vm-meta.json` `hygiene` + `diskAvail` + `trust`; parent can `brew trust` / `brew cleanup` inside VM via `vm-install-one` post-step, no host brew |
 | Runtime error / dead child | Mark `failed-agent-runtime` (or `failed`); do not infinite-relaunch the same launchName |
 | **3 nudges**, no completion | `--mark-done … failed` (or `failed-agent-runtime`); free the slot |
-| Wall-clock **~15 min** since launch, **legitimately still active** (log/process progress, heavy install mid-flight) | Stop child; `--mark-done … skipped` (`skipReason: too_heavy` / `wall_clock_cap`); free the slot — do **not** burn more concurrency on multi-hour installs |
-| Wall-clock **~15 min**, **stalled / hung** (no progress) | Stop child; `--mark-done … failed` or `failed-timeout`; free the slot |
+| Wall-clock **~15 min** since launch, **legitimately still active** (`vm-meta.json` `phase=installing`/`verifying` and `lastLogAt` <60s) | Stop child; `--mark-done … skipped` (`skipReason: too_heavy` / `wall_clock_cap`); free the slot — do **not** burn more concurrency on multi-hour installs |
+| Wall-clock **~15 min**, **stalled / hung** (`vm-meta.json` `lastLogAt` >5 min or `phase` stuck `acquiring-prefix`/`syncing-src`) | Stop child; `--mark-done … failed` or `failed-timeout`/`env_fail`; free the slot |
 
 Default wall budget: **15 minutes** (`TH_BATCH_ITEM_WALL_MS=900000` if set in policy/env). Full decision table: `references/nudge-and-blocked.md`.
 
@@ -231,7 +233,15 @@ Do not oversubscribe free agent slots (cap = `TH_BATCH_CONCURRENCY`, default 6).
 
 ### 5. Wait / monitor
 
-Prefer event-driven resume (messages + lifecycle) over tight polling. Between events: `--status`, RUN_DIR mtimes, `vm-install.log` tails.
+Prefer event-driven resume (messages + lifecycle) over tight polling. Between events: `--status`, `RUN_DIR`/`vm-meta.json` mtimes, `vm-install.log` tails, **and VM health**:
+
+```bash
+bun tests/monitored-install-batch/vm-guest-health.mjs --json | python3 -m json.tool | head -n 80
+lume ls --format json | python3 -c "import json,sys;[print(v['name'],v['status'],v.get('sshAvailable')) for v in json.load(sys.stdin)]"
+cat tests/monitored-install-runs/<runId>/vm-meta.json 2>/dev/null | python3 -m json.tool | head -n 20
+```
+
+If any endpoint reports `status=stopped` or `sshAvailable=false`, run `bun tests/monitored-install-batch/run-agent-batch.mjs --ensure-vms` (idempotent `lume run --detach` for locals) and wait 10–30s for `sshAvailable=true` before refilling. A child whose `vm-meta.json` `lastLogAt` is >3 min stale **and** `vm-guest-health` says the endpoint is `unusable` is `env_fail`/`failed-agent-runtime` (requeue once), not a heavy `skipped`. `diskAvail` / `brewCleanup` failures in `vm-meta.json` are also `env_fail` (run `brew cleanup --prune=all` inside VM via `vm-install-one`’s post-uninstall step) rather than app `brew_fail`.
 
 ### 6. Child contract
 
@@ -247,9 +257,9 @@ Each child follows **`.agents/skills/monitored-install-batch-child`** (VM-isolat
    ```
 
    Host `brew install` is never the success path (`vmHelperUsed` must be true).
-4. Local generate only for fast debug: temp tap + `CI=1 ALLBREW_NONINTERACTIVE=1`.
+4. Host-side validation **offline only**: `bun run check` / `bun test` — any `brew`/`allbrew` must be `vm-install-one.mjs` (`--allbrew-src "$WT"` for unreleased code). No host `CI=1 … --tap $(mktemp -d)`.
 5. Fixes **only** in disposable worktree → `fix-package/patches/*.patch` artifacts + `FIX.md` (Option A). Never live-patch host `main`.
-6. Reports start, blockers, completion (launchName, agentName, RUN_DIR, status, fix-package patch artifact, vmHelperUsed, hostClean).
+6. Reports start, blockers, completion (launchName, agentName, RUN_DIR, status, fix-package patch artifact, vmHelperUsed, endpointId, poolWaitMs, hostClean, vm-meta.json + vm-install.log tail).
 
 ### 7. Post-process
 
@@ -266,7 +276,7 @@ Apply only under `tests/monitored-install-batch/worktrees/`. Never promote to `m
 |-------|----------------|
 | `generate_fail` + fix-package | Mark `failed`; leave for reconcile |
 | `brew_fail` upstream/platform | Mark `failed`; no endless retry |
-| `env_fail` (VM lock/attach) | Mark `failed` or requeue **once** if hygiene is clear |
+| `env_fail` (VM lock/attach, `sshAvailable=false`, `diskAvail<2G`, `trust` warning) | Mark `failed` or **requeue once** after `vm-guest-health --clear-stale` + `--ensure-vms` + `brew cleanup` (see `vm-meta.json` `hygiene`/`diskAvail`); inspect `vm-install.log` tail first |
 | `prompt_hang` | Mark `failed`; expect noninteractive fix-package |
 | formulae.brew.sh core/cask (Case C) | Short-circuit / fail-closed — not monorepo source-build |
 | Wall clock, still active (heavy) | Mark **`skipped`** (`too_heavy` / `wall_clock_cap`); free slot |
