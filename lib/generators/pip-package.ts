@@ -29,6 +29,8 @@ export const KNOWN_BIN_NAMES: Record<string, string> = {
   "shell-gpt": "sgpt",
   graphifyy: "graphify",
   "nanobot-ai": "nanobot",
+  "pypdfeditor-gui": "pdfeditor",
+  "pypdfeditor_gui": "pdfeditor",
 };
 
 /**
@@ -47,6 +49,52 @@ export const KNOWN_PYTHON_IMPORT_VERSION_TEST: Record<string, string> = {
   napari: "napari",
   tabulous: "tabulous",
 };
+
+
+/** Parse console_scripts / gui_scripts names from a wheel entry_points.txt body. */
+export function parseEntryPointScriptNames(entryPointsTxt: string): string[] {
+  const names: string[] = [];
+  let inScripts = false;
+  for (const rawLine of entryPointsTxt.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    if (line.startsWith("[") && line.endsWith("]")) {
+      const section = line.slice(1, -1).trim().toLowerCase();
+      inScripts = section === "console_scripts" || section === "gui_scripts";
+      continue;
+    }
+    if (!inScripts) continue;
+    const eq = line.indexOf("=");
+    if (eq <= 0) continue;
+    const name = line.slice(0, eq).trim();
+    if (name) names.push(name);
+  }
+  return names;
+}
+
+export function preferBinName(
+  packageName: string,
+  formulaName: string,
+  optionsBinName: string | undefined,
+  discovered: string[],
+): string {
+  if (optionsBinName) return optionsBinName;
+  const known =
+    KNOWN_BIN_NAMES[normalizePackageName(packageName)] ||
+    KNOWN_BIN_NAMES[normalizePackageName(formulaName)];
+  if (known) return known;
+  if (discovered.length === 1) return discovered[0];
+  if (discovered.length > 1) {
+    const norm = normalizePackageName(packageName);
+    const exact = discovered.find((d) => normalizePackageName(d) === norm);
+    if (exact) return exact;
+    const formulaNorm = normalizePackageName(formulaName);
+    const byFormula = discovered.find((d) => normalizePackageName(d) === formulaNorm);
+    if (byFormula) return byFormula;
+    return discovered[0];
+  }
+  return formulaName;
+}
 
 type PypiUrl = {
   packagetype?: string;
@@ -141,8 +189,8 @@ export async function collectPipPackagePayload(
     pypiData.info.license || repoInfo?.license,
   );
 
-  const testBinName =
-    options.binName || KNOWN_BIN_NAMES[pkgKey] || name;
+  const discoveredBins = await discoverWheelScriptBins(dist.url);
+  const testBinName = preferBinName(packageName, name, options.binName, discoveredBins);
 
   const importMod =
     options.importVersionModule ||
@@ -696,6 +744,45 @@ function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
  * Prefer a pure-python wheel, then a host-compatible platform wheel.
  * Fall back to sdist when no usable wheel exists.
  */
+
+async function discoverWheelScriptBins(url: string): Promise<string[]> {
+  if (!url || !url.endsWith(".whl")) return [];
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const buf = Buffer.from(await res.arrayBuffer());
+    const targetSuffix = "entry_points.txt";
+    let offset = 0;
+    while (offset + 30 < buf.length) {
+      if (buf.readUInt32LE(offset) !== 0x04034b50) break;
+      const compMethod = buf.readUInt16LE(offset + 8);
+      const compSize = buf.readUInt32LE(offset + 18);
+      const nameLen = buf.readUInt16LE(offset + 26);
+      const extraLen = buf.readUInt16LE(offset + 28);
+      const nameStart = offset + 30;
+      const fileName = buf.subarray(nameStart, nameStart + nameLen).toString("utf8");
+      const dataStart = nameStart + nameLen + extraLen;
+      if (fileName.endsWith(targetSuffix) && compMethod === 0) {
+        const body = buf.subarray(dataStart, dataStart + compSize).toString("utf8");
+        return parseEntryPointScriptNames(body);
+      }
+      if (fileName.endsWith(targetSuffix) && compMethod === 8) {
+        try {
+          const { inflateRawSync } = await import("node:zlib");
+          const body = inflateRawSync(buf.subarray(dataStart, dataStart + compSize)).toString("utf8");
+          return parseEntryPointScriptNames(body);
+        } catch {
+          return [];
+        }
+      }
+      offset = dataStart + compSize;
+    }
+  } catch {
+    return [];
+  }
+  return [];
+}
+
 export function selectBestDistribution(
   urls: PypiUrl[],
   options: {
