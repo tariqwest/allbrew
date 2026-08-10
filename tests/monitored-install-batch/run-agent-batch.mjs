@@ -38,7 +38,7 @@ const WAVE_PATH = join(STATE_DIR, "agent-wave.json");
 const AGENT_INDEX = join(STATE_DIR, "agent-index.jsonl");
 const SKILL_PATH = join(
   REPO_ROOT,
-  ".agents/skills/monitored-install/SKILL.md",
+  ".agents/skills/monitored-install-batch-child/SKILL.md",
 );
 
 const STATUS_ALIASES = {
@@ -192,36 +192,41 @@ function loadQueue() {
 }
 
 function basePrompt() {
-  return `You are a child agent running ONE monitored allbrew install in the allbrew repo.
+  return `You are a child agent running ONE monitored allbrew install (batch-child, VM-isolated) in the allbrew repo.
 
 ## Repo
 Working directory (absolute): ${REPO_ROOT}
-cd there first for judgment, code fixes, and unit tests only.
+cd there first. All work is VM-isolated; host Homebrew must stay clean.
 
-## Skill (required)
+## Skill (required) — THIS IS THE ONLY SKILL FOR BATCH CHILDREN
 Read and FOLLOW:
 ${SKILL_PATH}
-plus references/run-records.md, failure-playbook.md, release-and-retry.md (local validation only).
+— VM-isolated variant of monitored-install. Host single-URL .agents/skills/monitored-install/SKILL.md is NOT for batch children; do not mix them.
+Also read references/run-records.md for RUN_DIR layout. Do NOT follow references that tell you to run host allbrew/brew install.
 
-## HARD ISOLATION RULES (do not violate)
-1. **Do NOT clutter or mutate the host machine's real Homebrew**.
-   - Forbidden as success path: host \`brew install\`, host \`allbrew <url>\` auto-install into the user's real tap, host \`brew services\`.
-2. **Full install/verify/uninstall MUST run in the Lume VM** via the pool's least-busy picker:
+## HARD ISOLATION RULES (do not violate — batch-child guardrails)
+1. **Host Homebrew is forbidden as success path.** Never \`brew install\`, \`brew uninstall\`, \`brew services\`, or \`allbrew <url>\` on the host. Host \`brew\` is only for Lume/vm-install-one orchestration — not for installs. Success = VM-only \`VERIFY_OK=true\` from \`vm-install-one.mjs\`.
+2. **Always VM for every allbrew/brew install/verify.** The ONLY brew-capable path is:
    \`\`\`bash
    bun tests/monitored-install-batch/vm-install-one.mjs \\
-     --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log"
+     --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log" --run-dir "$RUN_DIR"
    \`\`\`
-   Do NOT add \`--endpoint homeserver\` or \`LUME_REMOTE_ENABLED=true\` — the helper picks the least-busy free endpoint from \`vm-pool.json\` (homeserver + local-1 + local-2) via \`acquirePoolSlot()\`. It handles exclusive prefix, lock hygiene, and uninstall. If you force an endpoint you serialize onto one VM while the other two sit idle.
-3. Local generate/debug only:
-   \`bun run bin/allbrew.ts "<url>" --name "<slug>" --tap "$(mktemp -d)" --verbose\`
-   with CI=1 ALLBREW_NONINTERACTIVE=1.
-4. Code fixes only in disposable worktree: \`git worktree add /tmp/allbrew-wt-<slug>-$$ -b agent/<slug> HEAD\` then export patches into fix-package/. Never commit/push/release to main unless parent asks.
-5. Real Phase 0.5 judgment from URL+docs (not stubs). No --service/--no-service.
-6. Option A fix-package/ on failure (FIX.md, patches/, validation.json). Finalize run records + append tests/monitored-install-batch/state/agent-index.jsonl.
-7. Completion message: URL, status, RUN_DIR, deltas, fix-package, residual risk, and confirm VM helper was used for install.
+   The helper picks the least-busy endpoint from \`vm-pool.json\` (homeserver + local-1 + local-2) via \`acquirePoolSlot()\`. Do NOT add \`--endpoint\` — you would serialize onto one VM while the other two sit idle. For patch re-verify add \`--allbrew-src "$WT"\` (worktree path) — helper pushes agent/* branch and VM runs \`bun --cwd <vmSrc> run bin/allbrew.ts\` inside VM.
+3. **Host validation is offline only.** \`bun run check\` / \`bun test tests/unit/<area>\` on host is allowed. Never \`bun run bin/allbrew.ts --tap $(mktemp -d)\` on host — that still writes to host Caskroom and is forbidden.
+4. **Fixes live in disposable worktree, never host main.** Provision immediately:
+   \`\`\`bash
+   WT="tests/monitored-install-batch/worktrees/<slug>-$(date -u +%Y%m%dT%H%M%SZ)"
+   git worktree add "$WT" -b "agent/<slug>-<ts>" HEAD
+   \`\`\`
+   All lib/ edits happen inside \`$WT\`. Export patches to \`$RUN_DIR/fix-package/patches/*.patch\` + \`FIX.md\` + \`validation.json\` (and mirror to \`tests/monitored-install-batch/fix-packages/<slug>/\`). Never \`git add/commit/push\` to host main. Never \`bun run release\` / \`git push --force\`.
+5. **Real Phase 0.5 judgment via render helper.** Before VM, run:
+   \`bun .agents/skills/monitored-install/scripts/render-judgment.mjs --url "<url>" --run-dir "$RUN_DIR" --slug "<slug>" --force\`
+   (Bun.WebView JS-render when available) plus primary docs. Service expectation: true only for long-lived supervised daemon with brew services + blocking serve on port.
+6. **Option A patch artifacts on failure.** FIX.md + manifest.json + patches/*.patch + validation.json. Parent reconciles via \`bun run batch:reconcile-fixes\`; no auto-release.
+7. **Completion message must include:** URL, status, RUN_DIR, vmHelperUsed=true, endpointId, poolWaitMs, vm-meta.json path, vmLog tail, fix-package/patch artifact paths (or null), residualRisk, hostClean=true.
 
 ## Out of scope
-Other URLs; host brew pollution; auto-release.
+Other URLs; host brew installs; host main commits; auto-release.
 `;
 }
 
@@ -233,17 +238,17 @@ function perUrlPrompt(item) {
 - url: ${item.url}
 - source column: ${item.source}
 
-## Steps
+## Steps (batch-child: .agents/skills/monitored-install-batch-child/SKILL.md — VM-only, patch artifacts, host-clean)
 1. cd ${REPO_ROOT}
-2. Read the monitored-install SKILL.md and execute Phases 0→5 for THIS url only.
-3. Init run record with slug \`${item.slug}\`.
-4. Independent judgment BEFORE allbrew (real docs fetch).
-5. Install via Homebrew allbrew if available, else document env_fail; still try local bun generate for product bugs.
-6. On failure: root-cause, implement durable fix in a disposable worktree, validate, export fix-package/ (option A). Do not release.
-7. Finalize run record + append agent-index.jsonl.
-8. Reply with structured completion summary.
+2. Read .agents/skills/monitored-install-batch-child/SKILL.md and execute its Phases 0→5 for THIS url only. Do NOT use .agents/skills/monitored-install/SKILL.md (host loop).
+3. Init run record: \`bun .agents/skills/monitored-install/scripts/init-run-record.mjs --url "${item.url}" --slug "${item.slug}"\` (capture RUN_DIR). Then provision disposable worktree: \`WT="tests/monitored-install-batch/worktrees/${item.slug}-$(date -u +%Y%m%dT%H%M%SZ)"; git worktree add "$WT" -b "agent/${item.slug}-<ts>" HEAD\` — all lib edits inside $WT, never host main.
+4. Phase 0.5 judgment BEFORE VM: \`bun .agents/skills/monitored-install/scripts/render-judgment.mjs --url "${item.url}" --run-dir "$RUN_DIR" --slug "${item.slug}" --force\` + primary docs. Fill agent-judgment.json expected/service; keep js-rendered bash-script pre-fill if present.
+5. Phase 1 VM try — the ONLY brew path: \`bun tests/monitored-install-batch/vm-install-one.mjs --url "${item.url}" --name "${item.slug}" --log "$RUN_DIR/vm-install.log" --run-dir "$RUN_DIR"\` (VM-only VERIFY_OK). No host \`allbrew --tap $(mktemp -d)\` or host brew. Pre-filter formulae.brew.sh/formula/* → skipped.
+6. Phase 1.5 deltas + Phase 3 fix in $WT if failed/mismatch: smallest durable fix at earliest layer, \`bun run check\` + \`bun test\` offline, export \`$RUN_DIR/fix-package/patches/*.patch\` + FIX.md + validation.json (mirror to tests/monitored-install-batch/fix-packages/${item.slug}/). Re-verify patch ONLY via VM: same vm-install-one.mjs with \`--allbrew-src "$WT"\`.
+7. Finalize: ensure $RUN_DIR/agent-judgment.json + vm-install.log + vm-meta.json + fix-package (if any) + summary.md; hostClean=true. Append tests/monitored-install-batch/state/agent-index.jsonl. Never commit/push main or release.
+8. Reply structured completion: URL, STATUS (success|failed|blocked|skipped|failed_system), failureClass, RUN_DIR, vmHelperUsed=true, endpointId, poolWaitMs, vmMeta, vmLogTail, fixPackage/patchArtifact (or null), residualRisk, hostClean.
 
-Start now.`;
+Start now — only this URL.`;
 }
 
 function printWave() {

@@ -233,21 +233,10 @@ try {
   formulaText = fr.stdout || "";
   if (formulaText && !formulaText.includes("MISSING_FORMULA")) {
     writeFileSync(hostLog + ".formula.rb", formulaText);
-  }
-
-  writeMeta({ phase: "fetching-formula", pkg });
-  const fr = await guest(
-    h.runAsProjectUser,
-    session,
-    fetchFormulaCmd({ pkg, mountPoint, tapPath }),
-    `formula-${pkg}`,
-    { timeout: 60000 },
-  );
-  formulaText = fr.stdout || "";
-  if (formulaText && !formulaText.includes("MISSING_FORMULA")) {
-    writeFileSync(hostLog + ".formula.rb", formulaText);
     writeMeta({ phase: "formula-fetched", pkg, formulaLen: formulaText.length });
   }
+
+  // (duplicate fetch removed — single fetch above suffices)
 
   // always uninstall + VM hygiene (disk, brew cache)
   writeMeta({ phase: "uninstalling", pkg });
