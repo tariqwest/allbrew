@@ -1,0 +1,62 @@
+# =============================================================================
+# Goose — TEMPLATE — warp-equivalent
+# Global:  ~/.config/goose/config.yaml
+# Project: ./.goose.yaml  or  ./goose.yaml
+# Docs: https://block.github.io/goose/
+# Precedence: XDG global → project file → env vars
+# =============================================================================
+
+# Goose merges global then project; last wins per-key.
+
+permissions:
+  # Commands Goose may run without asking — maps Warp allowlist
+  allow:
+    - "bun"
+    - "bun tests/monitored-install-batch/*"
+    - "node tests/monitored-install-batch/*"
+    - "LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/*"
+    - "bun run bin/allbrew.ts"
+    - "node"
+    - "python3"
+    - "git"
+    - "ls"
+    - "cat"
+    - "head"
+    - "tail"
+    - "wc"
+    - "rg"
+    - "grep"
+    - "find"
+    - "which"
+    - "echo"
+    - "date"
+    - "pwd"
+    - "mktemp"
+    - "mkdir"
+    - "lume"
+    - "ssh"
+    - "brew"
+  # Always require approval — maps Warp denylist (deny wins)
+  deny:
+    - "rm"
+    - "bash"
+    - "sh"
+    - "zsh"
+    - "fish"
+    - "pwsh"
+    - "sudo"
+    - "curl"
+    - "wget"
+    - "scp"
+    - "rsync"
+    - "telnet"
+    - "dig"
+    - "nslookup"
+    - "host"
+  # Optional: set default mode
+  default_mode: "ask"  # ask | allow | deny
+
+# Goose MCP / extensions are separate from permissions:
+# extensions:
+#   - name: example
+#     enabled: true

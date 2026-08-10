@@ -1,0 +1,63 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "_comment": "Opencode — TEMPLATE — warp-equivalent. Global: ~/.config/opencode/opencode.json (or .jsonc). Project: ./opencode.json (walks up to worktree root). Precedence: global → project → OPENCODE_CONFIG; opencode debug config to inspect merged view.",
+  "_source": "Generated from warp-agent-permissions.template.toml",
+  "permission": {
+    "skill": {
+      "_comment": "Allow skill loading globally; project can add more",
+      "*": "allow"
+    },
+    "command": {
+      "allow": [
+        "bun",
+        "bun tests/monitored-install-batch/*",
+        "node tests/monitored-install-batch/*",
+        "LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/*",
+        "bun run bin/allbrew.ts",
+        "node",
+        "python3",
+        "git",
+        "ls",
+        "cat",
+        "head",
+        "tail",
+        "wc",
+        "rg",
+        "grep",
+        "find",
+        "which",
+        "echo",
+        "date",
+        "pwd",
+        "mktemp",
+        "mkdir",
+        "test",
+        "lume",
+        "ssh",
+        "brew"
+      ],
+      "deny": [
+        "rm",
+        "bash",
+        "sh",
+        "zsh",
+        "fish",
+        "pwsh",
+        "sudo",
+        "curl",
+        "wget",
+        "scp",
+        "rsync",
+        "telnet",
+        "dig",
+        "nslookup",
+        "host"
+      ]
+    }
+  },
+  "instructions": [
+    ".agents/plans/*",
+    "AGENTS.md"
+  ],
+  "plugin": []
+}

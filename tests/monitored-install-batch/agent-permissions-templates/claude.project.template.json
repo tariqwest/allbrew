@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/claude-code-settings.json",
+  "_comment": "Claude Code — PROJECT template (.claude/settings.json committed; or .claude/settings.local.json gitignored for personal overrides). Merges with ~/.claude/settings.json; all layers' deny honored; allow in this file only applies after trust dialog.",
+  "permissions": {
+    "allow": [
+      "Bash(bun:*)",
+      "Bash(node:*)",
+      "Bash(bun tests/monitored-install-batch/*)",
+      "Bash(bun run bin/allbrew.ts:*)",
+      "Bash(git:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /tmp/*)",
+      "Bash(sudo:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}

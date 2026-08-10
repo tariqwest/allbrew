@@ -1,0 +1,58 @@
+{
+  "_comment": "Cursor Agent — TEMPLATE — warp-equivalent. Global: ~/.cursor/settings.json (or ~/Library/Application Support/Cursor/User/settings.json). Project: .cursor/settings.json + .cursor/rules/*.mdc. Cursor merges global → project; hooks in .cursor/hooks.json.",
+  "_source": "Generated from warp-agent-permissions.template.toml",
+  "permissions": {
+    "allow": [
+      "bun",
+      "node",
+      "python3",
+      "git",
+      "bun tests/monitored-install-batch/*",
+      "node tests/monitored-install-batch/*",
+      "LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/*",
+      "bun run bin/allbrew.ts",
+      "ls",
+      "cat",
+      "head",
+      "tail",
+      "wc",
+      "rg",
+      "grep",
+      "find",
+      "which",
+      "echo",
+      "date",
+      "pwd",
+      "mktemp",
+      "mkdir",
+      "test",
+      "lume",
+      "ssh",
+      "brew"
+    ],
+    "deny": [
+      "rm",
+      "bash",
+      "sh",
+      "zsh",
+      "fish",
+      "pwsh",
+      "sudo",
+      "curl",
+      "wget",
+      "scp",
+      "rsync",
+      "telnet",
+      "dig",
+      "nslookup",
+      "host"
+    ]
+  },
+  "hooks": {
+    "_comment": "Cursor hooks: global ~/.cursor/hooks.json, project .cursor/hooks.json — block subagents if desired",
+    "blockSubagent": false
+  },
+  "mcp": {
+    "_comment": "Project MCP servers live in .cursor/mcp.json — keep separate from permissions"
+  }
+}

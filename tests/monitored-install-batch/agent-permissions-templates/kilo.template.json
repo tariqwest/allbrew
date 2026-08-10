@@ -1,0 +1,55 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "_comment": "Kilo Code — TEMPLATE — warp-equivalent. Global: ~/.config/kilo/config.json or .kilocode/config.json. Project: .kilo/config.json / kilo.jsonc (shared across VS Code, CLI, Cloud Agents). Run kilo config check after install.",
+  "_source": "Generated from warp-agent-permissions.template.toml — Roo→Kilo migration keeps .roo/rules → .kilo/rules",
+  "permissions": {
+    "allow": [
+      "bun*",
+      "node*",
+      "python3*",
+      "git*",
+      "bun tests/monitored-install-batch/*",
+      "node tests/monitored-install-batch/*",
+      "LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/*",
+      "bun run bin/allbrew.ts*",
+      "ls*",
+      "cat*",
+      "head*",
+      "tail*",
+      "wc*",
+      "rg*",
+      "grep*",
+      "find*",
+      "which*",
+      "echo*",
+      "date*",
+      "pwd*",
+      "mktemp*",
+      "mkdir*",
+      "lume*",
+      "ssh*",
+      "brew*"
+    ],
+    "deny": [
+      "rm*",
+      "bash*",
+      "sh*",
+      "zsh*",
+      "fish*",
+      "pwsh*",
+      "sudo*",
+      "curl*",
+      "wget*",
+      "scp*",
+      "rsync*",
+      "telnet*",
+      "dig*",
+      "nslookup*",
+      "host*"
+    ]
+  },
+  "rules": ".kilo/rules",
+  "mcp": {
+    "_comment": "MCP servers in Kilo: configure separately; permissions above do not affect MCP"
+  }
+}

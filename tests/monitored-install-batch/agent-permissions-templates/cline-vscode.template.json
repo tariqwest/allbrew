@@ -1,0 +1,78 @@
+{
+  "_comment": "Cline / Roo / Kilo — VS Code settings TEMPLATE — warp-equivalent. Global: ~/Library/Application Support/Code/User/settings.json (or Cursor). Project: .vscode/settings.json. Cline uses autoApprove lists; Roo/Kilo use .roo/config.json / .kilocode/config.json for modes — this file covers the VS Code-layer approvals.",
+  "_source": "Generated from warp-agent-permissions.template.toml",
+  "cline.autoApprove": [
+    "read_file",
+    "list_directory",
+    "grep_search",
+    "web_fetch"
+  ],
+  "cline.allowedCommands": [
+    "bun",
+    "bun tests/monitored-install-batch/*",
+    "node tests/monitored-install-batch/*",
+    "LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/*",
+    "bun run bin/allbrew.ts",
+    "node",
+    "python3",
+    "git",
+    "ls",
+    "cat",
+    "head",
+    "tail",
+    "wc",
+    "rg",
+    "grep",
+    "find",
+    "which",
+    "echo",
+    "date",
+    "pwd",
+    "mktemp",
+    "mkdir",
+    "lume",
+    "ssh",
+    "brew"
+  ],
+  "cline.deniedCommands": [
+    "rm",
+    "bash",
+    "sh",
+    "zsh",
+    "fish",
+    "pwsh",
+    "sudo",
+    "curl",
+    "wget",
+    "scp",
+    "rsync",
+    "telnet",
+    "dig",
+    "nslookup",
+    "host"
+  ],
+  "rooCode.allowedCommands": [
+    "bun",
+    "node",
+    "git",
+    "lume",
+    "ssh",
+    "brew"
+  ],
+  "kilocode.permissions": {
+    "allow": [
+      "bun*",
+      "node*",
+      "git*",
+      "lume*",
+      "ssh*",
+      "brew*"
+    ],
+    "deny": [
+      "rm*",
+      "sudo*",
+      "curl*",
+      "wget*"
+    ]
+  }
+}
