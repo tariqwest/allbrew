@@ -2082,12 +2082,52 @@ async function brewAutoInstall(result: any, opts: any) {
     updateSpinner.warn(`brew update failed: ${err.message}`);
   }
 
-  // Step 2: brew install
   const installEnv = {
     ...process.env,
     HOMEBREW_DEVELOPER: "1",
     HOMEBREW_NO_AUTO_UPDATE: "1",
   };
+  // Sync formula into canonical tap location so `brew install --formula <path>` is accepted
+  // (newer Homebrew rejects files outside /opt/homebrew/Library/Taps). Uninstall a
+  // conflicting homebrew/core formula first (e.g. deno) so the tap formula can install.
+  try {
+    const { execFileSync } = await import("node:child_process");
+    const { copyFile, mkdir } = await import("node:fs/promises");
+    const { join, dirname } = await import("node:path");
+    try {
+      const repo = execFileSync("brew", ["--repo", "tariqwest/allbrew"], { encoding: "utf-8" }).trim();
+      if (repo && result.filePath) {
+        const canonical = join(repo, isCask ? "Casks" : "Formula", `${result.name}.rb`);
+        if (canonical !== result.filePath) {
+          await mkdir(dirname(canonical), { recursive: true });
+          await copyFile(result.filePath, canonical);
+        }
+        if (!isCask) result.filePath = canonical;
+      }
+    } catch {}
+    try {
+      const { execFileSync: sync2 } = await import("node:child_process");
+      let installed = false;
+      try {
+        sync2("brew", ["list", "--formula", result.name], { stdio: "ignore" });
+        installed = true;
+      } catch {
+        try {
+          sync2("brew", ["list", result.name], { stdio: "ignore" });
+          installed = true;
+        } catch {}
+      }
+      if (installed) {
+        const info = sync2("brew", ["info", "--json=v2", result.name], { encoding: "utf-8" });
+        const data = JSON.parse(info);
+        const formulae = data.formulae || [];
+        const fromCore = formulae.some((f: any) => f.tap === "homebrew/core" || f.tap === "homebrew/cask");
+        if (fromCore) {
+          await execFileAsync("brew", ["uninstall", "--force", result.name], { env: installEnv });
+        }
+      }
+    } catch {}
+  } catch {}
   const installSpinner = ora(`Running ${installLabel}...`).start();
   try {
     await execFileAsync(
