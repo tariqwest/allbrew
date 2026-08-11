@@ -980,11 +980,23 @@ async function handleGithubRepo(classification, opts) {
       console.log(
         `  Detected ${chalk.cyan("macOS app")} assets: ${appAssets.map((a) => a.name).join(", ")}`,
       );
-      return await generateWithConfirmation(
-        "cask-app-release",
-        { repoInfo, release },
-        opts,
-      );
+      try {
+        return await generateWithConfirmation(
+          "cask-app-release",
+          { repoInfo, release },
+          opts,
+        );
+      } catch (err: any) {
+        if (err?.message?.includes("No .app bundle found")) {
+          console.log(
+            chalk.dim(
+              `  Cask check failed: ${err.message}; trying binary/source strategies...`,
+            ),
+          );
+        } else {
+          throw err;
+        }
+      }
     }
 
     if (binAssets.length > 0) {
