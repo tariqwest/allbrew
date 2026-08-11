@@ -68,7 +68,8 @@ export function pickArchiveEntrypoint(
   const candidates = files.filter((m) => {
     const base = m.split("/").pop() || "";
     if (!base || base.startsWith(".")) return false;
-    if (/\.(txt|md|json|sha256|sig|asc|1|html|sample|dylib|so|a)$/i.test(base)) return false;
+    if (/\.(txt|md|json|sha256|sig|asc|1|html|sample|dylib|so|a|ps1|psm1|bat|sh)$/i.test(base)) return false;
+    if (m.includes("/node_modules/") || m.includes("/vendor/")) return false;
     // Prefer bin/ layout; also allow root-level binaries and files one directory
     // deep (common for release archives with a top-level wrapper directory like
     // `project-arch/binary`).
@@ -92,7 +93,9 @@ export function pickArchiveEntrypoint(
 
   const score = (path: string): number => {
     const base = path.split("/").pop() || "";
+    const depth = path.split("/").length - 1;
     let s = 0;
+    if (base.toLowerCase() === formulaName.toLowerCase() && depth <= 1) s += 60;
     if (/(^|\/)bin\//.test(path)) s += 50;
     const prefIdx = preferredNames.findIndex((n) => n.toLowerCase() === base.toLowerCase());
     if (prefIdx >= 0) s += 40 - prefIdx;
@@ -238,7 +241,22 @@ export async function collectBinaryReleasePayload(
           const members = await listArchiveMembersFromPath(dl.path);
           const picked = pickArchiveEntrypoint(members, name, options);
           if (picked) {
-            archiveEntrypoint = picked.sourcePath;
+            let src = picked.sourcePath;
+            const topDirs = new Set(
+              members
+                .map((m) => m.split("/")[0])
+                .filter((p) => p && members.some((x) => x === `${p}/` || x.startsWith(`${p}/`))),
+            );
+            if (topDirs.size === 1) {
+              const wrapper = [...topDirs][0];
+              const allPrefixed = members
+                .filter((m) => m && !m.endsWith("/"))
+                .every((m) => m === wrapper || m.startsWith(`${wrapper}/`));
+              if (allPrefixed && src.startsWith(`${wrapper}/`)) {
+                src = src.slice(wrapper.length + 1);
+              }
+            }
+            archiveEntrypoint = src;
             archiveBinName = picked.binName;
           }
         } catch {
