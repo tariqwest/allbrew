@@ -659,7 +659,7 @@ export function isAppAsset(assetName) {
 
   // Non-mac desktop/OS tags never count as macOS app assets
   if (
-    /(?:^|[^a-z])(?:linux|windows|win32|android|freebsd|openbsd)(?:[^a-z]|$)/i.test(
+    /(?:^|[^a-z])(?:linux|windows|win32|android|freebsd|openbsd|debian|ubuntu|fedora|archlinux)(?:[^a-z]|$)/i.test(
       lower,
     )
   ) {
@@ -681,7 +681,10 @@ export function isAppAsset(assetName) {
     if (hasCpuArch) {
       const usesDarwinMacosOsx =
         /(?:^|[^a-z])(?:darwin|macos|osx)(?:[^a-z]|$)/i.test(lower);
-      if (usesDarwinMacosOsx) return false;
+      if (usesDarwinMacosOsx) {
+        if (/installer/i.test(lower)) return true;
+        return false;
+      }
       // short platform token "mac" + cpu arch → desktop app zip
       return /(?:^|[^a-z])mac(?:[^a-z]|$)/i.test(lower);
     }
