@@ -37,7 +37,7 @@ ${p.resourcesBlock}  def install
     end
     resources.each { |r| pip_install_dist(venv, r) }
     pip_install_main(venv)
-  end
+${p.binInstallAliasLine || ""}  end
 
   def pip_install_dist(venv, dist)
     url = dist.url.to_s

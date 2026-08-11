@@ -29,6 +29,7 @@ export const KNOWN_BIN_NAMES: Record<string, string> = {
   "shell-gpt": "sgpt",
   graphifyy: "graphify",
   "nanobot-ai": "nanobot",
+  "pypdfeditor-gui": "pdfeditor",
 };
 
 /**
@@ -46,6 +47,7 @@ export const KNOWN_ROOT_EXTRAS: Record<string, string[]> = {
 export const KNOWN_PYTHON_IMPORT_VERSION_TEST: Record<string, string> = {
   napari: "napari",
   tabulous: "tabulous",
+  "pypdfeditor-gui": "pypdfeditor_core",
 };
 
 type PypiUrl = {
@@ -152,6 +154,11 @@ export async function collectPipPackagePayload(
     ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import ${importMod}; print(${importMod}.__version__)'")`
     : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`;
 
+  const binInstallAliasLine =
+    testBinName !== name
+      ? `    bin.install_symlink bin/"${testBinName}" => "${name}"\n`
+      : "";
+
   return {
     template: "pip_package",
     name,
@@ -166,6 +173,7 @@ export async function collectPipPackagePayload(
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(testBinName),
     testDoBody,
+    binInstallAliasLine,
     // Service argv should target the console-script bin, which may differ from
     // the formula token when homebrew/core forces a rename (nanobot-ai → bin nanobot).
     serviceBlock: buildServiceBlock(

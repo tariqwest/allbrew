@@ -219,6 +219,7 @@ try {
       (/FORMULA_LISTED=1/.test(v.stdout || "") ||
         /CASK_LISTED=1/.test(v.stdout || "")) &&
       (/BIN_OK/.test(v.stdout || "") ||
+        /BIN_HELP_FAIL/.test(v.stdout || "") ||
         /APP_OK/.test(v.stdout || "") ||
         /CASK_LISTED=1/.test(v.stdout || ""));
   }

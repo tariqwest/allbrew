@@ -38,6 +38,7 @@ export type PipPackagePayload = FormulaCommonFields & {
   resourcesBlock: string;
   /** Full body line(s) inside `test do` (pre-indented). */
   testDoBody: string;
+  binInstallAliasLine?: string;
 };
 
 export type CargoPackagePayload = FormulaCommonFields & {
