@@ -191,7 +191,17 @@ function loadQueue() {
   return data.items;
 }
 
+function getSkillPhases() {
+  try {
+    const raw = readFileSync(SKILL_PATH, "utf8");
+    const phases = [...raw.matchAll(/^## Phase (\d+) — (.+)$/gm)].map((m) => `Phase ${m[1]} — ${m[2].trim()}`);
+    if (phases.length >= 6) return phases.join(" → ");
+  } catch {}
+  return "Phases 0→7 as written in SKILL.md";
+}
+
 function basePrompt() {
+  const phasesLabel = getSkillPhases();
   return `You are a child agent running ONE monitored allbrew install (batch-child, VM-isolated) in the allbrew repo.
 
 ## Repo
@@ -203,6 +213,7 @@ Read and FOLLOW:
 ${SKILL_PATH}
 — VM-isolated variant of monitored-install. Host single-URL .agents/skills/monitored-install/SKILL.md is NOT for batch children; do not mix them.
 Also read references/run-records.md for RUN_DIR layout. Do NOT follow references that tell you to run host allbrew/brew install.
+Skill phases (derived at runtime from SKILL.md): ${phasesLabel} — execute the skill exactly as written; do NOT rely on any cached phase summary below.
 
 ## HARD ISOLATION RULES (do not violate — batch-child guardrails)
 1. **Host Homebrew is forbidden as success path.** Never \`brew install\`, \`brew uninstall\`, \`brew services\`, or \`allbrew <url>\` on the host. Host \`brew\` is only for Lume/vm-install-one orchestration — not for installs. Success = VM-only \`VERIFY_OK=true\` from \`vm-install-one.mjs\`.
@@ -219,7 +230,7 @@ Also read references/run-records.md for RUN_DIR layout. Do NOT follow references
    git worktree add "$WT" -b "agent/<slug>-<ts>" HEAD
    \`\`\`
    All lib/ edits happen inside \`$WT\`. Export patches to \`$RUN_DIR/fix-package/patches/*.patch\` + \`FIX.md\` + \`validation.json\` (and mirror to \`tests/monitored-install-batch/fix-packages/<slug>/\`). Never \`git add/commit/push\` to host main. Never \`bun run release\` / \`git push --force\`.
-5. **Real Phase 0.5 judgment via render helper.** Before VM, run:
+5. **Real Phase 1 judgment via render helper (Phase label from SKILL.md at runtime).** Before VM, run:
    \`bun .agents/skills/monitored-install/scripts/render-judgment.mjs --url "<url>" --run-dir "$RUN_DIR" --slug "<slug>" --force\`
    (Bun.WebView JS-render when available) plus primary docs. Service expectation: true only for long-lived supervised daemon with brew services + blocking serve on port.
 6. **Option A patch artifacts on failure.** FIX.md + manifest.json + patches/*.patch + validation.json. Parent reconciles via \`bun run batch:reconcile-fixes\`; no auto-release.
@@ -240,11 +251,11 @@ function perUrlPrompt(item) {
 
 ## Steps (batch-child: .agents/skills/monitored-install-batch-child/SKILL.md — VM-only, patch artifacts, host-clean)
 1. cd ${REPO_ROOT}
-2. Read .agents/skills/monitored-install-batch-child/SKILL.md and execute its Phases 0→5 for THIS url only. Do NOT use .agents/skills/monitored-install/SKILL.md (host loop).
+2. Read .agents/skills/monitored-install-batch-child/SKILL.md and execute its Phases as listed in that file at runtime (derived at runtime) for THIS url only — do NOT rely on the cached summary in this prompt. Do NOT use .agents/skills/monitored-install/SKILL.md (host loop).
 3. Init run record: \`bun .agents/skills/monitored-install/scripts/init-run-record.mjs --url "${item.url}" --slug "${item.slug}"\` (capture RUN_DIR). Then provision disposable worktree: \`WT="tests/monitored-install-batch/worktrees/${item.slug}-$(date -u +%Y%m%dT%H%M%SZ)"; git worktree add "$WT" -b "agent/${item.slug}-<ts>" HEAD\` — all lib edits inside $WT, never host main.
-4. Phase 0.5 judgment BEFORE VM: \`bun .agents/skills/monitored-install/scripts/render-judgment.mjs --url "${item.url}" --run-dir "$RUN_DIR" --slug "${item.slug}" --force\` + primary docs. Fill agent-judgment.json expected/service; keep js-rendered bash-script pre-fill if present.
-5. Phase 1 VM try — the ONLY brew path: \`bun tests/monitored-install-batch/vm-install-one.mjs --url "${item.url}" --name "${item.slug}" --log "$RUN_DIR/vm-install.log" --run-dir "$RUN_DIR"\` (VM-only VERIFY_OK). No host \`allbrew --tap $(mktemp -d)\` or host brew. Pre-filter formulae.brew.sh/formula/* → skipped.
-6. Phase 1.5 deltas + Phase 3 fix in $WT if failed/mismatch: smallest durable fix at earliest layer, \`bun run check\` + \`bun test\` offline, export \`$RUN_DIR/fix-package/patches/*.patch\` + FIX.md + validation.json (mirror to tests/monitored-install-batch/fix-packages/${item.slug}/). Re-verify patch ONLY via VM: same vm-install-one.mjs with \`--allbrew-src "$WT"\`.
+4. Phase 1 (Independent judgment) BEFORE VM — see SKILL.md Phase 1: \`bun .agents/skills/monitored-install/scripts/render-judgment.mjs --url "${item.url}" --run-dir "$RUN_DIR" --slug "${item.slug}" --force\` + primary docs. Fill agent-judgment.json expected/service; keep js-rendered bash-script pre-fill if present.
+5. Phase 2 (VM-isolated try) — the ONLY brew path: \`bun tests/monitored-install-batch/vm-install-one.mjs --url "${item.url}" --name "${item.slug}" --log "$RUN_DIR/vm-install.log" --run-dir "$RUN_DIR"\` (VM-only VERIFY_OK). No host \`allbrew --tap $(mktemp -d)\` or host brew. Pre-filter formulae.brew.sh/formula/* → skipped.
+6. Phase 3 (Service vs VM) deltas + Phase 5 (Fix in worktree) in $WT if failed/mismatch: smallest durable fix at earliest layer, \`bun run check\` + \`bun test\` offline, export \`$RUN_DIR/fix-package/patches/*.patch\` + FIX.md + validation.json (mirror to tests/monitored-install-batch/fix-packages/${item.slug}/). Re-verify patch ONLY via VM: same vm-install-one.mjs with \`--allbrew-src "$WT"\`.
 7. Finalize: ensure $RUN_DIR/agent-judgment.json + vm-install.log + vm-meta.json + fix-package (if any) + summary.md; hostClean=true. Append tests/monitored-install-batch/state/agent-index.jsonl. Never commit/push main or release.
 8. Reply structured completion: URL, STATUS (success|failed|blocked|skipped|failed_system), failureClass, RUN_DIR, vmHelperUsed=true, endpointId, poolWaitMs, vmMeta, vmLogTail, fixPackage/patchArtifact (or null), residualRisk, hostClean.
 
