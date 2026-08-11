@@ -323,6 +323,8 @@ export async function syncAllbrewSrcToVM(h, hostSrcPath, vmDest) {
   const script = [
     "#!/bin/bash",
     "set -euo pipefail",
+    `git config --global --add safe.directory '*' 2>/dev/null || true`,
+    `git config --global --add safe.directory ${destQ} 2>/dev/null || true`,
     `SRC=${destQ}`,
     `BRANCH=${h.q(effectiveBranch)}`,
     `REMOTE=${h.q(remoteUrl)}`,
