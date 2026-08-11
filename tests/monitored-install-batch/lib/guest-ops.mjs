@@ -293,7 +293,7 @@ NAME=${JSON.stringify(slug)}
 SRC=${JSON.stringify(src)}
 if [ ! -f "$SRC/bin/allbrew.ts" ]; then echo "SRC_MISSING $SRC" >&2; exit 2; fi
 # Prefer running the synced source directly (unreleased patch) over the bottled allbrew
-bun --cwd "$SRC" run bin/allbrew.ts "$URL" --name "$NAME" --verbose >"$LOG" 2>&1
+(cd "$SRC" && bun run bin/allbrew.ts "$URL" --name "$NAME" --verbose >"$LOG" 2>&1)
 EC=$?
 echo EXIT_CODE=$EC | tee -a "$LOG"
 exit 0
