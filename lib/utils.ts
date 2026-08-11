@@ -114,11 +114,35 @@ function homebrewCaskRubyPaths(caskRoot: string, token: string): string[] {
 export function isHomebrewCoreFormulaName(name: string): boolean {
   const token = toFormulaName(name || "");
   if (!token) return false;
-  const core = getHomebrewCorePrefix();
-  if (!core) return false;
   const letter = token[0];
   if (!/[a-z0-9]/.test(letter)) return false;
-  return existsSync(join(core, "Formula", letter, `${token}.rb`));
+  const core = getHomebrewCorePrefix();
+  if (core) {
+    return existsSync(join(core, "Formula", letter, `${token}.rb`));
+  }
+  const cacheRoot = getHomebrewCachePrefix();
+  if (cacheRoot && existsSync(join(cacheRoot, "api", "formula", `${token}.json`))) {
+    return true;
+  }
+  try {
+    const out = execFileSync(
+      "brew",
+      ["info", "--json=v2", "--formula", token],
+      {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+      },
+    );
+    const parsed = JSON.parse(out);
+    const formulae = Array.isArray(parsed?.formulae) ? parsed.formulae : [];
+    return formulae.some(
+      (f: any) =>
+        (f?.name === token || f?.full_name?.endsWith(`/${token}`)) &&
+        String(f?.tap || "").includes("homebrew/core"),
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** True when homebrew/cask already ships a cask with this token. */
