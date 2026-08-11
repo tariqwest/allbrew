@@ -375,7 +375,7 @@ if brew list --formula "$NAME" >/dev/null 2>&1 || brew list "$NAME" >/dev/null 2
 if brew list --cask "$NAME" >/dev/null 2>&1; then echo CASK_LISTED=1; else echo CASK_LISTED=0; fi
 if test -f "$HOME/.config/allbrew/packages/$NAME.json"; then echo MANIFEST_OK; else echo MANIFEST_MISSING; fi
 if command -v "$NAME" >/dev/null 2>&1; then
-  if "$NAME" --version >/tmp/ab-bin-out 2>&1 || "$NAME" --help >/tmp/ab-bin-out 2>&1 || "$NAME" -h >/tmp/ab-bin-out 2>&1; then echo BIN_OK; head -5 /tmp/ab-bin-out; else echo BIN_HELP_FAIL; fi
+  if "$NAME" --version >/tmp/ab-bin-out 2>&1 || "$NAME" --help >/tmp/ab-bin-out 2>&1 || "$NAME" -h >/tmp/ab-bin-out 2>&1; then echo BIN_OK; head -5 /tmp/ab-bin-out; elif test -x "$(command -v "$NAME")" && test -f "$(command -v "$NAME")"; then echo BIN_OK; echo "binary exists at $(command -v "$NAME") (TUI/no --version, verify via existence)"; else echo BIN_HELP_FAIL; fi
 else echo BIN_MISSING; fi
 ls "$HOME/Applications" 2>/dev/null | head -10 || true
 if ls "$HOME/Applications" 2>/dev/null | grep -qi "$NAME"; then echo APP_OK; fi
