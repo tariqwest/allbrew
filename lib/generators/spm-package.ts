@@ -137,10 +137,18 @@ export async function collectSpmPackagePayload(
     );
   }
 
-  const installTargets =
-    binNames.length > 0
-      ? Array.from(new Set([binTarget, ...binNames].filter(Boolean)))
-      : [binTarget];
+  const installTargets = (() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const n of ([binTarget, ...binNames].filter(Boolean) as string[])) {
+      const key = n.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(n);
+      }
+    }
+    return out.length ? out : [binTarget];
+  })();
   const binInstallPaths = installTargets
     .map((b) => rubyString(`.build/release/${b}`))
     .join(", ");
