@@ -16,11 +16,38 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
     ENV["HOME"] = buildpath.to_s
     # Common generic override accepted by some installers.
     ENV["BIN_DIR"] = (buildpath/"bin").to_s
+    # Devbox / other installers prompt on /dev/tty unless FORCE=1 / -f is set.
+    ENV["FORCE"] = "1"
     # Warp Agent CLI honors WARP_TUI_* (defaults to $HOME/.warp and $HOME/.local/bin);
     # point them inside buildpath so the versioned layout is discoverable.
     ENV["WARP_TUI_INSTALL_DIR"] = (buildpath/"warp-tui").to_s
     ENV["WARP_TUI_BIN_DIR"] = (buildpath/"bin").to_s
-    system "bash", cached_download.to_s
+    # Installers that hardcode /usr/local/bin and use sudo mv (e.g. get.jetify.com/devbox)
+    # need a fake sudo that rewrites the destination into buildpath/bin.
+    fakebin = buildpath/"fakebin"
+    fakebin.mkpath
+    (fakebin/"sudo").write <<~EOS
+      #!/bin/bash
+      BUILD_BIN="#{buildpath}/bin"
+      mkdir -p "$BUILD_BIN"
+      if [ "$1" = "bash" ] && [ "$2" = "-c" ]; then
+        cmd="$3"
+        shift 3
+        cmd="\${cmd//\/usr\/local\/bin/$BUILD_BIN}"
+        cmd="\${cmd//\/usr\/local\/sbin/$BUILD_BIN}"
+        exec bash -c "$cmd" "$@"
+      fi
+      args=()
+      for a in "$@"; do
+        a="\${a//\/usr\/local\/bin/$BUILD_BIN}"
+        a="\${a//\/usr\/local\/sbin/$BUILD_BIN}"
+        args+=("$a")
+      done
+      exec "\${args[@]}"
+    EOS
+    FileUtils.chmod 0755, fakebin/"sudo"
+    ENV["PATH"] = "#{fakebin}:#{ENV["PATH"]}"
+    system "bash", cached_download.to_s, "-f"
 
     # Warp Agent CLI uses a versioned layout: $WARP_TUI_INSTALL_DIR/warp-tui/versions/<version>/warp-tui-stable
     # with a symlink $WARP_TUI_BIN_DIR/warp -> .../current/warp-tui-stable. The symlink target

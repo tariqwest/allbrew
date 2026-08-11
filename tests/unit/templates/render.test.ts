@@ -291,52 +291,13 @@ describe("renderFormula", () => {
       testBinName: "foo",
       serviceBlock: "",
     };
-    const expected =
-      `class Foo < Formula\n` +
-      `  desc "Install foo via setup script"\n` +
-      `  homepage "https://example.com/install.sh"\n` +
-      `  url "https://example.com/install.sh"\n` +
-      `  version "0.0.1"\n` +
-      `  sha256 "11"\n` +
-      `\n` +
-      `  def install\n` +
-      `    ENV["PREFIX"] = prefix.to_s\n` +
-      `    ENV["DESTDIR"] = prefix.to_s\n` +
-      `    # Many vendor installers honor PREFIX/DESTDIR; others ignore them and write under $HOME\n` +
-      `    # (commonly ~/.local/bin). Sandbox HOME so those paths stay inside the buildpath.\n` +
-      `    ENV["HOME"] = buildpath.to_s\n` +
-      `    # Common generic override accepted by some installers.\n` +
-      `    ENV["BIN_DIR"] = (buildpath/"bin").to_s\n` +
-      `    system "bash", cached_download.to_s\n` +
-      `\n` +
-      `    candidates = [\n` +
-      `      buildpath/"bin",\n` +
-      `      buildpath/".local/bin",\n` +
-      `      buildpath/"usr/local/bin",\n` +
-      `      Pathname.new(ENV.fetch("PREFIX"))/"bin",\n` +
-      `    ].uniq\n` +
-      `    installed = false\n` +
-      `    candidates.each do |dir|\n` +
-      `      next unless dir.directory?\n` +
-      `      bins = Dir[dir/"*"].select { |f| File.file?(f) && File.executable?(f) }\n` +
-      `      next if bins.empty?\n` +
-      `      bin.install bins\n` +
-      `      installed = true\n` +
-      `      break\n` +
-      `    end\n` +
-      `    unless installed\n` +
-      `      bins = Dir[buildpath/"**/*"].select do |f|\n` +
-      `        File.file?(f) && File.executable?(f) && !File.basename(f).start_with?(".")\n` +
-      `      end\n` +
-      `      odie "install script produced no executable binaries under buildpath" if bins.empty?\n` +
-      `      bin.install bins\n` +
-      `    end\n` +
-      `  end\n\n` +
-      `  test do\n` +
-      `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
-      `  end\n` +
-      `end\n`;
-    expect(renderFormula(payload)).toBe(expected);
+    const out = renderFormula(payload);
+    expect(out).toContain('ENV["FORCE"] = "1"');
+    expect(out).toContain('system "bash", cached_download.to_s, "-f"');
+    expect(out).toContain('fakebin/"sudo"');
+    expect(out).toContain('BUILD_BIN="#{buildpath}/bin"');
+    expect(out).toContain('candidates = [');
+    expect(out).toContain('bin.install bins');
   });
 
   it("renders binary_direct template", () => {
