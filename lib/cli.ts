@@ -962,11 +962,22 @@ async function handleGithubRepo(classification, opts) {
       }
 
       if (choice === "cask") {
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release },
+            opts,
+          );
+        } catch (err) {
+          const msg = String((err as any)?.message || err);
+          if (msg.includes("No .app bundle found")) {
+            console.log(
+              chalk.dim(`  Cask generation failed: ${msg}; falling back to README methods...`),
+            );
+          } else {
+            throw err;
+          }
+        }
       } else {
         return await generateWithConfirmation(
           "binary-release",
@@ -980,11 +991,22 @@ async function handleGithubRepo(classification, opts) {
       console.log(
         `  Detected ${chalk.cyan("macOS app")} assets: ${appAssets.map((a) => a.name).join(", ")}`,
       );
-      return await generateWithConfirmation(
-        "cask-app-release",
-        { repoInfo, release },
-        opts,
-      );
+      try {
+        return await generateWithConfirmation(
+          "cask-app-release",
+          { repoInfo, release },
+          opts,
+        );
+      } catch (err) {
+        const msg = String((err as any)?.message || err);
+        if (msg.includes("No .app bundle found")) {
+          console.log(
+            chalk.dim(`  Cask generation failed: ${msg}; falling back to README methods...`),
+          );
+        } else {
+          throw err;
+        }
+      }
     }
 
     if (binAssets.length > 0) {
@@ -1034,11 +1056,22 @@ async function handleGithubRepo(classification, opts) {
         console.log(
           `  Found macOS app assets on older release ${chalk.bold(olderWithApp.tagName)}: ${names.join(", ")}`,
         );
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release: olderWithApp },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release: olderWithApp },
+            opts,
+          );
+        } catch (err) {
+          const msg = String((err as any)?.message || err);
+          if (msg.includes("No .app bundle found")) {
+            console.log(
+              chalk.dim(`  Cask generation failed: ${msg}; falling back to README methods...`),
+            );
+          } else {
+            throw err;
+          }
+        }
       }
     } catch (err) {
       if (opts.verbose) {
