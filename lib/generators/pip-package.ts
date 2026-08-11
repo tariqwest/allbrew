@@ -29,6 +29,7 @@ export const KNOWN_BIN_NAMES: Record<string, string> = {
   "shell-gpt": "sgpt",
   graphifyy: "graphify",
   "nanobot-ai": "nanobot",
+  pynastran: "pyNastranGUI",
 };
 
 /**
