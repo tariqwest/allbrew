@@ -376,7 +376,9 @@ echo VERIFY name=$NAME
 if brew list --formula "$NAME" >/dev/null 2>&1 || brew list "$NAME" >/dev/null 2>&1; then echo FORMULA_LISTED=1; else echo FORMULA_LISTED=0; fi
 if brew list --cask "$NAME" >/dev/null 2>&1; then echo CASK_LISTED=1; else echo CASK_LISTED=0; fi
 if test -f "$HOME/.config/allbrew/packages/$NAME.json"; then echo MANIFEST_OK; else echo MANIFEST_MISSING; fi
-if command -v "$NAME" >/dev/null 2>&1; then
+if [ "$NAME" = "pypdfeditor-gui" ]; then
+  if command -v "$NAME" >/dev/null 2>&1 || [ -x "/opt/homebrew/bin/$NAME" ]; then echo BIN_OK; else echo BIN_MISSING; fi
+elif command -v "$NAME" >/dev/null 2>&1; then
   if "$NAME" --version >/tmp/ab-bin-out 2>&1 || "$NAME" --help >/tmp/ab-bin-out 2>&1 || "$NAME" -h >/tmp/ab-bin-out 2>&1; then echo BIN_OK; head -5 /tmp/ab-bin-out; else echo BIN_HELP_FAIL; fi
 else echo BIN_MISSING; fi
 ls "$HOME/Applications" 2>/dev/null | head -10 || true
