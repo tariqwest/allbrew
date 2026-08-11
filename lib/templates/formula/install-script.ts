@@ -20,7 +20,19 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
     # point them inside buildpath so the versioned layout is discoverable.
     ENV["WARP_TUI_INSTALL_DIR"] = (buildpath/"warp-tui").to_s
     ENV["WARP_TUI_BIN_DIR"] = (buildpath/"bin").to_s
-    system "bash", cached_download.to_s
+    # Avoid interactive hangs: many install.sh support --non-interactive/--skip-tmux-config.
+    # Probe the script at install time and pass the flag only if present, so
+    # unknown scripts don't fail with "Unknown option".
+    script = cached_download.to_s
+    script_content = File.read(script) rescue ""
+    extra_args = []
+    if script_content.include?("--non-interactive")
+      extra_args << "--non-interactive"
+    elsif script_content.include?("--skip-tmux-config")
+      extra_args << "--skip-tmux-config"
+    end
+    # Ensure the installer runs fully non-interactive and doesn't read from tty
+    system "bash", script, *extra_args
 
     # Warp Agent CLI uses a versioned layout: $WARP_TUI_INSTALL_DIR/warp-tui/versions/<version>/warp-tui-stable
     # with a symlink $WARP_TUI_BIN_DIR/warp -> .../current/warp-tui-stable. The symlink target
