@@ -607,13 +607,15 @@ export async function filterUnreachableScriptArtifacts(
     const fromBundle = (c.evidence || []).some((e) =>
       /script-bundle|api-or-bundle|extensionless-guess|client-latest-guess/i.test(e),
     );
-    // Explicit html-attr .dmg/.pkg links can still be SPA soft-404s (text/html 200)
-    // e.g. launchpad.kosmik.app/getKosmik3/*.dmg after product sunset.
-    const fromHtmlAttr = (c.evidence || []).some((e) => /html-attr/i.test(e));
-    if (!fromBundle && !(fromHtmlAttr && c.score >= 100)) return false;
-    // Bundle phantoms: same-site only. High-score html-attr: probe regardless of site
+    // Explicit html-attr / webview href .dmg/.pkg links can still be SPA soft-404s
+    // (text/html 200) e.g. launchpad.kosmik.app/getKosmik3/*.dmg after sunset.
+    const fromExplicitHref = (c.evidence || []).some((e) =>
+      /html-attr|^href$|webview/i.test(e),
+    );
+    if (!fromBundle && !(fromExplicitHref && c.score >= 100)) return false;
+    // Bundle phantoms: same-site only. High-score explicit hrefs: probe any host
     // (CDN / launchpad hosts often differ from marketing page).
-    if (fromHtmlAttr && c.score >= 100) return true;
+    if (fromExplicitHref && c.score >= 100) return true;
     try {
       return sameSite(c.url, pageUrl);
     } catch {
