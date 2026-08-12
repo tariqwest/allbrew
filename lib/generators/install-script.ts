@@ -72,10 +72,42 @@ export function detectInstallScriptFlags(scriptText: string): {
   return { args, env, ensureBinDir };
 }
 
-function installScriptRubyFragments(flags: ReturnType<typeof detectInstallScriptFlags>): {
+/**
+ * Choose shell for `system "...", cached_download`.
+ * Starship (and similar) refuse non-POSIX bash (`POSIXLY_CORRECT` guard) and
+ * document `#!/usr/bin/env sh`. Prefer shebang; fall back to POSIX guards.
+ */
+export function detectInstallScriptShell(scriptText: string): "sh" | "bash" {
+  const text = String(scriptText || "");
+  const firstLine = (text.split(/\r?\n/, 1)[0] || "").trim();
+  if (/^#!/.test(firstLine)) {
+    // Explicit interpreters win; "env sh" /bin/sh are POSIX sh, not bash.
+    if (/\b(bash|zsh|fish|ksh)\b/.test(firstLine)) {
+      if (/\bbash\b/.test(firstLine)) return "bash";
+      // zsh/fish/ksh are rare for brew install scripts; keep historical bash default
+      // only when shebang is bash. Other shells fall through to sh for safety.
+      if (/\b(zsh|fish|ksh)\b/.test(firstLine)) return "sh";
+    }
+    if (/\bsh\b/.test(firstLine)) return "sh";
+  }
+  // Starship-style: exits when BASH_VERSION is set without POSIXLY_CORRECT.
+  if (
+    /POSIXLY_CORRECT/.test(text) &&
+    (/non-POSIX/.test(text) || /Please use [`']sh[`']/.test(text) || /use `sh` instead/i.test(text))
+  ) {
+    return "sh";
+  }
+  return "bash";
+}
+
+function installScriptRubyFragments(
+  flags: ReturnType<typeof detectInstallScriptFlags>,
+  shell: "sh" | "bash",
+): {
   installEnvLines: string;
   installArgsRuby: string;
   ensureBinDir: boolean;
+  scriptShell: "sh" | "bash";
 } {
   const envLines = Object.entries(flags.env)
     .map(([k, v]) => `    ENV[${rubyString(k)}] = ${rubyString(v)}\n`)
@@ -85,6 +117,7 @@ function installScriptRubyFragments(flags: ReturnType<typeof detectInstallScript
     installEnvLines: envLines,
     installArgsRuby: argsRuby,
     ensureBinDir: flags.ensureBinDir,
+    scriptShell: shell,
   };
 }
 
@@ -162,7 +195,13 @@ export async function collectInstallScriptPayload(
       if (!flags.args.includes(a)) flags.args.push(a);
     }
   }
-  const rubyBits = installScriptRubyFragments(flags);
+  const shell: "sh" | "bash" =
+    options.scriptShell === "sh" || options.scriptShell === "bash"
+      ? options.scriptShell
+      : scriptText
+        ? detectInstallScriptShell(scriptText)
+        : "bash";
+  const rubyBits = installScriptRubyFragments(flags, shell);
 
   return {
     template: "install_script",
@@ -182,6 +221,7 @@ export async function collectInstallScriptPayload(
     installEnvLines: rubyBits.installEnvLines,
     installArgsRuby: rubyBits.installArgsRuby,
     ensureBinDir: rubyBits.ensureBinDir,
+    scriptShell: rubyBits.scriptShell,
   };
 }
 

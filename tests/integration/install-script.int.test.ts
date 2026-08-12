@@ -29,8 +29,11 @@ describe.concurrent("install-script integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class Starship < Formula");
-    expect(ruby).toContain('system "bash", cached_download.to_s');
+    // starship install.sh is #!/usr/bin/env sh and refuses non-POSIX bash
+    expect(ruby).toContain('system "sh", cached_download.to_s');
+    expect(ruby).toContain('ENV["FORCE"]');
     expect(ruby).toContain('ENV["PREFIX"]');
+    expect(ruby).toContain("--yes");
   });
 
   it("starship: livecheck block references the script URL", async () => {

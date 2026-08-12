@@ -2,6 +2,7 @@ import { describe, it, expect, mock, beforeEach } from "bun:test";
 import {
   collectInstallScriptPayload,
   detectInstallScriptFlags,
+  detectInstallScriptShell,
 } from "../../../lib/generators/install-script.ts";
 
 mock.module("../../../lib/sha256.ts", () => ({
@@ -31,6 +32,31 @@ describe("detectInstallScriptFlags", () => {
     const flags = detectInstallScriptFlags("opts: --yes -y\n");
     expect(flags.args).toContain("--yes");
     expect(flags.args).not.toContain("-y");
+  });
+});
+
+describe("detectInstallScriptShell", () => {
+  it("uses sh for #!/usr/bin/env sh shebang (starship)", () => {
+    const shell = detectInstallScriptShell(
+      "#!/usr/bin/env sh\nset -eu\nif [ -n \"${BASH_VERSION+x}\" ] && [ -z \"${POSIXLY_CORRECT+x}\" ]; then\nerror \"Please use \\`sh\\` instead.\"\nexit 1\nfi\n",
+    );
+    expect(shell).toBe("sh");
+  });
+
+  it("uses bash for #!/usr/bin/env bash shebang", () => {
+    expect(detectInstallScriptShell("#!/usr/bin/env bash\necho hi\n")).toBe("bash");
+  });
+
+  it("uses sh when POSIXLY_CORRECT guard is present without clear shebang", () => {
+    expect(
+      detectInstallScriptShell(
+        "# installer\nif [ -n \"${BASH_VERSION+x}\" ] && [ -z \"${POSIXLY_CORRECT+x}\" ]; then\nerror \"non-POSIX bash\"; error \"Please use \\`sh\\` instead.\"; exit 1; fi\n",
+      ),
+    ).toBe("sh");
+  });
+
+  it("defaults to bash for generic scripts", () => {
+    expect(detectInstallScriptShell("echo install me\n")).toBe("bash");
   });
 });
 
@@ -134,6 +160,31 @@ describe("collectInstallScriptPayload", () => {
     );
     expect(payload.installEnvLines).toContain('ENV["FORCE"]');
     expect(payload.ensureBinDir).toBe(true);
+  });
+
+  it("selects sh for starship-style POSIX shebang", async () => {
+    global.fetch = mock(() =>
+      Promise.resolve({
+        ok: true,
+        text: () =>
+          Promise.resolve(
+            "#!/usr/bin/env sh\n# FORCE skips prompts\nif [ -z \"${FORCE-}\" ]; then read yn; fi\n",
+          ),
+      }),
+    ) as any;
+    const payload = await collectInstallScriptPayload(
+      "https://starship.rs/install.sh",
+      { name: "starship" },
+    );
+    expect(payload.scriptShell).toBe("sh");
+  });
+
+  it("honors explicit scriptShell override", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://example.com/install.sh",
+      { name: "demo", scriptShell: "sh", installFlags: { args: [], env: {}, ensureBinDir: true } },
+    );
+    expect(payload.scriptShell).toBe("sh");
   });
 
   it("honors explicit scriptArgs and force options", async () => {

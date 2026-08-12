@@ -492,6 +492,7 @@ function buildInstallScriptCase(): Case {
     installEnvLines: "",
     installArgsRuby: "",
     ensureBinDir: false,
+    scriptShell: "bash",
   };
   const expected =
     "class Foo < Formula\n" +

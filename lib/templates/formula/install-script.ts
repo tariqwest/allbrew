@@ -6,6 +6,7 @@ export default function renderInstallScript(p: InstallScriptPayload): string {
     : "";
   const envExtra = p.installEnvLines || "";
   const args = p.installArgsRuby || "";
+  const shell = p.scriptShell === "sh" ? "sh" : "bash";
   return `class ${p.className} < Formula
   desc "${p.desc}"
   homepage "${p.homepage}"
@@ -25,7 +26,7 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
     # point them inside buildpath so the versioned layout is discoverable.
     ENV["WARP_TUI_INSTALL_DIR"] = (buildpath/"warp-tui").to_s
     ENV["WARP_TUI_BIN_DIR"] = (buildpath/"bin").to_s
-${envExtra}${ensureBin}    system "bash", cached_download.to_s${args}
+${envExtra}${ensureBin}    system "${shell}", cached_download.to_s${args}
 
     # Warp Agent CLI uses a versioned layout: $WARP_TUI_INSTALL_DIR/warp-tui/versions/<version>/warp-tui-stable
     # with a symlink $WARP_TUI_BIN_DIR/warp -> .../current/warp-tui-stable. The symlink target
