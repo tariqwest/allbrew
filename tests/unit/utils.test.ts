@@ -10,6 +10,7 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  releaseHasMacosArmBinaryAssets,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
@@ -426,6 +427,46 @@ describe("matchAssetToArch", () => {
     expect(matchAssetToArch("tool_all_darwin.tar.gz")).toBe("macosUniversal");
     // Linux_all must not be treated as macOS
     expect(matchAssetToArch("wander_1.1.0_Linux_all.tar.gz")).toBeNull();
+  });
+});
+
+describe("releaseHasMacosArmBinaryAssets", () => {
+  it("returns true for oatmeal-style darwin_arm64 release assets", () => {
+    expect(
+      releaseHasMacosArmBinaryAssets({
+        assets: [
+          { name: "oatmeal_0.13.0_darwin_arm64.tar.gz" },
+          { name: "oatmeal_0.13.0_darwin_amd64.tar.gz" },
+          { name: "oatmeal_0.13.0_linux_amd64.tar.gz" },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true for macos universal assets", () => {
+    expect(
+      releaseHasMacosArmBinaryAssets({
+        assets: [{ name: "tool_Darwin_all.tar.gz" }],
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false for intel-only macOS assets", () => {
+    expect(
+      releaseHasMacosArmBinaryAssets({
+        assets: [{ name: "tool_0.1.0_darwin_amd64.tar.gz" }],
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false for linux-only or empty releases", () => {
+    expect(
+      releaseHasMacosArmBinaryAssets({
+        assets: [{ name: "tool_0.1.0_linux_arm64.tar.gz" }],
+      }),
+    ).toBe(false);
+    expect(releaseHasMacosArmBinaryAssets({ assets: [] })).toBe(false);
+    expect(releaseHasMacosArmBinaryAssets(null)).toBe(false);
   });
 });
 

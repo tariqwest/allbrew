@@ -875,3 +875,20 @@ export function isBareBinaryAsset(assetName) {
 export function isBinaryAsset(assetName) {
   return isArchiveBinaryAsset(assetName) || isBareBinaryAsset(assetName);
 }
+
+/**
+ * True when a GitHub release has at least one macOS arm64/universal binary
+ * asset. Intel-only macOS assets are not enough for Apple Silicon Homebrew
+ * (formula would only have `on_intel` URLs).
+ */
+export function releaseHasMacosArmBinaryAssets(release: {
+  assets?: Array<{ name?: string }>;
+} | null | undefined): boolean {
+  if (!release?.assets?.length) return false;
+  return release.assets.some((a) => {
+    const name = a?.name;
+    if (!name || !isBinaryAsset(name)) return false;
+    const arch = matchAssetToArch(name);
+    return arch === "macosArm" || arch === "macosUniversal";
+  });
+}

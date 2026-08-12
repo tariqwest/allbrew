@@ -1681,6 +1681,70 @@ async function handleCargoPackage(classification, opts) {
       "crates.io crate name required (use --package or a crates.io URL)",
     );
   }
+
+  // Prefer prebuilt GitHub release binaries when the crate advertises a GitHub
+  // repository with macOS arm/universal assets. Source builds from crates.io
+  // often fail on modern Homebrew rust (old Cargo.lock / rust-toolchain pins
+  // e.g. time 0.3.30 + rustc 1.97) while authors ship GoReleaser binaries
+  // (oatmeal: brew install dustinblackman/tap/oatmeal).
+  // Skip when the user forced --type cargo-package.
+  const forcedCargo =
+    opts.type === "cargo-package" || opts.forceCargoPackage === true;
+  if (!forcedCargo) {
+    try {
+      const { releaseHasMacosArmBinaryAssets } = await import("./utils.ts");
+      const { fetchCratesIoCrate, repoInfoFromCratesMeta, githubFullNameFromRepoUrl } =
+        await import("./generators/cargo-package.ts");
+      const cratesMeta = await fetchCratesIoCrate(crateName);
+      const fullName = githubFullNameFromRepoUrl(cratesMeta.repository);
+      if (fullName) {
+        const [owner, repo] = fullName.split("/");
+        const spinner = ora(
+          `Checking GitHub releases for prebuilt macOS binaries (${fullName})...`,
+        ).start();
+        let release: any = null;
+        try {
+          release = await getLatestRelease(owner, repo);
+        } catch {
+          release = null;
+        }
+        if (release && releaseHasMacosArmBinaryAssets(release)) {
+          spinner.succeed(
+            `Using prebuilt binaries from ${chalk.bold(release.tagName)} instead of crates.io source build`,
+          );
+          const repoInfo = repoInfoFromCratesMeta(cratesMeta);
+          return await generateWithConfirmation(
+            "binary-release",
+            { repoInfo, release },
+            {
+              ...opts,
+              // Keep crates.io origin in opts for manifest/notes; force type
+              // so generate path does not re-route.
+              type: "binary-release",
+              crateName,
+              fromCratesIo: true,
+              cratesMeta,
+            },
+          );
+        }
+        spinner.info(
+          release
+            ? `No macOS arm/universal binary assets on ${release.tagName}; building from crates.io`
+            : `No GitHub release found for ${fullName}; building from crates.io`,
+        );
+      }
+    } catch (err) {
+      // Soft-fail: keep crates.io cargo-package path.
+      if (opts.verbose) {
+        console.log(
+          chalk.dim(
+            `  crates.io→binary probe skipped: ${err?.message || err}`,
+          ),
+        );
+      }
+    }
+  }
+
   return await generateWithConfirmation(
     "cargo-package",
     { repoInfo: null, release: null, crateName },
