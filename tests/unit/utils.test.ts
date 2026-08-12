@@ -18,6 +18,7 @@ import {
   setHomebrewCaskPrefixForTests,
   setHomebrewCachePrefixForTests,
   setHomebrewCaskTokenOverrideForTests,
+  setHomebrewCoreFormulaOverrideForTests,
   isHomebrewCoreFormulaName,
   isHomebrewCaskToken,
 } from "../../lib/utils.ts";
@@ -81,10 +82,13 @@ describe("resolveNonCollidingFormulaName", () => {
     mkdirSync(join(coreRoot, "Formula", "n"), { recursive: true });
     writeFileSync(join(coreRoot, "Formula", "n", "nanobot.rb"), "class Nanobot < Formula\nend\n");
     setHomebrewCorePrefixForTests(coreRoot);
+    setHomebrewCoreFormulaOverrideForTests(undefined);
   });
 
   afterEach(() => {
     setHomebrewCorePrefixForTests(undefined);
+    setHomebrewCachePrefixForTests(undefined);
+    setHomebrewCoreFormulaOverrideForTests(undefined);
     rmSync(coreRoot, { recursive: true, force: true });
   });
 
@@ -118,6 +122,42 @@ describe("resolveNonCollidingFormulaName", () => {
     const result = resolveNonCollidingFormulaName("nanobot", ["nanobot-ai"]);
     expect(result.name).toBe("nanobot-tap");
     expect(result.renamedFrom).toBe("nanobot");
+  });
+
+  it("detects core formulae from Homebrew API cache when Formula/*.rb is missing", () => {
+    // Simulate API-only core: tap path exists but has no Formula tree.
+    setHomebrewCorePrefixForTests(coreRoot);
+    rmSync(join(coreRoot, "Formula"), { recursive: true, force: true });
+    const cacheRoot = mkdtempSync(join(tmpdir(), "allbrew-brew-cache-"));
+    mkdirSync(join(cacheRoot, "api", "formula"), { recursive: true });
+    writeFileSync(
+      join(cacheRoot, "api", "formula", "nanobot.json"),
+      JSON.stringify({ name: "nanobot", tap: "homebrew/core" }),
+    );
+    setHomebrewCachePrefixForTests(cacheRoot);
+    try {
+      expect(isHomebrewCoreFormulaName("nanobot")).toBe(true);
+      const result = resolveNonCollidingFormulaName("nanobot", ["nanobot-ai"]);
+      expect(result.name).toBe("nanobot-ai");
+      expect(result.renamedFrom).toBe("nanobot");
+    } finally {
+      setHomebrewCachePrefixForTests(undefined);
+      rmSync(cacheRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("honors explicit core formula override set for tests", () => {
+    setHomebrewCorePrefixForTests(null);
+    setHomebrewCachePrefixForTests(null);
+    setHomebrewCoreFormulaOverrideForTests(new Set(["nanobot"]));
+    try {
+      expect(isHomebrewCoreFormulaName("nanobot")).toBe(true);
+      expect(isHomebrewCoreFormulaName("free-cli")).toBe(false);
+      const result = resolveNonCollidingFormulaName("nanobot", ["nanobot-ai"]);
+      expect(result.name).toBe("nanobot-ai");
+    } finally {
+      setHomebrewCoreFormulaOverrideForTests(undefined);
+    }
   });
 });
 

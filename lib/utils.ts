@@ -31,6 +31,8 @@ let cachedHomebrewCaskPrefix: string | null | undefined;
 let cachedHomebrewCachePrefix: string | null | undefined;
 /** Test override for isHomebrewCaskToken: Set of tokens treated as official casks. */
 let homebrewCaskTokenTestOverride: Set<string> | null | undefined;
+/** Test override for isHomebrewCoreFormulaName: Set of tokens treated as core formulae. */
+let homebrewCoreFormulaTestOverride: Set<string> | null | undefined;
 
 /** Resolve homebrew/core checkout path (or null when brew/core is unavailable). */
 export function getHomebrewCorePrefix(): string | null {
@@ -102,6 +104,21 @@ export function setHomebrewCaskTokenOverrideForTests(
   homebrewCaskTokenTestOverride = tokens;
 }
 
+/** Test-only: force isHomebrewCoreFormulaName answers without invoking brew. */
+export function setHomebrewCoreFormulaOverrideForTests(
+  tokens: Set<string> | null | undefined,
+) {
+  homebrewCoreFormulaTestOverride = tokens;
+}
+
+function homebrewCoreRubyPaths(coreRoot: string, token: string): string[] {
+  const letter = token[0];
+  return [
+    join(coreRoot, "Formula", letter, `${token}.rb`),
+    join(coreRoot, "Formula", `${token}.rb`),
+  ];
+}
+
 function homebrewCaskRubyPaths(caskRoot: string, token: string): string[] {
   const letter = token[0];
   return [
@@ -110,15 +127,55 @@ function homebrewCaskRubyPaths(caskRoot: string, token: string): string[] {
   ];
 }
 
-/** True when homebrew/core already ships a formula with this token. */
+/**
+ * True when homebrew/core already ships a formula with this token.
+ * Modern Homebrew is often API-only (no Formula/*.rb checkout). Mirror
+ * isHomebrewCaskToken: check tap files, then API cache JSON, then brew info.
+ * Missing detection here lets third-party formulae reuse core tokens (e.g.
+ * nanobot), and keg_relocate inherits core preserve_rpath? === false — breaking
+ * pip native wheels with @rpath dylib IDs.
+ */
 export function isHomebrewCoreFormulaName(name: string): boolean {
   const token = toFormulaName(name || "");
   if (!token) return false;
-  const core = getHomebrewCorePrefix();
-  if (!core) return false;
+  if (homebrewCoreFormulaTestOverride !== undefined) {
+    if (homebrewCoreFormulaTestOverride === null) return false;
+    return homebrewCoreFormulaTestOverride.has(token);
+  }
   const letter = token[0];
   if (!/[a-z0-9]/.test(letter)) return false;
-  return existsSync(join(core, "Formula", letter, `${token}.rb`));
+
+  const core = getHomebrewCorePrefix();
+  if (core && homebrewCoreRubyPaths(core, token).some((p) => existsSync(p))) {
+    return true;
+  }
+
+  // API-only Homebrew: formula metadata lives under the cache, not Formula/*.rb.
+  const cacheRoot = getHomebrewCachePrefix();
+  if (cacheRoot && existsSync(join(cacheRoot, "api", "formula", `${token}.json`))) {
+    return true;
+  }
+
+  // Last resort: ask brew (works even when cache is cold / core is API-stub).
+  try {
+    const out = execFileSync(
+      "brew",
+      ["info", "--json=v1", token],
+      {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+      },
+    );
+    const parsed = JSON.parse(out);
+    const formulae = Array.isArray(parsed) ? parsed : [];
+    return formulae.some(
+      (f: any) =>
+        (f?.name === token || f?.full_name === token || f?.full_name === `homebrew/core/${token}`) &&
+        (!f?.tap || String(f.tap).includes("homebrew/core") || f?.tap === "homebrew/core"),
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** True when homebrew/cask already ships a cask with this token. */
