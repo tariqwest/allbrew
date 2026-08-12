@@ -115,6 +115,38 @@ it("detects npx as npm", () => {
     expect(result).toEqual({ method: "pip", package: "s-tui" });
   });
 
+  it("detects python -m pip install as pip (memray-style)", () => {
+    const result = detectInstallMethod(
+      "```shell\n    python3 -m pip install memray\n```",
+      "memray",
+    );
+    expect(result).toEqual({ method: "pip", package: "memray" });
+  });
+
+  it("prefers python -m pip install package over editable local build", () => {
+    const readme = `
+# Installation
+
+\`\`\`shell
+    python3 -m pip install memray
+\`\`\`
+
+Once you have the binary dependencies installed, you can clone the repository:
+
+\`\`\`shell
+python3 -m pip install -e . --group test --group extra
+\`\`\`
+`;
+    expect(detectInstallMethod(readme, "memray")).toEqual({
+      method: "pip",
+      package: "memray",
+    });
+    expect(detectInstallMethod(readme)).toEqual({
+      method: "pip",
+      package: "memray",
+    });
+  });
+
   it("detects `> pip install` shell-prompt docs (visdom-style)", () => {
     const result = detectInstallMethod(
       "```bash\n> pip install visdom\n```",

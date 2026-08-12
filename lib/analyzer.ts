@@ -17,8 +17,10 @@ const NPX_RE =
   new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}npx[ \\t]+([^\\s;|&\\n\`]+)`, "i");
 const PIP_FLAGS =
   "(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n]*)?)*";
+// Match `pip install foo`, `pip3 install foo`, and `python[3] -m pip install foo`
+// (common PyPI docs form; e.g. bloomberg/memray README).
 const PIP_INSTALL_RE =
-  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pip[3]?[ \\t]+install(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}(?:python[3]?[ \\t]+-m[ \\t]+)?pip[3]?[ \\t]+install(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
 const PIPX_INSTALL_RE =
   new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pipx[ \\t]+install(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
 const UV_TOOL_INSTALL_RE =
@@ -815,10 +817,12 @@ function pickPreferredPipPackage(readmeText, preferredPackageName = "") {
     return null;
   }
 
-  const local = candidates.find((c) => c.localBuild);
-  if (local) return { method: "build", system: "python" };
+  // Prefer a named PyPI package (user install) over editable `pip install .`
+  // (contributor source build). READMEs often document both (e.g. memray).
   const first = candidates.find((c) => c.package);
   if (first) return { method: "pip", package: first.package };
+  const local = candidates.find((c) => c.localBuild);
+  if (local) return { method: "build", system: "python" };
   return null;
 }
 
