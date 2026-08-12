@@ -210,6 +210,111 @@ export function pickReleaseWithAppAssets(
   return null;
 }
 
+/** Normalize product tokens for monorepo tag/asset matching. */
+export function normalizeProductToken(name: string): string {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .trim();
+}
+
+/**
+ * True when tag or asset text belongs to the named product.
+ * e.g. product "cua-driver" matches "cua-driver-rs-v0.19.3" and
+ * "cua-driver-rs-0.19.3-darwin-arm64.tar.gz" but not "lume-v0.5.3".
+ */
+export function textMatchesProductName(
+  productName: string,
+  text: string,
+): boolean {
+  const n = normalizeProductToken(productName);
+  const t = normalizeProductToken(text);
+  if (!n || !t || n.length < 2) return false;
+  if (t === n) return true;
+  // product as delimited prefix of tag/asset (allows -rs, -cli, -v1.2.3, .tar.gz…)
+  if (t.startsWith(n + "-") || t.startsWith(n + ".")) return true;
+  return false;
+}
+
+/**
+ * True when a release's tag, title, or any asset name matches the product.
+ * Used for monorepos that ship product-prefixed tags (cua-driver-rs-v*, lume-v*).
+ */
+export function releaseMatchesProductName(
+  release: {
+    tagName?: string;
+    name?: string;
+    assets?: { name: string }[];
+  } | null | undefined,
+  productName: string,
+): boolean {
+  if (!release) return false;
+  const product = normalizeProductToken(productName);
+  if (!product) return true;
+  if (textMatchesProductName(product, release.tagName || "")) return true;
+  if (textMatchesProductName(product, release.name || "")) return true;
+  return (release.assets || []).some((a) =>
+    textMatchesProductName(product, a.name || ""),
+  );
+}
+
+/**
+ * Prefer the newest non-draft release that has macOS-usable binary assets.
+ * When `productName` is set, only product-matching releases are considered
+ * (monorepo --name cua-driver must not pick lume-v* latest).
+ */
+export function pickReleaseWithBinaryAssets(
+  releases: ReturnType<typeof mapRelease>[],
+  opts: {
+    isBinaryAssetFn: (name: string) => boolean;
+    matchAssetToArchFn: (name: string) => string | null;
+    productName?: string | null;
+    requireMacosArmOrUniversal?: boolean;
+  },
+): ReturnType<typeof mapRelease> | null {
+  const usable = (releases || []).filter((r) => r && !r.draft);
+  const stable = usable.filter((r) => !r.prerelease);
+  const product = opts.productName
+    ? normalizeProductToken(opts.productName)
+    : "";
+  const requireArm = opts.requireMacosArmOrUniversal !== false;
+
+  const hasUsableMacosBin = (rel: ReturnType<typeof mapRelease>): boolean => {
+    if (product && !releaseMatchesProductName(rel, product)) return false;
+    const tagMatch =
+      !product ||
+      textMatchesProductName(product, rel.tagName || "") ||
+      textMatchesProductName(product, rel.name || "");
+    const macos = (rel.assets || []).filter((a) => {
+      if (!opts.isBinaryAssetFn(a.name)) return false;
+      const arch = opts.matchAssetToArchFn(a.name);
+      if (
+        arch !== "macosArm" &&
+        arch !== "macosIntel" &&
+        arch !== "macosUniversal"
+      ) {
+        return false;
+      }
+      if (!product) return true;
+      if (tagMatch) return true;
+      return textMatchesProductName(product, a.name);
+    });
+    if (macos.length === 0) return false;
+    if (!requireArm) return true;
+    return macos.some((a) => {
+      const arch = opts.matchAssetToArchFn(a.name);
+      return arch === "macosArm" || arch === "macosUniversal";
+    });
+  };
+
+  for (const pool of [stable, usable]) {
+    for (const rel of pool) {
+      if (hasUsableMacosBin(rel)) return rel;
+    }
+  }
+  return null;
+}
+
 export async function getReadme(owner, repo) {
   try {
     const { data } = await getOctokit().rest.repos.getReadme({ owner, repo });
