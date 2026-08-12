@@ -14,6 +14,8 @@ import {
   getLatestRelease,
   listReleases,
   pickReleaseWithAppAssets,
+  pickReleaseWithBinaryAssets,
+  releaseMatchesProductName,
   getReadme,
   getRepoContents,
   getFileContent,
@@ -920,6 +922,49 @@ async function handleGithubRepo(classification, opts) {
           `  Note: no stable GitHub /releases/latest — using prerelease ${release.tagName}`,
         ),
       );
+    }
+
+    // Monorepos (e.g. trycua/cua) publish product-prefixed tags (lume-v*,
+    // cua-driver-rs-v*). GitHub /releases/latest is whichever product shipped
+    // last — when the user passed --name, prefer a release that matches that
+    // product instead of packaging the wrong binary under the requested name.
+    const productName =
+      typeof opts.name === "string" && opts.name.trim()
+        ? opts.name.trim()
+        : null;
+    if (productName && !releaseMatchesProductName(release, productName)) {
+      try {
+        const recent = await listReleases(owner, repo, { perPage: 40 });
+        const productRel = pickReleaseWithBinaryAssets(recent, {
+          isBinaryAssetFn: isBinaryAsset,
+          matchAssetToArchFn: matchAssetToArch,
+          productName,
+        });
+        if (productRel && productRel.tagName !== release.tagName) {
+          console.log(
+            chalk.dim(
+              `  Monorepo: latest ${release.tagName} does not match --name ${productName}; using ${productRel.tagName}`,
+            ),
+          );
+          release = productRel;
+        } else if (!productRel) {
+          console.log(
+            chalk.dim(
+              `  Latest release ${release.tagName} does not match --name ${productName}; no product binary release found — checking README...`,
+            ),
+          );
+          // Drop mismatched assets so we do not install e.g. lume as cua-driver.
+          release = { ...release, assets: [] };
+        }
+      } catch (err) {
+        if (opts.verbose) {
+          console.log(
+            chalk.dim(
+              `  Product-release scan failed: ${err?.message || err}; continuing with latest...`,
+            ),
+          );
+        }
+      }
     }
 
     const appAssets = release.assets.filter((a) => isAppAsset(a.name));
