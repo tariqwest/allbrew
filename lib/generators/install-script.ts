@@ -47,6 +47,36 @@ export async function resolveInstallScriptVersion(
     /* ignore network / parse errors */
   }
 
+  // curl|bash install pages often embed github.com/owner/repo or VERSION="x.y.z".
+  try {
+    const { assertSafeFetchUrl } = await import("../utils.ts");
+    assertSafeFetchUrl(url);
+    const res = await fetch(url, {
+      headers: { "User-Agent": "allbrew/1.0" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (res.ok) {
+      const body = await res.text();
+      const gh = body.match(
+        /https?:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)/,
+      );
+      if (gh) {
+        const owner = gh[1];
+        const repo = gh[2].replace(/\.git$/, "");
+        const { getLatestRelease } = await import("../github.ts");
+        const release = await getLatestRelease(owner, repo);
+        if (release?.tagName) return extractVersionFromTag(release.tagName);
+      }
+      const verInBody = body.match(
+        /\b(?:VERSION|version)\s*=\s*["']v?(\d+\.\d+\.\d+[^"']*)["']/,
+      );
+      if (verInBody) return extractVersionFromTag(verInBody[1]);
+    }
+  } catch {
+    /* ignore */
+  }
+
   // Homebrew requires a non-nil version; livecheck can still move it later.
   return "0.0.1";
 }

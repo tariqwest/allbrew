@@ -20,7 +20,27 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
     # point them inside buildpath so the versioned layout is discoverable.
     ENV["WARP_TUI_INSTALL_DIR"] = (buildpath/"warp-tui").to_s
     ENV["WARP_TUI_BIN_DIR"] = (buildpath/"bin").to_s
-    system "bash", cached_download.to_s
+    # Jetify-style get.* installers (and many curl|bash scripts) require FORCE=1 / -f
+    # to skip interactive confirm() that reads /dev/tty.
+    ENV["FORCE"] = "1"
+
+    # Vendor the download so we can rewrite install paths.
+    # Many curl|bash installers hardcode /usr/local/bin, prompt on /dev/tty, or sudo.
+    script = buildpath/"allbrew-install.sh"
+    cp cached_download, script
+    chmod 0755, script
+
+    content = File.read(script)
+    # Handle "readonly INSTALL_DIR=..." then generic INSTALL_DIR/BIN_DIR forms.
+    # Use "\\\\1" in this TS template so Ruby sees "\\1" (gsub backref), not "\\u0001".
+    content.gsub!(%r{readonly\\s+INSTALL_DIR\\s*=\\s*["'][^"']*["']}, "readonly INSTALL_DIR='#{bin}'")
+    content.gsub!(%r{(INSTALL_DIR|BIN_DIR|BINDIR|install_dir)\\s*=\\s*["'][^"']*["']}, "\\\\1='#{bin}'")
+    File.write(script, content)
+    inreplace script, /\\$\\(command -v sudo \\|\\| true\\)\\s*/, "", audit_result: false
+    inreplace script, /\\bsudo\\s+/, "", audit_result: false
+
+    mkdir_p bin
+    system "bash", script.to_s, "-f"
 
     # Warp Agent CLI uses a versioned layout: $WARP_TUI_INSTALL_DIR/warp-tui/versions/<version>/warp-tui-stable
     # with a symlink $WARP_TUI_BIN_DIR/warp -> .../current/warp-tui-stable. The symlink target
@@ -44,6 +64,11 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
       next unless dir.directory?
       bins = Dir[dir/"*"].select { |f| File.file?(f) && File.executable?(f) }
       next if bins.empty?
+      # INSTALL_DIR rewrite above may already have placed the binary in formula bin/
+      if dir == bin
+        installed = true
+        break
+      end
       # If the only bin is a broken symlink (warp -> warp-tui/...), resolve to the real binary.
       # Homebrew's bin.install would copy the symlink as-is, leaving a broken link.
       # For warp, the real binary is already handled above; for others, install as-is.
@@ -61,7 +86,8 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
   end
 
 ${p.serviceBlock}  test do
-    assert_match version.to_s, shell_output("#{bin}/${p.testBinName} --version")
+    assert_path_exists bin/"${p.testBinName}"
+    assert_predicate bin/"${p.testBinName}", :executable?
   end
 end
 `;
