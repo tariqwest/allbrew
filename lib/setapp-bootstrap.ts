@@ -92,7 +92,6 @@ export async function ensureSetappPrerequisites(tapPath: string) {
       await execFileAsync("brew", ["update"]);
       await execFileAsync("brew", [
         "install",
-        "--formula",
         setappCliFormulaPath(tapPath),
       ]);
       spinner.succeed("setapp-cli installed");
