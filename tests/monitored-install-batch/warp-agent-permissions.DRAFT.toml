@@ -1,0 +1,15 @@
+# DEPRECATED — do not use this filename for new work.
+#
+# Child privilege requirements (capability checklist + sample allow/deny patterns)
+# now live in:
+#   assets/child-agent-privileges.DRAFT.toml
+#   tests/monitored-install-batch/child-agent-privileges.DRAFT.toml
+#
+# The skill no longer references a fixed agent-profile name. The parent/orchestrator
+# should create or select a harness policy with those privileges, or prompt the user.
+#
+# (Legacy sample patterns removed from this stub — copy from child-agent-privileges.DRAFT.toml.)
+
+[meta]
+purpose = "deprecated redirect to child-agent-privileges.DRAFT.toml"
+replaced_by = "child-agent-privileges.DRAFT.toml"

@@ -1,0 +1,23 @@
+{
+  "name": "taskbook",
+  "description": "Tasks, boards & notes for the command-line habitat",
+  "dist-tags": {
+    "latest": "0.3.0"
+  },
+  "homepage": "https://github.com/klaussinani/taskbook#readme",
+  "license": "MIT",
+  "versions": {
+    "0.3.0": {
+      "name": "taskbook",
+      "version": "0.3.0",
+      "license": "MIT",
+      "dist": {
+        "tarball": "https://registry.npmjs.org/taskbook/-/taskbook-0.3.0.tgz",
+        "shasum": "ff0449ce5dc8b1c01980d687e1bfa0638426dc2e"
+      },
+      "bin": {
+        "tb": "cli.js"
+      }
+    }
+  }
+}

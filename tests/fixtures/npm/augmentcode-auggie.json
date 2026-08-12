@@ -1,0 +1,26 @@
+{
+  "name": "@augmentcode/auggie",
+  "description": "Auggie CLI Client by Augment Code",
+  "dist-tags": {
+    "latest": "0.32.0"
+  },
+  "homepage": "https://augmentcode.com",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "versions": {
+    "0.32.0": {
+      "name": "@augmentcode/auggie",
+      "version": "0.32.0",
+      "description": "Auggie CLI Client by Augment Code",
+      "homepage": "https://augmentcode.com",
+      "license": "SEE LICENSE IN LICENSE.md",
+      "bin": {
+        "auggie": "augment.mjs"
+      },
+      "dist": {
+        "tarball": "https://registry.npmjs.org/@augmentcode/auggie/-/auggie-0.32.0.tgz",
+        "shasum": "70e0311f6ed8303520a912d485aa788de94fb9db"
+      },
+      "dependencies": {}
+    }
+  }
+}

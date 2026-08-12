@@ -1,0 +1,48 @@
+node_modules/
+.pnpm-store/
+.cursor/
+.DS_Store
+
+# Devin CLI local config and agent worktrees
+.devin/
+.worktrees/
+.fseventsd/
+.Trashes/
+*.log
+logs/
+.env
+tests/e2e-runs/
+test-harness-runs/
+graphify-out/
+
+# Dogfood monitored allbrew install run records (local flat-file DB)
+tests/monitored-install-runs/
+tests/monitored-install-batch/runs/
+tests/monitored-install-batch/logs/
+tests/monitored-install-batch/state/
+tests/monitored-install-batch/summary/
+tests/monitored-install-batch/fix-packages/
+tests/monitored-install-batch/archive/*.tar.*
+!tests/monitored-install-batch/archive/manifest.json
+
+# Monitored install batch transient state and run output files
+# Note: Future refactor should relocate these transient outputs to ./tests/monitored-install-batch/state/
+tests/monitored-install-batch/*.pid
+tests/monitored-install-batch/progress.json
+tests/monitored-install-batch/bootstrap-status.json
+tests/monitored-install-batch/agent-queue.json
+tests/monitored-install-batch/agent-wave.json
+tests/monitored-install-batch/agent-index.jsonl
+tests/monitored-install-batch/index.jsonl
+tests/monitored-install-batch/fix-index.jsonl
+tests/monitored-install-batch/summary.json
+tests/monitored-install-batch/final-summary*.json
+tests/monitored-install-batch/retry-rate-limit-*
+tests/monitored-install-batch/urls-missing.txt
+tests/monitored-install-batch/urls-from-queue.json
+
+tests/monitored-install-batch/worktrees/
+
+# Python bytecode from batch tooling
+tests/monitored-install-batch/__pycache__/
+tests/monitored-install-batch/*.bak-pre-catalog-regen

@@ -1,0 +1,139 @@
+# =============================================================================
+# Warp Agent Permissions — TEMPLATE (NOT applied automatically)
+# =============================================================================
+#
+# WHERE THIS LIVES (not in the allbrew repo):
+#   Live file:  ~/.warp/settings.toml
+#   Yours is:   ~/.warp/settings.toml -> ~/.dotfiles/warp/.warp/settings.toml
+#
+# Warp docs: Settings > Agents > Profiles > Permissions / Command allow|denylist
+# - execute_commands = "always_allow" still DEFERS TO command_denylist
+# - Denylist always wins over allowlist and "always_allow"
+# - "Run until completion" (Cmd+Shift+I) bypasses denylist for one task only
+#
+# This file is a suggested DROP-IN FRAGMENT for:
+#   [agents.execution_profiles.default]
+# Copy/merge into your real settings.toml yourself after review.
+#
+# Goal for monitored-install marathon children:
+#   Auto-run: bun, git worktree, vm-install-one, allbrew generate, bun test
+#   Still ask: rm, eval/exec/source shells, scp/rsync, bare curl/wget if desired
+# =============================================================================
+
+[agents.execution_profiles.default]
+# Keep autonomy high for this workload; denylist is the real gate.
+execute_commands = "always_allow"
+read_files = "always_allow"
+write_to_pty = "always_allow"
+run_agents = "always_allow"
+# Optional: skip diff review prompts during marathon
+# apply_code_diffs = "always_allow"
+apply_code_diffs = "agent_decides"
+mcp_permissions = "agent_decides"
+computer_use = "always_ask"
+
+# -----------------------------------------------------------------------------
+# Command allowlist (regex). Empty by default on your machine today.
+# These auto-execute even when not "read-only".
+# Prefer anchoring to this repo / batch paths where practical.
+# -----------------------------------------------------------------------------
+command_allowlist = [
+  # Repo tooling
+  'bun(\\s.*)?',
+  'node(\\s.*)?',
+  'python3(\\s.*)?',
+
+  # Monitored-install batch (host orchestration + VM helper entry)
+  'LUME_REMOTE_ENABLED=true\\s+bun\\s+tests/monitored-install-batch/.*',
+  'bun\\s+tests/monitored-install-batch/.*',
+  'node\\s+tests/monitored-install-batch/.*',
+
+  # allbrew CLI (prefer temp-tap; still allow the binary invocation)
+  'bun\\s+run\\s+bin/allbrew\\.ts(\\s.*)?',
+  'CI=1\\s+ALLBREW_NONINTERACTIVE=1\\s+bun\\s+run\\s+bin/allbrew\\.ts(\\s.*)?',
+
+  # git worktrees / inspection (children use /tmp/allbrew-wt-*)
+  'git(\\s.*)?',
+
+  # common read-only / low risk
+  'ls(\\s.*)?',
+  'cat(\\s.*)?',
+  'head(\\s.*)?',
+  'tail(\\s.*)?',
+  'wc(\\s.*)?',
+  'rg(\\s.*)?',
+  'grep(\\s.*)?',
+  'find(\\s.*)?',
+  'which(\\s.*)?',
+  'echo(\\s.*)?',
+  'date(\\s.*)?',
+  'pwd(\\s.*)?',
+  'mktemp(\\s.*)?',
+  'mkdir(\\s.*)?',
+  'test(\\s.*)?',
+  'true',
+  'false',
+
+  # Guest/VM orchestration CLIs used by harness (adjust if your path differs)
+  'lume(\\s.*)?',
+  'ssh(\\s.*)?',
+
+  # brew is intentional for VM path; host brew install remains policy-forbidden
+  # in child prompts, but Warp may still need to allow the binary for vm-install.
+  'brew(\\s.*)?',
+]
+
+# -----------------------------------------------------------------------------
+# Command denylist (regex). ALWAYS requires approval (overrides always_allow).
+# Your current live denylist is close to this; review before replacing.
+# -----------------------------------------------------------------------------
+command_denylist = [
+  # Nested interactive shells / code exec
+  'bash(\\s.*)?',
+  'fish(\\s.*)?',
+  'pwsh(\\s.*)?',
+  'sh(\\s.*)?',
+  'zsh(\\s.*)?',
+  'eval(\\s.*)?',
+  'exec(\\s.*)?',
+  'source(\\s.*)?',
+
+  # Destructive / exfil-ish
+  'rm(\\s.*)?',
+  'wget(\\s.*)?',
+  # Keep curl denied unless you add a tighter allow rule above for specific URLs
+  'curl(\\s.*)?',
+  'scp(\\s.*)?',
+  'rsync(\\s.*)?',
+  'telnet(\\s.*)?',
+  'dig(\\s.*)?',
+  'nslookup(\\s.*)?',
+  'host(\\s.*)?',
+
+  # Escalation
+  'sudo(\\s.*)?',
+]
+
+# Optional: limit agent filesystem roots (if you use directory allowlists)
+# directory_allowlist = [
+#   "/Users/YOURUSER/Developer/allbrew",
+#   "/tmp",
+# ]
+
+# =============================================================================
+# HOW TO APPLY (manual)
+# =============================================================================
+# 1. Open ~/.dotfiles/warp/.warp/settings.toml (or Settings > Agents > Profiles)
+# 2. Merge the allowlist/denylist into [agents.execution_profiles.default]
+# 3. Restart Warp or reload settings if needed
+# 4. Remember: a denylist match ALWAYS prompts — remove/narrow denylist entries
+#    that collide with marathon commands (e.g. if `sh` denylist matches scripts)
+# 5. For a single YOLO run without editing settings: Cmd+Shift+I
+#    "Run until completion" (bypasses denylist for that task only)
+#
+# NOTE ON FALSE GATES:
+# - Lifecycle `blocked` on children = waiting for YOUR Warp command accept UI
+# - Product hangs (allbrew checkbox, hung brew install) are NOT denylist gates
+# - Host `brew install` should stay disallowed by PROMPT policy even if Warp
+#   allows the brew binary for VM helper use
+# =============================================================================

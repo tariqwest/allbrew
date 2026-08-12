@@ -1,0 +1,23 @@
+{
+  "name": "cline",
+  "description": "Autonomous coding agent CLI - capable of creating/editing files, running commands, using the browser, and more",
+  "dist-tags": {
+    "latest": "3.0.30"
+  },
+  "homepage": "https://cline.bot",
+  "license": "Apache-2.0",
+  "versions": {
+    "3.0.30": {
+      "name": "cline",
+      "version": "3.0.30",
+      "license": "Apache-2.0",
+      "dist": {
+        "tarball": "https://registry.npmjs.org/cline/-/cline-3.0.30.tgz",
+        "shasum": "000146ad82c1524a55e9614965574537c90117c4"
+      },
+      "bin": {
+        "cline": "bin/cline"
+      }
+    }
+  }
+}

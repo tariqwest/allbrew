@@ -1,0 +1,35 @@
+{
+  "info": {
+    "name": "browsr",
+    "version": "1.24.0",
+    "summary": "TUI File Browser App",
+    "home_page": "https://github.com/juftin/browsr",
+    "project_url": "https://pypi.org/project/browsr/",
+    "license": "MIT",
+    "requires_dist": [
+      "textual[syntax]<9,>=8",
+      "rich<15,>=14",
+      "click~=8.3.1",
+      "universal-pathlib~=0.2.6",
+      "pyarrow~=23.0.1; extra == \"all\""
+    ]
+  },
+  "urls": [
+    {
+      "filename": "browsr-1.24.0.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/ab/cd/browsr-1.24.0.tar.gz",
+      "packagetype": "sdist",
+      "digests": {
+        "sha256": "a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3"
+      }
+    },
+    {
+      "filename": "browsr-1.24.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ef/gh/browsr-1.24.0-py3-none-any.whl",
+      "packagetype": "bdist_wheel",
+      "digests": {
+        "sha256": "b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4"
+      }
+    }
+  ]
+}

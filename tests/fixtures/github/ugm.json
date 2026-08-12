@@ -1,0 +1,32 @@
+{
+  "repo": {
+    "name": "ugm",
+    "fullName": "ariasmn/ugm",
+    "description": "A TUI to view information about UNIX users and groups",
+    "homepage": "https://github.com/ariasmn/ugm",
+    "htmlUrl": "https://github.com/ariasmn/ugm",
+    "license": "MIT",
+    "defaultBranch": "main"
+  },
+  "release": {
+    "tagName": "v1.9.0",
+    "assets": [
+      {
+        "name": "ugm_1.9.0_linux_amd64",
+        "url": "https://github.com/ariasmn/ugm/releases/download/v1.9.0/ugm_1.9.0_linux_amd64"
+      },
+      {
+        "name": "ugm_1.9.0_linux_386",
+        "url": "https://github.com/ariasmn/ugm/releases/download/v1.9.0/ugm_1.9.0_linux_386"
+      },
+      {
+        "name": "ugm_1.9.0_freebsd_amd64",
+        "url": "https://github.com/ariasmn/ugm/releases/download/v1.9.0/ugm_1.9.0_freebsd_amd64"
+      },
+      {
+        "name": "checksums.txt",
+        "url": "https://github.com/ariasmn/ugm/releases/download/v1.9.0/checksums.txt"
+      }
+    ]
+  }
+}

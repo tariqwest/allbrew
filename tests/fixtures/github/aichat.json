@@ -1,0 +1,56 @@
+{
+  "repo": {
+    "name": "aichat",
+    "fullName": "sigoden/aichat",
+    "description": "All-in-one LLM CLI tool featuring Shell Assistant, Chat-REPL, RAG, AI Tools & Agents, with access to OpenAI, Claude, Gemini, Ollama, Groq, and more.",
+    "homepage": "https://github.com/sigoden/aichat",
+    "htmlUrl": "https://github.com/sigoden/aichat",
+    "license": "Apache-2.0",
+    "defaultBranch": "main"
+  },
+  "release": {
+    "tagName": "v0.30.0",
+    "assets": [
+      {
+        "name": "aichat-v0.30.0-aarch64-apple-darwin.tar.gz",
+        "url": "https://github.com/sigoden/aichat/releases/download/v0.30.0/aichat-v0.30.0-aarch64-apple-darwin.tar.gz"
+      },
+      {
+        "name": "aichat-v0.30.0-aarch64-pc-windows-msvc.zip",
+        "url": "https://github.com/sigoden/aichat/releases/download/v0.30.0/aichat-v0.30.0-aarch64-pc-windows-msvc.zip"
+      },
+      {
+        "name": "aichat-v0.30.0-aarch64-unknown-linux-musl.tar.gz",
+        "url": "https://github.com/sigoden/aichat/releases/download/v0.30.0/aichat-v0.30.0-aarch64-unknown-linux-musl.tar.gz"
+      },
+      {
+        "name": "aichat-v0.30.0-arm-unknown-linux-musleabihf.tar.gz",
+        "url": "https://github.com/sigoden/aichat/releases/download/v0.30.0/aichat-v0.30.0-arm-unknown-linux-musleabihf.tar.gz"
+      },
+      {
+        "name": "aichat-v0.30.0-armv7-unknown-linux-musleabihf.tar.gz",
+        "url": "https://github.com/sigoden/aichat/releases/download/v0.30.0/aichat-v0.30.0-armv7-unknown-linux-musleabihf.tar.gz"
+      },
+      {
+        "name": "aichat-v0.30.0-i686-pc-windows-msvc.zip",
+        "url": "https://github.com/sigoden/aichat/releases/download/v0.30.0/aichat-v0.30.0-i686-pc-windows-msvc.zip"
+      },
+      {
+        "name": "aichat-v0.30.0-i686-unknown-linux-musl.tar.gz",
+        "url": "https://github.com/sigoden/aichat/releases/download/v0.30.0/aichat-v0.30.0-i686-unknown-linux-musl.tar.gz"
+      },
+      {
+        "name": "aichat-v0.30.0-x86_64-apple-darwin.tar.gz",
+        "url": "https://github.com/sigoden/aichat/releases/download/v0.30.0/aichat-v0.30.0-x86_64-apple-darwin.tar.gz"
+      },
+      {
+        "name": "aichat-v0.30.0-x86_64-pc-windows-msvc.zip",
+        "url": "https://github.com/sigoden/aichat/releases/download/v0.30.0/aichat-v0.30.0-x86_64-pc-windows-msvc.zip"
+      },
+      {
+        "name": "aichat-v0.30.0-x86_64-unknown-linux-musl.tar.gz",
+        "url": "https://github.com/sigoden/aichat/releases/download/v0.30.0/aichat-v0.30.0-x86_64-unknown-linux-musl.tar.gz"
+      }
+    ]
+  }
+}

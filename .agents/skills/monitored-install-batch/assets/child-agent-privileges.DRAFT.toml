@@ -1,0 +1,171 @@
+# Child-agent privilege requirements for monitored-install batch.
+#
+# This file describes WHAT children must be allowed to run unattended, not a
+# named agent profile. The parent/orchestrator should map these privileges onto
+# whatever the current harness calls profiles, policies, allowlists, or
+# auto-approve settings.
+#
+# Sample allow/deny regexes below are optional paste targets for hosts that gate
+# shell commands. Adapt syntax to your harness; denylist usually wins over allow.
+
+[meta]
+purpose = "monitored-install batch child agents"
+audience = "parent/orchestrator agent + human operator"
+notes = """
+Children repeatedly hit command-approval gates on:
+  - LUME_REMOTE_ENABLED=true bun .../vm-install-one.mjs
+  - bun run bin/allbrew.ts (temp tap generate)
+  - git worktree add / git -C worktree ...
+  - bun test / bun run check
+  - brew * inside the VM helper (and occasional host read-only brew info)
+  - curl/fetch for docs judgment
+  - ssh/rsync for LUME_REMOTE homeserver
+If curl/wget/rm (or similar) are on a default denylist, remove or override those
+entries for the batch policy, or children will stall on interactive approval.
+"""
+
+# ---------------------------------------------------------------------------
+# Required privileges (capability checklist — primary source of truth)
+# ---------------------------------------------------------------------------
+#
+# MUST allow without interactive approval for each child run:
+#   - Shell execution on the host that holds the allbrew checkout
+#   - bun / node: batch helpers, allbrew CLI, unit tests, check
+#   - git: status/diff/log/worktree/add/commit; push only to agent/* branches
+#   - Lume + remote VM path: lume, ssh, rsync, scp, LUME_* env prefixes
+#   - Network read: curl/wget/fetch for docs and registry metadata
+#   - brew read (+ install paths only as invoked by vm-install-one / temp-tap debug)
+#   - Normal FS plumbing: mkdir, mktemp, ls, find, rg/grep, cat, cp, mv, chmod, tee, …
+#   - Write under: repo worktrees/, tests/monitored-install-runs/, temp dirs, batch state/
+#
+# MUST deny / never auto-approve for children:
+#   - sudo / su
+#   - Destructive root/home wipes (rm -rf /, ~, $HOME)
+#   - diskutil erase/partition, dd, mkfs
+#   - bun run release
+#   - git push to main / origin main, git push --force
+#   - Treating host brew install of the catalog app as the success path
+#
+# Parent/orchestrator duty:
+#   1. Attempt to create or select a harness agent profile/policy with the
+#      privileges above (name it whatever fits the product — do not require a
+#      specific profile name from this skill).
+#   2. If the harness cannot create/configure that policy autonomously, prompt
+#      the user once with this checklist + the sample patterns below.
+#   3. Launch children under that policy so they do not wait on click-to-approve.
+#   4. If children still block on approval, nudge (Case J) and/or re-prompt the
+#      user to widen the policy — do not burn the queue on gated shells.
+
+[privileges.required]
+shell_unattended = true
+bun_allbrew_and_batch_helpers = true
+git_worktrees_and_agent_branch_push = true
+lume_and_remote_vm_transport = true
+network_fetch_for_judgment = true
+brew_via_vm_helper_or_temp_tap = true
+write_run_dirs_and_worktrees = true
+
+[privileges.forbidden]
+sudo_or_su = true
+destructive_root_or_home_rm = true
+disk_wipe_tools = true
+release_script = true
+push_main_or_force_push = true
+host_brew_install_as_success = true
+
+# ---------------------------------------------------------------------------
+# Optional sample patterns (regex) — only if the harness uses allow/deny lists
+# ---------------------------------------------------------------------------
+
+# RECOMMENDED harness shape: execute-commands = always-allow (or equivalent)
+# for the batch policy, THEN layer allowlist regexes; keep denylist strict.
+
+comprehensive_allowlist_regex = '''^(?:(?:LUME_[A-Z_]+=\S+\s+)*(?:CI=1\s+)?(?:ALLBREW_NONINTERACTIVE=1\s+)?(?:TH_[A-Z_]+=\S+\s+)*(?:PATH=\S+\s+)*)?(?:cd\s+\S+\s+&&\s+)?(?:bun(\s+run)?\s+(bin/allbrew\.ts|test|check|tests/monitored-install-batch/|\.agents/skills/monitored-install/|batch:reconcile)|(?:brew)\s+(info|list|update|outdated|search|leaves|deps|uses|cat|formula|cask|install|uninstall|reinstall|upgrade|services)(\s.*)?|(?:git)\s+(status|diff|log|show|branch|checkout|switch|add|commit|fetch|pull|push|worktree|apply|rev-parse|ls-files|stash|restore|reset|clone|remote|config)(\s.*)?|(?:curl|wget)\s+.*|(?:ssh|rsync|scp)\s+.*|(?:mktemp|mkdir|ls|find|rg|grep|cat|head|tail|tee|cp|mv|chmod|touch|dirname|basename|pwd|which|env|printenv|date|stat|wc|sort|uniq|xargs|sed|awk|python3|node)(\s.*)?|(?:lume)(\s.*)?|(?:true|echo|printf|test|\[)(\s.*)?)$'''
+
+allowlist = [
+  # --- marathon core ---
+  'LUME_[A-Z_]+=\S+\s+bun\s+tests/monitored-install-batch/.*',
+  'bun\s+tests/monitored-install-batch/.*',
+  'bun\s+\.agents/skills/monitored-install/.*',
+  'bun\s+run\s+bin/allbrew\.ts(\s.*)?',
+  'CI=1\s+ALLBREW_NONINTERACTIVE=1\s+bun\s+run\s+bin/allbrew\.ts(\s.*)?',
+  '(?:CI=1\s+)?(?:ALLBREW_NONINTERACTIVE=1\s+)?bun\s+run\s+bin/allbrew\.ts(\s.*)?',
+  'bun\s+run\s+(check|test|test:.*|batch:reconcile-fixes)(\s.*)?',
+  'bun\s+test(\s.*)?',
+  # --- git / worktrees (Option A fixes) ---
+  'git\s+worktree\s+(add|list|remove|prune)(\s.*)?',
+  'git\s+-C\s+\S+\s+.*',
+  'git\s+(status|diff|log|show|branch|checkout|switch|add|commit|fetch|pull|rev-parse|ls-files|stash|restore|apply|remote|config)(\s.*)?',
+  'git\s+push\s+-u\s+origin\s+agent/.*',
+  # --- brew (read + paths used by VM helper / local temp-tap debug) ---
+  'brew\s+(info|list|update|outdated|search|leaves|deps|uses|cat|formula|cask|doctor|config|env|--prefix|--cellar|--caskroom)(\s.*)?',
+  'brew\s+(install|uninstall|reinstall|upgrade|link|unlink|tap|untap|services)(\s.*)?',
+  'HOMEBREW_[A-Z_]+=\S+\s+brew\s+.*',
+  # --- network / Lume remote ---
+  'curl(\s.*)?',
+  'wget(\s.*)?',
+  'ssh(\s.*)?',
+  'rsync(\s.*)?',
+  'scp(\s.*)?',
+  'lume(\s.*)?',
+  # --- shell plumbing ---
+  'cd\s+\S+(\s+&&\s+.*)?',
+  'mktemp(\s.*)?',
+  'mkdir(\s.*)?',
+  'ls(\s.*)?',
+  'find(\s.*)?',
+  'rg(\s.*)?',
+  'grep(\s.*)?',
+  'cat(\s.*)?',
+  'head(\s.*)?',
+  'tail(\s.*)?',
+  'tee(\s.*)?',
+  'cp(\s.*)?',
+  'mv(\s.*)?',
+  'chmod(\s.*)?',
+  'touch(\s.*)?',
+  'dirname(\s.*)?',
+  'basename(\s.*)?',
+  'pwd(\s.*)?',
+  'which(\s.*)?',
+  'env(\s.*)?',
+  'printenv(\s.*)?',
+  'date(\s.*)?',
+  'stat(\s.*)?',
+  'wc(\s.*)?',
+  'sort(\s.*)?',
+  'uniq(\s.*)?',
+  'xargs(\s.*)?',
+  'sed(\s.*)?',
+  'awk(\s.*)?',
+  'python3(\s.*)?',
+  'node(\s.*)?',
+  'echo(\s.*)?',
+  'printf(\s.*)?',
+  'true(\s.*)?',
+  'test(\s.*)?',
+]
+
+denylist = [
+  'sudo(\s.*)?',
+  'su(\s.*)?',
+  'rm\s+-rf\s+/(?:\s|$)',
+  'rm\s+-rf\s+~(?:\s|$)',
+  'rm\s+-rf\s+\$HOME(?:\s|$)',
+  'dd(\s.*)?',
+  'mkfs(\s.*)?',
+  'diskutil\s+(erase|partition|reset).*',
+  'launchctl\s+bootout\s+system/.*',
+  'killall\s+-9\s+.*',
+  'bun\s+run\s+release(\s.*)?',
+  'git\s+push(\s+.*)?\s+main(?:\s|$)',
+  'git\s+push(\s+.*)?\s+origin\s+main(?:\s|$)',
+  'git\s+push\s+--force(\s.*)?',
+]
+
+one_liner_allow_vm = '^(?:LUME_[A-Z_]+=\S+\s+)*bun\s+tests/monitored-install-batch/(?:vm-install-one|run-agent-batch|worker-run-one|run-batch|bootstrap).*'
+one_liner_allow_allbrew = '^(?:CI=1\s+)?(?:ALLBREW_NONINTERACTIVE=1\s+)?bun\s+run\s+bin/allbrew\.ts(\s.*)?$'
+one_liner_allow_git_wt = '^git\s+(worktree| -C\s+\S+)(\s.*)?$|^git\s+worktree\s+.*$'
+one_liner_allow_brew = '^brew\s+.*$'
+one_liner_allow_net = '^(curl|wget|ssh|rsync|scp)(\s.*)?$'
+one_liner_allow_bun_test = '^bun\s+(test|run\s+(check|test))(\s.*)?$'

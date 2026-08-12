@@ -1,0 +1,82 @@
+[
+  {
+    "name": "seaquel-dmg-release",
+    "url": "https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg",
+    "notes": "GitHub release asset .dmg → cask-dmg (not github-repo)"
+  },
+  {
+    "name": "ollama-zip",
+    "url": "https://ollama.com/download/Ollama-darwin.zip",
+    "notes": "Direct zip download → archive"
+  },
+  {
+    "name": "proxyman-dmg",
+    "url": "https://proxyman.io/release/osx/Proxyman_latest.dmg",
+    "notes": "Developer CDN dmg → cask-dmg"
+  },
+  {
+    "name": "starship-install-sh",
+    "url": "https://starship.rs/install.sh",
+    "notes": ".sh install script → bash-script"
+  },
+  {
+    "name": "ohmyzsh-raw-install",
+    "url": "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh",
+    "notes": "raw.githubusercontent.com .sh → bash-script"
+  },
+  {
+    "name": "raw-github-no-ext",
+    "url": "https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install",
+    "notes": "raw github without .sh → bash-script (current rule)"
+  },
+  {
+    "name": "raw-github-tarball",
+    "url": "https://raw.githubusercontent.com/someone/repo/main/dist/release.tar.gz",
+    "notes": "raw github archive ext → archive over bash-script"
+  },
+  {
+    "name": "volta-bare-domain",
+    "url": "https://get.volta.sh",
+    "notes": "bare install domain without extension → unknown"
+  },
+  {
+    "name": "zoom-pkg",
+    "url": "https://zoom.us/client/latest/Zoom.pkg",
+    "notes": ".pkg → archive"
+  },
+  {
+    "name": "bear-mas",
+    "url": "https://apps.apple.com/us/app/bear/id1091189122?mt=12",
+    "notes": "MAS canonical → mac-app-store"
+  },
+  {
+    "name": "bartender-setapp",
+    "url": "https://setapp.com/apps/bartender",
+    "notes": "Setapp slug URL → setapp-app"
+  },
+  {
+    "name": "scoped-npm",
+    "url": "https://www.npmjs.com/package/@hehehai/buke",
+    "notes": "scoped npm package"
+  },
+  {
+    "name": "crates-ripgrep",
+    "url": "https://crates.io/crates/ripgrep",
+    "notes": "crates.io → cargo-package"
+  },
+  {
+    "name": "github-tree-url",
+    "url": "https://github.com/muety/wakapi/tree/master/src",
+    "notes": "tree URL normalizes to github-repo"
+  },
+  {
+    "name": "github-git-suffix",
+    "url": "https://github.com/robinovitch61/wander.git",
+    "notes": ".git suffix stripped on repo field"
+  },
+  {
+    "name": "example-tgz",
+    "url": "https://example.com/release.tgz",
+    "notes": ".tgz → archive"
+  }
+]

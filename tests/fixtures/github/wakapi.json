@@ -1,0 +1,28 @@
+{
+  "repo": {
+    "name": "wakapi",
+    "fullName": "muety/wakapi",
+    "description": "A minimalist, self-hosted WakaTime-compatible backend for coding statistics",
+    "homepage": "https://wakapi.dev",
+    "htmlUrl": "https://github.com/muety/wakapi",
+    "license": "MIT",
+    "defaultBranch": "master"
+  },
+  "release": {
+    "tagName": "v2.12.2",
+    "assets": [
+      {
+        "name": "wakapi_linux_amd64.tar.gz",
+        "url": "https://github.com/muety/wakapi/releases/download/v2.12.2/wakapi_linux_amd64.tar.gz"
+      },
+      {
+        "name": "wakapi_darwin_arm64.tar.gz",
+        "url": "https://github.com/muety/wakapi/releases/download/v2.12.2/wakapi_darwin_arm64.tar.gz"
+      },
+      {
+        "name": "wakapi_darwin_amd64.tar.gz",
+        "url": "https://github.com/muety/wakapi/releases/download/v2.12.2/wakapi_darwin_amd64.tar.gz"
+      }
+    ]
+  }
+}

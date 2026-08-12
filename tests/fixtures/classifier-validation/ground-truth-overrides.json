@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "description": "Manual classifier ground-truth overrides keyed by absolute URL. Use for cases where column+URL heuristics are insufficient or HEAD-dependent. expected_type must be a classifier strategy (not a generator name).",
+  "overrides": {
+    "https://sh.rustup.rs": {
+      "expected_type": "bash-script",
+      "rationale": "Official Rustup installer endpoint; has_script_install column and serves a shell script (extensionless host)."
+    },
+    "https://get.jetify.com/devbox": {
+      "expected_type": "bash-script",
+      "rationale": "Devbox install endpoint advertised as curl|bash; extensionless installer host."
+    },
+    "https://get.volta.sh": {
+      "expected_type": "unknown",
+      "rationale": "Bare install domain without path/extension; classify stays unknown offline (HEAD may not upgrade)."
+    },
+    "https://get.docker.com": {
+      "expected_type": "bash-script",
+      "rationale": "Docker convenience script install URL (curl|bash), even without .sh extension."
+    }
+  }
+}

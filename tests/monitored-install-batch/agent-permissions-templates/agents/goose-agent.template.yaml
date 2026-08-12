@@ -1,0 +1,68 @@
+# =============================================================================
+# Goose custom agent — YAML — warp-equivalent full marathon allowlist
+# Project: .goose/agents/allbrew-monitored-install.yaml
+# Global:  ~/.config/goose/agents/allbrew-monitored-install.yaml
+# Docs: https://block.github.io/goose/docs/guides/custom-agents/
+# See child-agent-privileges.DRAFT.toml for canonical allow/deny
+# =============================================================================
+name: allbrew-monitored-install
+description: Warp-equivalent monitored-install — autonomous marathon: bun/lume-ssh/git worktrees/brew-VM + network + FS plumbing; denies only destructive/priv-esc
+instructions: |
+  AUTO-RUN without asking: LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs --url <url> --name <slug> --log $RUN_DIR/vm-install.log --run-dir $RUN_DIR (+ --allbrew-src $WT for re-verify) + bun .agents/skills/monitored-install/scripts/render-judgment.mjs + bun run check/test + git worktree add/list/remove + git -C + git status/diff/log/add/commit/push (agent/* only) + curl/wget for docs + brew read/VM install/uninstall/services/cleanup/trust + FS plumbing mktemp/mkdir/ls/rg/grep/cat/head/tail/tee/cp/mv/chmod etc. into worktrees/, tests/monitored-install-runs/, state/. DENY: sudo/su, rm -rf / or ~, dd/mkfs/diskutil erase, bun run release, git push main/--force.
+model: claude-sonnet-4
+permissions:
+  allow:
+    - "LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/*"
+    - "bun tests/monitored-install-batch/*"
+    - "bun .agents/skills/monitored-install/*"
+    - "bun run bin/allbrew.ts"
+    - "CI=1 ALLBREW_NONINTERACTIVE=1 bun run bin/allbrew.ts"
+    - "bun run check"
+    - "bun test"
+    - "bun run batch:reconcile-fixes"
+    - "bun"
+    - "node"
+    - "python3"
+    - "git worktree"
+    - "git -C"
+    - "git status"
+    - "git diff"
+    - "git log"
+    - "git push -u origin agent/"
+    - "brew info"
+    - "brew list"
+    - "brew install"
+    - "brew uninstall"
+    - "brew services"
+    - "brew cleanup"
+    - "curl"
+    - "wget"
+    - "ssh"
+    - "rsync"
+    - "scp"
+    - "lume"
+    - "mktemp"
+    - "mkdir"
+    - "ls"
+    - "rg"
+    - "cat"
+  deny:
+    - "sudo"
+    - "su"
+    - "rm -rf /"
+    - "rm -rf ~"
+    - "dd"
+    - "mkfs"
+    - "diskutil erase"
+    - "bun run release"
+    - "git push main"
+    - "git push origin main"
+    - "git push --force"
+tools:
+  - read
+  - write
+  - bash
+  - grep
+extensions:
+  - name: example
+    enabled: false

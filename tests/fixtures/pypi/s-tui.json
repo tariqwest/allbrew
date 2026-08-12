@@ -1,0 +1,32 @@
+{
+  "info": {
+    "name": "s-tui",
+    "version": "1.1.6",
+    "summary": "Stress-Terminal UI, monitors CPU temperature, frequency, power and utilization in a graphical way from the terminal",
+    "home_page": "https://github.com/amanusk/s-tui",
+    "project_url": "https://pypi.org/project/s-tui/",
+    "license": "GPL-2.0",
+    "requires_dist": [
+      "urwid>=2.1.2",
+      "psutil>=5.6.1"
+    ]
+  },
+  "urls": [
+    {
+      "filename": "s-tui-1.1.6.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/ab/cd/s-tui-1.1.6.tar.gz",
+      "packagetype": "sdist",
+      "digests": {
+        "sha256": "e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2"
+      }
+    },
+    {
+      "filename": "s_tui-1.1.6-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ef/gh/s_tui-1.1.6-py3-none-any.whl",
+      "packagetype": "bdist_wheel",
+      "digests": {
+        "sha256": "f2e3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9b0a1f2e3"
+      }
+    }
+  ]
+}

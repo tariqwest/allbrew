@@ -1,0 +1,5120 @@
+[
+  {
+    "name": "marimo",
+    "url": "https://pypi.org/project/marimo/",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "marimo"
+    ],
+    "expectedBin": "marimo",
+    "verifyCommand": [
+      "marimo",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Reactive Python notebook"
+  },
+  {
+    "name": "s-tui",
+    "url": "https://pypi.org/project/s-tui/",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "s-tui"
+    ],
+    "expectedBin": "s-tui",
+    "verifyCommand": [
+      "s-tui",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Stress Terminal UI"
+  },
+  {
+    "name": "maildev",
+    "url": "https://www.npmjs.com/package/maildev",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "maildev"
+    ],
+    "expectedBin": "maildev",
+    "verifyCommand": [
+      "maildev",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "SMTP dev server with web UI"
+  },
+  {
+    "name": "npkill",
+    "url": "https://www.npmjs.com/package/npkill",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "npkill"
+    ],
+    "expectedBin": "npkill",
+    "verifyCommand": [
+      "npkill",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "TUI for removing node_modules"
+  },
+  {
+    "name": "wander",
+    "url": "https://github.com/robinovitch61/wander",
+    "generator": "cargo-package",
+    "allbrewArgs": [],
+    "expectedBin": "wander",
+    "verifyCommand": [
+      "wander",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Nomad TUI \u2014 Rust, real tarball v1.1.0"
+  },
+  {
+    "name": "wakapi",
+    "url": "https://github.com/muety/wakapi",
+    "generator": "go-package",
+    "allbrewArgs": [],
+    "expectedBin": "wakapi",
+    "verifyCommand": [
+      "wakapi",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "WakaTime-compatible coding stats server"
+  },
+  {
+    "name": "godns",
+    "url": "https://github.com/TimothyYe/godns",
+    "generator": "binary-release",
+    "allbrewArgs": [],
+    "expectedBin": "godns",
+    "verifyCommand": [
+      "godns",
+      "-h"
+    ],
+    "skip": false,
+    "notes": "DDNS client with built-in web panel; GitHub releases ship Darwin/Linux binary archives"
+  },
+  {
+    "name": "process-compose",
+    "url": "https://github.com/F1bonacc1/process-compose",
+    "generator": "go-package",
+    "allbrewArgs": [],
+    "expectedBin": "process-compose",
+    "verifyCommand": [
+      "process-compose",
+      "version"
+    ],
+    "skip": false,
+    "notes": "Process orchestrator TUI"
+  },
+  {
+    "name": "starship",
+    "url": "https://starship.rs/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "starship"
+    ],
+    "expectedBin": "starship",
+    "verifyCommand": [
+      "starship",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Cross-shell prompt install script"
+  },
+  {
+    "name": "seaquel",
+    "url": "https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "seaquel",
+      "--app-name",
+      "Seaquel.app",
+      "--homepage",
+      "https://seaquel.app"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Seaquel"
+    ],
+    "skip": false,
+    "notes": "SQL client DMG cask"
+  },
+  {
+    "name": "apiark",
+    "url": "https://github.com/berbicanes/apiark/releases/download/v0.4.6/ApiArk_0.4.6_aarch64.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "apiark",
+      "--app-name",
+      "ApiArk.app",
+      "--homepage",
+      "https://github.com/berbicanes/apiark"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "ApiArk"
+    ],
+    "skip": false,
+    "notes": "API client DMG cask \u2014 GitHub release"
+  },
+  {
+    "name": "ollama-zip",
+    "url": "https://ollama.com/download/Ollama-darwin.zip",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "ollama-zip",
+      "--app-name",
+      "Ollama.app",
+      "--homepage",
+      "https://ollama.com"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Ollama"
+    ],
+    "skip": false,
+    "notes": "ZIP containing .app \u2014 tests listZipEntries path + developer site redirect to GitHub"
+  },
+  {
+    "name": "balenaetcher",
+    "url": "https://github.com/balena-io/etcher/releases/download/v2.1.6/balenaEtcher-2.1.6-arm64.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "balenaetcher",
+      "--app-name",
+      "balenaEtcher.app",
+      "--homepage",
+      "https://etcher.balena.io"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "balenaEtcher"
+    ],
+    "skip": false,
+    "notes": "Pinned arm64 DMG (balena renamed assets away from balenaEtcher-darwin-arm64.dmg)"
+  },
+  {
+    "name": "taskbook",
+    "url": "https://www.npmjs.com/package/taskbook",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "taskbook"
+    ],
+    "expectedBin": "tb",
+    "verifyCommand": [
+      "tb",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Tasks/notes TUI (bin tb \u2260 package name)"
+  },
+  {
+    "name": "vtop",
+    "url": "https://www.npmjs.com/package/vtop",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "vtop"
+    ],
+    "expectedBin": "vtop",
+    "verifyCommand": [
+      "vtop",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "System monitor with braille graphs"
+  },
+  {
+    "name": "toolong",
+    "url": "https://pypi.org/project/toolong/",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "toolong"
+    ],
+    "expectedBin": "tl",
+    "verifyCommand": [
+      "tl",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Log viewer TUI (bin tl)"
+  },
+  {
+    "name": "uv",
+    "url": "https://astral.sh/uv/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "uv"
+    ],
+    "expectedBin": "uv",
+    "verifyCommand": [
+      "uv",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Astral Python package manager installer (in Homebrew \u2014 tests ignore-brew path)"
+  },
+  {
+    "name": "localsend",
+    "url": "https://github.com/localsend/localsend/releases/download/v1.17.0/LocalSend-1.17.0.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "localsend",
+      "--app-name",
+      "LocalSend.app",
+      "--homepage",
+      "https://localsend.org"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "LocalSend"
+    ],
+    "skip": false,
+    "notes": "Cross-platform local file sharing DMG"
+  },
+  {
+    "name": "utm",
+    "url": "https://github.com/utmapp/UTM/releases/latest/download/UTM.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "utm",
+      "--app-name",
+      "UTM.app",
+      "--homepage",
+      "https://getutm.app"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "UTM"
+    ],
+    "skip": false,
+    "notes": "QEMU virtualization GUI; /latest/ redirect (no version in URL)"
+  },
+  {
+    "name": "rugby",
+    "url": "https://github.com/swiftyfinch/Rugby",
+    "generator": "spm-package",
+    "allbrewArgs": [
+      "--name",
+      "rugby"
+    ],
+    "expectedBin": "rugby",
+    "verifyCommand": [
+      "rugby",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Swift SPM CLI tool \u2014 CocoaPods cache"
+  },
+  {
+    "name": "doedit",
+    "url": "https://github.com/wendyliga/doedit",
+    "generator": "spm-package",
+    "allbrewArgs": [
+      "--name",
+      "doedit"
+    ],
+    "expectedBin": "doedit",
+    "verifyCommand": [
+      "doedit",
+      "--help"
+    ],
+    "skip": false,
+    "notes": "Swift SPM CLI \u2014 batch text file editor"
+  },
+  {
+    "name": "dotnet-serve",
+    "url": "https://www.nuget.org/packages/dotnet-serve",
+    "generator": "dotnet-package",
+    "allbrewArgs": [
+      "--package",
+      "dotnet-serve"
+    ],
+    "expectedBin": "dotnet-serve",
+    "verifyCommand": [
+      "dotnet-serve",
+      "--version"
+    ],
+    "skip": false,
+    "notes": ".NET global tool \u2014 simple HTTP server"
+  },
+  {
+    "name": "csharprepl",
+    "url": "https://www.nuget.org/packages/csharprepl",
+    "generator": "dotnet-package",
+    "allbrewArgs": [
+      "--package",
+      "csharprepl"
+    ],
+    "expectedBin": "csharprepl",
+    "verifyCommand": [
+      "csharprepl",
+      "--version"
+    ],
+    "skip": false,
+    "notes": ".NET global tool \u2014 C# REPL"
+  },
+  {
+    "name": "pry",
+    "url": "https://rubygems.org/gems/pry",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "pry"
+    ],
+    "expectedBin": "pry",
+    "verifyCommand": [
+      "pry",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Ruby IRB alternative \u2014 well-known gem"
+  },
+  {
+    "name": "license-finder",
+    "url": "https://rubygems.org/gems/license_finder",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "license_finder",
+      "--name",
+      "license-finder"
+    ],
+    "expectedBin": "license_finder",
+    "verifyCommand": [
+      "license_finder",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Ruby gem \u2014 license compliance tool"
+  },
+  {
+    "name": "iblinter",
+    "url": "https://github.com/IBDecodable/IBLinter",
+    "generator": "mint-package",
+    "allbrewArgs": [
+      "--name",
+      "iblinter"
+    ],
+    "expectedBin": "iblinter",
+    "verifyCommand": [
+      "iblinter",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Mint-installed Swift CLI \u2014 XIB/Storyboard linter"
+  },
+  {
+    "name": "swiftplantuml",
+    "url": "https://github.com/MarcoEidinger/SwiftPlantUML",
+    "generator": "mint-package",
+    "allbrewArgs": [
+      "--name",
+      "swiftplantuml"
+    ],
+    "expectedBin": "swiftplantuml",
+    "verifyCommand": [
+      "swiftplantuml",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Mint-installed Swift CLI \u2014 PlantUML class diagram generator"
+  },
+  {
+    "name": "bartycrouch",
+    "url": "https://github.com/FlineDev/BartyCrouch",
+    "generator": "mint-package",
+    "allbrewArgs": [
+      "--name",
+      "bartycrouch"
+    ],
+    "expectedBin": "bartycrouch",
+    "verifyCommand": [
+      "bartycrouch",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Mint-installed Swift CLI \u2014 Strings file updater/translator"
+  },
+  {
+    "name": "asccli",
+    "url": "https://github.com/tddworks/asc-cli",
+    "generator": "mint-package",
+    "allbrewArgs": [
+      "--name",
+      "asccli"
+    ],
+    "expectedBin": "asccli",
+    "verifyCommand": [
+      "asccli",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Mint-installed Swift CLI \u2014 App Store Connect CLI tool"
+  },
+  {
+    "name": "licenseplist",
+    "url": "https://github.com/mono0926/LicensePlist",
+    "generator": "mint-package",
+    "allbrewArgs": [
+      "--name",
+      "licenseplist"
+    ],
+    "expectedBin": "license-plist",
+    "verifyCommand": [
+      "license-plist",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Mint-installed Swift CLI \u2014 iOS license list generator"
+  },
+  {
+    "name": "starship-binary",
+    "url": "https://github.com/starship/starship",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "starship-binary"
+    ],
+    "expectedBin": "starship",
+    "verifyCommand": [
+      "starship",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Binary release path \u2014 cross-platform prebuilt binaries from GitHub release"
+  },
+  {
+    "name": "slides",
+    "url": "https://github.com/maaslalani/slides",
+    "generator": "source-build",
+    "allbrewArgs": [
+      "--name",
+      "slides"
+    ],
+    "expectedBin": "slides",
+    "verifyCommand": [
+      "slides",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Build from source path \u2014 Go project built from tarball"
+  },
+  {
+    "name": "seaquel-release",
+    "url": "https://github.com/webstonehq/seaquel",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "seaquel-release",
+      "--app-name",
+      "Seaquel.app"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Seaquel"
+    ],
+    "skip": false,
+    "notes": "GitHub release cask path \u2014 DMG from release assets"
+  },
+  {
+    "name": "magnet",
+    "url": "https://apps.apple.com/us/app/magnet/id441258766",
+    "generator": "cask-app-mas",
+    "allbrewArgs": [
+      "--name",
+      "magnet"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "mas",
+      "info",
+      "441258766"
+    ],
+    "skip": false,
+    "notes": "Mac App Store app \u2014 MAS-only window manager"
+  },
+  {
+    "name": "starship-raw",
+    "url": "https://github.com/starship/starship/releases/download/v1.19.0/starship-aarch64-apple-darwin.tar.gz",
+    "generator": "binary-direct",
+    "allbrewArgs": [
+      "--name",
+      "starship-raw"
+    ],
+    "expectedBin": "starship",
+    "verifyCommand": [
+      "starship",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Raw binary path \u2014 single prebuilt binary archive"
+  },
+  {
+    "name": "slides-source",
+    "url": "https://github.com/maaslalani/slides/archive/refs/tags/v0.9.0.tar.gz",
+    "generator": "archive-build",
+    "allbrewArgs": [
+      "--name",
+      "slides-source"
+    ],
+    "expectedBin": "slides",
+    "verifyCommand": [
+      "slides",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Source archive path \u2014 Go project from source tarball"
+  },
+  {
+    "name": "ddclient",
+    "url": "https://github.com/ddclient/ddclient",
+    "generator": "source-build",
+    "allbrewArgs": [
+      "--name",
+      "ddclient"
+    ],
+    "expectedBin": "ddclient",
+    "verifyCommand": [
+      "ddclient",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Perl dynamic DNS client \u2014 autotools build from GitHub releases; service-block candidate"
+  },
+  {
+    "name": "agent-deck",
+    "url": "https://github.com/asheshgoplani/agent-deck",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "agent-deck"
+    ],
+    "expectedBin": "agent-deck",
+    "verifyCommand": [
+      "agent-deck",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Go TUI for AI agent session management \u2014 go install path; web UI mode; not in HB core"
+  },
+  {
+    "name": "poe",
+    "url": "https://desktop-app.poecdn.net/downloads/Poe.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "poe",
+      "--app-name",
+      "Poe.app",
+      "--homepage",
+      "https://poe.com"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Poe"
+    ],
+    "skip": false,
+    "notes": "AI chat client DMG \u2014 CDN hosted, no version in URL; closed-source; also on MAS"
+  },
+  {
+    "name": "popclip",
+    "url": "https://pilotmoon.com/downloads/PopClip-2025.9.2.zip",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "popclip",
+      "--app-name",
+      "PopClip.app",
+      "--homepage",
+      "https://www.popclip.app"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "PopClip"
+    ],
+    "skip": false,
+    "notes": "Text action tool .zip \u2014 developer site download, version in filename; closed-source; also on MAS"
+  },
+  {
+    "name": "mission-control-plus",
+    "url": "https://github.com/ronyfadel/MissionControlPlusReleases",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "mission-control-plus",
+      "--app-name",
+      "Mission Control Plus.app",
+      "--homepage",
+      "https://www.fadel.io/missioncontrolplus"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Mission Control Plus"
+    ],
+    "skip": false,
+    "notes": "Window manager DMG from GitHub releases-only repo \u2014 closed-source; requires Accessibility permission"
+  },
+  {
+    "name": "hermes-desktop",
+    "url": "https://github.com/dodo-reach/hermes-desktop",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "hermes-desktop",
+      "--app-name",
+      "HermesDesktop.app",
+      "--homepage",
+      "https://github.com/dodo-reach/hermes-desktop"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "HermesDesktop"
+    ],
+    "skip": false,
+    "notes": "Native macOS Hermes Agent companion \u2014 Swift/SwiftUI; GitHub release .zip; ad-hoc signed (not notarized); MIT; open-source"
+  },
+  {
+    "name": "veronum",
+    "url": "https://github.com/DylanWain/veronum-desktop/releases/latest/download/Veronum.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "veronum",
+      "--app-name",
+      "Veronum.app",
+      "--homepage",
+      "https://www.thetoolswebsite.com"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Veronum"
+    ],
+    "skip": false,
+    "notes": "Multi-LLM workspace Electron app \u2014 GitHub /latest/ redirect DMG; signed + notarized; not in HB"
+  },
+  {
+    "name": "authsec-bridge",
+    "url": "https://github.com/authsec-ai/authsec-bridge",
+    "generator": "source-build",
+    "allbrewArgs": [
+      "--name",
+      "authsec-bridge",
+      "--desc",
+      "Python CLI session bridge",
+      "--no-service"
+    ],
+    "expectedBin": "sb",
+    "verifyCommand": [
+      "sb",
+      "--help"
+    ],
+    "skip": false,
+    "notes": "Python CLI session bridge for Claude/Codex/Gemini \u2014 pip install from GitHub; no PyPI; no releases; edge case for source-build"
+  },
+  {
+    "name": "agy-acp",
+    "url": "https://github.com/hicder/agy-acp",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--desc",
+      "ACP stdio adapter for Google Antigravity CLI (agy)",
+      "--no-service"
+    ],
+    "expectedBin": "agy-acp",
+    "verifyCommand": [
+      "agy-acp",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Rust ACP stdio adapter for Google Antigravity CLI (agy); cargo-package from GitHub (no crates.io, no releases); editor integration (Zed Agent Panel)"
+  },
+  {
+    "name": "moicons",
+    "url": "https://github.com/mo-browser-apps/icons",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "moicons",
+      "--app-name",
+      "MoIcons.app",
+      "--homepage",
+      "https://github.com/mo-browser-apps/icons"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "MoIcons"
+    ],
+    "skip": false,
+    "notes": "AI macOS app icon generator \u2014 arm64-only DMG from GitHub releases; signed + notarized; MIT; v1.0.3"
+  },
+  {
+    "name": "shell-gpt",
+    "url": "https://github.com/TheR1D/shell_gpt",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "shell-gpt",
+      "--bin-name",
+      "sgpt"
+    ],
+    "expectedBin": "sgpt",
+    "verifyCommand": [
+      "sgpt",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Python CLI for AI LLMs \u2014 pip install shell-gpt; bin sgpt; 31 releases; v1.5.1; MIT; not in HB"
+  },
+  {
+    "name": "cline",
+    "url": "https://github.com/cline/cline",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--name",
+      "cline"
+    ],
+    "expectedBin": "cline",
+    "verifyCommand": [
+      "cline",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Autonomous coding agent CLI \u2014 npm i -g cline; Homebrew formula deprecated; monorepo; 293 releases; v3.0.29; Apache-2.0; requires npm --min-release-age=0 override for fresh monorepo deps"
+  },
+  {
+    "name": "bartender-setapp",
+    "url": "https://setapp.com/apps/bartender",
+    "generator": "cask-app-setapp",
+    "allbrewArgs": [
+      "--name",
+      "bartender"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "setapp-cli",
+      "list"
+    ],
+    "skip": true,
+    "notes": "Setapp app \u2014 requires Setapp subscription and setapp-cli"
+  },
+  {
+    "name": "kdash",
+    "url": "https://github.com/kdash-rs/kdash",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "kdash"
+    ],
+    "expectedBin": "kdash",
+    "verifyCommand": [
+      "kdash",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Kubernetes dashboard TUI \u2014 prebuilt GitHub release binaries"
+  },
+  {
+    "name": "dnote",
+    "url": "https://github.com/dnote/dnote",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "dnote"
+    ],
+    "expectedBin": "dnote",
+    "verifyCommand": [
+      "dnote",
+      "--help"
+    ],
+    "skip": false,
+    "notes": "Simple note-taking CLI \u2014 prebuilt GitHub release binaries"
+  },
+  {
+    "name": "xplr",
+    "url": "https://github.com/sayanarijit/xplr",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "xplr"
+    ],
+    "expectedBin": "xplr",
+    "verifyCommand": [
+      "xplr",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Terminal file explorer \u2014 prebuilt GitHub release binaries"
+  },
+  {
+    "name": "gotty",
+    "url": "https://github.com/sorenisanerd/gotty",
+    "generator": "source-build",
+    "allbrewArgs": [
+      "--name",
+      "gotty"
+    ],
+    "expectedBin": "gotty",
+    "verifyCommand": [
+      "gotty",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Share terminal as web app \u2014 build from GitHub release source"
+  },
+  {
+    "name": "tdash",
+    "url": "https://github.com/jessfraz/tdash",
+    "generator": "source-build",
+    "allbrewArgs": [
+      "--name",
+      "tdash"
+    ],
+    "expectedBin": "tdash",
+    "verifyCommand": [
+      "tdash",
+      "-h"
+    ],
+    "skip": false,
+    "notes": "Terminal dashboard \u2014 build from GitHub release source"
+  },
+  {
+    "name": "gotty-archive",
+    "url": "https://github.com/sorenisanerd/gotty/archive/refs/tags/v1.8.0.tar.gz",
+    "generator": "archive-build",
+    "allbrewArgs": [
+      "--name",
+      "gotty-archive"
+    ],
+    "expectedBin": "gotty-archive",
+    "verifyCommand": [
+      "gotty-archive",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Share terminal as web app \u2014 source archive build"
+  },
+  {
+    "name": "updo-archive",
+    "url": "https://github.com/Owloops/updo/archive/refs/tags/v0.4.8.tar.gz",
+    "generator": "archive-build",
+    "allbrewArgs": [
+      "--name",
+      "updo-archive"
+    ],
+    "expectedBin": "updo-archive",
+    "verifyCommand": [
+      "updo-archive",
+      "--help"
+    ],
+    "skip": false,
+    "notes": "Uptime monitor TUI \u2014 source archive build"
+  },
+  {
+    "name": "planor-archive",
+    "url": "https://github.com/mrusme/planor/archive/refs/tags/v0.5.1.tar.gz",
+    "generator": "archive-build",
+    "allbrewArgs": [
+      "--name",
+      "planor-archive"
+    ],
+    "expectedBin": "planor-archive",
+    "verifyCommand": [
+      "planor-archive",
+      "--help"
+    ],
+    "skip": false,
+    "notes": "Multi-cloud TUI \u2014 source archive build"
+  },
+  {
+    "name": "tdash-archive",
+    "url": "https://github.com/jessfraz/tdash/archive/refs/tags/v0.5.5.tar.gz",
+    "generator": "archive-build",
+    "allbrewArgs": [
+      "--name",
+      "tdash-archive"
+    ],
+    "expectedBin": "tdash-archive",
+    "verifyCommand": [
+      "tdash-archive",
+      "-h"
+    ],
+    "skip": false,
+    "notes": "Terminal dashboard \u2014 source archive build"
+  },
+  {
+    "name": "tv",
+    "url": "https://github.com/alexpasmantier/television/releases/download/0.15.9/tv-0.15.9-aarch64-apple-darwin.tar.gz",
+    "generator": "binary-direct",
+    "allbrewArgs": [
+      "--name",
+      "tv"
+    ],
+    "expectedBin": "tv",
+    "verifyCommand": [
+      "tv",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "General purpose fuzzy finder TUI \u2014 direct binary archive"
+  },
+  {
+    "name": "csvlens",
+    "url": "https://github.com/YS-L/csvlens/releases/download/v0.15.1/csvlens-aarch64-apple-darwin.tar.xz",
+    "generator": "binary-direct",
+    "allbrewArgs": [
+      "--name",
+      "csvlens"
+    ],
+    "expectedBin": "csvlens",
+    "verifyCommand": [
+      "csvlens",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "CSV file viewer \u2014 direct binary archive"
+  },
+  {
+    "name": "kdash-direct",
+    "url": "https://github.com/kdash-rs/kdash/releases/download/v2.1.1/kdash-macos-arm64.tar.gz",
+    "generator": "binary-direct",
+    "allbrewArgs": [
+      "--name",
+      "kdash-direct"
+    ],
+    "expectedBin": "kdash",
+    "verifyCommand": [
+      "kdash",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Kubernetes dashboard TUI \u2014 direct binary archive"
+  },
+  {
+    "name": "xplr-direct",
+    "url": "https://github.com/sayanarijit/xplr/releases/download/v1.1.0/xplr-macos-aarch64.tar.gz",
+    "generator": "binary-direct",
+    "allbrewArgs": [
+      "--name",
+      "xplr-direct"
+    ],
+    "expectedBin": "xplr",
+    "verifyCommand": [
+      "xplr",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Terminal file explorer \u2014 direct binary archive"
+  },
+  {
+    "name": "devbox",
+    "url": "https://get.jetify.com/devbox",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "devbox"
+    ],
+    "expectedBin": "devbox",
+    "verifyCommand": [
+      "devbox",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Nix-powered dev environments \u2014 curl/bash installer"
+  },
+  {
+    "name": "volta",
+    "url": "https://get.volta.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "volta"
+    ],
+    "expectedBin": "volta",
+    "verifyCommand": [
+      "volta",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "JavaScript toolchain manager \u2014 curl/bash installer"
+  },
+  {
+    "name": "mise",
+    "url": "https://mise.run",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "mise"
+    ],
+    "expectedBin": "mise",
+    "verifyCommand": [
+      "mise",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Polyglot dev tool and dependency manager \u2014 curl/bash installer"
+  },
+  {
+    "name": "baca",
+    "url": "https://pypi.org/project/baca/",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "baca"
+    ],
+    "expectedBin": "baca",
+    "verifyCommand": [
+      "baca",
+      "--help"
+    ],
+    "skip": false,
+    "notes": "Terminal EPUB reader \u2014 pip package"
+  },
+  {
+    "name": "oatmeal",
+    "url": "https://github.com/dustinblackman/oatmeal",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "oatmeal"
+    ],
+    "expectedBin": "oatmeal",
+    "verifyCommand": [
+      "oatmeal",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "LLM chat TUI \u2014 cargo install from GitHub release source"
+  },
+  {
+    "name": "tickrs",
+    "url": "https://github.com/tarkah/tickrs",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "tickrs"
+    ],
+    "expectedBin": "tickrs",
+    "verifyCommand": [
+      "tickrs",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Stock ticker TUI \u2014 cargo install from GitHub release source"
+  },
+  {
+    "name": "managarr",
+    "url": "https://github.com/Dark-Alex-17/managarr",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "managarr"
+    ],
+    "expectedBin": "managarr",
+    "verifyCommand": [
+      "managarr",
+      "--help"
+    ],
+    "skip": false,
+    "notes": "Servarr manager TUI \u2014 cargo install from GitHub release source"
+  },
+  {
+    "name": "updo",
+    "url": "https://github.com/Owloops/updo",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "updo"
+    ],
+    "expectedBin": "updo",
+    "verifyCommand": [
+      "updo",
+      "--help"
+    ],
+    "skip": false,
+    "notes": "Uptime monitor TUI \u2014 go install path"
+  },
+  {
+    "name": "planor",
+    "url": "https://github.com/mrusme/planor",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "planor"
+    ],
+    "expectedBin": "planor",
+    "verifyCommand": [
+      "planor",
+      "--help"
+    ],
+    "skip": false,
+    "notes": "Multi-cloud TUI \u2014 go install path"
+  },
+  {
+    "name": "taskjuggler",
+    "url": "https://rubygems.org/gems/taskjuggler",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "taskjuggler"
+    ],
+    "expectedBin": "tj3",
+    "verifyCommand": [
+      "tj3",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Project scheduler \u2014 Ruby gem, bin tj3"
+  },
+  {
+    "name": "mailcatcher",
+    "url": "https://rubygems.org/gems/mailcatcher",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "mailcatcher"
+    ],
+    "expectedBin": "mailcatcher",
+    "verifyCommand": [
+      "mailcatcher",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "SMTP catcher + web inbox \u2014 Ruby gem"
+  },
+  {
+    "name": "smashing",
+    "url": "https://rubygems.org/gems/smashing",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "smashing"
+    ],
+    "expectedBin": "smashing",
+    "verifyCommand": [
+      "smashing",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Dashing fork dashboard framework \u2014 Ruby gem"
+  },
+  {
+    "name": "dotnet-monitor",
+    "url": "https://www.nuget.org/packages/dotnet-monitor",
+    "generator": "dotnet-package",
+    "allbrewArgs": [
+      "--package",
+      "dotnet-monitor"
+    ],
+    "expectedBin": "dotnet-monitor",
+    "verifyCommand": [
+      "dotnet-monitor",
+      "--version"
+    ],
+    "skip": false,
+    "notes": ".NET diagnostic monitoring tool \u2014 NuGet global tool"
+  },
+  {
+    "name": "ilspycmd",
+    "url": "https://www.nuget.org/packages/ilspycmd",
+    "generator": "dotnet-package",
+    "allbrewArgs": [
+      "--package",
+      "ilspycmd"
+    ],
+    "expectedBin": "ilspycmd",
+    "verifyCommand": [
+      "ilspycmd",
+      "--version"
+    ],
+    "skip": false,
+    "notes": ".NET decompiler CLI \u2014 NuGet global tool"
+  },
+  {
+    "name": "dotnet-counters",
+    "url": "https://www.nuget.org/packages/dotnet-counters",
+    "generator": "dotnet-package",
+    "allbrewArgs": [
+      "--package",
+      "dotnet-counters"
+    ],
+    "expectedBin": "dotnet-counters",
+    "verifyCommand": [
+      "dotnet-counters",
+      "--version"
+    ],
+    "skip": false,
+    "notes": ".NET performance counters CLI \u2014 NuGet global tool"
+  },
+  {
+    "name": "mockolo",
+    "url": "https://github.com/uber/mockolo",
+    "generator": "spm-package",
+    "allbrewArgs": [
+      "--name",
+      "mockolo"
+    ],
+    "expectedBin": "mockolo",
+    "verifyCommand": [
+      "mockolo",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Swift mock generator \u2014 build with Swift Package Manager"
+  },
+  {
+    "name": "swift-outdated",
+    "url": "https://github.com/kiliankoe/swift-outdated",
+    "generator": "spm-package",
+    "allbrewArgs": [
+      "--name",
+      "swift-outdated"
+    ],
+    "expectedBin": "swift-outdated",
+    "verifyCommand": [
+      "swift-outdated",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Swift package dependency checker \u2014 build with Swift Package Manager"
+  },
+  {
+    "name": "swiftpolyglot",
+    "url": "https://github.com/appdecostudio/SwiftPolyglot",
+    "generator": "spm-package",
+    "allbrewArgs": [
+      "--name",
+      "swiftpolyglot"
+    ],
+    "expectedBin": "swiftpolyglot",
+    "verifyCommand": [
+      "swiftpolyglot",
+      "--version"
+    ],
+    "skip": false,
+    "notes": "Localization coverage checker \u2014 build with Swift Package Manager"
+  },
+  {
+    "name": "knownote",
+    "url": "https://github.com/MrSibe/KnowNote",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "knownote",
+      "--app-name",
+      "KnowNote.app",
+      "--homepage",
+      "https://github.com/MrSibe/KnowNote"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "KnowNote"
+    ],
+    "skip": false,
+    "notes": "Local-first NotebookLM alternative \u2014 GitHub release cask"
+  },
+  {
+    "name": "paste-mas",
+    "url": "https://apps.apple.com/us/app/paste/id967805235",
+    "generator": "cask-app-mas",
+    "allbrewArgs": [
+      "--name",
+      "paste-mas"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "mas",
+      "info",
+      "967805235"
+    ],
+    "skip": true,
+    "notes": "MAS clipboard manager \u2014 requires Mac App Store purchase"
+  },
+  {
+    "name": "colorslurp-mas",
+    "url": "https://apps.apple.com/us/app/colorslurp/id1287239339",
+    "generator": "cask-app-mas",
+    "allbrewArgs": [
+      "--name",
+      "colorslurp-mas"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "mas",
+      "info",
+      "1287239339"
+    ],
+    "skip": true,
+    "notes": "MAS color picker \u2014 requires Mac App Store purchase"
+  },
+  {
+    "name": "bear-mas",
+    "url": "https://apps.apple.com/us/app/bear/id1016366447",
+    "generator": "cask-app-mas",
+    "allbrewArgs": [
+      "--name",
+      "bear-mas"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "mas",
+      "info",
+      "1016366447"
+    ],
+    "skip": true,
+    "notes": "MAS notes app \u2014 requires Mac App Store purchase"
+  },
+  {
+    "name": "tailscale-mas",
+    "url": "https://apps.apple.com/us/app/tailscale/id1475387142",
+    "generator": "cask-app-mas",
+    "allbrewArgs": [
+      "--name",
+      "tailscale-mas"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "mas",
+      "info",
+      "1475387142"
+    ],
+    "skip": true,
+    "notes": "MAS VPN \u2014 requires Mac App Store purchase"
+  },
+  {
+    "name": "cleanshot-setapp",
+    "url": "https://setapp.com/apps/cleanshot",
+    "generator": "cask-app-setapp",
+    "allbrewArgs": [
+      "--name",
+      "cleanshot-setapp"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "setapp-cli",
+      "list"
+    ],
+    "skip": true,
+    "notes": "Setapp screenshot tool \u2014 requires Setapp subscription"
+  },
+  {
+    "name": "paste-setapp",
+    "url": "https://setapp.com/apps/paste",
+    "generator": "cask-app-setapp",
+    "allbrewArgs": [
+      "--name",
+      "paste-setapp"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "setapp-cli",
+      "list"
+    ],
+    "skip": true,
+    "notes": "Setapp clipboard manager \u2014 requires Setapp subscription"
+  },
+  {
+    "name": "popclip-setapp",
+    "url": "https://setapp.com/apps/popclip",
+    "generator": "cask-app-setapp",
+    "allbrewArgs": [
+      "--name",
+      "popclip-setapp"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "setapp-cli",
+      "list"
+    ],
+    "skip": true,
+    "notes": "Setapp text action tool \u2014 requires Setapp subscription"
+  },
+  {
+    "name": "proxyman-setapp",
+    "url": "https://setapp.com/apps/proxyman",
+    "generator": "cask-app-setapp",
+    "allbrewArgs": [
+      "--name",
+      "proxyman-setapp"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "setapp-cli",
+      "list"
+    ],
+    "skip": true,
+    "notes": "Setapp proxy debugger \u2014 requires Setapp subscription"
+  },
+  {
+    "name": "browsr",
+    "url": "https://pypi.org/project/browsr",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "browsr"
+    ],
+    "expectedBin": "browsr",
+    "verifyCommand": [
+      "browsr",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "elia",
+    "url": "https://pypi.org/project/elia-chat",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "elia-chat"
+    ],
+    "expectedBin": "elia",
+    "verifyCommand": [
+      "elia",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "cmd `elia`; bin `elia`; pkg is elia-chat"
+  },
+  {
+    "name": "kupo",
+    "url": "https://pypi.org/project/kupo",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "kupo"
+    ],
+    "expectedBin": "kupo",
+    "verifyCommand": [
+      "kupo",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "gitsimulator",
+    "url": "https://pypi.org/project/gitsimulator",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "gitsimulator"
+    ],
+    "expectedBin": "gitsimulator",
+    "verifyCommand": [
+      "gitsimulator",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "castero",
+    "url": "https://pypi.org/project/castero",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "castero"
+    ],
+    "expectedBin": "castero",
+    "verifyCommand": [
+      "castero",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "podcast client"
+  },
+  {
+    "name": "pudb",
+    "url": "https://pypi.org/project/pudb",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "pudb"
+    ],
+    "expectedBin": "pudb",
+    "verifyCommand": [
+      "pudb",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "visual debugger"
+  },
+  {
+    "name": "frogmouth",
+    "url": "https://pypi.org/project/frogmouth",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "frogmouth"
+    ],
+    "expectedBin": "frogmouth",
+    "verifyCommand": [
+      "frogmouth",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Markdown browser"
+  },
+  {
+    "name": "euporie",
+    "url": "https://pypi.org/project/euporie",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "euporie"
+    ],
+    "expectedBin": "euporie",
+    "verifyCommand": [
+      "euporie",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "cmd `euporie-notebook`"
+  },
+  {
+    "name": "pokete",
+    "url": "https://pypi.org/project/pokete",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "pokete"
+    ],
+    "expectedBin": "pokete",
+    "verifyCommand": [
+      "pokete",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "terminal RPG"
+  },
+  {
+    "name": "mlflow",
+    "url": "https://pypi.org/project/mlflow",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "mlflow"
+    ],
+    "expectedBin": "mlflow",
+    "verifyCommand": [
+      "mlflow",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "`mlflow ui`"
+  },
+  {
+    "name": "aim",
+    "url": "https://pypi.org/project/aim",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "aim"
+    ],
+    "expectedBin": "aim",
+    "verifyCommand": [
+      "aim",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "`aim up`"
+  },
+  {
+    "name": "label-studio",
+    "url": "https://pypi.org/project/label-studio",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "label-studio"
+    ],
+    "expectedBin": "label-studio",
+    "verifyCommand": [
+      "label-studio",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "heavy deps"
+  },
+  {
+    "name": "chainlit",
+    "url": "https://pypi.org/project/chainlit",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "chainlit"
+    ],
+    "expectedBin": "chainlit",
+    "verifyCommand": [
+      "chainlit",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "`chainlit hello`"
+  },
+  {
+    "name": "visdom",
+    "url": "https://pypi.org/project/visdom",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "visdom"
+    ],
+    "expectedBin": "visdom",
+    "verifyCommand": [
+      "visdom",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "streamlit",
+    "url": "https://pypi.org/project/streamlit",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "streamlit"
+    ],
+    "expectedBin": "streamlit",
+    "verifyCommand": [
+      "streamlit",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "`streamlit hello`"
+  },
+  {
+    "name": "flower",
+    "url": "https://pypi.org/project/flower",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "flower"
+    ],
+    "expectedBin": "flower",
+    "verifyCommand": [
+      "flower",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "`celery flower`; Celery dashboard (mher/flower, NOT flwr federated-learning); needs a broker -> service-block test"
+  },
+  {
+    "name": "gradio",
+    "url": "https://pypi.org/project/gradio",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "gradio"
+    ],
+    "expectedBin": "gradio",
+    "verifyCommand": [
+      "gradio",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "needs script"
+  },
+  {
+    "name": "napari",
+    "url": "https://pypi.org/project/napari",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "napari"
+    ],
+    "expectedBin": "napari",
+    "verifyCommand": [
+      "napari",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "n-D image viewer; Qt + heavy sci stack -> resource/SHA stress"
+  },
+  {
+    "name": "orange3",
+    "url": "https://pypi.org/project/Orange3",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "Orange3"
+    ],
+    "expectedBin": "orange3",
+    "verifyCommand": [
+      "orange3",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "cmd `orange-canvas`; bin `orange-canvas` != package name"
+  },
+  {
+    "name": "bleachbit",
+    "url": "https://pypi.org/project/BleachBit",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "BleachBit"
+    ],
+    "expectedBin": "bleachbit",
+    "verifyCommand": [
+      "bleachbit",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "disk cleaner"
+  },
+  {
+    "name": "gridplayer",
+    "url": "https://pypi.org/project/GridPlayer",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "GridPlayer"
+    ],
+    "expectedBin": "gridplayer",
+    "verifyCommand": [
+      "gridplayer",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "needs `mpv`; needs `mpv` runtime dep"
+  },
+  {
+    "name": "cq-editor",
+    "url": "https://pypi.org/project/CQ-editor",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "CQ-editor"
+    ],
+    "expectedBin": "cq-editor",
+    "verifyCommand": [
+      "cq-editor",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "CadQuery 3D; Qt + OpenGL"
+  },
+  {
+    "name": "friture",
+    "url": "https://pypi.org/project/friture",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "friture"
+    ],
+    "expectedBin": "friture",
+    "verifyCommand": [
+      "friture",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "audio analyzer"
+  },
+  {
+    "name": "eric-ide",
+    "url": "https://pypi.org/project/eric-ide",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "eric-ide"
+    ],
+    "expectedBin": "eric-ide",
+    "verifyCommand": [
+      "eric-ide",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "cmd `eric7`; bin `eric7` != package; project hosted off-GitHub (eric-ide.python-projects.org)"
+  },
+  {
+    "name": "beeref",
+    "url": "https://pypi.org/project/beeref",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "beeref"
+    ],
+    "expectedBin": "beeref",
+    "verifyCommand": [
+      "beeref",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "GitHub-sourced; often GitHub-sourced, not PyPI -> tests non-registry flow"
+  },
+  {
+    "name": "pypdfeditor-gui",
+    "url": "https://pypi.org/project/PyPDFEditor-GUI",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "PyPDFEditor-GUI"
+    ],
+    "expectedBin": "pypdfeditor-gui",
+    "verifyCommand": [
+      "pypdfeditor-gui",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "cmd `pdfeditor`"
+  },
+  {
+    "name": "fmpy",
+    "url": "https://pypi.org/project/FMPy",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "FMPy"
+    ],
+    "expectedBin": "fmpy",
+    "verifyCommand": [
+      "fmpy",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "cmd `fmpy gui`; bin `fmpy gui`; found via dep-graph"
+  },
+  {
+    "name": "tabulous",
+    "url": "https://pypi.org/project/tabulous",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "tabulous"
+    ],
+    "expectedBin": "tabulous",
+    "verifyCommand": [
+      "tabulous",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "spreadsheet viewer"
+  },
+  {
+    "name": "pynastran",
+    "url": "https://pypi.org/project/pyNastran",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "pyNastran"
+    ],
+    "expectedBin": "pynastran",
+    "verifyCommand": [
+      "pynastran",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "cmd `pyNastranGUI`; bin `pyNastranGUI`; extras install"
+  },
+  {
+    "name": "pyqt-openai",
+    "url": "https://pypi.org/project/pyqt-openai",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "pyqt-openai"
+    ],
+    "expectedBin": "pyqt-openai",
+    "verifyCommand": [
+      "pyqt-openai",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "VividNode"
+  },
+  {
+    "name": "caliscope",
+    "url": "https://pypi.org/project/caliscope",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--package",
+      "caliscope"
+    ],
+    "expectedBin": "caliscope",
+    "verifyCommand": [
+      "caliscope",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "motion-capture"
+  },
+  {
+    "name": "geminabox",
+    "url": "https://rubygems.org/gems/geminabox",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "geminabox"
+    ],
+    "expectedBin": "geminabox",
+    "verifyCommand": [
+      "geminabox",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "private gem server with web UI"
+  },
+  {
+    "name": "rubio-radio",
+    "url": "https://rubygems.org/gems/rubio-radio",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "rubio-radio"
+    ],
+    "expectedBin": "rubio-radio",
+    "verifyCommand": [
+      "rubio-radio",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "LibUI radio player; sole dep glimmer-dsl-libui"
+  },
+  {
+    "name": "adamantite",
+    "url": "https://rubygems.org/gems/adamantite",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "adamantite"
+    ],
+    "expectedBin": "adamantite",
+    "verifyCommand": [
+      "adamantite",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "local password-manager desktop GUI"
+  },
+  {
+    "name": "htsgrid",
+    "url": "https://rubygems.org/gems/htsgrid",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "htsgrid"
+    ],
+    "expectedBin": "htsgrid",
+    "verifyCommand": [
+      "htsgrid",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "genomics table viewer GUI"
+  },
+  {
+    "name": "npm-check",
+    "url": "https://www.npmjs.com/package/npm-check",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "npm-check"
+    ],
+    "expectedBin": "npm-check",
+    "verifyCommand": [
+      "npm-check",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "`npm-check -u`; != npm-check-updates (which is in HB)"
+  },
+  {
+    "name": "deputui",
+    "url": "https://www.npmjs.com/package/deputui",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "deputui"
+    ],
+    "expectedBin": "deputui",
+    "verifyCommand": [
+      "deputui",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "dep updater"
+  },
+  {
+    "name": "forage-cli",
+    "url": "https://www.npmjs.com/package/forage-cli",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "forage-cli"
+    ],
+    "expectedBin": "forage-cli",
+    "verifyCommand": [
+      "forage-cli",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "cmd `forage`"
+  },
+  {
+    "name": "dirac",
+    "url": "https://www.npmjs.com/package/dirac-cli",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "dirac-cli"
+    ],
+    "expectedBin": "dirac",
+    "verifyCommand": [
+      "dirac",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "cmd `dirac`; bin `dirac` != package name `dirac-cli`; Apache-2.0"
+  },
+  {
+    "name": "verdaccio",
+    "url": "https://www.npmjs.com/package/verdaccio",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "verdaccio"
+    ],
+    "expectedBin": "verdaccio",
+    "verifyCommand": [
+      "verdaccio",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "private npm registry + web UI"
+  },
+  {
+    "name": "json-server",
+    "url": "https://www.npmjs.com/package/json-server",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "json-server"
+    ],
+    "expectedBin": "json-server",
+    "verifyCommand": [
+      "json-server",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "JSON->REST + browser UI; `json-server db.json`"
+  },
+  {
+    "name": "wetty",
+    "url": "https://www.npmjs.com/package/wetty",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "wetty"
+    ],
+    "expectedBin": "wetty",
+    "verifyCommand": [
+      "wetty",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "browser terminal over HTTP"
+  },
+  {
+    "name": "browser-sync",
+    "url": "https://www.npmjs.com/package/browser-sync",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "browser-sync"
+    ],
+    "expectedBin": "browser-sync",
+    "verifyCommand": [
+      "browser-sync",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "dev server + live-reload UI; `browser-sync start`"
+  },
+  {
+    "name": "pm2",
+    "url": "https://www.npmjs.com/package/pm2",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "pm2"
+    ],
+    "expectedBin": "pm2",
+    "verifyCommand": [
+      "pm2",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "process manager + monitoring UI; `pm2 monit`"
+  },
+  {
+    "name": "mcphub",
+    "url": "https://www.npmjs.com/package/@samanhappy/mcphub",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "@samanhappy/mcphub"
+    ],
+    "expectedBin": "mcphub",
+    "verifyCommand": [
+      "mcphub",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "MCP server hub with web dashboard; scoped pkg @samanhappy/mcphub; bin `mcphub`; ISC license; Apache-2.0 on GitHub; not in HB; 2.2k stars"
+  },
+  {
+    "name": "markserv",
+    "url": "https://www.npmjs.com/package/markserv",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "markserv"
+    ],
+    "expectedBin": "markserv",
+    "verifyCommand": [
+      "markserv",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "serve markdown/dirs as live web"
+  },
+  {
+    "name": "docsify-cli",
+    "url": "https://www.npmjs.com/package/docsify-cli",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "docsify-cli"
+    ],
+    "expectedBin": "docsify-cli",
+    "verifyCommand": [
+      "docsify-cli",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "docs site server; bin `docsify`"
+  },
+  {
+    "name": "tiddlywiki",
+    "url": "https://www.npmjs.com/package/tiddlywiki",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "tiddlywiki"
+    ],
+    "expectedBin": "tiddlywiki",
+    "verifyCommand": [
+      "tiddlywiki",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "self-hosted wiki; distinct from `tiddly` cask (NW.js desktop)"
+  },
+  {
+    "name": "clinic",
+    "url": "https://www.npmjs.com/package/clinic",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "clinic"
+    ],
+    "expectedBin": "clinic",
+    "verifyCommand": [
+      "clinic",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "perf flamegraphs in browser; `clinic doctor`"
+  },
+  {
+    "name": "nativefier",
+    "url": "https://www.npmjs.com/package/nativefier",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "nativefier"
+    ],
+    "expectedBin": "nativefier",
+    "verifyCommand": [
+      "nativefier",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "wrap any URL into an Electron .app"
+  },
+  {
+    "name": "appbun",
+    "url": "https://www.npmjs.com/package/appbun",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "appbun"
+    ],
+    "expectedBin": "appbun",
+    "verifyCommand": [
+      "appbun",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "webpage->app wrapper"
+  },
+  {
+    "name": "hehehai-buke",
+    "url": "https://www.npmjs.com/package/@hehehai/buke",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "@hehehai/buke"
+    ],
+    "expectedBin": "hehehai-buke",
+    "verifyCommand": [
+      "hehehai-buke",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Electrobun CLI; bin `buke`"
+  },
+  {
+    "name": "manga-tui",
+    "url": "https://crates.io/crates/manga-tui",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "manga-tui",
+      "--crate-name",
+      "manga-tui"
+    ],
+    "expectedBin": "manga-tui",
+    "verifyCommand": [
+      "manga-tui",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "manga reader"
+  },
+  {
+    "name": "twitch-tui",
+    "url": "https://crates.io/crates/twitch-tui",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "twitch-tui",
+      "--crate-name",
+      "twitch-tui"
+    ],
+    "expectedBin": "twitch-tui",
+    "verifyCommand": [
+      "twitch-tui",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Twitch chat"
+  },
+  {
+    "name": "nostui",
+    "url": "https://crates.io/crates/nostui",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "nostui",
+      "--crate-name",
+      "nostui"
+    ],
+    "expectedBin": "nostui",
+    "verifyCommand": [
+      "nostui",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Nostr client"
+  },
+  {
+    "name": "gobang",
+    "url": "https://github.com/TaKO8Ki/gobang",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "gobang"
+    ],
+    "expectedBin": "gobang",
+    "verifyCommand": [
+      "gobang",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "DB manager; often `--git` install"
+  },
+  {
+    "name": "ddv",
+    "url": "https://github.com/lusingander/ddv",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "ddv"
+    ],
+    "expectedBin": "ddv",
+    "verifyCommand": [
+      "ddv",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "DynamoDB viewer"
+  },
+  {
+    "name": "rrtop",
+    "url": "https://github.com/wojciech-zurek/rrtop",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "rrtop"
+    ],
+    "expectedBin": "rrtop",
+    "verifyCommand": [
+      "rrtop",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Redis monitor"
+  },
+  {
+    "name": "tgt",
+    "url": "https://github.com/FedericoBruzzone/tgt",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "tgt"
+    ],
+    "expectedBin": "tgt",
+    "verifyCommand": [
+      "tgt",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "needs TDLib; needs TDLib native dep (hard build edge)"
+  },
+  {
+    "name": "oculante",
+    "url": "https://crates.io/crates/oculante",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "oculante",
+      "--crate-name",
+      "oculante"
+    ],
+    "expectedBin": "oculante",
+    "verifyCommand": [
+      "oculante",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "fast image viewer (egui/wgpu); GPU window"
+  },
+  {
+    "name": "emulsion",
+    "url": "https://crates.io/crates/emulsion",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "emulsion",
+      "--crate-name",
+      "emulsion"
+    ],
+    "expectedBin": "emulsion",
+    "verifyCommand": [
+      "emulsion",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "lightweight image viewer"
+  },
+  {
+    "name": "krokiet",
+    "url": "https://crates.io/crates/krokiet",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "krokiet",
+      "--crate-name",
+      "krokiet"
+    ],
+    "expectedBin": "krokiet",
+    "verifyCommand": [
+      "krokiet",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Czkawka GUI dupe-finder; ships from qarmin/czkawka monorepo; czkawka CLI is in HB, krokiet GUI is not"
+  },
+  {
+    "name": "rerun",
+    "url": "https://crates.io/crates/rerun-cli",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "rerun",
+      "--crate-name",
+      "rerun-cli"
+    ],
+    "expectedBin": "rerun",
+    "verifyCommand": [
+      "rerun",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "data/3D visualizer; crate rerun-cli in rerun-io/rerun monorepo; heavy GPU build"
+  },
+  {
+    "name": "kiorg",
+    "url": "https://github.com/houqp/kiorg",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "kiorg"
+    ],
+    "expectedBin": "kiorg",
+    "verifyCommand": [
+      "kiorg",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "egui file manager; GitHub-sourced (not on crates.io)"
+  },
+  {
+    "name": "damon",
+    "url": "https://github.com/hashicorp/damon",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "damon"
+    ],
+    "expectedBin": "damon",
+    "verifyCommand": [
+      "damon",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Nomad dashboard"
+  },
+  {
+    "name": "dashbrew",
+    "url": "https://github.com/rasjonell/dashbrew",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "dashbrew"
+    ],
+    "expectedBin": "dashbrew",
+    "verifyCommand": [
+      "dashbrew",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "terminal dashboards"
+  },
+  {
+    "name": "claws",
+    "url": "https://github.com/clawscli/claws",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "claws",
+      "--go-module",
+      "github.com/clawscli/claws"
+    ],
+    "expectedBin": "claws",
+    "verifyCommand": [
+      "claws",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "AWS TUI \u2014 go install github.com/clawscli/claws/cmd/claws"
+  },
+  {
+    "name": "goatcounter",
+    "url": "https://zgo.at/goatcounter/v2",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "goatcounter",
+      "--go-module",
+      "zgo.at/goatcounter/v2"
+    ],
+    "expectedBin": "goatcounter",
+    "verifyCommand": [
+      "goatcounter",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "CGO/SQLite; module is zgo.at/goatcounter/v2; CGO/SQLite build"
+  },
+  {
+    "name": "gokapi",
+    "url": "https://github.com/Forceu/Gokapi",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "gokapi"
+    ],
+    "expectedBin": "gokapi",
+    "verifyCommand": [
+      "gokapi",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "go:embed; go:embed assets"
+  },
+  {
+    "name": "picoshare",
+    "url": "https://github.com/mtlynch/picoshare",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "picoshare"
+    ],
+    "expectedBin": "picoshare",
+    "verifyCommand": [
+      "picoshare",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "go:embed + SQLite; go:embed + SQLite"
+  },
+  {
+    "name": "supersonic",
+    "url": "https://github.com/dweymouth/supersonic",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "supersonic"
+    ],
+    "expectedBin": "supersonic",
+    "verifyCommand": [
+      "supersonic",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "music client; Fyne -> `fyne install`, not bare `go install`"
+  },
+  {
+    "name": "rymdport",
+    "url": "https://github.com/Jacalz/rymdport",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "rymdport"
+    ],
+    "expectedBin": "rymdport",
+    "verifyCommand": [
+      "rymdport",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "wormhole GUI; Fyne -> `fyne install`, not bare `go install`"
+  },
+  {
+    "name": "paw",
+    "url": "https://github.com/lucor/paw",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "paw"
+    ],
+    "expectedBin": "paw",
+    "verifyCommand": [
+      "paw",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "password manager; Fyne -> `fyne install`, not bare `go install`"
+  },
+  {
+    "name": "goshot",
+    "url": "https://github.com/janpfeifer/goshot",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "goshot"
+    ],
+    "expectedBin": "goshot",
+    "verifyCommand": [
+      "goshot",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "screenshot tool; Fyne -> `fyne install`, not bare `go install`"
+  },
+  {
+    "name": "easylpac",
+    "url": "https://github.com/creamlike1024/EasyLPAC",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "easylpac"
+    ],
+    "expectedBin": "easylpac",
+    "verifyCommand": [
+      "easylpac",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "eSIM GUI; Fyne -> `fyne install`, not bare `go install`"
+  },
+  {
+    "name": "horcrux-ui",
+    "url": "https://github.com/jesseduffield/horcrux-ui",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "horcrux-ui"
+    ],
+    "expectedBin": "horcrux-ui",
+    "verifyCommand": [
+      "horcrux-ui",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "file-splitting GUI; Fyne -> `fyne install`; by lazygit's author"
+  },
+  {
+    "name": "macmlx-cli",
+    "url": "https://github.com/magicnight/Mac-MLX",
+    "generator": "spm-package",
+    "allbrewArgs": [
+      "--name",
+      "macmlx-cli"
+    ],
+    "expectedBin": "macmlx-cli",
+    "verifyCommand": [
+      "macmlx-cli",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "cmd `macmlx`"
+  },
+  {
+    "name": "utiluti",
+    "url": "https://github.com/scriptingosx/utiluti",
+    "generator": "spm-package",
+    "allbrewArgs": [
+      "--name",
+      "utiluti"
+    ],
+    "expectedBin": "utiluti",
+    "verifyCommand": [
+      "utiluti",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "query/set default URL-scheme & UTI handlers; scriptingosx author"
+  },
+  {
+    "name": "macmlx-app",
+    "url": "https://github.com/magicnight/Mac-MLX",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "macmlx-app"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "macMLX (app)"
+    ],
+    "skip": true,
+    "notes": "native SwiftUI local-LLM app; binary/cask path (future generator), not SPM"
+  },
+  {
+    "name": "rnwood-smtp4dev",
+    "url": "https://www.nuget.org/packages/Rnwood.Smtp4dev",
+    "generator": "dotnet-package",
+    "allbrewArgs": [
+      "--package",
+      "Rnwood.Smtp4dev"
+    ],
+    "expectedBin": "rnwood-smtp4dev",
+    "verifyCommand": [
+      "rnwood-smtp4dev",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "cmd `smtp4dev`"
+  },
+  {
+    "name": "depotdownloader",
+    "url": "https://www.nuget.org/packages/DepotDownloader",
+    "generator": "dotnet-package",
+    "allbrewArgs": [
+      "--package",
+      "DepotDownloader"
+    ],
+    "expectedBin": "depotdownloader",
+    "verifyCommand": [
+      "depotdownloader",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Steam depot downloader; web claims a HB formula; not present as of June 2026 \u2014 verify"
+  },
+  {
+    "name": "liana",
+    "url": "https://github.com/wizardsardine/liana",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "liana"
+    ],
+    "expectedBin": "liana",
+    "verifyCommand": [
+      "liana",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Bitcoin wallet w/ timelocks; Tier B binary/cask path"
+  },
+  {
+    "name": "er-save-editor",
+    "url": "https://github.com/ClayAmore/ER-Save-Editor",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "er-save-editor"
+    ],
+    "expectedBin": "er-save-editor",
+    "verifyCommand": [
+      "er-save-editor",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Elden Ring save editor; Tier B binary/cask path"
+  },
+  {
+    "name": "tes3edit",
+    "url": "https://github.com/rfuzzo/tes3edit",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "tes3edit"
+    ],
+    "expectedBin": "tes3edit",
+    "verifyCommand": [
+      "tes3edit",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Morrowind plugin editor; Tier B binary/cask path"
+  },
+  {
+    "name": "sydneyqt",
+    "url": "https://github.com/juzeon/SydneyQt",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "sydneyqt"
+    ],
+    "expectedBin": "sydneyqt",
+    "verifyCommand": [
+      "sydneyqt",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Bing/Copilot desktop client; Tier B binary/cask path"
+  },
+  {
+    "name": "lottieviewconvert",
+    "url": "https://github.com/SwaggyMacro/LottieViewConvert",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "lottieviewconvert"
+    ],
+    "expectedBin": "lottieviewconvert",
+    "verifyCommand": [
+      "lottieviewconvert",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "TGS/Lottie converter; Tier B binary/cask path"
+  },
+  {
+    "name": "popcorn-time",
+    "url": "https://github.com/popcorn-official/popcorn-desktop",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "popcorn-time"
+    ],
+    "expectedBin": "popcorn-time",
+    "verifyCommand": [
+      "popcorn-time",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "media streamer; NW.js (not Tauri); Tier B binary/cask path"
+  },
+  {
+    "name": "dev-manager-desktop",
+    "url": "https://github.com/webosbrew/dev-manager-desktop",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "dev-manager-desktop"
+    ],
+    "expectedBin": "dev-manager-desktop",
+    "verifyCommand": [
+      "dev-manager-desktop",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "webOS homebrew manager; Tier B binary/cask path"
+  },
+  {
+    "name": "gogs",
+    "url": "https://github.com/gogs/gogs",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "gogs"
+    ],
+    "expectedBin": "gogs",
+    "verifyCommand": [
+      "gogs",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "rio",
+    "url": "https://github.com/raphamorim/rio",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "rio"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "rio"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "pyzo",
+    "url": "https://github.com/pyzo/pyzo",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "pyzo"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "pyzo"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "extraterm",
+    "url": "https://github.com/sedwards2009/extraterm",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "extraterm"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "extraterm"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "shiori",
+    "url": "https://github.com/go-shiori/shiori",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "shiori"
+    ],
+    "expectedBin": "shiori",
+    "verifyCommand": [
+      "shiori",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "veusz",
+    "url": "https://github.com/veusz/veusz",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "veusz"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "veusz"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "frescobaldi",
+    "url": "https://github.com/frescobaldi/frescobaldi",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "frescobaldi"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "frescobaldi"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "persepolis-download-manager",
+    "url": "https://github.com/persepolisdm/persepolis",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "persepolis-download-manager"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "persepolis-download-manager"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "manuskript",
+    "url": "https://github.com/olivierkes/manuskript",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "manuskript"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "manuskript"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "wombat",
+    "url": "https://github.com/rogchap/wombat",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "wombat"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "wombat"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "vorta",
+    "url": "https://github.com/borgbase/vorta",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "vorta"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "vorta"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "electrum",
+    "url": "https://github.com/spesmilo/electrum",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "electrum"
+    ],
+    "expectedBin": "electrum",
+    "verifyCommand": [
+      "electrum",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "0 GH releases; off-GitHub signed builds; source-build is the only non-brew path"
+  },
+  {
+    "name": "pake",
+    "url": "https://github.com/tw93/Pake",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "pake"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "pake"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "pop",
+    "url": "https://github.com/charmbracelet/pop",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "pop"
+    ],
+    "expectedBin": "pop",
+    "verifyCommand": [
+      "pop",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "wishlist",
+    "url": "https://github.com/charmbracelet/wishlist",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "wishlist"
+    ],
+    "expectedBin": "wishlist",
+    "verifyCommand": [
+      "wishlist",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "portal",
+    "url": "https://github.com/SpatiumPortae/portal",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "portal"
+    ],
+    "expectedBin": "portal",
+    "verifyCommand": [
+      "portal",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "sniffnet",
+    "url": "https://github.com/GyulyVGC/sniffnet",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "sniffnet"
+    ],
+    "expectedBin": "sniffnet",
+    "verifyCommand": [
+      "sniffnet",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "jwt-ui",
+    "url": "https://github.com/jwt-rs/jwt-ui",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "jwt-ui"
+    ],
+    "expectedBin": "jwt-ui",
+    "verifyCommand": [
+      "jwt-ui",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "television",
+    "url": "https://github.com/alexpasmantier/television",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "television"
+    ],
+    "expectedBin": "television",
+    "verifyCommand": [
+      "television",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "rainfrog",
+    "url": "https://github.com/achristmascarl/rainfrog",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "rainfrog"
+    ],
+    "expectedBin": "rainfrog",
+    "verifyCommand": [
+      "rainfrog",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "doxx",
+    "url": "https://github.com/bgreenwell/doxx",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "doxx"
+    ],
+    "expectedBin": "doxx",
+    "verifyCommand": [
+      "doxx",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "go2tv",
+    "url": "https://github.com/alexballas/go2tv",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "go2tv"
+    ],
+    "expectedBin": "go2tv",
+    "verifyCommand": [
+      "go2tv",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "termscp",
+    "url": "https://github.com/veeso/termscp",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "termscp"
+    ],
+    "expectedBin": "termscp",
+    "verifyCommand": [
+      "termscp",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "md-tui",
+    "url": "https://github.com/henriklovhaug/md-tui",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "md-tui"
+    ],
+    "expectedBin": "md-tui",
+    "verifyCommand": [
+      "md-tui",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "tabiew",
+    "url": "https://github.com/shshemi/tabiew",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "tabiew"
+    ],
+    "expectedBin": "tabiew",
+    "verifyCommand": [
+      "tabiew",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "pug",
+    "url": "https://github.com/leg100/pug",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "pug"
+    ],
+    "expectedBin": "pug",
+    "verifyCommand": [
+      "pug",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "serpl",
+    "url": "https://github.com/yassinebridi/serpl",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "serpl"
+    ],
+    "expectedBin": "serpl",
+    "verifyCommand": [
+      "serpl",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "stu",
+    "url": "https://github.com/lusingander/stu",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "stu"
+    ],
+    "expectedBin": "stu",
+    "verifyCommand": [
+      "stu",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "yozefu",
+    "url": "https://github.com/MAIF/yozefu",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "yozefu"
+    ],
+    "expectedBin": "yozefu",
+    "verifyCommand": [
+      "yozefu",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "gitu",
+    "url": "https://github.com/altsem/gitu",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "gitu"
+    ],
+    "expectedBin": "gitu",
+    "verifyCommand": [
+      "gitu",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "nicotine-plus",
+    "url": "https://github.com/nicotine-plus/nicotine-plus",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "nicotine-plus"
+    ],
+    "expectedBin": "nicotine-plus",
+    "verifyCommand": [
+      "nicotine-plus",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "scooter",
+    "url": "https://github.com/thomasschafer/scooter",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "scooter"
+    ],
+    "expectedBin": "scooter",
+    "verifyCommand": [
+      "scooter",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "lazyjournal",
+    "url": "https://github.com/Lifailon/lazyjournal",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "lazyjournal"
+    ],
+    "expectedBin": "lazyjournal",
+    "verifyCommand": [
+      "lazyjournal",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "otree",
+    "url": "https://github.com/fioncat/otree",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "otree"
+    ],
+    "expectedBin": "otree",
+    "verifyCommand": [
+      "otree",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "spotify-player",
+    "url": "https://github.com/aome510/spotify-player",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "spotify-player"
+    ],
+    "expectedBin": "spotify-player",
+    "verifyCommand": [
+      "spotify-player",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "underscore token; fuzzy-match gotcha"
+  },
+  {
+    "name": "sshs",
+    "url": "https://github.com/quantumsheep/sshs",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "sshs"
+    ],
+    "expectedBin": "sshs",
+    "verifyCommand": [
+      "sshs",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "comictagger",
+    "url": "https://github.com/comictagger/comictagger",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "comictagger"
+    ],
+    "expectedBin": "comictagger",
+    "verifyCommand": [
+      "comictagger",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "gotify",
+    "url": "https://github.com/gotify/cli",
+    "generator": "gem-package",
+    "allbrewArgs": [
+      "--gem-name",
+      "gotify"
+    ],
+    "expectedBin": "gotify",
+    "verifyCommand": [
+      "gotify",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "tenere",
+    "url": "https://github.com/pythops/tenere",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "tenere"
+    ],
+    "expectedBin": "tenere",
+    "verifyCommand": [
+      "tenere",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "diskonaut",
+    "url": "https://github.com/imsnif/diskonaut",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "diskonaut"
+    ],
+    "expectedBin": "diskonaut",
+    "verifyCommand": [
+      "diskonaut",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "dooit",
+    "url": "https://github.com/kraanzu/dooit",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "dooit"
+    ],
+    "expectedBin": "dooit",
+    "verifyCommand": [
+      "dooit",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "gpg-tui",
+    "url": "https://github.com/orhun/gpg-tui",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "gpg-tui"
+    ],
+    "expectedBin": "gpg-tui",
+    "verifyCommand": [
+      "gpg-tui",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "kubetui",
+    "url": "https://github.com/sarub0b0/kubetui",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "kubetui"
+    ],
+    "expectedBin": "kubetui",
+    "verifyCommand": [
+      "kubetui",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "czkawka",
+    "url": "https://crates.io/crates/czkawka_cli",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "czkawka",
+      "--crate-name",
+      "czkawka_cli"
+    ],
+    "expectedBin": "czkawka",
+    "verifyCommand": [
+      "czkawka",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "CLI dupe-finder; krokiet is its GUI (not in HB)"
+  },
+  {
+    "name": "gtop",
+    "url": "https://www.npmjs.com/package/gtop",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "gtop"
+    ],
+    "expectedBin": "gtop",
+    "verifyCommand": [
+      "gtop",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "jiratui",
+    "url": "https://github.com/whyisdifficult/jiratui",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "jiratui"
+    ],
+    "expectedBin": "jiratui",
+    "verifyCommand": [
+      "jiratui",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "joshuto",
+    "url": "https://github.com/kamiyaa/joshuto",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "joshuto"
+    ],
+    "expectedBin": "joshuto",
+    "verifyCommand": [
+      "joshuto",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "lazyjj",
+    "url": "https://github.com/Cretezy/lazyjj",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "lazyjj"
+    ],
+    "expectedBin": "lazyjj",
+    "verifyCommand": [
+      "lazyjj",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "mapscii",
+    "url": "https://www.npmjs.com/package/mapscii",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "mapscii"
+    ],
+    "expectedBin": "mapscii",
+    "verifyCommand": [
+      "mapscii",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "memray",
+    "url": "https://github.com/bloomberg/memray",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "memray"
+    ],
+    "expectedBin": "memray",
+    "verifyCommand": [
+      "memray",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "recoverpy",
+    "url": "https://github.com/PabloLec/recoverpy",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "recoverpy"
+    ],
+    "expectedBin": "recoverpy",
+    "verifyCommand": [
+      "recoverpy",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "reveal-md",
+    "url": "https://www.npmjs.com/package/reveal-md",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "reveal-md"
+    ],
+    "expectedBin": "reveal-md",
+    "verifyCommand": [
+      "reveal-md",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "reveal.js markdown presentation server"
+  },
+  {
+    "name": "tuisky",
+    "url": "https://github.com/sugyan/tuisky",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "tuisky"
+    ],
+    "expectedBin": "tuisky",
+    "verifyCommand": [
+      "tuisky",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Test case from allbrew-test-cases.md"
+  },
+  {
+    "name": "right-crane",
+    "url": "https://rightright.me/products",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "right-crane"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Right Crane"
+    ],
+    "skip": true,
+    "notes": "not in HB; developer-site download"
+  },
+  {
+    "name": "unfatten",
+    "url": "https://avelio.tech/unfatten",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "unfatten"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Unfatten"
+    ],
+    "skip": true,
+    "notes": "not in HB; developer-site download"
+  },
+  {
+    "name": "ollama",
+    "url": "https://github.com/ollama/ollama",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "ollama"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Ollama"
+    ],
+    "skip": true,
+    "notes": "site\u2192GitHub redirect"
+  },
+  {
+    "name": "proxyman",
+    "url": "https://setapp.com/apps/proxyman",
+    "generator": "cask-app-setapp",
+    "allbrewArgs": [
+      "--name",
+      "proxyman"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "setapp-cli",
+      "list"
+    ],
+    "skip": true,
+    "notes": "developer CDN; latest in filename"
+  },
+  {
+    "name": "docker-desktop",
+    "url": "https://docker.com",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "docker-desktop"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Docker Desktop"
+    ],
+    "skip": true,
+    "notes": "arch in path; closed-source; no public source repo (docker/desktop is feedback-only)"
+  },
+  {
+    "name": "zoom",
+    "url": "https://zoom.us",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "zoom"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "zoom"
+    ],
+    "skip": true,
+    "notes": "PKG format; CDN redirect"
+  },
+  {
+    "name": "trae",
+    "url": "https://trae.ai",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "trae"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Trae"
+    ],
+    "skip": true,
+    "notes": "developer-site download"
+  },
+  {
+    "name": "otty",
+    "url": "https://otty.sh",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "otty"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Otty"
+    ],
+    "skip": true,
+    "notes": "native terminal app; developer-site DMG; ARM + Intel builds; by appmakes.io"
+  },
+  {
+    "name": "paste",
+    "url": "https://apps.apple.com/us/app/id967805235",
+    "generator": "cask-app-mas",
+    "allbrewArgs": [
+      "--name",
+      "paste"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "mas",
+      "info",
+      "967805235"
+    ],
+    "skip": true,
+    "notes": "also on MAS"
+  },
+  {
+    "name": "easyfind",
+    "url": "https://devmate.com",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "easyfind"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Easyfind"
+    ],
+    "skip": true,
+    "notes": "DEVONtechnologies direct download; not on MAS"
+  },
+  {
+    "name": "hermes",
+    "url": "https://hermesapp.io",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "hermes"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Hermes"
+    ],
+    "skip": true,
+    "notes": "Pandora client; GitHub release only; not on MAS"
+  },
+  {
+    "name": "terax",
+    "url": "https://terax.app",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "terax"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Terax"
+    ],
+    "skip": true,
+    "notes": "developer-site download"
+  },
+  {
+    "name": "prefs-editor",
+    "url": "https://tenten.co",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "prefs-editor"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Prefs Editor"
+    ],
+    "skip": true,
+    "notes": "developer-site download"
+  },
+  {
+    "name": "setapp",
+    "url": "https://setapp.com/download",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "setapp"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Setapp"
+    ],
+    "skip": true,
+    "notes": "app-store-alternative CDN"
+  },
+  {
+    "name": "raycast-beta",
+    "url": "https://raycast.com",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "raycast-beta"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Raycast Beta"
+    ],
+    "skip": true,
+    "notes": "beta channel"
+  },
+  {
+    "name": "colorslurp",
+    "url": "https://apps.apple.com/us/app/id1287239339",
+    "generator": "cask-app-mas",
+    "allbrewArgs": [
+      "--name",
+      "colorslurp"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "mas",
+      "info",
+      "1287239339"
+    ],
+    "skip": true,
+    "notes": "MAS only; no direct download -> not a cask-app test case"
+  },
+  {
+    "name": "bear",
+    "url": "https://apps.apple.com/us/app/id1016366447",
+    "generator": "cask-app-mas",
+    "allbrewArgs": [
+      "--name",
+      "bear"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "mas",
+      "info",
+      "1016366447"
+    ],
+    "skip": true,
+    "notes": "MAS + direct download; no HB cask"
+  },
+  {
+    "name": "perplexity",
+    "url": "https://perplexity.ai/personal-computer",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "perplexity"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Perplexity"
+    ],
+    "skip": true,
+    "notes": "not in HB; new \"Personal Computer\" mac app; direct download only (not in MAS); login-gated DMG URL; macOS 14+; bundleId ai.perplexity.mac"
+  },
+  {
+    "name": "postman",
+    "url": "https://postman.com/downloads",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "postman"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Postman"
+    ],
+    "skip": true,
+    "notes": "in HB; CDN dl.pstmn.io; version in URL path; arch suffix (osx_arm64 vs osx64); bundleId com.postmanlabs.mac; macOS >= 11"
+  },
+  {
+    "name": "discord",
+    "url": "https://discord.com",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "discord"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Discord"
+    ],
+    "skip": true,
+    "notes": "in HB; CDN dl.discordapp.net; version in URL path; livecheck header_match on redirect; OS-version split (Catalina vs Big Sur+); Electron; auto_updates; bundleId com.hnc.Discord"
+  },
+  {
+    "name": "onyx",
+    "url": "https://titanium-software.fr/en/onyx.html",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "onyx"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "OnyX"
+    ],
+    "skip": true,
+    "notes": "in HB; developer-site DMG; sha256 :no_check; per-OS-version URLs (/download/26/ vs /download/15/ etc); no version in filename; depends_on macos == list; freeware; no GitHub; bundleId com.titanium.OnyX"
+  },
+  {
+    "name": "little-snitch",
+    "url": "https://obdev.at/products/littlesnitch",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "little-snitch"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Little Snitch"
+    ],
+    "skip": true,
+    "notes": "in HB; developer-site DMG; version in filename; app name has space (\"Little Snitch.app\"); system extension (firewall); macOS >= 14; auto_updates; conflicts_with older version casks; bundleId at.obdev.LittleSnitchConfiguration"
+  },
+  {
+    "name": "pictogram",
+    "url": "https://pictogramapp.com",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "pictogram"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Pictogram"
+    ],
+    "skip": true,
+    "notes": "in HB; developer-site ZIP (not DMG); CSV version 0.1,13; URL encodes version as \"v0.1%20%28Build%2013%29.zip\" (space + parens); Sparkle appcast livecheck; auto_updates; macOS >= 11; indie one-dev app (Neil Sardesai); bundleId com.NeilSardesai.Pictogram"
+  },
+  {
+    "name": "iconchamp",
+    "url": "https://macenhance.com/iconchamp.html",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "iconchamp"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "IconChamp"
+    ],
+    "skip": true,
+    "notes": "in HB; GitHub raw URL (not releases); sha256 :no_check (rolling ZIP, version not in URL); Sparkle appcast livecheck with &:short_version extractor; auto_updates; macOS >= 11; privileged helper daemon (LaunchDaemon com.macenhance.ICHelper); Free+IAP; bundleId com.macenhance.IconChamp"
+  },
+  {
+    "name": "tokenbar",
+    "url": "https://tokenbar.site/get-started",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "tokenbar"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "TokenBar"
+    ],
+    "skip": true,
+    "notes": "indie; $5/mo or $15 lifetime"
+  },
+  {
+    "name": "monk-mode",
+    "url": "https://mac.monk-mode.lifestyle",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "monk-mode"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Monk Mode"
+    ],
+    "skip": true,
+    "notes": "indie; $15 lifetime"
+  },
+  {
+    "name": "metricsync",
+    "url": "https://metricsync.download",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "metricsync"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "MetricSync"
+    ],
+    "skip": true,
+    "notes": "indie; $5/mo"
+  },
+  {
+    "name": "iina",
+    "url": "https://github.com/iina/iina",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "iina"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "IINA"
+    ],
+    "skip": true,
+    "notes": "release page; download via GitHub"
+  },
+  {
+    "name": "transmission",
+    "url": "https://github.com/transmission/transmission",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "transmission"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Transmission"
+    ],
+    "skip": true,
+    "notes": "version+revision; download via GitHub"
+  },
+  {
+    "name": "tailscale",
+    "url": "https://apps.apple.com/us/app/id1475387142",
+    "generator": "cask-app-mas",
+    "allbrewArgs": [
+      "--name",
+      "tailscale"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "mas",
+      "info",
+      "1475387142"
+    ],
+    "skip": true,
+    "notes": ".zip, \"latest\"\u2192302; also on MAS"
+  },
+  {
+    "name": "mermark-editor",
+    "url": "https://github.com/Vesperino/MerMarkEditor",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "mermark-editor"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "MerMark Editor"
+    ],
+    "skip": true,
+    "notes": "Markdown/Mermaid editor; Tauri 2.0 + Vue 3; unsigned"
+  },
+  {
+    "name": "archify",
+    "url": "https://github.com/Oct4Pie/archify",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "archify"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Archify"
+    ],
+    "skip": true,
+    "notes": "Strips non-native arch from Universal binaries; notarized"
+  },
+  {
+    "name": "macos-app-thinner",
+    "url": "https://github.com/mvmalyi/macos-app-thinner",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "macos-app-thinner"
+    ],
+    "expectedBin": "macos-app-thinner",
+    "verifyCommand": [
+      "macos-app-thinner",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "CLI tool; strips x86_64 from Universal binaries via lipo; git clone + chmod + run"
+  },
+  {
+    "name": "homebrew",
+    "url": "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "homebrew"
+    ],
+    "expectedBin": "homebrew",
+    "verifyCommand": [
+      "homebrew",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "canonical curl-pipe-bash installer"
+  },
+  {
+    "name": "rustup",
+    "url": "https://sh.rustup.rs",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "rustup"
+    ],
+    "expectedBin": "rustup",
+    "verifyCommand": [
+      "rustup",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "no .sh extension"
+  },
+  {
+    "name": "bun",
+    "url": "https://bun.sh/install",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "bun"
+    ],
+    "expectedBin": "bun",
+    "verifyCommand": [
+      "bun",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "no .sh extension"
+  },
+  {
+    "name": "deno",
+    "url": "https://deno.land/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "deno"
+    ],
+    "expectedBin": "deno",
+    "verifyCommand": [
+      "deno",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "standard .sh"
+  },
+  {
+    "name": "poetry",
+    "url": "https://install.python-poetry.org",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "poetry"
+    ],
+    "expectedBin": "poetry",
+    "verifyCommand": [
+      "poetry",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Python script"
+  },
+  {
+    "name": "oh-my-zsh",
+    "url": "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "oh-my-zsh"
+    ],
+    "expectedBin": "oh-my-zsh",
+    "verifyCommand": [
+      "oh-my-zsh",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "modifies shell config"
+  },
+  {
+    "name": "nvm",
+    "url": "https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "nvm"
+    ],
+    "expectedBin": "nvm",
+    "verifyCommand": [
+      "nvm",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "version in URL path"
+  },
+  {
+    "name": "atuin",
+    "url": "https://setup.atuin.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "atuin"
+    ],
+    "expectedBin": "atuin",
+    "verifyCommand": [
+      "atuin",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "setup. subdomain"
+  },
+  {
+    "name": "pixi",
+    "url": "https://pixi.sh/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "pixi"
+    ],
+    "expectedBin": "pixi",
+    "verifyCommand": [
+      "pixi",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "standard .sh"
+  },
+  {
+    "name": "pnpm",
+    "url": "https://get.pnpm.io/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "pnpm"
+    ],
+    "expectedBin": "pnpm",
+    "verifyCommand": [
+      "pnpm",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "get. subdomain"
+  },
+  {
+    "name": "fly-io-cli",
+    "url": "https://fly.io/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "fly-io-cli"
+    ],
+    "expectedBin": "fly-io-cli",
+    "verifyCommand": [
+      "fly-io-cli",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "installs to ~/.fly/bin"
+  },
+  {
+    "name": "railway-cli",
+    "url": "https://raw.githubusercontent.com/railwayapp/cli/master/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "railway-cli"
+    ],
+    "expectedBin": "railway-cli",
+    "verifyCommand": [
+      "railway-cli",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "not in HB"
+  },
+  {
+    "name": "nix",
+    "url": "https://nixos.org/nix/install",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "nix"
+    ],
+    "expectedBin": "nix",
+    "verifyCommand": [
+      "nix",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "no extension"
+  },
+  {
+    "name": "sdkman",
+    "url": "https://get.sdkman.io",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "sdkman"
+    ],
+    "expectedBin": "sdkman",
+    "verifyCommand": [
+      "sdkman",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "no extension; get. subdomain"
+  },
+  {
+    "name": "croc",
+    "url": "https://getcroc.schollz.com",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "croc"
+    ],
+    "expectedBin": "croc",
+    "verifyCommand": [
+      "croc",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "bare domain redirect"
+  },
+  {
+    "name": "zellij",
+    "url": "https://zellij.dev/launch",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "zellij"
+    ],
+    "expectedBin": "zellij",
+    "verifyCommand": [
+      "zellij",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "unusual path /launch"
+  },
+  {
+    "name": "pool",
+    "url": "https://downloads.poolside.ai/pool/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "pool"
+    ],
+    "expectedBin": "pool",
+    "verifyCommand": [
+      "pool",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "AI coding assistant; downloads. subdomain"
+  },
+  {
+    "name": "ugm",
+    "url": "https://github.com/ariasmn/ugm",
+    "generator": "go-package",
+    "allbrewArgs": [
+      "--name",
+      "ugm"
+    ],
+    "expectedBin": "ugm",
+    "verifyCommand": [
+      "ugm",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "UNIX users/groups TUI; MIT; v1.9.0; 163 stars; not in HB; goreleaser targets linux/freebsd/openbsd/netbsd only (no macOS binaries); go install path; go-package"
+  },
+  {
+    "name": "bartender-pro",
+    "url": "https://setapp.com/apps/bartender",
+    "generator": "cask-app-setapp",
+    "allbrewArgs": [
+      "--name",
+      "bartender-pro"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "setapp-cli",
+      "list"
+    ],
+    "skip": true,
+    "notes": "cask-app-setapp test case; slug bartender vs display name Bartender Pro; menu bar manager; Setapp + standalone only; not on MAS; HTML scrape for version"
+  },
+  {
+    "name": "cleanshot-x",
+    "url": "https://setapp.com/apps/cleanshot",
+    "generator": "cask-app-setapp",
+    "allbrewArgs": [
+      "--name",
+      "cleanshot-x"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "setapp-cli",
+      "list"
+    ],
+    "skip": true,
+    "notes": "cask-app-setapp test case; display name with space and X suffix; also direct download via cask-app; screenshot tool"
+  },
+  {
+    "name": "codeg",
+    "url": "https://github.com/xintaofei/codeg",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "codeg"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Codeg"
+    ],
+    "skip": true,
+    "notes": "multi-agent AI coding workspace (Claude Code, Codex, OpenCode, etc.); Tauri 2 desktop + server + Docker; versioned DMG with arch suffix; 1.8k stars; Apache-2.0; not in HB"
+  },
+  {
+    "name": "qoder",
+    "url": "https://qoder.com/install",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "qoder"
+    ],
+    "expectedBin": "qoder",
+    "verifyCommand": [
+      "qoder",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "closed-source AI coding IDE; download page at qoder.com/download (DMG behind auth); CLI via `curl -fsSL https://qoder.com/install | bash`; also mobile MAS; not in HB"
+  },
+  {
+    "name": "jockey",
+    "url": "https://github.com/recailai/jockey",
+    "generator": "source-build",
+    "allbrewArgs": [
+      "--name",
+      "jockey"
+    ],
+    "expectedBin": "jockey",
+    "verifyCommand": [
+      "jockey",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "multi-agent collaboration platform (ACP); Tauri 2 + Rust + SolidJS; no releases, no registry, HEAD-only; 18 stars; MIT; edge case for source-build (no build system match \u2014 requires pnpm + Rust toolchain)"
+  },
+  {
+    "name": "m-icons",
+    "url": "https://github.com/mo-browser-apps/icons",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "m-icons"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "M\u014dIcons"
+    ],
+    "skip": true,
+    "notes": "AI macOS app icon generator; arm64-only DMG; signed + notarized; MIT; v1.0.3; 703 stars; not in HB"
+  },
+  {
+    "name": "eigent",
+    "url": "https://eigent-ai/eigent",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "eigent"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Eigent"
+    ],
+    "skip": true,
+    "notes": "Desktop AI agent, 14.5k stars, Apache-2.0, already in HB as cask, cask-app-release generator"
+  },
+  {
+    "name": "hermes-one",
+    "url": "https://github.com/fathah/hermes-desktop",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "hermes-one"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "Hermes One"
+    ],
+    "skip": true,
+    "notes": "Hermes Agent desktop GUI; MIT; v0.7.3; 13.4k stars; not in HB; electron-builder; arm64+x64 DMG; name override needed (repo name hermes-desktop collides with dodo-reach/hermes-desktop); cask-app-release"
+  },
+  {
+    "name": "ego-lite",
+    "url": "https://cdn.ego.app/channel/github_github_referral/setup/macos/arm64/egolite.dmg",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--app-name",
+      "ego lite.app",
+      "--homepage",
+      "https://lite.ego.app"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "ego lite"
+    ],
+    "skip": true,
+    "notes": "AI agent browser (Chromium); repo MIT, browser binary is separate free download (closed-source); v1.2.5; 4.3k stars; CDN DMG at cdn.ego.app with no version in URL (arm64 + x64); GitHub releases only host the ego-browser skill zip, not the DMG; not in HB; cask-app generator"
+  },
+  {
+    "name": "harnesskit",
+    "url": "https://github.com/RealZST/HarnessKit",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "harnesskit"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "open",
+      "-a",
+      "harnesskit"
+    ],
+    "skip": true,
+    "notes": "AI coding agent extension manager; Tauri 2 desktop + standalone hk CLI binary; arch-specific DMGs (aarch64 + x64); hk CLI binary also on releases; install.sh available; Apache-2.0; 352 stars; v1.6.5; not in HB; cask-app-release generator"
+  },
+  {
+    "name": "open-notebook",
+    "url": "https://github.com/lfnovo/open-notebook",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "open-notebook"
+    ],
+    "expectedBin": "open-notebook",
+    "verifyCommand": [
+      "open-notebook",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "open-source NotebookLM alternative; Docker primary; pip-installable from source (pyproject.toml); PyPI name taken by unrelated NIST project; no prebuilt binaries; generator: source-build; 34.7k stars; MIT; v1.10.0"
+  },
+  {
+    "name": "trae-agent",
+    "url": "https://github.com/bytedance/trae-agent",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "trae-agent"
+    ],
+    "expectedBin": "trae-agent",
+    "verifyCommand": [
+      "trae-agent",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "LLM-based agent for software engineering; cmd `trae-cli`; bin `trae-cli`; uv sync setup (pyproject.toml); no PyPI package; no GitHub releases; Python 3.12+; MIT; 11.9k stars; not in HB; source-build"
+  },
+  {
+    "name": "command-code",
+    "url": "https://www.npmjs.com/package/command-code",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "command-code"
+    ],
+    "expectedBin": "command-code",
+    "verifyCommand": [
+      "command-code",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "AI coding agent; cmd `cmd`; bin `cmd` != package name; UNLICENSED; 310 npm versions; 3.5k stars; no GitHub releases"
+  },
+  {
+    "name": "auggie",
+    "url": "https://www.npmjs.com/package/@augmentcode/auggie",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "@augmentcode/auggie"
+    ],
+    "expectedBin": "auggie",
+    "verifyCommand": [
+      "auggie",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "AI agentic coding CLI; scoped pkg @augmentcode/auggie; bin auggie (augment.mjs); non-SPDX license; homepage augmentcode.com; 251 stars; v0.32.0; not in HB; npm-package generator"
+  },
+  {
+    "name": "smithery-cli",
+    "url": "https://www.npmjs.com/package/@smithery/cli",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--package",
+      "@smithery/cli"
+    ],
+    "expectedBin": "smithery-cli",
+    "verifyCommand": [
+      "smithery-cli",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "MCP server/skill manager CLI; bin smithery; scoped pkg @smithery/cli normalizes to smithery-cli; repo also publishes unscoped smithery v1.2.0; v4.11.1; 805 stars; AGPL-3.0-or-later; in HB as smithery-cli; npm-package"
+  },
+  {
+    "name": "librechat",
+    "url": "https://github.com/danny-avila/LibreChat",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "librechat"
+    ],
+    "expectedBin": "librechat",
+    "verifyCommand": [
+      "librechat",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Self-hosted multi-provider AI chat; Docker primary; npm workspaces monorepo (not npm-published); no release assets; v0.8.7 pre-release; MIT; 41.2k stars; not in HB; source-build (make fallback; requires custom Node/Docker build)"
+  },
+  {
+    "name": "cua-driver",
+    "url": "https://cua.ai/driver/install.sh",
+    "generator": "install-script",
+    "allbrewArgs": [
+      "--name",
+      "cua-driver"
+    ],
+    "expectedBin": "cua-driver",
+    "verifyCommand": [
+      "cua-driver",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Background computer-use driver; installs CuaDriver.app + cua-driver CLI via install script; monorepo libs/cua-driver; latest stable v0.9.1; pre-release v0.10.0; 20.4k stars; MIT; not in HB; install-script generator"
+  },
+  {
+    "name": "officecli",
+    "url": "https://github.com/iOfficeAI/OfficeCLI",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--type",
+      "npm-package",
+      "--package",
+      "@officecli/officecli",
+      "--name",
+      "officecli"
+    ],
+    "expectedBin": "officecli",
+    "verifyCommand": [
+      "officecli",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Self-contained .NET Office doc CLI distributed via npm; also has direct GitHub release binaries and install.sh; Apache-2.0; v1.0.142; 22.6k stars; in HB; npm-package generator"
+  },
+  {
+    "name": "aichat",
+    "url": "https://github.com/sigoden/aichat",
+    "generator": "cargo-package",
+    "allbrewArgs": [
+      "--name",
+      "aichat"
+    ],
+    "expectedBin": "aichat",
+    "verifyCommand": [
+      "aichat",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "All-in-one AI chat CLI \u2014 Rust crates.io package preferred over prebuilt GitHub release archives; also in Homebrew as formula; cargo-package generator"
+  },
+  {
+    "name": "chat-shared-conversation-to-file",
+    "url": "https://github.com/Dicklesworthstone/chat_shared_conversation_to_file",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "chat-shared-conversation-to-file",
+      "--bin-name",
+      "csctf"
+    ],
+    "expectedBin": "csctf",
+    "verifyCommand": [
+      "csctf",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Bun-compiled bare multi-arch release binaries (csctf-macos-arm64 etc.); no archive extension. Regression for isBinaryAsset bare detection + bin rename."
+  },
+  {
+    "name": "afm",
+    "url": "https://github.com/rudrankriyam/Foundation-Models-Framework-CLI",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "afm",
+      "--desc",
+      "Command-line tool for Apple's Foundation Models framework."
+    ],
+    "expectedBin": "afm",
+    "verifyCommand": [
+      "afm",
+      "--help"
+    ],
+    "skip": true,
+    "notes": "Swift CLI with versioned bare universal binary afm_*_macOS_universal; optional afm serve is not brew-services primary"
+  },
+  {
+    "name": "codebuff",
+    "url": "https://github.com/CodebuffAI/codebuff",
+    "generator": "npm-package",
+    "allbrewArgs": [
+      "--name",
+      "codebuff",
+      "--package",
+      "codebuff"
+    ],
+    "expectedBin": "codebuff",
+    "verifyCommand": [
+      "codebuff",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "AI coding agent CLI; README lists freebuff before codebuff; no brew services; dual bin cb/codebuff"
+  },
+  {
+    "name": "nanobot-ai",
+    "url": "https://github.com/HKUDS/nanobot",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--name",
+      "nanobot",
+      "--package",
+      "nanobot-ai",
+      "--desc",
+      "Ultra-lightweight self-hosted personal AI agent framework with WebUI and gateway"
+    ],
+    "expectedBin": "nanobot",
+    "verifyCommand": [
+      "nanobot",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "HKUDS/nanobot PyPI nanobot-ai; homebrew/core owns unrelated nanobot Go formula so allbrew renames to nanobot-ai; service should be nanobot gateway; preserve_rpath for jiter wheels"
+  },
+  {
+    "name": "zap-zerx-lab",
+    "url": "https://github.com/zerx-lab/zap",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "zap",
+      "--app-name",
+      "Zap",
+      "--desc",
+      "Zap is an open, local-first terminal with first-class AI and agent support."
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "test",
+      "-d",
+      "/Applications/Zap.app"
+    ],
+    "skip": true,
+    "notes": "zerx-lab/zap GUI terminal; dual DMG+tarball assets; non-interactive prefers cask; renames off homebrew/cask OWASP zap token to zap-zerx-lab / zap-tap; no service"
+  },
+  {
+    "name": "open-interpreter",
+    "url": "https://github.com/openinterpreter/openinterpreter",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "open-interpreter",
+      "--desc",
+      "A coding agent for open models like Kimi K3"
+    ],
+    "expectedBin": "open-interpreter",
+    "verifyCommand": [
+      "open-interpreter",
+      "--version"
+    ],
+    "skip": true,
+    "notes": "Rust Codex-fork package tarball with nested bin/interpreter + resources; not the legacy PyPI open-interpreter package."
+  },
+  {
+    "name": "turbo-fieldfare",
+    "url": "https://github.com/drumih/turbo-fieldfare",
+    "generator": "spm-package",
+    "allbrewArgs": [
+      "--name",
+      "turbo-fieldfare"
+    ],
+    "expectedBin": "TurboFieldfareCLI",
+    "verifyCommand": [
+      "TurboFieldfareCLI",
+      "--help"
+    ],
+    "skip": true,
+    "notes": "Multi-product SPM Gemma Metal runtime; requires macOS 26+/Swift 6.2; no service block; primary bin TurboFieldfareCLI"
+  },
+  {
+    "name": "hermes-desktop-tap",
+    "url": "https://hermesone.org/",
+    "generator": "cask-app-release",
+    "allbrewArgs": [
+      "--name",
+      "hermes-desktop"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "ls",
+      "/Users/tariqwest/Applications/Hermes One.app"
+    ],
+    "skip": true,
+    "notes": "Homepage discovers fathah/hermes-desktop release DMG via GH enrichment; renames off homebrew/cask hermes-desktop collision."
+  },
+  {
+    "name": "omnigent",
+    "url": "https://github.com/omnigent-ai/omnigent",
+    "generator": "pip-package",
+    "allbrewArgs": [
+      "--name",
+      "omnigent"
+    ],
+    "expectedBin": "omnigent",
+    "verifyCommand": [
+      "omnigent",
+      "--help"
+    ],
+    "skip": true,
+    "notes": "Python monorepo with private package.json; README npm install -g pnpm must not select npm generator; uv tool install omnigent + local server service."
+  },
+  {
+    "name": "foundation-lab",
+    "url": "https://github.com/rudrankriyam/Foundation-Models-Framework-Lab",
+    "generator": "spm-package",
+    "allbrewArgs": [
+      "--name",
+      "foundation-lab"
+    ],
+    "expectedBin": null,
+    "verifyCommand": null,
+    "skip": true,
+    "notes": "Xcode app lab with library-only Package.swift and empty release assets; expect generate fail / reject (not installable via Homebrew formula). CLI is separate afm repo.",
+    "expectGenerateFail": true
+  }
+]

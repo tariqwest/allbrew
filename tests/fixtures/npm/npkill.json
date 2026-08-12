@@ -1,0 +1,23 @@
+{
+  "name": "npkill",
+  "description": "List any node_modules directories in your system, as well as the space they take up. You can then select which ones you want to erase to free up space.",
+  "dist-tags": {
+    "latest": "0.12.2"
+  },
+  "homepage": "https://github.com/zaldih/npkill#readme",
+  "license": "MIT",
+  "versions": {
+    "0.12.2": {
+      "name": "npkill",
+      "version": "0.12.2",
+      "license": "MIT",
+      "dist": {
+        "tarball": "https://registry.npmjs.org/npkill/-/npkill-0.12.2.tgz",
+        "shasum": "3dcaa1bdf769412c9f17ef6927e324cb21e01133"
+      },
+      "bin": {
+        "npkill": "lib/index.js"
+      }
+    }
+  }
+}

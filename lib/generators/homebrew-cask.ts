@@ -1,0 +1,358 @@
+import { toCaskToken, writeCask } from "../utils.ts";
+
+const HOMEBREW_API_BASE = "https://formulae.brew.sh/api";
+const HOMEBREW_CASK_RAW_BASE =
+  "https://raw.githubusercontent.com/Homebrew/homebrew-cask";
+
+const FETCH_TIMEOUT = 30_000;
+
+type HomebrewCaskApiInfo = {
+  token: string;
+  version?: string;
+  homepage?: string;
+  ruby_source_path?: string;
+  tap_git_head?: string;
+};
+
+function registrableHost(hostname: string): string {
+  const parts = String(hostname || "")
+    .toLowerCase()
+    .split(".")
+    .filter(Boolean);
+  if (parts.length <= 2) return parts.join(".");
+  return parts.slice(-2).join(".");
+}
+
+/** First label of an eTLD+1 host (refine.app → refine, refine.sh → refine). */
+function hostSldLabel(registrable: string): string {
+  return (
+    String(registrable || "")
+      .toLowerCase()
+      .split(".")
+      .filter(Boolean)[0] || ""
+  );
+}
+
+/**
+ * Strip common marketing host prefixes so cleanshot.com matches getcleanshot.com.
+ * Keep original when stripping would leave a too-short core.
+ */
+function brandCoreLabel(label: string): string {
+  const l = String(label || "").toLowerCase();
+  if (!l) return "";
+  const stripped = l.replace(/^(get|try|use|go|download|www|app)/, "");
+  if (stripped.length >= 3) return stripped;
+  return l;
+}
+
+/**
+ * Documentation, support, developer portals, and non-marketing subdomains
+ * should not trigger official cask adoption via homepage domain matching.
+ * E.g. docs.warp.dev describes the Warp Agent CLI; the official cask "warp"
+ * is the GUI app at warp.dev. Matching would install the wrong product.
+ */
+function isDocumentationHost(hostname: string): boolean {
+  const h = String(hostname || "").toLowerCase().replace(/^www\./, "");
+  if (
+    /^(docs?|support|help|learn|developer|dev\.|handbook|guides|status|blog|changelog|gitbook|notion|readme|devdocs)\./.test(
+      h,
+    )
+  )
+    return true;
+  if (/^api\./.test(h)) return true;
+  return false;
+}
+
+function isDocumentationPath(pathname: string): boolean {
+  const p = String(pathname || "").toLowerCase();
+  if (/\/(docs?|documentation|quickstart|guide|guides|cli|sdk|api-reference)\b/.test(p)) return true;
+  if (/\/agent-cli\b/i.test(p)) return true;
+  if (/\/download\/agent-cli/i.test(p)) return true;
+  return false;
+}
+
+/** Satellite / helper casks that share a vendor domain with the main product. */
+function isSatelliteHelperToken(token: string): boolean {
+  return /(?:mac)?sandboxhelper|sandboxing-helper|helper|companion|uninstaller|quicklook/i.test(
+    String(token || ""),
+  );
+}
+
+/**
+ * True when preferred slug and cask token name the same product.
+ * Rejects loose substring matches like preferred "things" → "thingsmacsandboxhelper".
+ */
+function preferredRelatedToToken(
+  preferred: Set<string>,
+  token: string,
+): boolean {
+  const t = toCaskToken(token);
+  if (!t || preferred.size === 0) return false;
+  if (preferred.has(t)) return true;
+
+  const editionRest =
+    /^[-_]?(pro|app|mac|desktop|for-mac|premium|plus|free|lite|beta|nightly|stable|x|\d+)$/i;
+
+  for (const p of preferred) {
+    if (!p) continue;
+    if (t === p) return true;
+    if (t.startsWith(p)) {
+      const rest = t.slice(p.length);
+      if (!rest || editionRest.test(rest)) return true;
+      continue;
+    }
+    if (p.startsWith(t)) {
+      const rest = p.slice(t.length);
+      if (!rest || editionRest.test(rest)) return true;
+    }
+  }
+  return false;
+}
+
+function preferredWantsHelper(preferred: Set<string>): boolean {
+  for (const p of preferred) {
+    if (isSatelliteHelperToken(p)) return true;
+  }
+  return false;
+}
+
+/**
+ * Case C: when the user pastes a product homepage that already has an official
+ * homebrew/cask whose homepage shares the same registrable domain, adopt that
+ * cask instead of inventing a MAS/tap duplicate from marketing HTML.
+ *
+ * Also accepts same product brand on a different TLD when the cask token equals
+ * the page host label (e.g. expired refine.app → official cask homepage refine.sh).
+ * Brand cores treat marketing prefixes as equivalent (cleanshot.com ↔ getcleanshot.com).
+ */
+/** Expand batch slugs into plausible homebrew/cask tokens.
+ * aldente-pro → aldente-pro, aldente, aldentepro
+ * refine-app → refine-app, refine, refineapp
+ * cleanshot-x → cleanshot-x, cleanshot, cleanshotx
+ */
+function expandPreferredCaskTokens(preferredName?: string | null): string[] {
+  const tokens: string[] = [];
+  const push = (raw: string | null | undefined) => {
+    const t = toCaskToken(String(raw || ""));
+    if (t && !tokens.includes(t)) tokens.push(t);
+  };
+  const raw = String(preferredName || "").trim();
+  if (!raw) return tokens;
+  push(raw);
+  const bare = toCaskToken(raw);
+  // Strip common product/edition suffixes used in batch slugs.
+  const stripped = bare.replace(
+    /-(pro|app|mac|desktop|for-mac|premium|plus|free|lite|beta|nightly|stable|x)$/i,
+    "",
+  );
+  if (stripped !== bare) push(stripped);
+  // First hyphen segment (aldente-pro → aldente, cleanshot-x → cleanshot).
+  if (bare.includes("-")) push(bare.split("-")[0]);
+  // Dehyphenated form.
+  push(bare.replace(/-/g, ""));
+  return tokens;
+}
+
+export async function matchOfficialCaskByHomepage(
+  pageUrl: string,
+  preferredName?: string | null,
+): Promise<{ token: string; version?: string; homepage?: string } | null> {
+  let pageHost = "";
+  let rawHost = "";
+  let rawPath = "";
+  try {
+    const u = new URL(pageUrl);
+    rawHost = u.hostname.toLowerCase().replace(/^www\./, "");
+    rawPath = u.pathname;
+    pageHost = registrableHost(rawHost);
+  } catch {
+    return null;
+  }
+  if (!pageHost) return null;
+
+  // Never treat docs/support/developer subdomains or doc-like paths as the
+  // product's marketing homepage for the purpose of adopting an official cask.
+  // The homepage match is intended for the actual product site (e.g. warp.dev),
+  // not docs.warp.dev or similar.
+  if (isDocumentationHost(rawHost) || isDocumentationPath(rawPath)) {
+    return null;
+  }
+
+  const pageLabel = hostSldLabel(pageHost);
+  const pageCore = brandCoreLabel(pageLabel);
+
+  const tokens: string[] = [];
+  const push = (raw: string | null | undefined) => {
+    const t = toCaskToken(String(raw || ""));
+    if (t && !tokens.includes(t)) tokens.push(t);
+  };
+  for (const t of expandPreferredCaskTokens(preferredName)) push(t);
+  try {
+    const host = new URL(pageUrl).hostname.toLowerCase().replace(/^www\./, "");
+    const hostLabel = host.split(".")[0];
+    push(hostLabel);
+    // getcleanshot.com → also probe cleanshot
+    const core = brandCoreLabel(hostLabel);
+    if (core && core !== hostLabel) push(core);
+  } catch {
+    /* ignore */
+  }
+  if (pageCore && pageCore !== pageLabel) push(pageCore);
+
+  for (const token of tokens) {
+    try {
+      const apiUrl = `${HOMEBREW_API_BASE}/cask/${encodeURIComponent(token)}.json`;
+      const info = (await fetchJson(apiUrl)) as HomebrewCaskApiInfo;
+      if (!info?.token) continue;
+      const hp = info.homepage || "";
+      if (!hp) continue;
+      let caskHost = "";
+      try {
+        caskHost = registrableHost(new URL(hp).hostname);
+      } catch {
+        continue;
+      }
+      if (!caskHost) continue;
+
+      const exactDomain = caskHost === pageHost;
+      // Cross-TLD / marketing-prefix brand match: only when the probed token is
+      // the brand core so example.com + --name superwhisper still returns null.
+      const caskLabel = hostSldLabel(caskHost);
+      const caskCore = brandCoreLabel(caskLabel);
+      const official = info.token || token;
+      const coresMatch =
+        Boolean(pageCore) && Boolean(caskCore) && pageCore === caskCore;
+      const tokenIsBrand =
+        token === pageLabel ||
+        token === pageCore ||
+        token === caskLabel ||
+        token === caskCore ||
+        official === pageLabel ||
+        official === pageCore ||
+        official === caskCore;
+      const brandTldFlex = coresMatch && tokenIsBrand;
+
+      if (exactDomain || brandTldFlex) {
+        if (preferredName) {
+          const prefSet = new Set(expandPreferredCaskTokens(preferredName));
+          const originalToken = toCaskToken(preferredName);
+          const exactOriginal = originalToken === toCaskToken(info.token || token);
+          const related = preferredRelatedToToken(prefSet, info.token || token);
+          if (!exactOriginal && !related) continue;
+        }
+        return {
+          token: info.token || token,
+          version: info.version,
+          homepage: info.homepage,
+        };
+      }
+    } catch {
+      /* token not on homebrew/cask or network error */
+    }
+  }
+
+  // Fallback: scan cask index for homepage registrable-domain matches when
+  // host SLD ≠ product token (apphousekitchen.com → aldente).
+  try {
+    const index = (await fetchJson(`${HOMEBREW_API_BASE}/cask.json`)) as Array<{
+      token?: string;
+      version?: string;
+      homepage?: string;
+    }>;
+    if (!Array.isArray(index)) return null;
+    const preferred = new Set(expandPreferredCaskTokens(preferredName));
+    const domainHits: Array<{
+      token: string;
+      version?: string;
+      homepage?: string;
+    }> = [];
+    for (const row of index) {
+      const hp = row?.homepage || "";
+      if (!hp || !row?.token) continue;
+      let caskHost = "";
+      try {
+        caskHost = registrableHost(new URL(hp).hostname);
+      } catch {
+        continue;
+      }
+      if (caskHost !== pageHost) continue;
+      domainHits.push({
+        token: row.token,
+        version: row.version,
+        homepage: row.homepage,
+      });
+    }
+    if (domainHits.length === 0) return null;
+
+    // Drop satellite helpers unless the user slug explicitly asks for a helper.
+    const productHits = preferredWantsHelper(preferred)
+      ? domainHits
+      : domainHits.filter((h) => !isSatelliteHelperToken(h.token));
+    const pool = productHits.length > 0 ? productHits : domainHits;
+
+    if (preferred.size > 0) {
+      const byPreferred = pool.find((h) => preferred.has(toCaskToken(h.token)));
+      if (byPreferred) return byPreferred;
+      const related = pool.find((h) =>
+        preferredRelatedToToken(preferred, h.token),
+      );
+      if (related) return related;
+      // Preferred slug does not match any domain hit (e.g. things-3 vs
+      // thingsmacsandboxhelper only) → fall through to page discovery.
+      return null;
+    }
+
+    if (pool.length === 1) return pool[0];
+    // Multiple products, no preferred slug: do not guess.
+    if (pool.length > 1) return null;
+  } catch {
+    /* index unavailable */
+  }
+  return null;
+}
+
+async function fetchJson(url: string): Promise<any> {
+  const response = await fetch(url, {
+    headers: { "User-Agent": "allbrew/1.0" },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT),
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} for ${url}`);
+  }
+  return response.json();
+}
+
+async function fetchText(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: { "User-Agent": "allbrew/1.0" },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT),
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} for ${url}`);
+  }
+  return response.text();
+}
+
+export async function generateHomebrewCask(name: string, options: any = {}) {
+  const token = toCaskToken(name);
+
+  const apiUrl = `${HOMEBREW_API_BASE}/cask/${encodeURIComponent(token)}.json`;
+  const info = (await fetchJson(apiUrl)) as HomebrewCaskApiInfo;
+
+  const sourcePath = info.ruby_source_path;
+  const sourceHead = info.tap_git_head;
+  if (!sourcePath || !sourceHead) {
+    throw new Error(`Homebrew Cask API did not return source path for ${token}`);
+  }
+
+  const rawUrl = `${HOMEBREW_CASK_RAW_BASE}/${sourceHead}/${sourcePath}`;
+  const ruby = await fetchText(rawUrl);
+
+  const filePath = await writeCask(token, ruby, options.tapPath);
+  return {
+    filePath,
+    name: token,
+    type: "cask" as const,
+    recordedVersion: info.version || "",
+  };
+}
