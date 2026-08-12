@@ -734,6 +734,13 @@ describe("collectPipPackagePayload — empty requires_dist + description service
     expect(payload.serviceBlock).toContain("service do");
     expect(payload.serviceBlock).toContain("visdom");
     expect(payload.testDoBody).toContain("import visdom");
+
+    // Non-interactive CLI sets service:false when no prior serviceConfig;
+    // description-based detection must still win.
+    const forced = await collectPipPackagePayload("visdom", null, {
+      service: false,
+    });
+    expect(forced.serviceBlock).toContain("service do");
   });
 });
 

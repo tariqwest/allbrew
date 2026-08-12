@@ -196,22 +196,23 @@ export async function collectPipPackagePayload(
 
   // Registry (pypi.org) URLs never fetch a GitHub README; use the package
   // long_description when present so server packages get a service block.
-  let serviceOptions = options;
-  if (
-    options.service !== false &&
-    !options.service &&
+  // Non-interactive CLI sets options.service=false when params.serviceConfig is
+  // null (collectServiceOptions) — that is "no prior detection", not an
+  // explicit user forbid. Only honor service:false when a command/config was
+  // never eligible for auto-detect (serviceCommand already set to empty via
+  // options.serviceConfig === false is not used). Re-detect from description.
+  let serviceOptions = { ...options };
+  const longDesc = pypiData.info.description || "";
+  const canAutoDetectService =
+    !options.serviceCommand &&
     !options.serviceConfig &&
-    !options.serviceCommand
-  ) {
-    const longDesc = pypiData.info.description || "";
-    if (longDesc.length > 80) {
-      const detected = detectServiceConfig(longDesc, packageName);
-      if (
-        detected?.command &&
-        detected.confidence !== "low"
-      ) {
-        serviceOptions = { ...options, serviceConfig: detected };
-      }
+    options.service !== true;
+  if (canAutoDetectService && longDesc.length > 80) {
+    const detected = detectServiceConfig(longDesc, packageName);
+    if (detected?.command && detected.confidence !== "low") {
+      // Drop non-interactive default service:false so serviceFromOptions applies.
+      const { service: _ignored, ...rest } = serviceOptions;
+      serviceOptions = { ...rest, serviceConfig: detected };
     }
   }
 
