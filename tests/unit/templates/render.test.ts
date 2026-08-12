@@ -25,6 +25,7 @@ describe("renderFormula", () => {
       allbrewDependency: "",
       testBinName: "foo",
       serviceBlock: "",
+      stdNpmArgs: "*std_npm_args",
     };
     const expected =
       `class Foo < Formula\n` +
@@ -58,6 +59,29 @@ describe("renderFormula", () => {
       `  end\n` +
       `end\n`;
     expect(renderFormula(payload)).toBe(expected);
+  });
+
+  it("renders npm_package with ignore_scripts: false when install scripts needed", () => {
+    const payload: FormulaPayload = {
+      template: "npm_package",
+      name: "railway-cli",
+      className: "RailwayCli",
+      desc: "Develop and deploy code with zero configuration",
+      homepage: "https://github.com/railwayapp/cli/blob/master/README.md",
+      url: "https://registry.npmjs.org/@railway/cli/-/cli-5.37.7.tgz",
+      sha256: "00",
+      licenseLine: '  license "ISC"\n',
+      livecheckBlock: "",
+      allbrewDependency: "",
+      testBinName: "railway",
+      serviceBlock: "",
+      stdNpmArgs: "*std_npm_args(ignore_scripts: false)",
+    };
+    const result = renderFormula(payload);
+    expect(result).toContain(
+      `system "npm", "install", *std_npm_args(ignore_scripts: false), "--min-release-age=0"`,
+    );
+    expect(result).toContain(`shell_output("#{bin}/railway --version")`);
   });
 
   it("renders pip_package template with resources", () => {
@@ -435,6 +459,7 @@ describe("renderFormula", () => {
       allbrewDependency: "",
       testBinName: "foo",
       serviceBlock,
+      stdNpmArgs: "*std_npm_args",
     };
     const result = renderFormula(payload);
     expect(result).toContain("service do");

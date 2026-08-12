@@ -27,6 +27,13 @@ export type NpmPackagePayload = FormulaCommonFields & {
   sha256: string;
   licenseLine: string;
   livecheckBlock: string;
+  /**
+   * Pre-rendered splat for Homebrew's `std_npm_args` helper.
+   * Default `*std_npm_args` (ignore_scripts: true). When package.json declares
+   * install/postinstall/preinstall scripts that must run (e.g. platform binary
+   * downloaders like @railway/cli), use `*std_npm_args(ignore_scripts: false)`.
+   */
+  stdNpmArgs: string;
 };
 
 export type PipPackagePayload = FormulaCommonFields & {

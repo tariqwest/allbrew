@@ -57,6 +57,13 @@ export async function collectNpmPackagePayload(
 
   const binName = options.binName || extractNpmBinName(versionData, packageName) || name;
 
+  // Homebrew's std_npm_args defaults to ignore_scripts: true. Packages whose
+  // install lifecycle scripts download platform binaries (e.g. @railway/cli
+  // postinstall) must run those scripts or bin wrappers exit ENOENT.
+  const stdNpmArgs = npmNeedsInstallScripts(versionData)
+    ? "*std_npm_args(ignore_scripts: false)"
+    : "*std_npm_args";
+
   return {
     template: "npm_package",
     name,
@@ -70,7 +77,19 @@ export async function collectNpmPackagePayload(
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     livecheckBlock: npmLivecheckBlock(packageName),
     serviceBlock: buildServiceBlock(service, name),
+    stdNpmArgs,
   };
+}
+
+/**
+ * True when package.json declares lifecycle scripts that must run during
+ * `npm install` for the package to be usable (native builds, binary download).
+ * Maps to Homebrew `std_npm_args(ignore_scripts: false)`.
+ */
+export function npmNeedsInstallScripts(versionData: any): boolean {
+  const scripts = versionData?.scripts;
+  if (!scripts || typeof scripts !== "object") return false;
+  return Boolean(scripts.preinstall || scripts.install || scripts.postinstall);
 }
 
 /**

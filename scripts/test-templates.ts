@@ -79,6 +79,7 @@ function buildNpmPackageCase(): Case {
     allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
+    stdNpmArgs: "*std_npm_args",
   };
   const expected =
     `class Foo < Formula\n` +

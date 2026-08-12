@@ -1,5 +1,8 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectNpmPackagePayload } from "../../../lib/generators/npm-package.ts";
+import {
+  collectNpmPackagePayload,
+  npmNeedsInstallScripts,
+} from "../../../lib/generators/npm-package.ts";
 import maildevFixture from "../../fixtures/npm/maildev.json";
 import diracCliFixture from "../../fixtures/npm/dirac-cli.json";
 import clineFixture from "../../fixtures/npm/cline.json";
@@ -10,6 +13,7 @@ import samanhappyMcphubFixture from "../../fixtures/npm/samanhappy-mcphub.json";
 import augmentcodeAuggieFixture from "../../fixtures/npm/augmentcode-auggie.json";
 import smitheryCliFixture from "../../fixtures/npm/smithery-cli.json";
 import officecliFixture from "../../fixtures/npm/officecli.json";
+import railwayCliFixture from "../../fixtures/npm/railway-cli.json";
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
@@ -722,5 +726,82 @@ describe("collectNpmPackagePayload — @officecli/officecli", () => {
       name: "officecli",
     });
     expect(payload.serviceBlock).toBe("");
+  });
+});
+
+describe("npmNeedsInstallScripts", () => {
+  it("is false when scripts are absent", () => {
+    expect(npmNeedsInstallScripts({})).toBe(false);
+    expect(npmNeedsInstallScripts({ scripts: {} })).toBe(false);
+    expect(npmNeedsInstallScripts({ scripts: { test: "echo ok" } })).toBe(false);
+  });
+
+  it("is true for preinstall/install/postinstall", () => {
+    expect(npmNeedsInstallScripts({ scripts: { postinstall: "node setup.js" } })).toBe(true);
+    expect(npmNeedsInstallScripts({ scripts: { install: "node-gyp rebuild" } })).toBe(true);
+    expect(npmNeedsInstallScripts({ scripts: { preinstall: "echo hi" } })).toBe(true);
+  });
+});
+
+describe("collectNpmPackagePayload — @railway/cli (postinstall binary download)", () => {
+  beforeEach(() => {
+    mock.restore();
+
+    global.fetch = mock((url: string) => {
+      if (
+        url.includes("registry.npmjs.org/@railway/cli") ||
+        url.includes("registry.npmjs.org/%40railway%2Fcli")
+      ) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(railwayCliFixture),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+      });
+    }) as any;
+  });
+
+  it("returns payload with correct template identifier", async () => {
+    const payload = await collectNpmPackagePayload("@railway/cli");
+    expect(payload.template).toBe("npm_package");
+  });
+
+  it("derives name railway-cli from scoped package", async () => {
+    const payload = await collectNpmPackagePayload("@railway/cli");
+    expect(payload.name).toBe("railway-cli");
+    expect(payload.className).toBe("RailwayCli");
+  });
+
+  it("extracts bin name railway (not cli)", async () => {
+    const payload = await collectNpmPackagePayload("@railway/cli");
+    expect(payload.testBinName).toBe("railway");
+  });
+
+  it("enables install scripts so postinstall can download the platform binary", async () => {
+    const payload = await collectNpmPackagePayload("@railway/cli");
+    expect(payload.stdNpmArgs).toBe("*std_npm_args(ignore_scripts: false)");
+  });
+});
+
+describe("collectNpmPackagePayload — default ignore_scripts for pure JS packages", () => {
+  beforeEach(() => {
+    mock.restore();
+    global.fetch = mock((url: string) => {
+      if (url.includes("registry.npmjs.org/maildev")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(maildevFixture),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    }) as any;
+  });
+
+  it("uses *std_npm_args (ignore_scripts default true) without install scripts", async () => {
+    const payload = await collectNpmPackagePayload("maildev");
+    expect(payload.stdNpmArgs).toBe("*std_npm_args");
   });
 });

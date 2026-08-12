@@ -1,0 +1,28 @@
+{
+  "name": "@railway/cli",
+  "description": "Develop and deploy code with zero configuration",
+  "dist-tags": {
+    "latest": "5.37.7"
+  },
+  "homepage": "https://github.com/railwayapp/cli/blob/master/README.md",
+  "license": "ISC",
+  "versions": {
+    "5.37.7": {
+      "name": "@railway/cli",
+      "version": "5.37.7",
+      "description": "Develop and deploy code with zero configuration",
+      "homepage": "https://github.com/railwayapp/cli/blob/master/README.md",
+      "license": "ISC",
+      "bin": {
+        "railway": "bin/railway.js"
+      },
+      "scripts": {
+        "postinstall": "node ./npm-install/postinstall.js"
+      },
+      "dist": {
+        "tarball": "https://registry.npmjs.org/@railway/cli/-/cli-5.37.7.tgz",
+        "shasum": "0f11ae5bdedd4be452c0d7be61ca8b77340cf2e5"
+      }
+    }
+  }
+}
