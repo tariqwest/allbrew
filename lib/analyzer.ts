@@ -15,16 +15,21 @@ const BUN_INSTALL_RE =
   new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}bun[ \\t]+(?:install|add)[ \\t]+(?:-g[ \\t]+|--global[ \\t]+)?([^\\s;|&\\n\`]+)`, "i");
 const NPX_RE =
   new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}npx[ \\t]+([^\\s;|&\\n\`]+)`, "i");
+// Flags that take a separate value token (pip/pipx/uv): --python 3.11, -p 3.11, -i URL, etc.
+// Boolean flags (--upgrade, --pre, -U) and =form (--index-url=URL) use the generic branch.
+const PIP_VALUE_LONG =
+  "python|index-url|extra-index-url|find-links|target|prefix|root|requirement|constraint|src|platform|python-version|implementation|abi|config-settings|with|from";
+const PIP_VALUE_SHORT = "pift rc".replace(/\s/g, ""); // p i f t r c
 const PIP_FLAGS =
-  "(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n]*)?)*";
+  `(?:[ \\t]+(?:--(?:${PIP_VALUE_LONG})(?:[ =][^\\s;|&\\n\`]+)?|-[${PIP_VALUE_SHORT}](?:[ \\t]+(?!-)[^\\s;|&\\n\`]+)?|-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?))*`;
 const PIP_INSTALL_RE =
-  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pip[3]?[ \\t]+install(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pip[3]?[ \\t]+install${PIP_FLAGS}[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
 const PIPX_INSTALL_RE =
-  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pipx[ \\t]+install(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}pipx[ \\t]+install${PIP_FLAGS}[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
 const UV_TOOL_INSTALL_RE =
-  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}uv[ \\t]+(?:tool[ \\t]+install|pip[ \\t]+install)(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}uv[ \\t]+(?:tool[ \\t]+install|pip[ \\t]+install)${PIP_FLAGS}[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
 const UVX_RE =
-  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}uvx(?:[ \\t]+-(?:[A-Za-z]|-[\\w-]+)(?:=[^\\s;|&\\n\`]*)?)*[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
+  new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}uvx${PIP_FLAGS}[ \\t]+([^\\s;|&\\n\`'-][^\\s;|&\\n\`]*)`, "i");
 const DENO_INSTALL_RE =
   new RegExp(`(?:^|[\`\\n])\\s*${SHELL_PROMPT}deno[ \\t]+install\\b[^\\n\`]*(?:\\s(?:--name|-n)[ =]([^\\s;|&\\n\`]+)|\\s([\\w./:@-]+))(?:[^\\n\`]*)`, "i");
 const SWIFT_RUN_RE =
@@ -460,9 +465,38 @@ function detectPortBoundPackageService(readmeText, packageName) {
   };
 }
 
+/**
+ * Localhost URLs that only appear as client config (api_base / base_url = …)
+ * describe connecting TO an external server (LocalAI, ollama, LiteLLM), not
+ * this package starting a supervised daemon.
+ */
+function isClientConfigEndpoint(readmeText, endpointIndex) {
+  const start = readmeText.lastIndexOf("\n", endpointIndex) + 1;
+  const endIdx = readmeText.indexOf("\n", endpointIndex);
+  const line = readmeText.slice(start, endIdx === -1 ? undefined : endIdx);
+  if (
+    /(?:api[_-]?base|base[_-]?url|api[_-]?url|openai[_-]?api[_-]?base|endpoint[_-]?url|model[_-]?url|api[_-]?host)\s*[=:]\s*/i.test(
+      line,
+    )
+  ) {
+    return true;
+  }
+  // TOML/JSON/env assignment of a bare key to a localhost URL
+  if (
+    /^\s*[\w.-]+\s*[=:]\s*["']?https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])/i.test(
+      line,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function detectLocalWebService(readmeText, packageName) {
   LOCAL_ENDPOINT_RE.lastIndex = 0;
-  const endpoints = [...readmeText.matchAll(LOCAL_ENDPOINT_RE)];
+  const endpoints = [...readmeText.matchAll(LOCAL_ENDPOINT_RE)].filter(
+    (endpoint) => !isClientConfigEndpoint(readmeText, endpoint.index || 0),
+  );
   if (endpoints.length === 0) return null;
 
   // File-driven preview CLIs (open browser for a slides file) are not services.
@@ -789,11 +823,11 @@ function pickPreferredPipPackage(readmeText, preferredPackageName = "") {
 
   const preferred = String(preferredPackageName || "").trim();
   if (preferred) {
-    const preferredLower = preferred.toLowerCase();
+    const preferredLower = preferred.toLowerCase().replace(/_/g, "-");
     const preferredLast = preferredLower.split("/").pop();
     const matchPreferred = candidates.find((c) => {
       if (!c.package) return false;
-      const pkg = c.package.toLowerCase();
+      const pkg = c.package.toLowerCase().replace(/_/g, "-");
       const last = pkg.split("/").pop();
       return (
         pkg === preferredLower ||
@@ -807,6 +841,24 @@ function pickPreferredPipPackage(readmeText, preferredPackageName = "") {
     // preferred package only appears behind a shell prompt or later in docs.
     if (matchPreferred) {
       return { method: "pip", package: matchPreferred.package };
+    }
+    // Repo slug often prefixes the distribution name (elia → elia-chat). Only
+    // accept when a single candidate clearly extends the preferred slug.
+    const related = candidates.filter((c) => {
+      if (!c.package) return false;
+      const last = c.package
+        .toLowerCase()
+        .replace(/_/g, "-")
+        .split("/")
+        .pop();
+      if (!last || !preferredLast) return false;
+      return (
+        last.startsWith(`${preferredLast}-`) ||
+        preferredLast.startsWith(`${last}-`)
+      );
+    });
+    if (related.length === 1) {
+      return { method: "pip", package: related[0].package };
     }
     // Preferred name set but no pip hit for it — let later methods try.
     // Local editable installs still count as python source build.
@@ -984,12 +1036,16 @@ function cleanPipPackageSpec(specifier) {
 
   if (/^(?:git\+|hg\+|svn\+|bzr\+|https?:|file:)/i.test(cleaned)) return null;
 
+  // Reject pure version tokens mistakenly captured after --python 3.11 etc.
+  if (/^\d+(?:\.\d+)*$/.test(cleaned)) return null;
+
   cleaned = cleaned.replace(/@[^/@\[]+$/, "");
   cleaned = cleaned.replace(/\[[^\]]*\]$/, "");
   cleaned = cleaned.replace(/(?:===|==|!=|~=|>=|<=|>|<).*$/, "");
 
   cleaned = cleaned.trim();
   if (!cleaned || cleaned.startsWith("-")) return null;
+  if (/^\d+(?:\.\d+)*$/.test(cleaned)) return null;
 
   return cleaned;
 }

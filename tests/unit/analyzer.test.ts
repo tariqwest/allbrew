@@ -165,6 +165,34 @@ Install from pip
     expect(result).toEqual({ method: "pip", package: "toolong" });
   });
 
+  it("detects pipx install with --python VERSION (elia-chat)", () => {
+    const readme = [
+      "## Installation",
+      "",
+      "Install Elia with pipx:",
+      "",
+      "```bash",
+      "pipx install --python 3.11 elia-chat",
+      "```",
+    ].join("\n");
+    expect(detectInstallMethod(readme, "elia")).toEqual({
+      method: "pip",
+      package: "elia-chat",
+    });
+    expect(detectInstallMethod(readme)).toEqual({
+      method: "pip",
+      package: "elia-chat",
+    });
+  });
+
+  it("maps preferred repo slug to related pip distribution (elia → elia-chat)", () => {
+    const readme = "```bash\npipx install elia-chat\n```";
+    expect(detectInstallMethod(readme, "elia")).toEqual({
+      method: "pip",
+      package: "elia-chat",
+    });
+  });
+
   it("detects uv tool install as pip", () => {
     const result = detectInstallMethod("```bash\nuv tool install marimo\n```");
     expect(result).toEqual({ method: "pip", package: "marimo" });
@@ -725,6 +753,36 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
       "```",
     ].join("\n");
     expect(detectServiceConfig(readme, "reveal-md")).toBeNull();
+  });
+
+  it("does not treat client api_base localhost config as a package service (elia)", () => {
+    const readme = [
+      "# elia",
+      "",
+      "A snappy, keyboard-centric terminal user interface for LLMs.",
+      "",
+      "```bash",
+      "pipx install --python 3.11 elia-chat",
+      "```",
+      "",
+      "```bash",
+      "elia",
+      "```",
+      "",
+      "```bash",
+      "elia \"Tell me a cool fact about lizards!\"",
+      "```",
+      "",
+      "Run the local ollama server: `ollama serve`.",
+      "",
+      "```toml",
+      "[[models]]",
+      'name = "openai/some-model"',
+      'api_base = "http://localhost:8080/v1"',
+      'api_key = "api-key-if-required"',
+      "```",
+    ].join("\n");
+    expect(detectServiceConfig(readme, "elia")).toBeNull();
   });
 });
 

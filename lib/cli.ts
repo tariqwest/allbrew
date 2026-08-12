@@ -1416,16 +1416,23 @@ async function handleGithubRepo(classification, opts) {
           opts,
         );
       }
-      case "pip":
+      case "pip": {
+        let packageName = repoInfo.name;
+        const pyproject = await getFileContent(owner, repo, "pyproject.toml");
+        if (pyproject) {
+          const fromProject = parsePyprojectPackageName(pyproject);
+          if (fromProject) packageName = fromProject;
+        }
         return await generateWithConfirmation(
           "pip-package",
           {
-            packageName: opts.package || repoInfo.name,
+            packageName: opts.package || packageName,
             repoInfo,
             serviceConfig,
           },
           opts,
         );
+      }
       case "cargo": {
         const cargoToml = await getFileContent(owner, repo, "Cargo.toml");
         const resolved = await resolveCargoGithubInstall(
@@ -2364,6 +2371,26 @@ async function assertSpmPackageInstallable(
         : "") +
       `Do not generate a Homebrew formula that runs swift build without a bin product.`,
   );
+}
+
+/**
+ * Extract PEP 621 / poetry package name from pyproject.toml text.
+ * Prefer [project] name, then [tool.poetry] name.
+ */
+function parsePyprojectPackageName(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const sections = String(text).split(/^\s*\[/m);
+  for (const section of sections) {
+    const headerMatch = section.match(/^(project|tool\.poetry)\]/);
+    if (!headerMatch) continue;
+    const nameMatch = section.match(/^\s*name\s*=\s*["']([^"']+)["']/m);
+    if (nameMatch?.[1]) {
+      return nameMatch[1].trim();
+    }
+  }
+  // Fallback: first top-level name = "..." (may be wrong for multi-table files)
+  const loose = String(text).match(/^\s*name\s*=\s*["']([^"']+)["']/m);
+  return loose?.[1]?.trim() || null;
 }
 
 /**
