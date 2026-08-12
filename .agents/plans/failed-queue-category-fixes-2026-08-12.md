@@ -96,6 +96,21 @@ Companion docs:
 
 (install-script + core collision + prerelease unblock the most requeues with least surface area)
 
+## Implementation status (2026-08-12 session)
+
+| P0 | Status | Commits (on main) |
+|----|--------|-------------------|
+| 1 install-script | **done** | `feat(install-script): pass noninteractive flags…` |
+| 2 prerelease | **done** | `fix(github): fall back to newest prerelease…` |
+| 3 core name API | **done** | `fix(utils): detect homebrew/core formula collisions…` |
+| 4 binary-release | **done** | `fix(binary-release): refuse LICENSE entrypoints…` |
+| 5 pip subset | **done** (high-value maps; not full resource graph rewrite) | `fix(pip): skip bad wheels…` |
+| 6 gem | **done** | `feat(gem): add native depends_on map…` |
+| 7 cargo locked | **done** | `fix(cargo): retry cargo install without --locked…` |
+| 8 npm service | **done** | `feat(npm): detect brew services hints…` |
+| 9 setapp-bootstrap | **not done** | — |
+| 10 MAS Mac ID | **not done** | — |
+
 ## Out of scope (do not fix in product)
 
 - Setapp full install without credentials → remain **blocked**
