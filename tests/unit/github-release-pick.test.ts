@@ -169,6 +169,30 @@ describe("pickReleaseWithBinaryAssets", () => {
     expect(picked?.tagName).toBe("cua-driver-rs-v0.19.3");
   });
 
+  test("when all product tags are prerelease, prefers non-nightly over nightly", () => {
+    const picked = pickReleaseWithBinaryAssets(
+      [
+        rel(
+          "nightly-cua-driver-rs-v0.19.4-nightly.1",
+          ["cua-driver-rs-0.19.4-nightly.1-darwin-arm64.tar.gz"],
+          { prerelease: true },
+        ),
+        rel(
+          "cua-driver-rs-v0.19.3",
+          ["cua-driver-rs-0.19.3-darwin-arm64.tar.gz"],
+          { prerelease: true },
+        ),
+        rel(
+          "cua-driver-rs-v0.19.2",
+          ["cua-driver-rs-0.19.2-darwin-arm64.tar.gz"],
+          { prerelease: true },
+        ),
+      ],
+      { ...binOpts, productName: "cua-driver" },
+    );
+    expect(picked?.tagName).toBe("cua-driver-rs-v0.19.3");
+  });
+
   test("returns null when product has no matching binary release", () => {
     const picked = pickReleaseWithBinaryAssets(
       [rel("lume-v0.5.3", ["lume-0.5.3-darwin-arm64.tar.gz"])],
