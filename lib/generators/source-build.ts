@@ -50,6 +50,7 @@ export async function collectSourceBuildPayload(
 
   const system = buildSystem?.system || "make";
 
+  const testBinName = options.binName || name;
   return {
     template: "source_build",
     name,
@@ -61,10 +62,10 @@ export async function collectSourceBuildPayload(
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     urlLines,
     dependenciesLines: buildDependenciesLines(system),
-    installBody: buildInstallBody(system),
+    installBody: buildInstallBody(system, testBinName),
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    testBinName: rubyEscape(options.binName || name),
+    testBinName: rubyEscape(testBinName),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
     isPython: system === "python",
   };
@@ -76,8 +77,8 @@ function buildDependenciesLines(system: string) {
   return deps.map((dep) => `  depends_on ${dep}\n`).join("") + "\n";
 }
 
-function buildInstallBody(system: string) {
-  return getInstallBlock(system);
+function buildInstallBody(system: string, binName?: string) {
+  return getInstallBlock(system, binName);
 }
 
 function getDependencies(system: string): string[] {
@@ -105,7 +106,7 @@ function getDependencies(system: string): string[] {
   }
 }
 
-function getInstallBlock(system: string) {
+function getInstallBlock(system: string, binName?: string) {
   switch (system) {
     case "cmake":
       return (
@@ -126,14 +127,17 @@ function getInstallBlock(system: string) {
       );
     case "go":
       return `    system "go", "build", *std_go_args(ldflags: "-s -w")\n`;
-    case "python":
-      // virtualenv_create uses --without-pip; use venv.pip_install (Homebrew
-      // Virtualenv helper bootstraps pip). Installs runtime deps from PyPI.
+    case "python": {
+      // Prefer stdlib venv (includes pip) over virtualenv_create (--without-pip +
+      // Homebrew pip_install forces --no-deps). Only symlink the package console
+      // script so we do not collide with python@*/bin/python3.x.
+      const script = rubyEscape(binName || "python");
       return (
-        `    venv = virtualenv_create(libexec, "python3.12")\n` +
-        `    venv.pip_install buildpath\n` +
-        `    bin.install_symlink Dir["#{libexec}/bin/*"]\n`
+        `    system "python3.12", "-m", "venv", libexec\n` +
+        `    system libexec/"bin/pip", "install", "-v", buildpath\n` +
+        `    bin.install_symlink libexec/"bin/${script}"\n`
       );
+    }
     default:
       return `    system "make", "PREFIX=#{prefix}", "install"\n`;
   }
