@@ -158,3 +158,75 @@ describe("collectGemPackagePayload — license_finder", () => {
     expect(payload.livecheckBlock).toContain("license_finder");
   });
 });
+
+import { parseGemspecExecutables } from "../../../lib/generators/gem-package.ts";
+
+describe("parseGemspecExecutables", () => {
+  it("parses empty inline array (library gem)", () => {
+    expect(parseGemspecExecutables("name: geminabox\nexecutables: []\nbindir: bin\n")).toEqual([]);
+  });
+
+  it("parses inline list", () => {
+    expect(parseGemspecExecutables("executables: [pry, pry-remote]\n")).toEqual([
+      "pry",
+      "pry-remote",
+    ]);
+  });
+
+  it("parses block list", () => {
+    const yaml = "executables:\n- license_finder\n- lf\nrequired_ruby_version: '>= 2.7'\n";
+    expect(parseGemspecExecutables(yaml)).toEqual(["license_finder", "lf"]);
+  });
+});
+
+describe("collectGemPackagePayload — library gem (no executables)", () => {
+  beforeEach(() => {
+    mock.restore();
+
+    global.fetch = mock(async (url: string) => {
+      const u = String(url);
+      if (u.includes("rubygems.org") && u.includes("/gems/geminabox.json")) {
+        return {
+          ok: true,
+          json: async () => ({
+            version: "3.1.0",
+            gem_uri: "https://rubygems.org/gems/geminabox-3.1.0.gem",
+            info: "Really simple private RubyGems hosting",
+            homepage_uri: "https://github.com/geminabox/geminabox",
+            licenses: ["MIT"],
+          }),
+        };
+      }
+      if (u.includes("geminabox-3.1.0.gem")) {
+        // Minimal fake .gem: tar containing metadata.gz with executables: []
+        const zlib = await import("node:zlib");
+        const { execSync } = await import("node:child_process");
+        const fs = await import("node:fs");
+        const os = await import("node:os");
+        const path = await import("node:path");
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fake-gem-"));
+        const meta = "--- !ruby/object:Gem::Specification\nname: geminabox\nexecutables: []\nbindir: bin\n";
+        fs.writeFileSync(path.join(dir, "metadata.gz"), zlib.gzipSync(meta));
+        const gemPath = path.join(dir, "pkg.gem");
+        execSync(`tar -czf ${JSON.stringify(gemPath)} -C ${JSON.stringify(dir)} metadata.gz`);
+        const buf = fs.readFileSync(gemPath);
+        fs.rmSync(dir, { recursive: true, force: true });
+        return {
+          ok: true,
+          arrayBuffer: async () =>
+            buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength),
+        };
+      }
+      return { ok: false, status: 404 };
+    }) as any;
+  });
+
+  it("installs library version shim when gem has no executables", async () => {
+    const payload = await collectGemPackagePayload("geminabox");
+    expect(payload.template).toBe("gem_package");
+    expect(payload.testBinName).toBe("geminabox");
+    expect(payload.libraryShimBlock).toContain("Library gem");
+    expect(payload.libraryShimBlock).toContain('require "geminabox"');
+    expect(payload.libraryShimBlock).toContain('Gem.loaded_specs["geminabox"]');
+  });
+});

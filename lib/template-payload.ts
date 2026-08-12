@@ -195,6 +195,8 @@ export type GemPackagePayload = FormulaCommonFields & {
   licenseLine: string;
   urlLines: string;
   livecheckBlock: string;
+  /** Pre-rendered install lines for library gems with no gemspec executables (empty when unused). */
+  libraryShimBlock: string;
 };
 
 export type MintPackagePayload = FormulaCommonFields & {
