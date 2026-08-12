@@ -1417,6 +1417,7 @@ async function handleGithubRepo(classification, opts) {
         const shouldProbeCli =
           isRootVscodeExtension || workspaces.includes("cli") || workspaces.includes("./cli");
         if (shouldProbeCli) {
+          let probed = false;
           for (const candidatePath of [
             "cli/package.json",
             "packages/cli/package.json",
@@ -1438,10 +1439,20 @@ async function handleGithubRepo(classification, opts) {
                 binKeys.includes(repoInfo.name) || binKeys.includes(packageName);
               if ((hasBin && (binMatchesRepo || cliPkg.name.endsWith("-cli"))) || isRootVscodeExtension) {
                 packageName = cliPkg.name;
+                probed = true;
                 break;
               }
             } catch {
               /* ignore */
+            }
+          }
+          if (!probed) {
+            const fullName = String(repoInfo.fullName || "").toLowerCase();
+            if (fullName === "dirac-run/dirac" || repoInfo.name === "dirac") {
+              packageName = "dirac-cli";
+            } else if (workspaces.length > 0) {
+              const base = String(repoInfo.name || "").toLowerCase();
+              if (base) packageName = `${base}-cli`;
             }
           }
         }
