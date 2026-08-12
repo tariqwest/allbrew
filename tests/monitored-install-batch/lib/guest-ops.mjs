@@ -477,6 +477,27 @@ if [ "$BIN_OK" = "0" ]; then
     done
   fi
 fi
+# GUI / long-lived launchers often hang or open windows on --version/--help
+# (e.g. pyqt-openai). Prefer the formula's own test do (import-based) or a
+# libexec python import of the package module.
+if [ "$BIN_OK" = "0" ]; then
+  if brew test --verbose "$NAME" >/tmp/ab-brew-test 2>&1; then
+    echo BIN_OK; BIN_OK=1; echo BREW_TEST_OK; head -15 /tmp/ab-brew-test
+  else
+    echo BREW_TEST_FAIL; tail -20 /tmp/ab-brew-test 2>/dev/null || true
+  fi
+fi
+if [ "$BIN_OK" = "0" ]; then
+  PREFIX=$(brew --prefix "$NAME" 2>/dev/null || true)
+  if [ -n "$PREFIX" ] && [ -x "$PREFIX/libexec/bin/python" ]; then
+    MOD=$(echo "$NAME" | tr '-' '_')
+    if perl -e "alarm 20; exec @ARGV" "$PREFIX/libexec/bin/python" -c "import ${MOD}; print(getattr(${MOD}, '__version__', 'ok'))" >/tmp/ab-bin-out 2>&1; then
+      echo BIN_OK; BIN_OK=1; echo IMPORT_OK; echo "IMPORT_MOD=$MOD"; head -5 /tmp/ab-bin-out
+    else
+      echo IMPORT_FAIL; head -10 /tmp/ab-bin-out 2>/dev/null || true
+    fi
+  fi
+fi
 if [ "$BIN_OK" = "0" ]; then echo BIN_MISSING; fi
 ls "$HOME/Applications" 2>/dev/null | head -10 || true
 if ls "$HOME/Applications" 2>/dev/null | grep -qi "$NAME"; then echo APP_OK; fi
