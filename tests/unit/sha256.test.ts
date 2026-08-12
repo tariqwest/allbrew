@@ -7,17 +7,37 @@ import {
   downloadAndHash,
   hashUrl,
   downloadToTemp,
+  incompleteDownloadReason,
+  withCacheBustQuery,
+  CACHE_BUST_PARAM,
 } from "../../lib/sha256.ts";
 
 // ─── A6: sha256 unit tests ───────────────────────────────────────────────
 // Tests fetch timeout behavior, 2GB size cap enforcement, and temp-file
 // cleanup on success and failure. Uses mock fetch (no real downloads).
 
-function mockResponse(body: string | Buffer, opts?: { status?: number; statusText?: string }) {
+function mockHeaders(init: Record<string, string> = {}) {
+  const lower: Record<string, string> = {};
+  for (const [k, v] of Object.entries(init)) lower[k.toLowerCase()] = v;
   return {
-    ok: (opts?.status ?? 200) < 400,
-    status: opts?.status ?? 200,
+    get: (name: string) => lower[name.toLowerCase()] ?? null,
+  };
+}
+
+function mockResponse(
+  body: string | Buffer,
+  opts?: {
+    status?: number;
+    statusText?: string;
+    headers?: Record<string, string>;
+  },
+) {
+  const status = opts?.status ?? 200;
+  return {
+    ok: status >= 200 && status < 300,
+    status,
     statusText: opts?.statusText ?? "OK",
+    headers: mockHeaders(opts?.headers),
     body: new ReadableStream({
       start(controller) {
         controller.enqueue(typeof body === "string" ? new TextEncoder().encode(body) : body);
@@ -27,11 +47,16 @@ function mockResponse(body: string | Buffer, opts?: { status?: number; statusTex
   } as any;
 }
 
-function mockStreamingResponse(chunks: Buffer[], opts?: { status?: number }) {
+function mockStreamingResponse(
+  chunks: Buffer[],
+  opts?: { status?: number; headers?: Record<string, string> },
+) {
+  const status = opts?.status ?? 200;
   return {
-    ok: (opts?.status ?? 200) < 400,
-    status: opts?.status ?? 200,
+    ok: status >= 200 && status < 300,
+    status,
     statusText: "OK",
+    headers: mockHeaders(opts?.headers),
     body: new ReadableStream({
       start(controller) {
         for (const chunk of chunks) controller.enqueue(chunk);
@@ -42,10 +67,21 @@ function mockStreamingResponse(chunks: Buffer[], opts?: { status?: number }) {
 }
 
 const originalFetch = global.fetch;
+const originalSkipWire = process.env.ALLBREW_SKIP_CURL_WIRE_CHECK;
+
+beforeEach(() => {
+  // Offline unit tests mock fetch; do not spawn real curl against example.com.
+  process.env.ALLBREW_SKIP_CURL_WIRE_CHECK = "1";
+});
 
 afterEach(() => {
   global.fetch = originalFetch;
   mock.restore();
+  if (originalSkipWire === undefined) {
+    delete process.env.ALLBREW_SKIP_CURL_WIRE_CHECK;
+  } else {
+    process.env.ALLBREW_SKIP_CURL_WIRE_CHECK = originalSkipWire;
+  }
 });
 
 describe("downloadAndHash", () => {
@@ -150,6 +186,71 @@ it("handles multi-chunk streams correctly", async () => {
     expect(sawNormalized).toBe(true);
     expect(result.sha256).toBe(expected);
     expect(result.buffer!.toString()).toBe(data);
+  });
+
+  it("retries cache-bust when CDN returns incomplete 206 partial body", async () => {
+    const full = "full-dmg-artifact-body";
+    const expected = createHash("sha256").update(full).digest("hex");
+    const partial = Buffer.from("x".repeat(16));
+    global.fetch = mock((input: RequestInfo | URL) => {
+      const href = String(input);
+      if (href.includes(`${CACHE_BUST_PARAM}=`)) {
+        return Promise.resolve(mockResponse(full, { status: 200 }));
+      }
+      return Promise.resolve(
+        mockResponse(partial, {
+          status: 206,
+          headers: { "content-range": "bytes 0-15/11137815" },
+        }),
+      );
+    }) as any;
+
+    const result = await downloadAndHash(
+      "https://www.example.com/echo/downloads/Echo-latest.dmg",
+    );
+    expect(result.sha256).toBe(expected);
+    expect(result.size).toBe(full.length);
+    expect(result.finalUrl).toContain(`${CACHE_BUST_PARAM}=`);
+  });
+
+  it("throws when 206 partial persists after cache-bust retry", async () => {
+    const partial = Buffer.from("x".repeat(16));
+    global.fetch = mock(() =>
+      Promise.resolve(
+        mockResponse(partial, {
+          status: 206,
+          headers: { "content-range": "bytes 0-15/11137815" },
+        }),
+      ),
+    ) as any;
+
+    await expect(
+      downloadAndHash("https://www.example.com/echo/downloads/Echo-latest.dmg"),
+    ).rejects.toThrow(/Incomplete download|partial body/i);
+  });
+});
+
+describe("incompleteDownloadReason / withCacheBustQuery", () => {
+  it("flags 206 with Content-Range total larger than body", () => {
+    const reason = incompleteDownloadReason(
+      206,
+      mockHeaders({ "content-range": "bytes 0-15/11137815" }),
+      16,
+    );
+    expect(reason).toMatch(/partial body/);
+  });
+
+  it("returns null for complete 200 responses", () => {
+    expect(incompleteDownloadReason(200, mockHeaders(), 1000)).toBeNull();
+  });
+
+  it("adds unique cache-bust query", () => {
+    const out = withCacheBustQuery("https://cdn.example/app.dmg");
+    expect(out).toContain(`${CACHE_BUST_PARAM}=`);
+    expect(out.startsWith("https://cdn.example/app.dmg")).toBe(true);
+    const out2 = withCacheBustQuery("https://cdn.example/app.dmg");
+    // timestamps/random should differ across calls
+    expect(out).not.toBe(out2);
   });
 });
 

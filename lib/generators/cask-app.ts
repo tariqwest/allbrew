@@ -20,6 +20,7 @@ export async function collectCaskAppPayload(
     contentDisposition = "",
     versionHeader = null,
     serverFilename = null,
+    finalUrl = url,
   } = downloaded as {
     sha256: string;
     cleanup: () => Promise<void>;
@@ -28,10 +29,14 @@ export async function collectCaskAppPayload(
     contentDisposition?: string;
     versionHeader?: string | null;
     serverFilename?: string | null;
+    finalUrl?: string;
   };
+  // Prefer the URL that actually returned a complete body (may include a
+  // cache-bust query when the bare path was a poisoned CDN 206).
+  const artifactUrl = finalUrl || url;
   try {
     if (!appName) {
-      appName = await detectAppName(url, path, {
+      appName = await detectAppName(artifactUrl, path, {
         contentType,
         contentDisposition,
         serverFilename,
@@ -41,7 +46,7 @@ export async function collectCaskAppPayload(
     await cleanup();
   }
 
-  const pathFilename = url.split("/").pop().split("?")[0];
+  const pathFilename = artifactUrl.split("/").pop().split("?")[0];
   const filename =
     (serverFilename && String(serverFilename)) ||
     (/\.(dmg|zip|pkg)$/i.test(pathFilename) ? pathFilename : null) ||
@@ -50,7 +55,8 @@ export async function collectCaskAppPayload(
     .replace(/\.(dmg|zip|pkg)$/i, "")
     .replace(/-[\d.]+$/, "")
     // Avoid basing token/app on placeholder path segments from /download/latest APIs
-    .replace(/^(latest|download|current|stable)$/i, "");
+    .replace(/^(latest|download|current|stable)$/i, "")
+    .replace(/-latest$/i, "");
 
   const name =
     options.name ||
@@ -65,7 +71,7 @@ export async function collectCaskAppPayload(
   const version =
     options.version ||
     (versionHeader && String(versionHeader).match(/\d+\.\d+(?:\.\d+)?/)?.[0]) ||
-    extractVersionFromUrl(url) ||
+    extractVersionFromUrl(artifactUrl) ||
     extractCompactVersion(String(filename)) ||
     extractVersionFromUrl(String(serverFilename || "")) ||
     "1.0.0";
@@ -74,7 +80,7 @@ export async function collectCaskAppPayload(
     template: "cask_app",
     name,
     sha256: rubyEscape(sha256),
-    url: rubyEscape(url),
+    url: rubyEscape(artifactUrl),
     displayName: rubyEscape(displayName),
     desc: rubyEscape(desc),
     versionLine: `  version "${rubyEscape(version)}"\n`,
@@ -82,13 +88,13 @@ export async function collectCaskAppPayload(
       ? `  homepage "${rubyEscape(options.homepage)}"\n`
       : "",
     appOrPkgBlock: buildAppOrPkgBlock(
-      url,
+      artifactUrl,
       String(filename),
       appName,
       baseName || String(displayName),
       name,
     ),
-    livecheckBlock: urlVersionLivecheckBlock(url),
+    livecheckBlock: urlVersionLivecheckBlock(artifactUrl),
   };
 }
 
