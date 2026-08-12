@@ -1049,14 +1049,8 @@ export async function discoverMasFallbackCandidates(
         continue;
       }
 
-      let score = exact ? 96 : 82;
-      const evidence = [
-        "mas-itunes-search-fallback",
-        exact ? "mas-name-exact" : "mas-name-prefix",
-        `term:${term}`,
-      ];
-
-      // Bonus when seller homepage hostname relates to the input host
+      // Seller homepage hostname relates to the input host?
+      let sellerRelated = false;
       try {
         const seller = String(r.sellerUrl || "");
         const pageHost = new URL(pageUrl).hostname.replace(/^www\./, "");
@@ -1067,12 +1061,41 @@ export async function discoverMasFallbackCandidates(
             sellerHost.includes(pageLabel) ||
             pageHost.includes(sellerHost.split(".")[0] || "")
           ) {
-            score += 4;
-            evidence.push("mas-seller-host-related");
+            sellerRelated = true;
           }
         }
       } catch {
         /* ignore */
+      }
+
+      // High-confidence only: exact always; prefix only with seller-host link
+      // or a short known marketing suffix (Pro/App/for Mac/…). Rejects loose
+      // bindings like smartfolder.app → "Smart Folder Monitor" (extra "monitor").
+      let marketingSuffixOk = false;
+      if (!exact && nameNorm.startsWith(termNorm)) {
+        const extra = nameNorm.slice(termNorm.length);
+        marketingSuffixOk =
+          !extra ||
+          /^(formac|macos|mac|osx|app|pro|lite|free|desktop|client|\d+)$/.test(
+            extra,
+          );
+      } else if (!exact && termNorm.startsWith(nameNorm) && nameNorm.length >= 4) {
+        // Track name is a shorter core brand than the search term.
+        marketingSuffixOk = true;
+      }
+      if (!exact && !sellerRelated && !marketingSuffixOk) {
+        continue;
+      }
+
+      let score = exact ? 96 : sellerRelated ? 86 : 82;
+      const evidence = [
+        "mas-itunes-search-fallback",
+        exact ? "mas-name-exact" : "mas-name-prefix",
+        `term:${term}`,
+      ];
+      if (sellerRelated) {
+        score = Math.max(score, exact ? 100 : 90);
+        evidence.push("mas-seller-host-related");
       }
 
       seenIds.add(trackId);

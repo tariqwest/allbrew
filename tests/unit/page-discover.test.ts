@@ -716,6 +716,56 @@ describe("MAS iTunes fallback (auth-walled marketing pages)", () => {
     expect(cands[0].score).toBeGreaterThanOrEqual(90);
   });
 
+  it("discoverMasFallbackCandidates rejects loose prefix without seller host (smart-folder)", async () => {
+    // Dead marketing domain smartfolder.app must not bind unrelated
+    // "Smart Folder Monitor" via name-prefix alone (extra token "Monitor").
+    const cands = await discoverMasFallbackCandidates("https://smartfolder.app/", {
+      nameHint: "smart-folder",
+      itunesSearch: async () => [
+        {
+          kind: "mac-software",
+          trackId: 6777587967,
+          trackName: "Smart Folder Monitor",
+          // sellerUrl unrelated to smartfolder.app
+          sellerUrl: "https://oneportal.space/",
+        },
+      ],
+    });
+    expect(cands.length).toBe(0);
+  });
+
+  it("discoverMasFallbackCandidates accepts prefix when seller host relates", async () => {
+    const cands = await discoverMasFallbackCandidates("https://smartfolder.app/", {
+      nameHint: "smart-folder",
+      itunesSearch: async () => [
+        {
+          kind: "mac-software",
+          trackId: 111,
+          trackName: "Smart Folder Monitor",
+          sellerUrl: "https://smartfolder.app/support",
+        },
+      ],
+    });
+    expect(cands.length).toBe(1);
+    expect(cands[0].url).toContain("id111");
+    expect(cands[0].evidence).toContain("mas-seller-host-related");
+  });
+
+  it("discoverMasFallbackCandidates accepts marketing suffix Pro/App", async () => {
+    const cands = await discoverMasFallbackCandidates("https://example.app/", {
+      nameHint: "widget",
+      itunesSearch: async () => [
+        {
+          kind: "mac-software",
+          trackId: 222,
+          trackName: "Widget Pro",
+        },
+      ],
+    });
+    expect(cands.length).toBe(1);
+    expect(cands[0].url).toContain("id222");
+  });
+
   it("discoverPageDownloads recovers MAS when page fetch would be empty via fixture+search", async () => {
     // Empty HTML shell + no static links → A.10 MAS fallback
     const result = await discoverPageDownloads("https://pieoneer.app/", {
