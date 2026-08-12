@@ -1566,9 +1566,46 @@ async function handleNpmPackage(classification, opts) {
   if (!packageName) {
     throw new Error("npm package name required (use --package or an npmjs URL)");
   }
+
+  // Registry packages (verdaccio, etc.) often document a long-running server in
+  // the npm README without a GitHub path — mirror GitHub README service detection.
+  let serviceConfig = opts.serviceConfig || null;
+  if (!serviceConfig && opts.service !== false) {
+    try {
+      const { detectServiceConfig } = await import("./analyzer.ts");
+      const registryBase =
+        process.env.NPM_REGISTRY_URL || "https://registry.npmjs.org";
+      const encoded = packageName.startsWith("@")
+        ? packageName.replace("/", "%2F")
+        : encodeURIComponent(packageName);
+      const res = await fetch(`${registryBase}/${encoded}`, {
+        headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (res.ok) {
+        const pkgData = await res.json();
+        const readme = String(pkgData?.readme || pkgData?.description || "");
+        if (readme) {
+          serviceConfig = detectServiceConfig(readme, packageName);
+          if (serviceConfig) {
+            console.log(
+              `  Detected service/launchagent hint from npm README${
+                serviceConfig.confidence
+                  ? ` (${serviceConfig.confidence} confidence)`
+                  : ""
+              }`,
+            );
+          }
+        }
+      }
+    } catch {
+      /* optional network — generation still works without service block */
+    }
+  }
+
   return await generateWithConfirmation(
     "npm-package",
-    { packageName, repoInfo: null },
+    { packageName, repoInfo: null, serviceConfig },
     opts,
   );
 }
