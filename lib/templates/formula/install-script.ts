@@ -16,6 +16,11 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
     ENV["HOME"] = buildpath.to_s
     # Common generic override accepted by some installers.
     ENV["BIN_DIR"] = (buildpath/"bin").to_s
+    # Deno install.sh uses DENO_INSTALL (default $HOME/.deno) → bin_dir=$DENO_INSTALL/bin.
+    # Point at buildpath so the binary lands in buildpath/bin (a known candidate dir).
+    ENV["DENO_INSTALL"] = buildpath.to_s
+    # Cargo/rustup-style tools that default under $HOME/.cargo/bin
+    ENV["CARGO_HOME"] = (buildpath/".cargo").to_s
     # Warp Agent CLI honors WARP_TUI_* (defaults to $HOME/.warp and $HOME/.local/bin);
     # point them inside buildpath so the versioned layout is discoverable.
     ENV["WARP_TUI_INSTALL_DIR"] = (buildpath/"warp-tui").to_s
@@ -35,8 +40,10 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
 
     candidates = [
       buildpath/"bin",
-      buildpath/".local/bin",
-      buildpath/"usr/local/bin",
+      buildpath/".local"/"bin",
+      buildpath/".deno"/"bin",
+      buildpath/".cargo"/"bin",
+      buildpath/"usr"/"local"/"bin",
       Pathname.new(ENV.fetch("PREFIX"))/"bin",
     ].uniq
     installed = false
@@ -52,8 +59,11 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
       break
     end
     unless installed
-      bins = Dir[buildpath/"**/*"].select do |f|
-        File.file?(f) && File.executable?(f) && !File.basename(f).start_with?(".")
+      # Dir["**/*"] skips hidden dirs (.deno, .cargo); FNM_DOTMATCH includes them.
+      bins = Dir.glob(buildpath.join("**", "*").to_s, File::FNM_DOTMATCH).select do |f|
+        base = File.basename(f)
+        next false if base == "." || base == ".." || base.start_with?(".")
+        File.file?(f) && File.executable?(f)
       end
       odie "install script produced no executable binaries under buildpath" if bins.empty?
       bin.install bins

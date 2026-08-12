@@ -119,6 +119,27 @@ describe("resolveNonCollidingFormulaName", () => {
     expect(result.name).toBe("nanobot-tap");
     expect(result.renamedFrom).toBe("nanobot");
   });
+
+  it("detects core formulae via API cache when checkout is missing (API-only VM)", () => {
+    // Simulate API-only Homebrew: no Formula/*.rb checkout, only cache JSON.
+    setHomebrewCorePrefixForTests(null);
+    const cacheRoot = mkdtempSync(join(tmpdir(), "allbrew-formula-cache-"));
+    mkdirSync(join(cacheRoot, "api", "formula"), { recursive: true });
+    writeFileSync(
+      join(cacheRoot, "api", "formula", "deno.json"),
+      JSON.stringify({ name: "deno", tap: "homebrew/core" }),
+    );
+    setHomebrewCachePrefixForTests(cacheRoot);
+    try {
+      expect(isHomebrewCoreFormulaName("deno")).toBe(true);
+      const result = resolveNonCollidingFormulaName("deno", []);
+      expect(result.name).toBe("deno-tap");
+      expect(result.renamedFrom).toBe("deno");
+    } finally {
+      setHomebrewCachePrefixForTests(undefined);
+      rmSync(cacheRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("resolveNonCollidingCaskName", () => {

@@ -494,12 +494,34 @@ function buildInstallScriptCase(): Case {
     `    ENV["HOME"] = buildpath.to_s\n` +
     `    # Common generic override accepted by some installers.\n` +
     `    ENV["BIN_DIR"] = (buildpath/"bin").to_s\n` +
+    `    # Deno install.sh uses DENO_INSTALL (default $HOME/.deno) → bin_dir=$DENO_INSTALL/bin.\n` +
+    `    # Point at buildpath so the binary lands in buildpath/bin (a known candidate dir).\n` +
+    `    ENV["DENO_INSTALL"] = buildpath.to_s\n` +
+    `    # Cargo/rustup-style tools that default under $HOME/.cargo/bin\n` +
+    `    ENV["CARGO_HOME"] = (buildpath/".cargo").to_s\n` +
+    `    # Warp Agent CLI honors WARP_TUI_* (defaults to $HOME/.warp and $HOME/.local/bin);\n` +
+    `    # point them inside buildpath so the versioned layout is discoverable.\n` +
+    `    ENV["WARP_TUI_INSTALL_DIR"] = (buildpath/"warp-tui").to_s\n` +
+    `    ENV["WARP_TUI_BIN_DIR"] = (buildpath/"bin").to_s\n` +
     `    system "bash", cached_download.to_s\n` +
+    `\n` +
+    `    # Warp Agent CLI uses a versioned layout: $WARP_TUI_INSTALL_DIR/warp-tui/versions/<version>/warp-tui-stable\n` +
+    `    # with a symlink $WARP_TUI_BIN_DIR/warp -> .../current/warp-tui-stable. The symlink target\n` +
+    `    # is under buildpath and would be broken after install, so install the real binary directly.\n` +
+    `    warp_bin = Dir[buildpath/"warp-tui"/"versions"/"*"/"warp-tui-*"].select { |f| File.file?(f) && File.executable?(f) }.first\n` +
+    `    if warp_bin\n` +
+    `      bin.install warp_bin => "warp"\n` +
+    `      # Also ensure the versioned layout's resources are available if needed (optional)\n` +
+    `      # The installer already staged everything under warp-tui/ — Homebrew only needs the binary.\n` +
+    `      return\n` +
+    `    end\n` +
     `\n` +
     `    candidates = [\n` +
     `      buildpath/"bin",\n` +
-    `      buildpath/".local/bin",\n` +
-    `      buildpath/"usr/local/bin",\n` +
+    `      buildpath/".local"/"bin",\n` +
+    `      buildpath/".deno"/"bin",\n` +
+    `      buildpath/".cargo"/"bin",\n` +
+    `      buildpath/"usr"/"local"/"bin",\n` +
     `      Pathname.new(ENV.fetch("PREFIX"))/"bin",\n` +
     `    ].uniq\n` +
     `    installed = false\n` +
@@ -507,22 +529,29 @@ function buildInstallScriptCase(): Case {
     `      next unless dir.directory?\n` +
     `      bins = Dir[dir/"*"].select { |f| File.file?(f) && File.executable?(f) }\n` +
     `      next if bins.empty?\n` +
+    `      # If the only bin is a broken symlink (warp -> warp-tui/...), resolve to the real binary.\n` +
+    `      # Homebrew's bin.install would copy the symlink as-is, leaving a broken link.\n` +
+    `      # For warp, the real binary is already handled above; for others, install as-is.\n` +
     `      bin.install bins\n` +
     `      installed = true\n` +
     `      break\n` +
     `    end\n` +
     `    unless installed\n` +
-    `      bins = Dir[buildpath/"**/*"].select do |f|\n` +
-    `        File.file?(f) && File.executable?(f) && !File.basename(f).start_with?(".")\n` +
+    `      # Dir["**/*"] skips hidden dirs (.deno, .cargo); FNM_DOTMATCH includes them.\n` +
+    `      bins = Dir.glob(buildpath.join("**", "*").to_s, File::FNM_DOTMATCH).select do |f|\n` +
+    `        base = File.basename(f)\n` +
+    `        next false if base == "." || base == ".." || base.start_with?(".")\n` +
+    `        File.file?(f) && File.executable?(f)\n` +
     `      end\n` +
     `      odie "install script produced no executable binaries under buildpath" if bins.empty?\n` +
     `      bin.install bins\n` +
     `    end\n` +
-    `  end\n\n` +
+    `  end\n` +
+    `\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
     `  end\n` +
-    `end\n`;
+    `end\n`
   return { template: "install_script", kind: "formula", payload, expected };
 }
 
