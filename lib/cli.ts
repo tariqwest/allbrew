@@ -45,6 +45,93 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
+/** When GitHub python has no PyPI package, fall back to source-build. */
+async function generatePythonSourceBuildFallback(args: {
+  owner: string;
+  repo: string;
+  repoInfo: any;
+  release: any;
+  serviceConfig: any;
+  opts: any;
+}) {
+  const { owner, repo, repoInfo, release, serviceConfig, opts } = args;
+  console.log(
+    chalk.dim(
+      "  PyPI lookup failed (404), falling back to source-build (python)",
+    ),
+  );
+  let binName: string | undefined = opts.binName;
+  let fallbackRelease = release;
+  try {
+    const pyproject = await getFileContent(owner, repo, "pyproject.toml");
+    if (pyproject) {
+      if (!binName) {
+        const m = pyproject.match(
+          /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
+        );
+        if (m) binName = m[1].trim();
+      }
+      // Prefer versioned GitHub archive over HEAD-only so brew install does not
+      // use --HEAD (unstable). Branch tarballs need an explicit version stanza
+      // (added by source-build when tagName is set).
+      if (!fallbackRelease) {
+        const ver =
+          pyproject.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1] ||
+          pyproject.match(
+            /\[project\][\s\S]*?^version\s*=\s*["']([^"']+)["']/m,
+          )?.[1];
+        if (ver) {
+          const branch = repoInfo.defaultBranch || "main";
+          fallbackRelease = {
+            tagName: ver,
+            // codeload is more reliable than github.com/archive redirects in VMs
+            tarballUrl: `https://codeload.github.com/${repoInfo.fullName}/tar.gz/refs/heads/${branch}`,
+          };
+        }
+      }
+    }
+  } catch {
+    /* best-effort metadata */
+  }
+
+  const buildOpts = { ...opts, binName };
+  try {
+    return await generateWithConfirmation(
+      "source-build",
+      {
+        repoInfo,
+        release: fallbackRelease,
+        buildSystem: { system: "python" },
+        serviceConfig,
+      },
+      buildOpts,
+    );
+  } catch (hashErr) {
+    // Transient network / redirect failures hashing the branch tarball — fall
+    // back to HEAD-only (no url/sha256 download at generate time).
+    const msg = String((hashErr as Error)?.message || String(hashErr));
+    if (!fallbackRelease || !/socket|fetch|download|hash|ECONN|timed out|network/i.test(msg)) {
+      throw hashErr;
+    }
+    console.log(
+      chalk.dim(
+        `  Source archive hash failed (${msg.slice(0, 80)}…); using HEAD-only source-build`,
+      ),
+    );
+    return await generateWithConfirmation(
+      "source-build",
+      {
+        repoInfo,
+        release: null,
+        buildSystem: { system: "python" },
+        serviceConfig,
+      },
+      buildOpts,
+    );
+  }
+}
+
+
 export async function run(url, opts: any = {}) {
   if (opts.token) initOctokit(opts.token);
 
@@ -1213,56 +1300,14 @@ async function handleGithubRepo(classification, opts) {
               )
             )
               throw e;
-            console.log(
-              chalk.dim(
-                "  PyPI lookup failed (404), falling back to source-build (python)",
-              ),
-            );
-            let binName: string | undefined = opts.binName;
-            let fallbackRelease = release;
-            try {
-              const pyproject = await getFileContent(
-                owner,
-                repo,
-                "pyproject.toml",
-              );
-              if (pyproject) {
-                if (!binName) {
-                  const m = pyproject.match(
-                    /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
-                  );
-                  if (m) binName = m[1].trim();
-                }
-                // Prefer versioned GitHub archive over HEAD-only so brew install
-                // does not use --HEAD (unstable; fails more often).
-                if (!fallbackRelease) {
-                  const ver =
-                    pyproject.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1] ||
-                    pyproject.match(
-                      /\[project\][\s\S]*?^version\s*=\s*["']([^"']+)["']/m,
-                    )?.[1];
-                  if (ver) {
-                    const branch = repoInfo.defaultBranch || "main";
-                    fallbackRelease = {
-                      tagName: ver,
-                      tarballUrl: `https://github.com/${repoInfo.fullName}/archive/refs/heads/${branch}.tar.gz`,
-                    };
-                  }
-                }
-              }
-            } catch {
-              /* best-effort metadata */
-            }
-            return await generateWithConfirmation(
-              "source-build",
-              {
-                repoInfo,
-                release: fallbackRelease,
-                buildSystem: { system: "python" },
-                serviceConfig: serviceConfigFromReadme,
-              },
-              { ...opts, binName },
-            );
+            return await generatePythonSourceBuildFallback({
+              owner,
+              repo,
+              repoInfo,
+              release,
+              serviceConfig: serviceConfigFromReadme,
+              opts,
+            });
           }
         }
         case "cargo":
@@ -1516,50 +1561,14 @@ async function handleGithubRepo(classification, opts) {
             )
           )
             throw e;
-          console.log(
-            chalk.dim(
-              "  PyPI lookup failed (404), falling back to source-build (python)",
-            ),
-          );
-          let binName: string | undefined = opts.binName;
-          let fallbackRelease = release;
-          try {
-            const pyproject = await getFileContent(owner, repo, "pyproject.toml");
-            if (pyproject) {
-              if (!binName) {
-                const m = pyproject.match(
-                  /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
-                );
-                if (m) binName = m[1].trim();
-              }
-              if (!fallbackRelease) {
-                const ver =
-                  pyproject.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1] ||
-                  pyproject.match(
-                    /\[project\][\s\S]*?^version\s*=\s*["']([^"']+)["']/m,
-                  )?.[1];
-                if (ver) {
-                  const branch = repoInfo.defaultBranch || "main";
-                  fallbackRelease = {
-                    tagName: ver,
-                    tarballUrl: `https://github.com/${repoInfo.fullName}/archive/refs/heads/${branch}.tar.gz`,
-                  };
-                }
-              }
-            }
-          } catch {
-            /* best-effort metadata */
-          }
-          return await generateWithConfirmation(
-            "source-build",
-            {
-              repoInfo,
-              release: fallbackRelease,
-              buildSystem: { system: "python" },
-              serviceConfig,
-            },
-            { ...opts, binName },
-          );
+          return await generatePythonSourceBuildFallback({
+            owner,
+            repo,
+            repoInfo,
+            release,
+            serviceConfig,
+            opts,
+          });
         }
       }
       case "cargo": {
