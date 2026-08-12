@@ -9,6 +9,9 @@ import {
   compareVersions,
   normalizePackageName,
   KNOWN_BIN_NAMES,
+  KNOWN_PYTHON_IMPORT_VERSION_TEST,
+  looksLikeGuiPipPackage,
+  defaultPythonImportModule,
 } from "../../../lib/generators/pip-package.ts";
 import marimoFixture from "../../fixtures/pypi/marimo.json";
 import clickFixture from "../../fixtures/pypi/click.json";
@@ -970,3 +973,29 @@ describe("collectPipPackagePayload — dependency extras expansion", () => {
   });
 });
 
+describe("looksLikeGuiPipPackage / defaultPythonImportModule", () => {
+  it("detects PyQt deps and viewer summary as GUI", () => {
+    expect(
+      looksLikeGuiPipPackage({
+        packageName: "CQ-editor",
+        summary: "Cross-platform CadQuery 3D viewer and optional editor built on PyQt",
+        requiresDist: ["cadquery", "PyQt5", "pyqtgraph", "qtawesome==1.4.0"],
+      }),
+    ).toBe(true);
+  });
+
+  it("does not flag plain CLI packages", () => {
+    expect(
+      looksLikeGuiPipPackage({
+        packageName: "httpie",
+        summary: "HTTPie: human-friendly CLI HTTP client",
+        requiresDist: ["requests", "rich"],
+      }),
+    ).toBe(false);
+  });
+
+  it("maps CQ-editor to cq_editor import path", () => {
+    expect(defaultPythonImportModule("CQ-editor")).toBe("cq_editor");
+    expect(KNOWN_PYTHON_IMPORT_VERSION_TEST["cq-editor"]).toBe("cq_editor");
+  });
+});

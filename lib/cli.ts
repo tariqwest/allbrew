@@ -31,6 +31,7 @@ import {
   isAppAsset,
   isBinaryAsset,
   chooseReleaseArtifactKind,
+  shouldPreferPipOverBinaryRelease,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
   toFormulaName,
@@ -1010,14 +1011,22 @@ async function handleGithubRepo(classification, opts) {
     }
 
     if (binAssets.length > 0) {
-      console.log(
-        `  Detected ${chalk.cyan("binary")} assets: ${binAssets.map((a) => a.name).join(", ")}`,
-      );
-      return await generateWithConfirmation(
-        "binary-release",
-        { repoInfo, release },
-        opts,
-      );
+      if (shouldPreferPipOverBinaryRelease(repoInfo, binAssets)) {
+        console.log(
+          chalk.dim(
+            `  Release has macOS binary assets (${binAssets.map((a) => a.name).join(", ")}) but repo is Python with fat/desktop-style zips — preferring pip/source path over binary-release...`,
+          ),
+        );
+      } else {
+        console.log(
+          `  Detected ${chalk.cyan("binary")} assets: ${binAssets.map((a) => a.name).join(", ")}`,
+        );
+        return await generateWithConfirmation(
+          "binary-release",
+          { repoInfo, release },
+          opts,
+        );
+      }
     }
 
     if (linuxOnlyBinAssets) {
@@ -1032,7 +1041,7 @@ async function handleGithubRepo(classification, opts) {
           `  Release has Intel-only macOS binary assets (${binAssetsRaw.map((a) => a.name).join(", ")}); no arm64/universal bottle — checking older releases / README...`,
         ),
       );
-    } else {
+    } else if (binAssets.length === 0) {
       console.log(
         chalk.dim(
           "  No recognized binary or app assets on latest release, checking older releases...",

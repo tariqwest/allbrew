@@ -10,6 +10,7 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  shouldPreferPipOverBinaryRelease,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
@@ -388,6 +389,27 @@ describe("guessLicenseIdentifier", () => {
   it("passes through unknown licenses as-is", () => {
     expect(guessLicenseIdentifier("WTFPL")).toBe("WTFPL");
   });
+
+  it("maps full Apache License 2.0 text to Apache-2.0", () => {
+    const full = `Apache License
+                                   Version 2.0, January 2004
+                                http://www.apache.org/licenses/
+
+           TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+           1. Definitions.
+              "License" shall mean the terms and conditions for use, reproduction,
+              and distribution as defined by Sections 1 through 9 of this document.`;
+    expect(guessLicenseIdentifier(full)).toBe("Apache-2.0");
+  });
+
+  it("drops multi-line unknown license blobs", () => {
+    expect(guessLicenseIdentifier("Custom License\nline two\nline three")).toBeNull();
+  });
+
+  it("maps Apache Software License phrasing", () => {
+    expect(guessLicenseIdentifier("Apache Software License")).toBe("Apache-2.0");
+  });
 });
 
 describe("matchAssetToArch", () => {
@@ -504,5 +526,59 @@ describe("isBinaryAsset", () => {
     expect(matchAssetToArch("afm_0.1.0_macOS_universal")).toBe("macosUniversal");
     expect(isBinaryAsset("tool-1.2.3-linux-x64")).toBe(true);
     expect(isBinaryAsset("afm_0.1.0_checksums.txt")).toBe(false);
+  });
+});
+
+describe("shouldPreferPipOverBinaryRelease", () => {
+  const fat = 200 * 1024 * 1024;
+
+  it("prefers pip for Python repos with fat macos arm64 zip (CQ-editor)", () => {
+    expect(
+      shouldPreferPipOverBinaryRelease(
+        { language: "Python", name: "CQ-editor" },
+        [
+          { name: "CQ-editor-macos-arm64.zip", size: fat },
+          { name: "CQ-editor-linux-x86_64.zip", size: fat },
+        ],
+      ),
+    ).toBe(true);
+  });
+
+  it("prefers pip for platform-tagged zip-only Python releases without size", () => {
+    expect(
+      shouldPreferPipOverBinaryRelease(
+        { language: "Python" },
+        [{ name: "CQ-editor-macos-arm64.zip" }],
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps binary-release for slim CLI tar.gz assets even on Python", () => {
+    expect(
+      shouldPreferPipOverBinaryRelease(
+        { language: "Python" },
+        [{ name: "tool-0.1.0-macos-arm64.tar.gz", size: 5_000_000 }],
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps binary-release for non-Python repos with fat zips", () => {
+    expect(
+      shouldPreferPipOverBinaryRelease(
+        { language: "Go" },
+        [{ name: "app-macos-arm64.zip", size: fat }],
+      ),
+    ).toBe(false);
+  });
+
+  it("returns false for empty assets or missing language", () => {
+    expect(shouldPreferPipOverBinaryRelease({ language: "Python" }, [])).toBe(
+      false,
+    );
+    expect(
+      shouldPreferPipOverBinaryRelease(null, [
+        { name: "CQ-editor-macos-arm64.zip", size: fat },
+      ]),
+    ).toBe(false);
   });
 });

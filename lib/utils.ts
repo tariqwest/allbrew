@@ -419,10 +419,16 @@ export function rubyEscape(value) {
 
 export function guessLicenseIdentifier(license) {
   if (!license) return null;
+  if (typeof license !== "string") return null;
+  const trimmed = license.trim();
+  if (!trimmed) return null;
+
   const map = {
     mit: "MIT",
     "apache-2.0": "Apache-2.0",
     "apache 2.0": "Apache-2.0",
+    "apache license 2.0": "Apache-2.0",
+    "apache software license": "Apache-2.0",
     "gpl-2.0": "GPL-2.0-only",
     "gpl-3.0": "GPL-3.0-only",
     "gpl-2.0-only": "GPL-2.0-only",
@@ -436,8 +442,41 @@ export function guessLicenseIdentifier(license) {
     unlicense: "Unlicense",
     "artistic-2.0": "Artistic-2.0",
   };
-  const key = license.toLowerCase().trim();
-  return map[key] || license;
+  const key = trimmed.toLowerCase();
+  if (map[key]) return map[key];
+
+  // PyPI often dumps the entire LICENSE file into info.license (e.g. CQ-editor).
+  // Match common full-text headers → SPDX; never emit multi-line blobs into formulas.
+  const head = key.slice(0, 800);
+  if (/apache\s+license/.test(head) && /version\s+2\.0/.test(head)) {
+    return "Apache-2.0";
+  }
+  if (
+    (/^mit\s+license/.test(head) || /permission is hereby granted, free of charge/.test(head)) &&
+    /the software is provided ["']as is["']/.test(key)
+  ) {
+    return "MIT";
+  }
+  if (/gnu general public license/.test(head) && /version\s*3/.test(head)) {
+    return "GPL-3.0-only";
+  }
+  if (/gnu general public license/.test(head) && /version\s*2/.test(head)) {
+    return "GPL-2.0-only";
+  }
+  if (/mozilla public license/.test(head) && /2\.0/.test(head)) {
+    return "MPL-2.0";
+  }
+  if (/bsd 3-clause/.test(head) || (/redistribution and use in source and binary forms/.test(head) && /neither the name/.test(key))) {
+    return "BSD-3-Clause";
+  }
+  if (/bsd 2-clause/.test(head)) {
+    return "BSD-2-Clause";
+  }
+
+  // Refuse multi-line / huge strings — Homebrew expects a short SPDX id.
+  if (trimmed.includes("\n") || trimmed.length > 80) return null;
+
+  return trimmed;
 }
 
 function isCloudMetadataHostname(hostname: string): boolean {
@@ -874,4 +913,53 @@ export function isBareBinaryAsset(assetName) {
 
 export function isBinaryAsset(assetName) {
   return isArchiveBinaryAsset(assetName) || isBareBinaryAsset(assetName);
+}
+
+const FAT_RELEASE_ZIP_BYTES = 80 * 1024 * 1024; // 80 MiB — pyinstaller / constructor GUIs
+
+/**
+ * Prefer pip over GitHub release "binary" zips for Python projects that ship
+ * fat multi-platform desktop bundles (PyInstaller, conda-constructor, etc.).
+ *
+ * CQ-editor ships ~200MB CQ-editor-macos-arm64.zip convenience builds; Homebrew
+ * should virtualenv-install from PyPI instead of hashing/downloading those zips.
+ * Slim CLI-style assets (.tar.gz, bare binaries) still take binary-release.
+ */
+export function shouldPreferPipOverBinaryRelease(
+  repoInfo: { language?: string | null; name?: string } | null | undefined,
+  binAssets: Array<{ name?: string; size?: number | null }> | null | undefined,
+): boolean {
+  if (!repoInfo || !binAssets || binAssets.length === 0) return false;
+  const lang = String(repoInfo.language || "").toLowerCase();
+  if (lang !== "python") return false;
+
+  const names = binAssets.map((a) => String(a?.name || "").toLowerCase());
+  // Real CLI bottles are usually tar.gz / tgz / bare binaries, not only .zip.
+  const hasSlimCliAsset = names.some(
+    (n) =>
+      n.endsWith(".tar.gz") ||
+      n.endsWith(".tgz") ||
+      n.endsWith(".tar.bz2") ||
+      n.endsWith(".tar.xz") ||
+      (n.length > 0 && !n.includes(".")),
+  );
+  if (hasSlimCliAsset) return false;
+
+  const sizes = binAssets
+    .map((a) => (typeof a?.size === "number" ? a.size : 0))
+    .filter((s) => s > 0);
+  if (sizes.some((s) => s >= FAT_RELEASE_ZIP_BYTES)) return true;
+
+  // Platform-tagged zip-only releases without size metadata still look like
+  // desktop convenience builds (App-macos-arm64.zip / App-linux-x86_64.zip).
+  const allDesktopStyleZips =
+    names.length > 0 &&
+    names.every(
+      (n) =>
+        n.endsWith(".zip") &&
+        /(?:^|[^a-z])(?:macos|darwin|osx|linux|windows|win32)(?:[^a-z]|$)/i.test(
+          n,
+        ),
+    );
+  return allDesktopStyleZips;
 }
