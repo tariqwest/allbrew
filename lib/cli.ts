@@ -86,7 +86,7 @@ async function generatePythonSourceBuildFallback(args: {
         if (sha && ver) {
           fallbackRelease = {
             tagName: ver,
-            tarballUrl: `https://github.com/${repoInfo.fullName}/archive/${sha}.tar.gz`,
+            tarballUrl: `https://codeload.github.com/${repoInfo.fullName}/tar.gz/${sha}`,
           };
           console.log(
             chalk.dim(
