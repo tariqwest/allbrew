@@ -284,6 +284,11 @@ describe("extractVersionFromTag", () => {
   it("strips release- prefixes", () => {
     expect(extractVersionFromTag("release-1.2.3")).toBe("1.2.3");
   });
+
+  it("strips multi-segment product tags (cua-driver-rs-v*)", () => {
+    expect(extractVersionFromTag("cua-driver-rs-v0.19.3")).toBe("0.19.3");
+    expect(extractVersionFromTag("foo-bar-cli-v1.2.3")).toBe("1.2.3");
+  });
 });
 
 describe("rubyEscape", () => {

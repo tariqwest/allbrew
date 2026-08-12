@@ -341,7 +341,12 @@ export function chooseReleaseArtifactKind(
 
 export function extractVersionFromTag(tag) {
   const s = String(tag ?? "");
-  // Prefixed tags: rust-v0.0.34, release-1.2.3, build_v2.0.0
+  // Multi-segment product tags: cua-driver-rs-v0.19.3, foo-bar-cli-v1.2.3
+  const multiPrefixed = s.match(
+    /^(?:[A-Za-z][A-Za-z0-9]*(?:[-_][A-Za-z][A-Za-z0-9]*)*[-_])v?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.]+)?)$/i,
+  );
+  if (multiPrefixed) return multiPrefixed[1];
+  // Single-token prefixes: rust-v0.0.34, release-1.2.3, build_v2.0.0
   const prefixed = s.match(
     /^(?:[A-Za-z][A-Za-z0-9]*[-_])v?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.]+)?)$/i,
   );

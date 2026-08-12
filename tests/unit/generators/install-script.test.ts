@@ -2,6 +2,9 @@ import { describe, it, expect, mock, beforeEach } from "bun:test";
 import {
   collectInstallScriptPayload,
   detectInstallScriptFlags,
+  detectGithubReleaseInstaller,
+  extractNestedInstallerUrls,
+  resolveGithubReleaseInstallerFromScript,
 } from "../../../lib/generators/install-script.ts";
 
 mock.module("../../../lib/sha256.ts", () => ({
@@ -9,6 +12,61 @@ mock.module("../../../lib/sha256.ts", () => ({
   downloadAndHash: mock()
     .mockResolvedValue({ sha256: "script_sha256_mock_value_64chars_pad_abcdef0123456789abcdef" }),
 }));
+
+describe("detectGithubReleaseInstaller", () => {
+  it("detects REPO + BINARY_NAME + TAG_PREFIX release installers", () => {
+    const hit = detectGithubReleaseInstaller(`
+REPO="trycua/cua"
+BINARY_NAME="cua-driver"
+TAG_PREFIX="cua-driver-rs-v"
+url="https://github.com/$REPO/releases/download/\${TAG}/tarball"
+`);
+    expect(hit).toEqual({
+      owner: "trycua",
+      repo: "cua",
+      binaryName: "cua-driver",
+      tagPrefix: "cua-driver-rs-v",
+    });
+  });
+
+  it("ignores docs-only github links without release download evidence", () => {
+    const hit = detectGithubReleaseInstaller(
+      'See https://github.com/foo/bar for docs\nREPO="foo/bar"\n',
+    );
+    expect(hit).toBeNull();
+  });
+
+  it("extracts nested helper installer URLs", () => {
+    const urls = extractNestedInstallerUrls(`
+RUST_INSTALLER_URL="https://cua.ai/driver/_install-rust.sh"
+# also bare
+curl -fsSL https://example.com/scripts/_helper.sh
+`);
+    expect(urls).toContain("https://cua.ai/driver/_install-rust.sh");
+    expect(urls.some((u) => u.includes("_helper.sh"))).toBe(true);
+  });
+
+  it("follows one hop to nested helper for REPO detection", async () => {
+    const parent = `RUST_INSTALLER_URL="https://cua.ai/driver/_install-rust.sh"\n`;
+    const nested = `
+REPO="trycua/cua"
+BINARY_NAME="cua-driver"
+TAG_PREFIX="cua-driver-rs-v"
+url=https://github.com/trycua/cua/releases/download/x/y
+`;
+    const fetchFn = (async (input: RequestInfo | URL) => {
+      const u = String(input);
+      if (u.includes("_install-rust")) {
+        return new Response(nested, { status: 200 });
+      }
+      return new Response("nope", { status: 404 });
+    }) as typeof fetch;
+    const hit = await resolveGithubReleaseInstallerFromScript(parent, fetchFn);
+    expect(hit?.owner).toBe("trycua");
+    expect(hit?.repo).toBe("cua");
+    expect(hit?.binaryName).toBe("cua-driver");
+  });
+});
 
 describe("detectInstallScriptFlags", () => {
   it("detects FORCE and ensures BIN_DIR", () => {

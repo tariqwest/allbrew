@@ -1609,6 +1609,52 @@ async function handleGithubRepo(classification, opts) {
 }
 
 async function handleBashScript(url, opts) {
+  // Multi-fetch GitHub release installers (nested curl + /Applications) fail
+  // under the Homebrew sandbox. Upgrade to product-matched binary-release.
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (res.ok) {
+      const scriptText = await res.text();
+      const { resolveGithubReleaseInstallerFromScript } = await import(
+        "./generators/install-script.ts"
+      );
+      const gh = await resolveGithubReleaseInstallerFromScript(scriptText);
+      if (gh) {
+        const productName =
+          (typeof opts.name === "string" && opts.name.trim()) ||
+          gh.binaryName ||
+          null;
+        console.log(
+          chalk.dim(
+            `  Install script fetches GitHub releases (${gh.owner}/${gh.repo}` +
+              (productName ? `, product ${productName}` : "") +
+              `); packaging as binary-release`,
+          ),
+        );
+        return await handleGithubRepo(
+          {
+            type: "github-repo",
+            url: `https://github.com/${gh.owner}/${gh.repo}`,
+            owner: gh.owner,
+            repo: gh.repo,
+          },
+          {
+            ...opts,
+            name: productName || opts.name,
+            binName: opts.binName || gh.binaryName || productName || undefined,
+          },
+        );
+      }
+    }
+  } catch (err) {
+    if (opts.verbose) {
+      console.log(
+        chalk.dim(
+          `  Install-script GitHub-release probe failed: ${err?.message || err}; using install-script`,
+        ),
+      );
+    }
+  }
   return await generateWithConfirmation("install-script", { url }, opts);
 }
 

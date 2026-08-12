@@ -18,6 +18,90 @@ function extractVersionFromUrl(url: string): string | null {
 }
 
 /**
+ * Detect install scripts that are thin wrappers around GitHub release
+ * binary downloads (e.g. cua.ai/driver/install.sh → trycua/cua
+ * cua-driver-rs-v* tarballs). Running those under Homebrew's sandbox fails:
+ * nested curl of helper scripts + release assets is multi-fetch, and many
+ * also write to /Applications. Prefer packaging the release as binary-release.
+ */
+export function detectGithubReleaseInstaller(scriptText: string): {
+  owner: string;
+  repo: string;
+  binaryName?: string;
+  tagPrefix?: string;
+} | null {
+  const text = String(scriptText || "");
+  if (!text) return null;
+
+  const repoAssign = text.match(
+    /\bREPO\s*=\s*["']([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)["']/,
+  );
+  const ghReleases = text.match(
+    /github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/releases/,
+  );
+  const owner = repoAssign?.[1] || ghReleases?.[1];
+  const repo = repoAssign?.[2] || ghReleases?.[2];
+  if (!owner || !repo) return null;
+
+  // Require evidence this is a release binary fetcher, not a docs link.
+  const hasReleaseFetch =
+    /releases\/download|download.*release|TAG_PREFIX|BINARY_NAME|browser_download|github_api|api\.github\.com\/repos/i.test(
+      text,
+    );
+  if (!hasReleaseFetch) return null;
+
+  const binM = text.match(/\bBINARY_NAME\s*=\s*["']([A-Za-z0-9._-]+)["']/);
+  const tagM = text.match(/\bTAG_PREFIX\s*=\s*["']([^"']+)["']/);
+  return {
+    owner,
+    repo,
+    binaryName: binM?.[1],
+    tagPrefix: tagM?.[1],
+  };
+}
+
+/** Collect nested helper script URLs (one hop) referenced by an install script. */
+export function extractNestedInstallerUrls(scriptText: string): string[] {
+  const text = String(scriptText || "");
+  const urls = new Set<string>();
+  for (const m of text.matchAll(
+    /[A-Z][A-Z0-9_]*(?:INSTALLER|INSTALL)_URL\s*=\s*["'](https?:\/\/[^"']+)["']/g,
+  )) {
+    if (m[1]) urls.add(m[1]);
+  }
+  for (const m of text.matchAll(
+    /https?:\/\/[^\s"'`<>]+\/_[A-Za-z0-9._-]+\.sh/g,
+  )) {
+    if (m[0]) urls.add(m[0].replace(/[),.;]+$/, ""));
+  }
+  return [...urls].slice(0, 3);
+}
+
+/**
+ * Resolve a GitHub release installer from script text, following one hop
+ * of private helpers (install.sh → _install-rust.sh).
+ */
+export async function resolveGithubReleaseInstallerFromScript(
+  scriptText: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<ReturnType<typeof detectGithubReleaseInstaller>> {
+  let hit = detectGithubReleaseInstaller(scriptText);
+  if (hit) return hit;
+  for (const nurl of extractNestedInstallerUrls(scriptText)) {
+    try {
+      const res = await fetchFn(nurl, { signal: AbortSignal.timeout(15_000) });
+      if (!res.ok) continue;
+      const nested = await res.text();
+      hit = detectGithubReleaseInstaller(nested);
+      if (hit) return hit;
+    } catch {
+      /* optional network hop */
+    }
+  }
+  return null;
+}
+
+/**
  * Detect noninteractive flags/env that install scripts document.
  * Used so brew sandbox builds do not hang on `read` / confirm prompts.
  */
