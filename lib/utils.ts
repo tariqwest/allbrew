@@ -417,12 +417,21 @@ export function rubyEscape(value) {
   return s;
 }
 
-export function guessLicenseIdentifier(license) {
-  if (!license) return null;
-  const map = {
+/**
+ * Normalize a license field (short SPDX, long legal text, or PyPI classifiers)
+ * into a compact Homebrew-friendly identifier. Never embed multi-KB license
+ * bodies into generated Ruby (e.g. PyPI mlflow ships the full Apache text).
+ */
+export function guessLicenseIdentifier(
+  license?: string | null,
+  classifiers?: string[] | null,
+) {
+  const map: Record<string, string> = {
     mit: "MIT",
     "apache-2.0": "Apache-2.0",
     "apache 2.0": "Apache-2.0",
+    "apache license 2.0": "Apache-2.0",
+    "apache license, version 2.0": "Apache-2.0",
     "gpl-2.0": "GPL-2.0-only",
     "gpl-3.0": "GPL-3.0-only",
     "gpl-2.0-only": "GPL-2.0-only",
@@ -436,8 +445,58 @@ export function guessLicenseIdentifier(license) {
     unlicense: "Unlicense",
     "artistic-2.0": "Artistic-2.0",
   };
-  const key = license.toLowerCase().trim();
-  return map[key] || license;
+
+  const fromText = (raw: string): string | null => {
+    const key = raw.toLowerCase().trim();
+    if (map[key]) return map[key];
+    // Full legal texts (common on PyPI when license= is the body, not SPDX)
+    if (/apache\s+license,?\s+version\s+2\.0/i.test(raw) || /apache\s+license\s+2\.0/i.test(raw)) {
+      return "Apache-2.0";
+    }
+    if (/\bmit\s+license\b/i.test(raw) || /^\s*mit\s*$/i.test(raw)) return "MIT";
+    if (/gnu\s+general\s+public\s+license.+version\s+3/i.test(raw)) return "GPL-3.0-only";
+    if (/gnu\s+general\s+public\s+license.+version\s+2/i.test(raw)) return "GPL-2.0-only";
+    if (/bsd\s+3-clause/i.test(raw)) return "BSD-3-Clause";
+    if (/bsd\s+2-clause/i.test(raw)) return "BSD-2-Clause";
+    // Compact SPDX-ish tokens only (e.g. WTFPL) — never prose or multi-KB bodies
+    if (
+      raw.length <= 64 &&
+      !/\n/.test(raw) &&
+      /^[A-Za-z0-9][A-Za-z0-9.+_-]*$/.test(raw.trim())
+    ) {
+      return raw.trim();
+    }
+    return null;
+  };
+
+  const fromClassifiers = (list: string[]): string | null => {
+    for (const c of list) {
+      if (typeof c !== "string" || !c.startsWith("License ::")) continue;
+      const lower = c.toLowerCase();
+      if (lower.includes("apache software license")) return "Apache-2.0";
+      if (lower.includes("mit license")) return "MIT";
+      if (lower.includes("gpl") && lower.includes("3")) return "GPL-3.0-only";
+      if (lower.includes("gpl") && lower.includes("2")) return "GPL-2.0-only";
+      if (lower.includes("bsd") && lower.includes("3")) return "BSD-3-Clause";
+      if (lower.includes("bsd") && lower.includes("2")) return "BSD-2-Clause";
+      if (lower.includes("mozilla public license 2")) return "MPL-2.0";
+      if (lower.includes("isc license")) return "ISC";
+      if (lower.includes("unlicense")) return "Unlicense";
+    }
+    return null;
+  };
+
+  if (license) {
+    const hit = fromText(String(license));
+    if (hit) return hit;
+  }
+
+  if (Array.isArray(classifiers)) {
+    const hit = fromClassifiers(classifiers);
+    if (hit) return hit;
+  }
+
+  return null;
 }
 
 function isCloudMetadataHostname(hostname: string): boolean {

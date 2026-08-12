@@ -82,6 +82,7 @@ type PypiPackageJson = {
     home_page?: string | null;
     project_url?: string | null;
     license?: string | null;
+    classifiers?: string[] | null;
     requires_dist?: string[] | null;
   };
   urls?: PypiUrl[];
@@ -156,6 +157,7 @@ export async function collectPipPackagePayload(
     `https://pypi.org/project/${packageName}/`;
   const license = guessLicenseIdentifier(
     pypiData.info.license || repoInfo?.license,
+    pypiData.info.classifiers,
   );
 
   const testBinName =

@@ -375,6 +375,26 @@ describe("guessLicenseIdentifier", () => {
     expect(guessLicenseIdentifier("apache 2.0")).toBe("Apache-2.0");
   });
 
+  it("extracts Apache-2.0 from full legal text (PyPI mlflow-style)", () => {
+    const body =
+      "Copyright 2018 Databricks, Inc.  All rights reserved.\n\n" +
+      "\t\t\t\tApache License\n" +
+      "                           Version 2.0, January 2004\n" +
+      "                        http://www.apache.org/licenses/\n\n" +
+      "   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n" +
+      "   1. Definitions.\n" +
+      "      \"License\" shall mean the terms and conditions...\n";
+    expect(guessLicenseIdentifier(body)).toBe("Apache-2.0");
+  });
+
+  it("uses PyPI classifiers when license body is unusable", () => {
+    expect(
+      guessLicenseIdentifier("see LICENSE file for details and more boilerplate text here", [
+        "License :: OSI Approved :: Apache Software License",
+      ]),
+    ).toBe("Apache-2.0");
+  });
+
   it("normalizes GPL variants", () => {
     expect(guessLicenseIdentifier("GPL-3.0")).toBe("GPL-3.0-only");
     expect(guessLicenseIdentifier("gpl-2.0")).toBe("GPL-2.0-only");
@@ -385,8 +405,14 @@ describe("guessLicenseIdentifier", () => {
     expect(guessLicenseIdentifier(undefined)).toBeNull();
   });
 
-  it("passes through unknown licenses as-is", () => {
+  it("passes through short unknown licenses as-is", () => {
     expect(guessLicenseIdentifier("WTFPL")).toBe("WTFPL");
+  });
+
+  it("does not embed multi-line unknown license bodies", () => {
+    expect(
+      guessLicenseIdentifier("Some proprietary terms.\nClause 1.\nClause 2.\n".repeat(5)),
+    ).toBeNull();
   });
 });
 
