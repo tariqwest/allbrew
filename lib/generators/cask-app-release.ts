@@ -52,7 +52,10 @@ export async function collectCaskAppReleasePayload(
 ): Promise<CaskAppReleasePayload> {
   const version = extractVersionFromTag(release.tagName);
 
-  const appAssets = release.assets.filter((a: any) => isAppAsset(a.name));
+  const siblingNames = (release.assets || []).map((a: any) => a.name);
+  const appAssets = release.assets.filter((a: any) =>
+    isAppAsset(a.name, { siblingNames }),
+  );
   if (appAssets.length === 0) {
     throw new Error("No .dmg or macOS .zip assets found in release");
   }

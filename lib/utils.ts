@@ -707,11 +707,76 @@ export function matchAssetToArch(assetName) {
   for (const [arch, regexes] of Object.entries(patterns)) {
     if (regexes.some((r) => r.test(assetName))) return arch;
   }
+  // Platform-only archives without cpu arch (CLI multi-platform releases):
+  // e.g. swift-outdated-0.15.3-macos.zip / …-linux.zip. Specific arm/x64
+  // patterns above already won for names like macos-arm64.
+  const lower = String(assetName || "").toLowerCase();
+  const hasCpuArch =
+    /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(
+      lower,
+    );
+  if (!hasCpuArch) {
+    if (/(?:^|[^a-z])(?:macos|darwin|osx)(?:[^a-z]|$)/i.test(lower)) {
+      return "macosUniversal";
+    }
+    if (/(?:^|[^a-z])linux(?:[^a-z]|$)/i.test(lower)) {
+      return "linuxIntel";
+    }
+  }
   return null;
 }
 
-export function isAppAsset(assetName) {
-  const lower = assetName.toLowerCase();
+/**
+ * Multi-OS CLI release heuristic: macOS zip(s) + Linux archive(s) and no
+ * .dmg / `.app` named assets. Real desktop apps rarely ship a linux.zip
+ * next to Foo-macos.zip (e.g. swift-outdated, various Go CLIs).
+ */
+export function releaseLooksLikeCliBinaryAssets(
+  assetNames: string[] | undefined | null,
+): boolean {
+  if (!Array.isArray(assetNames) || assetNames.length === 0) return false;
+  const names = assetNames.map((n) => String(n || "").toLowerCase());
+  if (names.some((n) => n.endsWith(".dmg") || n.includes(".app"))) return false;
+
+  const hasMacZip = names.some(
+    (n) =>
+      n.endsWith(".zip") &&
+      /(?:^|[^a-z])(?:macos|darwin|osx)(?:[^a-z]|$)/i.test(n),
+  );
+  if (!hasMacZip) return false;
+
+  const hasLinuxArchive = names.some((n) => {
+    if (!/(?:^|[^a-z])linux(?:[^a-z]|$)/i.test(n)) return false;
+    return (
+      n.endsWith(".zip") ||
+      n.endsWith(".tar.gz") ||
+      n.endsWith(".tgz") ||
+      n.endsWith(".tar.bz2") ||
+      n.endsWith(".tar.xz") ||
+      n.endsWith(".tar.zst") ||
+      n.endsWith(".tar") ||
+      // bare binary name with linux token
+      (!n.includes(".") && /linux/i.test(n))
+    );
+  });
+  return hasLinuxArchive;
+}
+
+export type AssetClassifyContext = {
+  /** Sibling asset basenames from the same release (enables multi-OS CLI heuristic). */
+  siblingNames?: string[] | null;
+  /**
+   * After cask peek finds no .app, treat platform macOS zips as CLI binaries
+   * even without a Linux sibling.
+   */
+  treatMacZipsAsBinary?: boolean;
+};
+
+export function isAppAsset(
+  assetName,
+  context: AssetClassifyContext | undefined = undefined,
+) {
+  const lower = String(assetName || "").toLowerCase();
   if (lower.endsWith(".dmg")) return true;
   if (!lower.endsWith(".zip")) return false;
   // Explicit app-bundle archives
@@ -745,6 +810,15 @@ export function isAppAsset(assetName) {
       if (usesDarwinMacosOsx) return false;
       // short platform token "mac" + cpu arch → desktop app zip
       return /(?:^|[^a-z])mac(?:[^a-z]|$)/i.test(lower);
+    }
+    // Multi-OS CLI releases (macos.zip + linux.zip) or post-cask fallthrough
+    // must not claim a cask for a bare CLI binary archive.
+    const siblings = context?.siblingNames;
+    if (
+      context?.treatMacZipsAsBinary ||
+      (siblings && releaseLooksLikeCliBinaryAssets(siblings))
+    ) {
+      return false;
     }
     return true;
   }
@@ -831,21 +905,28 @@ const BARE_BINARY_SKIP_NAMES = new Set([
   "checksums.txt.asc",
 ]);
 
-export function isArchiveBinaryAsset(assetName) {
-  const lower = assetName.toLowerCase();
+export function isArchiveBinaryAsset(
+  assetName,
+  context: AssetClassifyContext | undefined = undefined,
+) {
+  const lower = String(assetName || "").toLowerCase();
   return (
     ARCHIVE_BINARY_EXTS.some((ext) => lower.endsWith(ext)) &&
-    !isAppAsset(assetName)
+    !isAppAsset(assetName, context)
   );
 }
 
 /** Extensionless (or .exe) platform-tagged release binaries, e.g. csctf-macos-arm64.
  * Also accepts versioned bare names like afm_0.1.0_macOS_universal (dots only in versions).
  */
-export function isBareBinaryAsset(assetName) {
-  const lower = assetName.toLowerCase();
+export function isBareBinaryAsset(
+  assetName,
+  context: AssetClassifyContext | undefined = undefined,
+) {
+  const lower = String(assetName || "").toLowerCase();
   if (!assetName || BARE_BINARY_SKIP_NAMES.has(lower)) return false;
-  if (isAppAsset(assetName) || isArchiveBinaryAsset(assetName)) return false;
+  if (isAppAsset(assetName, context) || isArchiveBinaryAsset(assetName, context))
+    return false;
   if (BARE_BINARY_SKIP_SUFFIXES.some((s) => lower.endsWith(s))) return false;
   if (matchAssetToArch(assetName) == null) return false;
   if (lower.endsWith(".exe")) return true;
@@ -872,6 +953,12 @@ export function isBareBinaryAsset(assetName) {
   return true;
 }
 
-export function isBinaryAsset(assetName) {
-  return isArchiveBinaryAsset(assetName) || isBareBinaryAsset(assetName);
+export function isBinaryAsset(
+  assetName,
+  context: AssetClassifyContext | undefined = undefined,
+) {
+  return (
+    isArchiveBinaryAsset(assetName, context) ||
+    isBareBinaryAsset(assetName, context)
+  );
 }

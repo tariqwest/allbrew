@@ -93,6 +93,40 @@ describe("collectBinaryReleasePayload", () => {
     ).rejects.toThrow("No platform-specific binary assets");
   });
 
+  it("classifies multi-OS CLI macos.zip+linux.zip as binary (swift-outdated)", async () => {
+    const cliRelease = {
+      tagName: "0.15.3",
+      assets: [
+        {
+          name: "swift-outdated-0.15.3-macos.zip",
+          url: "https://github.com/kiliankoe/swift-outdated/releases/download/0.15.3/swift-outdated-0.15.3-macos.zip",
+        },
+        {
+          name: "swift-outdated-0.15.3-linux.zip",
+          url: "https://github.com/kiliankoe/swift-outdated/releases/download/0.15.3/swift-outdated-0.15.3-linux.zip",
+        },
+      ],
+    };
+    const payload = await collectBinaryReleasePayload(
+      {
+        name: "swift-outdated",
+        fullName: "kiliankoe/swift-outdated",
+        description: "Check for outdated Swift package manager dependencies",
+        homepage: null,
+        htmlUrl: "https://github.com/kiliankoe/swift-outdated",
+        license: "MIT",
+      },
+      cliRelease,
+    );
+    expect(payload.template).toBe("binary_release");
+    expect(payload.name).toBe("swift-outdated");
+    expect(payload.platformBlocks).toContain("on_macos do");
+    expect(payload.platformBlocks).toContain(
+      "swift-outdated-#{version}-macos.zip",
+    );
+    expect(payload.platformBlocks).toContain("on_linux do");
+  });
+
   it("throws when only Linux binary assets are present", async () => {
     const linuxOnly = {
       tagName: "v1.1.0",

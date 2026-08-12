@@ -30,11 +30,13 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  releaseLooksLikeCliBinaryAssets,
   chooseReleaseArtifactKind,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
   toFormulaName,
   toCaskToken,
+  type AssetClassifyContext,
 } from "./utils.ts";
 import { buildManifest } from "./build-manifest.ts";
 import { saveManifest } from "./manifest.ts";
@@ -922,12 +924,25 @@ async function handleGithubRepo(classification, opts) {
       );
     }
 
-    const appAssets = release.assets.filter((a) => isAppAsset(a.name));
+    // Sibling-aware classification: macos.zip + linux.zip ⇒ CLI binary release
+    // (e.g. swift-outdated), not a macOS .app cask.
+    const siblingNames = (release.assets || []).map((a) => a.name);
+    const assetCtx: AssetClassifyContext = { siblingNames };
+    if (releaseLooksLikeCliBinaryAssets(siblingNames)) {
+      console.log(
+        chalk.dim(
+          "  Multi-platform macOS+Linux release assets → classifying as CLI binaries (not cask)",
+        ),
+      );
+    }
+    const appAssets = release.assets.filter((a) =>
+      isAppAsset(a.name, assetCtx),
+    );
     // Platform-tagged binaries. Homebrew on macOS needs at least one macOS
     // asset; Linux-only releases (e.g. ugm, gpg-tui) must fall through to README
     // install methods (go, cargo, source-build) instead of binary-release.
     const allBinAssets = release.assets.filter(
-      (a) => isBinaryAsset(a.name) && matchAssetToArch(a.name),
+      (a) => isBinaryAsset(a.name, assetCtx) && matchAssetToArch(a.name),
     );
     const binAssetsRaw = allBinAssets.filter((a) => {
       const arch = matchAssetToArch(a.name);
@@ -992,7 +1007,7 @@ async function handleGithubRepo(classification, opts) {
       } else {
         return await generateWithConfirmation(
           "binary-release",
-          { repoInfo, release },
+          { repoInfo, release, assetClassifyContext: assetCtx },
           opts,
         );
       }
@@ -1002,11 +1017,59 @@ async function handleGithubRepo(classification, opts) {
       console.log(
         `  Detected ${chalk.cyan("macOS app")} assets: ${appAssets.map((a) => a.name).join(", ")}`,
       );
-      return await generateWithConfirmation(
-        "cask-app-release",
-        { repoInfo, release },
-        opts,
-      );
+      try {
+        return await generateWithConfirmation(
+          "cask-app-release",
+          { repoInfo, release },
+          opts,
+        );
+      } catch (caskErr: any) {
+        // CLI zip misclassified as app (no .app inside) — try binary-release,
+        // else fall through to README / Package.swift (e.g. SPM).
+        const msg = String(caskErr?.message || caskErr || "");
+        if (!/No \.app bundle found/i.test(msg)) throw caskErr;
+        console.log(
+          chalk.dim(
+            `  No .app in release zip; treating platform archives as CLI binaries…`,
+          ),
+        );
+        const fallthroughCtx: AssetClassifyContext = {
+          siblingNames,
+          treatMacZipsAsBinary: true,
+        };
+        const macBins = release.assets.filter(
+          (a) =>
+            isBinaryAsset(a.name, fallthroughCtx) &&
+            ["macosArm", "macosIntel", "macosUniversal"].includes(
+              matchAssetToArch(a.name) || "",
+            ),
+        );
+        if (macBins.length > 0) {
+          try {
+            return await generateWithConfirmation(
+              "binary-release",
+              {
+                repoInfo,
+                release,
+                assetClassifyContext: fallthroughCtx,
+              },
+              opts,
+            );
+          } catch (binErr: any) {
+            console.log(
+              chalk.dim(
+                `  binary-release failed after cask fallthrough (${binErr?.message || binErr}); checking README/repo…`,
+              ),
+            );
+          }
+        } else {
+          console.log(
+            chalk.dim(
+              "  No macOS binary archives after cask fallthrough; checking README/repo…",
+            ),
+          );
+        }
+      }
     }
 
     if (binAssets.length > 0) {
@@ -1015,7 +1078,7 @@ async function handleGithubRepo(classification, opts) {
       );
       return await generateWithConfirmation(
         "binary-release",
-        { repoInfo, release },
+        { repoInfo, release, assetClassifyContext: assetCtx },
         opts,
       );
     }
@@ -1920,11 +1983,11 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
     case "binary-release": {
       const { generateBinaryRelease } =
         await import("./generators/binary-release.ts");
-      result = await generateBinaryRelease(
-        params.repoInfo,
-        params.release,
-        mergedOpts,
-      );
+      result = await generateBinaryRelease(params.repoInfo, params.release, {
+        ...mergedOpts,
+        assetClassifyContext:
+          params.assetClassifyContext || mergedOpts.assetClassifyContext,
+      });
       break;
     }
     case "source-build": {

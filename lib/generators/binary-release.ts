@@ -12,6 +12,7 @@ import {
   rubyEscape,
   guessLicenseIdentifier,
   getAllbrewFormulaDependency,
+  type AssetClassifyContext,
 } from "../utils.ts";
 import { downloadToTemp } from "../sha256.ts";
 import { githubLatestLivecheckBlock } from "./livecheck.ts";
@@ -223,9 +224,15 @@ export async function collectBinaryReleasePayload(
   const license = guessLicenseIdentifier(repoInfo.license);
   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
 
+  const assetCtx: AssetClassifyContext | undefined =
+    options.assetClassifyContext ||
+    (Array.isArray(release?.assets)
+      ? { siblingNames: release.assets.map((a: any) => a.name) }
+      : undefined);
+
   const archAssets: Record<string, any> = {};
   for (const asset of release.assets) {
-    if (!isBinaryAsset(asset.name)) continue;
+    if (!isBinaryAsset(asset.name, assetCtx)) continue;
     const arch = matchAssetToArch(asset.name);
     if (arch) archAssets[arch] = asset;
   }

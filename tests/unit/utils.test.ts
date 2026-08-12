@@ -10,6 +10,7 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  releaseLooksLikeCliBinaryAssets,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
@@ -424,8 +425,17 @@ describe("matchAssetToArch", () => {
     expect(matchAssetToArch("foo_Darwin_all.tar.gz")).toBe("macosUniversal");
     expect(matchAssetToArch("tool-macos-all.zip")).toBe("macosUniversal");
     expect(matchAssetToArch("tool_all_darwin.tar.gz")).toBe("macosUniversal");
-    // Linux_all must not be treated as macOS
-    expect(matchAssetToArch("wander_1.1.0_Linux_all.tar.gz")).toBeNull();
+    // Linux_all must not be treated as macOS; platform-only fallback → linuxIntel
+    expect(matchAssetToArch("wander_1.1.0_Linux_all.tar.gz")).toBe(
+      "linuxIntel",
+    );
+    // Platform-only CLI archives (no cpu arch token)
+    expect(matchAssetToArch("swift-outdated-0.15.3-macos.zip")).toBe(
+      "macosUniversal",
+    );
+    expect(matchAssetToArch("swift-outdated-0.15.3-linux.zip")).toBe(
+      "linuxIntel",
+    );
   });
 });
 
@@ -461,6 +471,31 @@ describe("isAppAsset", () => {
 
   it("rejects non-archive files", () => {
     expect(isAppAsset("README.md")).toBe(false);
+  });
+
+  it("with multi-OS CLI siblings, treats macos.zip as not an app", () => {
+    const siblings = [
+      "swift-outdated-0.15.3-macos.zip",
+      "swift-outdated-0.15.3-linux.zip",
+    ];
+    const ctx = { siblingNames: siblings };
+    expect(releaseLooksLikeCliBinaryAssets(siblings)).toBe(true);
+    expect(isAppAsset("swift-outdated-0.15.3-macos.zip", ctx)).toBe(false);
+    expect(isBinaryAsset("swift-outdated-0.15.3-macos.zip", ctx)).toBe(true);
+    expect(matchAssetToArch("swift-outdated-0.15.3-macos.zip")).toBe(
+      "macosUniversal",
+    );
+    expect(matchAssetToArch("swift-outdated-0.15.3-linux.zip")).toBe(
+      "linuxIntel",
+    );
+    // Alone (no siblings) still classifies as desktop-app zip
+    expect(isAppAsset("swift-outdated-0.15.3-macos.zip")).toBe(true);
+  });
+
+  it("treatMacZipsAsBinary forces platform mac zip to CLI binary", () => {
+    const ctx = { treatMacZipsAsBinary: true };
+    expect(isAppAsset("Foo-macos.zip", ctx)).toBe(false);
+    expect(isBinaryAsset("Foo-macos.zip", ctx)).toBe(true);
   });
 });
 
