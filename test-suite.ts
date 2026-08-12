@@ -8,19 +8,19 @@
  * Usage (from the allbrew repo root):
  *
  *   bun run vm:init           # one-time VM creation per host
- *   bun run vm:setup          # create project user + sparsebundle + Xcode CLT + bun
+ *   bun run vm:setup          # create project user + Xcode CLT + bun (Homebrew on /opt/homebrew)
  *   bun run vm:test           # default profile (check + unit)
  *   bun run vm:test:int       # integration profile
- *   bun run vm:test:e2e       # E2E profile (acquires exclusive /opt/homebrew)
- *   bun run vm:test:e2e-tap   # E2E-tap profile (acquires exclusive /opt/homebrew)
+ *   bun run vm:test:e2e       # E2E profile (uses host /opt/homebrew directly)
+ *   bun run vm:test:e2e-tap   # E2E-tap profile (uses host /opt/homebrew directly)
  *   bun run vm:test:all       # integration + e2e + e2e-tap
  *   bun run vm:test --profile user-journeys  # Tier A nightly journeys (A1/A3/A4)
- *   bun run vm:reset          # detach /opt/homebrew, delete sparsebundle, delete project user
+ *   bun run vm:reset          # delete project user (no sparsebundle)
  *
- * The `e2e` and `e2e-tap` profiles are listed in `homebrewProfiles`, so the
- * harness acquires the project user's APFS sparsebundle at `/opt/homebrew`
- * before running them and detaches it in `finally`. Cask installs target
- * `$HOME/Applications` via `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`.
+ * Single-user / single-test-per-VM mode: TH_HOMEBREW_PREFIX_ENABLED=false,
+ * so all profiles share the VM's real /opt/homebrew directly. No APFS
+ * sparsebundle or time-multiplexed mount is needed; cask installs still
+ * target `$HOME/Applications` via `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`.
  *
  * The legacy `scripts/e2e-vm-*.sh` orchestration was removed after the
  * `acceptance` profile passed a VM run (T0.5 verified). Use `bun run vm:*`
@@ -93,9 +93,10 @@ export const {
     acceptance: ["e2e-acceptance"],
   },
 
-  // These profiles acquire the exclusive /opt/homebrew sparsebundle + mutex.
-  // The default and integration profiles do not need Homebrew.
-  homebrewProfiles: ["e2e", "e2e-tap", "acceptance", "user-journeys"],
+  // Single-user mode: no exclusive sparsebundle. All profiles share the
+  // VM's real /opt/homebrew directly (TH_HOMEBREW_PREFIX_ENABLED=false).
+  // Previously: homebrewProfiles: ["e2e", "e2e-tap", "acceptance", "user-journeys"]
+  homebrewProfiles: [],
 
   // Tier A lifecycle journeys (A1, A3, A4). Each journey runs as its own
   // per-journey timeout + cleanup block and writes a machine-readable
@@ -199,8 +200,8 @@ export const {
   ] as Journey[],
 
   journeyProfiles: {
-    // Nightly user-journey suite. Runs the Tier A lifecycle journeys
-    // sequentially under an exclusive /opt/homebrew session.
+    // Nightly user-journey suite. Runs Tier A lifecycle journeys sequentially
+    // on the VM's real /opt/homebrew (no sparsebundle).
     "user-journeys": [
       "a1a-npm-service",
       "a1b-pip-service",
@@ -250,9 +251,10 @@ export const {
      * clang, make, and other build tools exist before Homebrew or Bun work.
      * Fresh Lume Tahoe VMs do not ship with CLT.
      *
-     * Homebrew is NOT installed here — the harness provisions a default-prefix
-     * Homebrew inside the project user's sparsebundle during acquireHomebrewPrefix
-     * (only for Homebrew-requiring profiles). Bun is installed user-local for
+     * Homebrew: with TH_HOMEBREW_PREFIX_ENABLED=false the harness uses the
+     * VM's real /opt/homebrew directly (no per-user sparsebundle). No
+     * acquire/release lifecycle is needed; single-user / single-test-per-VM
+     * avoids ownership/pollution concerns. Bun is installed user-local for
      * every profile.
      */
     async setupRuntime() {

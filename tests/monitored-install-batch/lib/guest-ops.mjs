@@ -70,6 +70,9 @@ function parseExitCodeLoose(text) {
 export function brewEnvPreamble(mountPoint) {
   const brew = mountPoint ? `${mountPoint}/bin` : "/opt/homebrew/bin";
   return `set +e
+set +u
+set +o pipefail 2>/dev/null || true
+export TMPDIR="\${TMPDIR:-/tmp}"
 export HOMEBREW_NO_AUTO_UPDATE=1
 export HOMEBREW_NO_ENV_HINTS=1
 export HOMEBREW_NO_INSTALL_CLEANUP=1
@@ -292,8 +295,10 @@ URL=${JSON.stringify(url)}
 NAME=${JSON.stringify(slug)}
 SRC=${JSON.stringify(src)}
 if [ ! -f "$SRC/bin/allbrew.ts" ]; then echo "SRC_MISSING $SRC" >&2; exit 2; fi
-# Prefer running the synced source directly (unreleased patch) over the bottled allbrew
-bun --cwd "$SRC" run bin/allbrew.ts "$URL" --name "$NAME" --verbose >"$LOG" 2>&1
+# Prefer running the synced source directly (unreleased patch) over the bottled allbrew.
+# Use "bun ./bin/allbrew.ts" (not "bun run bin/allbrew.ts"): modern Bun treats bare
+# "run <path>" as a package.json script name and prints help instead of executing the file.
+bun --cwd "$SRC" ./bin/allbrew.ts "$URL" --name "$NAME" --verbose >"$LOG" 2>&1
 EC=$?
 echo EXIT_CODE=$EC | tee -a "$LOG"
 exit 0
@@ -301,52 +306,85 @@ exit 0
 }
 
 export async function syncAllbrewSrcToVM(h, hostSrcPath, vmDest) {
-  const dest = vmDest || h.config.vmWorkspace || `/Users/${h.config.projectUser}/Developer/allbrew`;
   const hostQ = h.q(hostSrcPath);
-  const destQ = h.q(dest);
   const branch = await h.execHost(`git -C ${hostQ} rev-parse --abbrev-ref HEAD 2>/dev/null || git -C ${hostQ} branch --show-current 2>/dev/null || echo HEAD`, { nothrow: true });
   const branchName = (branch.stdout || "").trim() || "HEAD";
   const isHead = branchName === "HEAD";
   const pushRef = isHead ? `HEAD:refs/heads/agent/batch-src-${Date.now()}` : `${branchName}:${branchName}`;
   const pushBranch = isHead ? `agent/batch-src-${Date.now()}` : branchName;
+  const effectiveBranch = isHead ? pushBranch : branchName;
+  const projectUser = h.config?.projectUser || process.env.TH_PROJECT_USER || "th-allbrew";
+  // Per-branch dest avoids concurrent agents overwriting a shared Developer/allbrew
+  // checkout (e.g. stuck on agent/smashing while portdeck expects its fix).
+  const safeBranch = effectiveBranch.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 80);
+  const dest =
+    vmDest ||
+    `/Users/${projectUser}/Developer/allbrew-src/${safeBranch}`;
+  const destQ = h.q(dest);
 
   // Push host worktree branch to origin so VM can fetch it (works for both local and remote VMs)
   const pushRes = await h.execHost(`git -C ${hostQ} push origin ${pushRef} --force 2>&1`, { timeout: 120000, nothrow: true });
   if (pushRes.exitCode !== 0 && !/Everything up-to-date/.test(pushRes.stdout || "") && !/To /.test(pushRes.stdout || "")) {
     throw new Error(`failed to push allbrew src branch ${pushBranch} to origin:\n${pushRes.stdout}\n${pushRes.stderr}`);
   }
-  const effectiveBranch = isHead ? pushBranch : branchName;
 
   const remoteUrlRes = await h.execHost(`git -C ${hostQ} remote get-url origin 2>/dev/null || echo https://github.com/tariqwest/allbrew.git`, { nothrow: true });
   const remoteUrl = (remoteUrlRes.stdout || "https://github.com/tariqwest/allbrew.git").trim();
+  const wantShaRes = await h.execHost(`git -C ${hostQ} rev-parse HEAD`, { nothrow: true });
+  const wantSha = (wantShaRes.stdout || "").trim();
 
+  // lumeSshExec runs as user "lume"; the workspace under /Users/th-allbrew is
+  // owned by the project user. Always re-exec the sync as the project user so
+  // git fetch can write .git/FETCH_HEAD (otherwise: Permission denied).
   const script = [
     "#!/bin/bash",
     "set -euo pipefail",
+    `PROJECT_USER=${h.q(projectUser)}`,
+    `if [ "$(id -un)" != "$PROJECT_USER" ] && command -v sudo >/dev/null 2>&1; then`,
+    `  exec sudo -u "$PROJECT_USER" -H bash "$0" "$@"`,
+    `fi`,
     `SRC=${destQ}`,
     `BRANCH=${h.q(effectiveBranch)}`,
     `REMOTE=${h.q(remoteUrl)}`,
-    `echo "[sync-src] branch=$BRANCH remote=$REMOTE dest=$SRC"`,
+    `WANT_SHA=${h.q(wantSha)}`,
+    `echo "[sync-src] user=$(id -un) branch=$BRANCH remote=$REMOTE dest=$SRC want=$WANT_SHA"`,
+    `mkdir -p "$(dirname "$SRC")"`,
     `if [ -d "$SRC/.git" ]; then`,
     `  echo "[sync-src] existing git repo, fetching branch"`,
-    `  git -C "$SRC" remote set-url origin "$REMOTE" 2>/dev/null || git -C "$SRC" remote add origin "$REMOTE"`,
-    `  git -C "$SRC" fetch origin "$BRANCH" --depth 1 2>&1 || git -C "$SRC" fetch origin --depth 1 2>&1`,
-    `  git -C "$SRC" checkout -B "$BRANCH" "origin/$BRANCH" 2>&1 || git -C "$SRC" checkout "$BRANCH" 2>&1 || true`,
-    `  git -C "$SRC" reset --hard "origin/$BRANCH" 2>&1 || true`,
+    `  git -C "$SRC" config remote.origin.url "$REMOTE" 2>/dev/null || true`,
+    `  if ! git -C "$SRC" remote get-url origin >/dev/null 2>&1; then git -C "$SRC" remote add origin "$REMOTE"; fi`,
+    `  git -C "$SRC" fetch --force origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" --depth 1 2>&1`,
+    `  git -C "$SRC" checkout -B "$BRANCH" "origin/$BRANCH" 2>&1`,
+    `  git -C "$SRC" reset --hard "origin/$BRANCH" 2>&1`,
     `else`,
     `  echo "[sync-src] cloning fresh"`,
     `  rm -rf "$SRC"`,
-    `  mkdir -p "$(dirname "$SRC")"`,
-    `  git clone --depth 1 --branch "$BRANCH" "$REMOTE" "$SRC" 2>&1 || git clone --depth 1 "$REMOTE" "$SRC" 2>&1`,
-    `  git -C "$SRC" fetch origin "$BRANCH" --depth 1 2>&1 || true`,
-    `  git -C "$SRC" checkout "$BRANCH" 2>&1 || true`,
+    `  git clone --depth 1 --branch "$BRANCH" "$REMOTE" "$SRC" 2>&1`,
+    `fi`,
+    `GOT=$(git -C "$SRC" rev-parse HEAD)`,
+    `GOT_BRANCH=$(git -C "$SRC" rev-parse --abbrev-ref HEAD)`,
+    `echo "[sync-src] got branch=$GOT_BRANCH sha=$GOT"`,
+    `if [ -n "$WANT_SHA" ] && [ "$GOT" != "$WANT_SHA" ]; then`,
+    `  echo "[sync-src] SHA mismatch want=$WANT_SHA got=$GOT — refetch full"`,
+    `  git -C "$SRC" fetch --force origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" 2>&1`,
+    `  git -C "$SRC" reset --hard "origin/$BRANCH" 2>&1`,
+    `  GOT=$(git -C "$SRC" rev-parse HEAD)`,
+    `fi`,
+    `if [ -n "$WANT_SHA" ] && [ "$GOT" != "$WANT_SHA" ]; then`,
+    `  echo "SRC_SHA_MISMATCH want=$WANT_SHA got=$GOT" >&2`,
+    `  exit 1`,
+    `fi`,
+    `if [ "$GOT_BRANCH" != "$BRANCH" ] && [ "$GOT_BRANCH" != "HEAD" ]; then`,
+    `  echo "SRC_BRANCH_MISMATCH want=$BRANCH got=$GOT_BRANCH" >&2`,
+    `  exit 1`,
     `fi`,
     `echo "[sync-src] bun install in $SRC"`,
     `if [ -f "$SRC/package.json" ]; then`,
     `  bun --cwd "$SRC" install --frozen-lockfile 2>&1 | tail -20 || bun --cwd "$SRC" install 2>&1 | tail -20 || true`,
     `fi`,
     `test -f "$SRC/bin/allbrew.ts" || { echo "SRC_MISSING after sync: $SRC/bin/allbrew.ts" >&2; exit 1; }`,
-    `echo "[sync-src] ready $(git -C "$SRC" rev-parse --short HEAD 2>/dev/null || echo unknown)"`,
+    `test -f "$SRC/lib/github.ts" || { echo "SRC_MISSING github.ts" >&2; exit 1; }`,
+    `echo "[sync-src] ready $(git -C "$SRC" rev-parse --short HEAD) branch=$(git -C "$SRC" rev-parse --abbrev-ref HEAD)"`,
   ].join("\n");
 
   const encoded = Buffer.from(script).toString("base64");
@@ -374,9 +412,25 @@ echo VERIFY name=$NAME
 if brew list --formula "$NAME" >/dev/null 2>&1 || brew list "$NAME" >/dev/null 2>&1; then echo FORMULA_LISTED=1; else echo FORMULA_LISTED=0; fi
 if brew list --cask "$NAME" >/dev/null 2>&1; then echo CASK_LISTED=1; else echo CASK_LISTED=0; fi
 if test -f "$HOME/.config/allbrew/packages/$NAME.json"; then echo MANIFEST_OK; else echo MANIFEST_MISSING; fi
+BIN_OK=0
 if command -v "$NAME" >/dev/null 2>&1; then
-  if "$NAME" --version >/tmp/ab-bin-out 2>&1 || "$NAME" --help >/tmp/ab-bin-out 2>&1 || "$NAME" -h >/tmp/ab-bin-out 2>&1; then echo BIN_OK; head -5 /tmp/ab-bin-out; else echo BIN_HELP_FAIL; fi
-else echo BIN_MISSING; fi
+  if "$NAME" --version >/tmp/ab-bin-out 2>&1 || "$NAME" --help >/tmp/ab-bin-out 2>&1 || "$NAME" -h >/tmp/ab-bin-out 2>&1; then echo BIN_OK; BIN_OK=1; head -5 /tmp/ab-bin-out; else echo BIN_HELP_FAIL; fi
+fi
+# Renamed formulae (core collision → name-tap) keep the original bin (e.g. starship-tap ships bin/starship).
+if [ "$BIN_OK" = "0" ]; then
+  PREFIX=$(brew --prefix "$NAME" 2>/dev/null || true)
+  if [ -n "$PREFIX" ] && [ -d "$PREFIX/bin" ]; then
+    for b in "$PREFIX/bin"/*; do
+      [ -e "$b" ] || continue
+      if [ -x "$b" ] || [ -L "$b" ]; then
+        if "$b" --version >/tmp/ab-bin-out 2>&1 || "$b" --help >/tmp/ab-bin-out 2>&1 || "$b" -h >/tmp/ab-bin-out 2>&1; then
+          echo BIN_OK; BIN_OK=1; echo "BIN_PATH=$b"; head -5 /tmp/ab-bin-out; break
+        fi
+      fi
+    done
+  fi
+fi
+if [ "$BIN_OK" = "0" ]; then echo BIN_MISSING; fi
 ls "$HOME/Applications" 2>/dev/null | head -10 || true
 if ls "$HOME/Applications" 2>/dev/null | grep -qi "$NAME"; then echo APP_OK; fi
 INFO=$(brew info "$NAME" 2>/dev/null || true)

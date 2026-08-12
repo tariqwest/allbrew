@@ -98,10 +98,11 @@ Before any VM work, form the agent oracle. **Do not** trust the eventual `vm-ins
    LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
      --url "<url>" --name "<slug>" --log "$RUN_DIR/vm-install.log" --run-dir "$RUN_DIR"
    ```
-   - Acquires a Lume VM from `vm-pool.json` (3 endpoints: 2 local + homeserver), exclusive `/opt/homebrew` sparsebundle, `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`, runs the full `allbrew` → `brew install` → verify → `brew uninstall` + `assertUninstallResiduals` **inside the VM**, then detaches prefix in `finally`.
+   - **Per-suite beforeAll mirror:** before `allbrew` runs, `vm-install-one.mjs` snapshots VM `~/.config/allbrew` to `/tmp/allbrew-batch-snapshot-<slug>-<ts>/config-backup` (via `vmSnapshotCmd`, same contract as `tests/helpers/local-state.ts:snapshotLocalState`). In shared-homebrew mode (`TH_HOMEBREW_PREFIX_ENABLED=false`) no sparsebundle acquire is needed — `session=null`, VM's real `/opt/homebrew` is shared single-user.
+   - Acquires a Lume VM from `vm-pool.json` (3 endpoints: 2 local + homeserver), `HOMEBREW_CASK_OPTS=--appdir=$HOME/Applications`, runs the full `allbrew` → `brew install` → verify → `brew uninstall` + sweep **inside the VM**, then (per-suite afterAll mirror) captures `readout.txt` **before** restore, restores `~/.config/allbrew` from snapshot, runs registry cleanup (`vmRegistryCleanupCmd` mirroring `tests/helpers/test-cleanup-registry.ts: stopRegisteredServices / killOrphanedFixtures / purgeOrphanedRegistries`), then `brew services stop --all` / `brew cleanup` hygiene in `finally`.
    - Uses the **released** `allbrew` bottle inside the VM (`brew upgrade allbrew`). For patch validation (Phase 5) add `--allbrew-src "$WT"` — the helper pushes the worktree branch `agent/*` to `origin` and VM fetches/checks-out + `bun install`, then runs `bun --cwd <vmSrc> run bin/allbrew.ts` inside the VM (no host `brew`).
-   - Streams VM stdout incrementally into `$RUN_DIR/vm-install.log` (via `onChunk` + `appendFileSync`) and maintains `$RUN_DIR/vm-meta.json` (`endpointId`, `poolWaitMs`, `phase`, `lastLogAt`, `hostClean`) so the parent can distinguish pool-wait vs hung vs installing. Parent tails `vm-install.log` + `vm-meta.json` for 3-min nudge decisions — no heartbeat is treated as stalled.
-   - `VERIFY_OK=true` in `vm-install.log` is the **only** green path. Host `brew list`/`--version` is meaningless.
+   - Streams VM stdout incrementally into `$RUN_DIR/vm-install.log` (via `onChunk` + `appendFileSync`) and maintains `$RUN_DIR/vm-meta.json` (`endpointId`, `poolWaitMs`, `phase` = `snapshotting`→`snapshot-done`→`installing`→`readout-captured`→`restored`→`registry-cleaned`→`uninstalled`, `lastLogAt`, `hostClean`) so the parent can distinguish pool-wait vs hung vs installing. Parent tails `vm-install.log` + `vm-meta.json` for 3-min nudge decisions — no heartbeat is treated as stalled.
+   - `VERIFY_OK=true` in `vm-install.log` is the **only** green path. Host `brew list`/`--version` is meaningless. Host `vm-install.log.readout.txt` / `.hygiene.txt` / `.registry.txt` are fetched from VM snapshot dir for archiving.
    - **Do not** supplement with a host `allbrew-initial.log`. Host-side validation is limited to `bun run check` / `bun test` (offline) — never `allbrew`/`brew`. Any `brew`-involving re-try must be a second `vm-install-one.mjs` call (with `--allbrew-src "$WT"` for unreleased code).
 
 2. Record `codebaseObserved` **only** from the VM log + VM-generated Ruby (`$RUN_DIR/vm-install.log` + `.formula.rb`): `strategy`, `generator`, `packageNameDetected`, `serviceDetected`/`serviceCommand`, `formulaPath`, `logSignals`. Preserve `vmHelperUsed=true` for the completion report. There is no `allbrew-initial.log` host leg.
@@ -123,16 +124,15 @@ Also record generator/parameter `deltas` into `agent-judgment.json` (packageName
 
 When any `error`/`warn` delta exists, prepare a **patch artifact** (not a live host commit): ` $RUN_DIR/fix-package/patches/<rule>.patch` + `FIX.md` inside the **worktree**.
 
-## Phase 4 — VM verification (already done by vm-install-one)
+## Phase 4 — VM verification (already done by vm-install-one, with per-suite afterAll hygiene)
 
-The VM helper already verified:
+The VM helper already verified (mirroring `tests/e2e/catalog.e2e.test.ts` beforeAll/afterAll):
 
-* `brew list <name>` / `brew info` inside VM
-* `which <bin>` / `<bin> --version` / `--help` (formula) or `$HOME/Applications` / `/Applications` (cask)
-* `~/.config/allbrew/packages/<name>.json` manifest in VM
-* `assertUninstallResiduals` after `brew uninstall` (VM)
+* **beforeAll:** `snapshotLocalState` inside VM (`~/.config/allbrew` → `/tmp/allbrew-batch-snapshot-<slug>-<ts>/config-backup`) so URL starts from pre-install config (shared `/opt/homebrew` is not snapshotted, only config).
+* **during:** `brew list <name>` / `brew info` inside VM, `which <bin>` / `<bin> --version/--help` (formula) or `$HOME/Applications` (cask), `~/.config/allbrew/packages/<name>.json` manifest in VM, sweep of lingering `ACTIVE_ENTRIES` still installed (like `catalog.e2e.test.ts` afterAll sweep of `brew uninstall --force` for skipped catalog entries).
+* **afterAll:** `captureLocalReadout` **before** restore → `readout.txt` in snapshot dir (System Info, allbrew Version/Config/Manifests, `brew tap/list/Caskroom/Services`, `brew services list`, `~/Library/LaunchAgents` grep, residual audit), fetched to `hostLog.readout.txt`; `restoreLocalState` (rm + cp snapshot back, same contract as `tests/helpers/local-state.ts`); `stopRegisteredServices` / `killOrphanedFixtures` / `purgeOrphanedRegistries` / `cleanupCurrentProcessRegistry` via `vmRegistryCleanupCmd`; `rm -rf /tmp/allbrew-* /private/tmp/allbrew-* ~/Library/Caches/Homebrew` + snapshot dir purge. No sparsebundle compact in shared mode (`SKIP_COMPACT`).
 
-**Do not** re-verify on host (`which <bin>` on host is host pollution). If VM `VERIFY_OK=true` and Phase 3 passed, report `success` (or `fixed_success` if a patch was produced and re-verified in VM).
+**Do not** re-verify on host (`which <bin>` on host is host pollution). If VM `VERIFY_OK=true` and Phase 3 passed, report `success` (or `fixed_success` if a patch was produced and re-verified in VM). Verify `vm-meta.json` phases `snapshot-done` → `readout-captured` → `restored` → `registry-cleaned`.
 
 ## Phase 5 — Fix in disposable worktree → patch artifacts (host never dirty)
 
@@ -218,7 +218,7 @@ Batch children **never** `git push origin main`, `git push --force`, or `bun run
    # Host: parent reaper also runs tests/monitored-install-batch/cleanup-post-run.mjs --host-only
    bun tests/monitored-install-batch/cleanup-post-run.mjs --host-only 2>&1 | tail -20
    ```
-   VM ephemera (`brew services stop --all`, `brew cleanup --prune=all`, `brew autoremove`, `rm -rf /tmp/* $TMPDIR/* ~/Library/Caches/*`, `hdiutil compact` of sparsebundle when not mounted, `df -h` hygiene) is already handled inside `vm-install-one.mjs`'s post-uninstall `finally` (see `vm-install-one.mjs: hygiene` block). Verify `hostClean=true` and `vmMeta.hygiene` contains `CLEANUP_OK`/`DF_OK`. Leave `RUN_DIR` + `fix-package` for archiving; worktree itself is ephemera and must be removed per-item. Do not report COMPLETION until cleanup is done.
+   VM per-suite hygiene (`vm-install-one.mjs` beforeAll/afterAll) already did: `snapshotLocalState` → install/verify → `captureLocalReadout` before restore → `restoreLocalState` → `vmRegistryCleanupCmd` (stop services/kill fixtures/purge registries) + `brew cleanup` + snapshot dir `rm -rf` (shared mode `SKIP_COMPACT`, no sparsebundle `hdiutil compact`). Verify `hostClean=true`, `vmMeta` contains `snapshot-done`/`readout-captured`/`restored`/`registry-cleaned`/`CLEANUP_OK`/`DF_OK`, and `hostLog.readout.txt` exists. Leave `RUN_DIR` + `fix-package` for archiving; worktree itself is ephemera and must be removed per-item. Do not report COMPLETION until cleanup is done.
 
 ## Cleanup verification (parent reaper between waves)
 Between waves the parent runs `bun tests/monitored-install-batch/cleanup-post-run.mjs --host-only` and `bun tests/monitored-install-batch/vm-guest-health.mjs --clear-stale` to reap orphaned `worktrees/*` (prunable), `/private/tmp/allbrew-wt-*`, and `vm-mutex-*.lockdir` where holder pid is dead. Confirm `git worktree list | grep prunable` is empty and `vm-guest-health` shows `usable` >0 before next wave.

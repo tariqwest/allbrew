@@ -132,10 +132,17 @@ function writeMeta(extra = {}) {
 writeMeta({ phase: "pool-acquired" });
 
 try {
-  writeMeta({ phase: "acquiring-prefix" });
-  session = await acquireHomebrewPrefixDurable(h);
-  lockAcquiredAt = Date.now();
-  writeMeta({ phase: "prefix-acquired", lockAcquiredAt, poolWaitMs: lockAcquiredAt - poolAcquiredAt });
+  const prefixEnabled = h.config.homebrewPrefix.enabled;
+  if (prefixEnabled) {
+    writeMeta({ phase: "acquiring-prefix" });
+    session = await acquireHomebrewPrefixDurable(h);
+    lockAcquiredAt = Date.now();
+    writeMeta({ phase: "prefix-acquired", lockAcquiredAt, poolWaitMs: lockAcquiredAt - poolAcquiredAt });
+  } else {
+    session = null;
+    lockAcquiredAt = Date.now();
+    writeMeta({ phase: "prefix-skipped-shared-mode", lockAcquiredAt, poolWaitMs: 0 });
+  }
   await ensureAllbrew(h, session, mountPoint);
   await ensureTapConfigured(h, session, mountPoint, tapPath);
 
@@ -257,7 +264,7 @@ brew services stop --all 2>&1 || true
 brew cleanup --prune=all 2>&1 | tail -10; echo CLEANUP_OK
 brew autoremove 2>&1 | tail -10 || true
 rm -rf /tmp/allbrew-* /private/tmp/allbrew-* 2>/dev/null || true
-rm -rf "$TMPDIR"/allbrew-* 2>/dev/null || true
+rm -rf "\${TMPDIR:-/tmp}"/allbrew-* 2>/dev/null || true
 rm -rf ~/Library/Caches/Homebrew/* 2>/dev/null || true
 df -h / 2>&1 | head -10; echo DF_OK
 df -h ${mountPoint} 2>&1 | head -10; echo DF_HB_OK

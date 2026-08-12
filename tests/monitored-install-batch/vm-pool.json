@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-08-07T16:25:40.178Z",
+  "updatedAt": "2026-08-12T11:20:16.095616+00:00",
   "strategy": "least-busy",
-  "notes": "Initial OS setup phase uses 4 CPU / 4GB RAM. Actual test runs use 2 CPU / 3.5GB RAM. Rebooted vm-local-macos-testing-2 2026-08-07T16:25:40.179Z",
+  "notes": "Initial OS setup phase uses 4 CPU / 4GB RAM. Actual test runs use 2 CPU / 3.5GB RAM. Rebooted vm-local-macos-testing-2 2026-08-07T16:25:40.179Z | homeserver re-enabled 2026-08-12 after VM found running on external storage",
   "endpoints": [
     {
       "id": "homeserver",
@@ -23,7 +23,9 @@
         "TH_HOMEBREW_MOUNT_POINT": "/opt/homebrew",
         "TH_HOMEBREW_LOCK_PATH": "/var/run/lume-homebrew.lock"
       },
-      "mutexDir": "logs/vm-mutex-homeserver.lockdir"
+      "mutexDir": "logs/vm-mutex-homeserver.lockdir",
+      "reenabledAt": "2026-08-12T11:20:16.095406+00:00",
+      "reenabledWhy": "VM running on external storage (2CPU/3.5GB); guest bootstrap follow-up"
     },
     {
       "id": "local-1",
