@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { matchOfficialCaskByHomepage } from "../../../lib/generators/homebrew-cask.ts";
+import {
+  matchOfficialCaskByHomepage,
+  resolveHomebrewCaskToken,
+} from "../../../lib/generators/homebrew-cask.ts";
+import { classify } from "../../../lib/classifier.ts";
 
 describe("matchOfficialCaskByHomepage", () => {
   it("matches superwhisper.com to official homebrew/cask token", async () => {
@@ -122,4 +126,23 @@ describe("matchOfficialCaskByHomepage", () => {
     expect(m).toBeNull();
   });
 
+});
+
+describe("resolveHomebrewCaskToken (edition-suffix fallback)", () => {
+  it("resolves raycast-beta batch slug to official raycast cask", async () => {
+    const r = await resolveHomebrewCaskToken("raycast-beta");
+    expect(r.token).toBe("raycast");
+    expect(r.info.ruby_source_path).toMatch(/raycast/i);
+  });
+
+  it("resolves exact official token raycast", async () => {
+    const r = await resolveHomebrewCaskToken("raycast");
+    expect(r.token).toBe("raycast");
+  });
+
+  it("classifies formulae.brew.sh/cask/raycast as homebrew-cask name=raycast", () => {
+    const c = classify("https://formulae.brew.sh/cask/raycast");
+    expect(c.type).toBe("homebrew-cask");
+    expect(c.name).toBe("raycast");
+  });
 });

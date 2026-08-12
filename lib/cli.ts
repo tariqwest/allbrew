@@ -1830,9 +1830,19 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
   if (isFormulaGenerator(generatorName)) {
     const preferred = toFormulaName(userOpts.name);
     if (generatorName === "homebrew-formula") {
-      // Preserve the official homebrew/core token so the copied formula's
-      // class name and bottle block stay aligned with the file name.
-      userOpts.name = preferred;
+      // Official token from classification (URL path) wins over batch --name
+      // slugs so API lookup hits homebrew/core (e.g. wget not wget-cli).
+      const official = params?.name
+        ? toFormulaName(String(params.name))
+        : preferred;
+      if (official && preferred && official !== preferred) {
+        console.log(
+          chalk.yellow(
+            `  Using official homebrew/core token "${official}" (overriding --name "${preferred}")`,
+          ),
+        );
+      }
+      userOpts.name = official || preferred;
     } else {
       const altSources = [
         params.packageName,
@@ -1862,8 +1872,20 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
   if (isCaskGenerator(generatorName)) {
     const preferred = toCaskToken(userOpts.name);
     if (generatorName === "homebrew-cask") {
-      // Preserve the official homebrew/cask token.
-      userOpts.name = preferred;
+      // Official token from classification (URL path or homepage match) wins
+      // over batch --name slugs so API lookup hits homebrew/cask
+      // (e.g. raycast-beta → raycast for formulae.brew.sh/cask/raycast).
+      const official = params?.name
+        ? toCaskToken(String(params.name))
+        : preferred;
+      if (official && preferred && official !== preferred) {
+        console.log(
+          chalk.yellow(
+            `  Using official homebrew/cask token "${official}" (overriding --name "${preferred}")`,
+          ),
+        );
+      }
+      userOpts.name = official || preferred;
     } else {
       const owner = params.repoInfo?.fullName?.split?.("/")?.[0];
       const altSources = [
