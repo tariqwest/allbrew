@@ -161,6 +161,8 @@ export type CaskAppMasPayload = {
   name: string;
   appId: string;
   appName: string;
+  /** On-disk .app bundle name (often trackName before ":" subtitle). */
+  appBundleName?: string;
   version: string;
   desc: string;
   homepage: string;

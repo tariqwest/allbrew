@@ -16,6 +16,10 @@ export async function collectCaskAppMasPayload(
 
   const name = options.name || toCaskToken(metadata.trackName);
   const appName = metadata.trackName;
+  // trackName often includes a subtitle ("Bear: Markdown Notes") while the
+  // on-disk bundle is just the product stem ("Bear.app").
+  const appBundleName =
+    options.appBundleName || appBundleNameFromTrack(appName);
   const desc =
     options.desc ||
     metadata.description?.split("\n")[0]?.slice(0, 100) ||
@@ -29,12 +33,22 @@ export async function collectCaskAppMasPayload(
     name,
     appId,
     appName: rubyEscape(appName),
+    appBundleName: rubyEscape(appBundleName),
     version: rubyEscape(version),
     desc: rubyEscape(desc),
     homepage: rubyEscape(homepage),
-    zapBlock: buildZapBlock(appName, bundleId),
+    zapBlock: buildZapBlock(appBundleName, bundleId),
     livecheckBlock: masAppLivecheckBlock(appId),
   };
+}
+
+/** Derive /Applications/*.app stem from iTunes trackName. */
+export function appBundleNameFromTrack(trackName: string): string {
+  const raw = String(trackName || "").trim();
+  if (!raw) return "App";
+  // "Bear: Markdown Notes" → "Bear"; "Foo - Bar" kept if no colon
+  const beforeColon = raw.split(":")[0].trim();
+  return beforeColon || raw;
 }
 
 function buildZapBlock(appName: string, bundleId: string | null) {

@@ -1,5 +1,8 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectCaskAppMasPayload } from "../../../lib/generators/cask-app-mas.ts";
+import {
+  collectCaskAppMasPayload,
+  appBundleNameFromTrack,
+} from "../../../lib/generators/cask-app-mas.ts";
 
 describe("collectCaskAppMasPayload", () => {
   beforeEach(() => {
@@ -175,7 +178,18 @@ describe("collectCaskAppMasPayload", () => {
       "https://apps.apple.com/us/app/bear/id1091189122?mt=12",
     );
     expect(payload.appId).toBe("1091189122");
+    expect(payload.appBundleName).toBe("Bear");
     expect(payload.zapBlock).toContain("net.shinyfrog.bear");
+    expect(payload.zapBlock).toContain("Application Support/Bear");
+  });
+});
+
+describe("appBundleNameFromTrack", () => {
+  it("strips subtitle after colon", () => {
+    expect(appBundleNameFromTrack("Bear: Markdown Notes")).toBe("Bear");
+  });
+  it("keeps plain names", () => {
+    expect(appBundleNameFromTrack("Magnet")).toBe("Magnet");
   });
 });
 

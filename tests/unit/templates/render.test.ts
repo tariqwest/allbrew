@@ -562,7 +562,7 @@ describe("renderCask", () => {
       `cask "foo" do\n` +
       `  version "9.9"\n` +
       `  sha256 :no_check\n\n` +
-      `  url "macappstore://apps.apple.com/app/id12345?mt=12"\n` +
+      `  url "https://apps.apple.com/app/id12345?mt=12"\n` +
       `  name "Foo"\n` +
       `  desc "Foo from MAS"\n` +
       `  homepage "https://example.com"\n\n` +
@@ -575,5 +575,25 @@ describe("renderCask", () => {
       zap +
       `end\n`;
     expect(renderCask(payload)).toBe(expected);
+  });
+
+  it("renders cask_app_mas with appBundleName distinct from trackName", () => {
+    const payload: CaskPayload = {
+      template: "cask_app_mas",
+      name: "bear",
+      appId: "1091189122",
+      appName: "Bear: Markdown Notes",
+      appBundleName: "Bear",
+      version: "2.9.3",
+      desc: "Markdown notes",
+      homepage: "https://bear.app",
+      zapBlock: "  zap trash: []\n",
+      livecheckBlock: "",
+    };
+    const ruby = renderCask(payload);
+    expect(ruby).toContain('url "https://apps.apple.com/app/id1091189122?mt=12"');
+    expect(ruby).not.toContain("macappstore://");
+    expect(ruby).toContain('name "Bear: Markdown Notes"');
+    expect(ruby).toContain('uninstall delete: "/Applications/Bear.app"');
   });
 });
