@@ -1045,18 +1045,11 @@ export async function discoverMasFallbackCandidates(
       const exact = nameNorm === termNorm;
       const prefix =
         nameNorm.startsWith(termNorm) || termNorm.startsWith(nameNorm);
-      if (!exact && !(prefix && Math.min(nameNorm.length, termNorm.length) >= 4)) {
-        continue;
-      }
 
-      let score = exact ? 96 : 82;
-      const evidence = [
-        "mas-itunes-search-fallback",
-        exact ? "mas-name-exact" : "mas-name-prefix",
-        `term:${term}`,
-      ];
-
-      // Bonus when seller homepage hostname relates to the input host
+      // Seller-host relatedness gates non-exact (prefix) matches so short
+      // product tokens do not hallucinate unrelated MAS apps
+      // (easyfind→EasyFinder 2, hermes→Hermes: The Fury of Megaera).
+      let sellerRelated = false;
       try {
         const seller = String(r.sellerUrl || "");
         const pageHost = new URL(pageUrl).hostname.replace(/^www\./, "");
@@ -1067,12 +1060,31 @@ export async function discoverMasFallbackCandidates(
             sellerHost.includes(pageLabel) ||
             pageHost.includes(sellerHost.split(".")[0] || "")
           ) {
-            score += 4;
-            evidence.push("mas-seller-host-related");
+            sellerRelated = true;
           }
         }
       } catch {
         /* ignore */
+      }
+
+      if (!exact) {
+        const minLen = Math.min(nameNorm.length, termNorm.length);
+        // Prefix alone is not enough: require seller host relatedness.
+        // hermes-style lenDiff<=4 still let easyfind→easyfinder2 (diff 3) through.
+        const prefixOk = prefix && minLen >= 4 && sellerRelated;
+        if (!prefixOk) continue;
+      }
+
+      let score = exact ? 96 : 82;
+      const evidence = [
+        "mas-itunes-search-fallback",
+        exact ? "mas-name-exact" : "mas-name-prefix",
+        `term:${term}`,
+      ];
+
+      if (sellerRelated) {
+        score += 4;
+        evidence.push("mas-seller-host-related");
       }
 
       seenIds.add(trackId);

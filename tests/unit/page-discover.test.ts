@@ -733,6 +733,56 @@ describe("MAS iTunes fallback (auth-walled marketing pages)", () => {
     expect(result.chosen?.kind).toBe("mac-app-store");
     expect(result.chosen?.url).toContain("id6739781207");
   });
+
+  it("rejects loose prefix MAS hits for short generic terms (hermesapp.io)", async () => {
+    // hermes (6) vs hermesthefuryofmegaera (22): seller alawar unrelated → 0
+    const cands = await discoverMasFallbackCandidates("https://hermesapp.io", {
+      nameHint: "hermes",
+      itunesSearch: async () => [
+        {
+          kind: "mac-software",
+          trackId: 6450658263,
+          trackName: "Hermes: The Fury of Megaera",
+          sellerUrl: "https://company.alawar.com/en/",
+        },
+      ],
+    });
+    expect(cands.length).toBe(0);
+  });
+
+  it("rejects easyfind→EasyFinder 2 prefix on unrelated host (devmate.com)", async () => {
+    // easyfind (8) vs easyfinder2 (11): lenDiff 3 would pass hermes-style lenDiff<=4,
+    // but seller easyfinderapp.com is unrelated to devmate.com → 0
+    const cands = await discoverMasFallbackCandidates("https://devmate.com", {
+      nameHint: "easyfind",
+      itunesSearch: async () => [
+        {
+          kind: "mac-software",
+          trackId: 1531238115,
+          trackName: "EasyFinder 2",
+          sellerUrl: "http://easyfinderapp.com",
+        },
+      ],
+    });
+    expect(cands.length).toBe(0);
+  });
+
+  it("allows prefix MAS hit when seller host relates to page host", async () => {
+    const cands = await discoverMasFallbackCandidates("https://easyfinderapp.com", {
+      nameHint: "easyfind",
+      itunesSearch: async () => [
+        {
+          kind: "mac-software",
+          trackId: 1531238115,
+          trackName: "EasyFinder 2",
+          sellerUrl: "http://easyfinderapp.com",
+        },
+      ],
+    });
+    expect(cands.length).toBe(1);
+    expect(cands[0].url).toContain("id1531238115");
+    expect(cands[0].evidence).toContain("mas-seller-host-related");
+  });
 });
 
 describe("sparkle appcast enrichment", () => {
