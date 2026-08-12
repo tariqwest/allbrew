@@ -1881,6 +1881,11 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
             `  Detected ${err.appName || "macOS .app"} inside binary-looking archive; using cask-app-release`,
           ),
         );
+        // Pass content proof so cask-app-release accepts arch-tagged zips that
+        // fail isAppAsset filename heuristics.
+        if (err.appName) mergedOpts.appName = err.appName;
+        if (err.assetName) mergedOpts.forceAssetName = err.assetName;
+        mergedOpts.includeMacBinaryZipsAsApp = true;
         // Re-apply cask name collision handling (formula path was used earlier).
         {
           const preferred = toCaskToken(mergedOpts.name || params.repoInfo?.name || "app");

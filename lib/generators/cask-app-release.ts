@@ -52,7 +52,29 @@ export async function collectCaskAppReleasePayload(
 ): Promise<CaskAppReleasePayload> {
   const version = extractVersionFromTag(release.tagName);
 
-  const appAssets = release.assets.filter((a: any) => isAppAsset(a.name));
+  let appAssets = release.assets.filter((a: any) => isAppAsset(a.name));
+  // Content-proven re-route from binary-release: arch-tagged macOS zips
+  // (go2tv_*_macOS_arm64.zip) fail isAppAsset but contain a .app bundle.
+  if (appAssets.length === 0 && options.includeMacBinaryZipsAsApp) {
+    appAssets = release.assets.filter((a: any) => {
+      if (!/\.zip$/i.test(a.name)) return false;
+      const arch = matchAssetToArch(a.name);
+      return (
+        arch === "macosArm" ||
+        arch === "macosIntel" ||
+        arch === "macosUniversal"
+      );
+    });
+  }
+  // Prefer the specific asset binary-release already inspected.
+  if (options.forceAssetName) {
+    const forced = release.assets.find(
+      (a: any) => a.name === options.forceAssetName,
+    );
+    if (forced && !appAssets.some((a: any) => a.name === forced.name)) {
+      appAssets = [forced, ...appAssets];
+    }
+  }
   if (appAssets.length === 0) {
     throw new Error("No .dmg or macOS .zip assets found in release");
   }
