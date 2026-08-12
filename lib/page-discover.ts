@@ -295,10 +295,18 @@ export function scoreCandidateUrl(
       score += 70;
       ev.push("classifier:archive");
       break;
-    case "github-repo":
+    case "github-repo": {
+      const parsed = parseGithubRepoHome(url);
+      if (!parsed) {
+        score -= 80;
+        ev.push("invalid-github-repo-penalty");
+        kind = "unknown";
+        break;
+      }
       score += 75;
       ev.push("classifier:github-repo");
       break;
+    }
     case "npm-package":
     case "pip-package":
     case "cargo-package":
@@ -728,7 +736,34 @@ export function parseGithubRepoHome(url: string): { owner: string; repo: string 
     if (parts.length !== 2) return null;
     const [owner, repoRaw] = parts;
     const repo = repoRaw.replace(/\.git$/i, "");
-    if (!owner || !repo || owner === "orgs" || owner === "settings") return null;
+    if (!owner || !repo) return null;
+    const lowerOwner = owner.toLowerCase();
+    const lowerRepo = repo.toLowerCase();
+    if (
+      lowerOwner === "orgs" ||
+      lowerOwner === "settings" ||
+      lowerOwner === "sponsors" ||
+      lowerOwner === "marketplace" ||
+      lowerOwner === "features" ||
+      lowerOwner === "enterprise" ||
+      lowerOwner === "pricing" ||
+      lowerOwner === "login" ||
+      lowerOwner === "join" ||
+      lowerOwner === "explore" ||
+      lowerOwner === "collections" ||
+      lowerOwner === "topics" ||
+      lowerOwner === "codespaces" ||
+      lowerOwner === "copilot"
+    )
+      return null;
+    if (
+      lowerRepo === "sponsors" ||
+      lowerRepo === "marketplace" ||
+      lowerRepo === "settings" ||
+      lowerRepo === "notifications" ||
+      lowerRepo === "explore"
+    )
+      return null;
     return { owner, repo };
   } catch {
     return null;
@@ -923,7 +958,7 @@ export async function enrichGithubReleaseAssets(
           "github-release-asset",
           `repo:${owner}/${repo}`,
         ]);
-        scored.score += 20;
+        scored.score += 30;
         scored.evidence.push("release-enrichment");
         extras.push(scored);
       }
@@ -1233,6 +1268,100 @@ export async function enrichDownloadHubPages(
       }
     } catch (err: any) {
       log(`download hub follow failed ${hub}: ${err?.message || err}`);
+    }
+  }
+  if (!extras.length) return candidates;
+  return mergeCandidates(candidates, extras);
+}
+
+export async function enrichProductDetailPages(
+  candidates: DiscoverCandidate[],
+  pageUrl: string,
+  pageHtml: string,
+  opts: {
+    log?: (msg: string) => void;
+    maxPages?: number;
+    htmlFixture?: { body: string; finalUrl?: string; contentType?: string };
+    fetchHtml?: (url: string) => Promise<{ body: string; finalUrl?: string }>;
+    hubHtmlByUrl?: Record<string, string>;
+  } = {},
+): Promise<DiscoverCandidate[]> {
+  const log = opts.log || (() => {});
+  const maxPages = opts.maxPages ?? 4;
+  const hasStrong = candidates.some((c) => {
+    if (c.score < 70 || c.kind === "unknown") return false;
+    if (isSkillOrCompanionAssetUrl(c.url)) return false;
+    if (c.kind === "cask-dmg" || /\.dmg(?:\?|#|$)/i.test(c.url)) return true;
+    if (c.kind === "bash-script" || /\.(?:sh|bash)(?:\?|#|$)/i.test(c.url)) return true;
+    if (/\.pkg(?:\?|#|$)/i.test(c.url)) return true;
+    if (c.kind === "github-repo" && !isSecondaryGithubRepoUrl(c.url)) return true;
+    return false;
+  });
+  if (hasStrong) return candidates;
+
+  const hrefRe = /\b(?:href|data-href)\s*=\s*["']([^"']+)["']/gi;
+  let m: RegExpExecArray | null;
+  const detailUrls = new Set<string>();
+  let baseDepth = 0;
+  try {
+    baseDepth = new URL(pageUrl).pathname.replace(/\/+$/, "").split("/").filter(Boolean).length;
+  } catch {
+    baseDepth = 0;
+  }
+  while ((m = hrefRe.exec(pageHtml)) !== null) {
+    const abs = normalizeCandidateUrl(m[1], pageUrl);
+    if (!abs || !sameSite(abs, pageUrl)) continue;
+    if (isDownloadHubPath(abs)) continue;
+    try {
+      const u = new URL(abs);
+      const depth = u.pathname.replace(/\/+$/, "").split("/").filter(Boolean).length;
+      if (depth <= baseDepth) continue;
+      if (/\.(png|jpe?g|gif|svg|webp|css|js|json|xml|ico|woff2?|ttf|mp4|mp3|pdf)(?:\?|#|$)/i.test(u.pathname)) continue;
+      if (/\/(?:products?|product|apps?|projects?|software|tools|download)\//i.test(u.pathname)) {
+        detailUrls.add(abs.split("#")[0]);
+      } else if (depth === baseDepth + 1) {
+        detailUrls.add(abs.split("#")[0]);
+      }
+    } catch {
+      continue;
+    }
+    if (detailUrls.size >= maxPages + 2) break;
+  }
+  const list = [...detailUrls].slice(0, maxPages);
+  if (!list.length) return candidates;
+
+  const extras: DiscoverCandidate[] = [];
+  for (const detailUrl of list) {
+    try {
+      let body = "";
+      let finalUrl = detailUrl;
+      if (opts.hubHtmlByUrl?.[detailUrl]) {
+        body = opts.hubHtmlByUrl[detailUrl];
+      } else if (opts.fetchHtml) {
+        const fetched = await opts.fetchHtml(detailUrl);
+        body = fetched.body;
+        finalUrl = fetched.finalUrl || detailUrl;
+      } else if (opts.htmlFixture && !opts.fetchHtml) {
+        continue;
+      } else {
+        const fetched = await fetchTextLimited(detailUrl, {
+          maxBytes: 2_000_000,
+          timeoutMs: 20_000,
+        });
+        body = fetched.body;
+        finalUrl = fetched.url || detailUrl;
+      }
+      if (!body) continue;
+      const fromDetail = extractCandidatesFromHtml(body, finalUrl).map((c) => {
+        const next = { ...c };
+        next.score += 6;
+        next.evidence = [...c.evidence, "product-detail-follow", `detail:${detailUrl}`];
+        return next;
+      });
+      extras.push(...fromDetail);
+      log(`product detail follow: ${detailUrl} → ${fromDetail.length} candidate(s)`);
+    } catch (err: any) {
+      log(`product detail follow failed ${detailUrl}: ${err?.message || err}`);
     }
   }
   if (!extras.length) return candidates;
@@ -1721,6 +1850,18 @@ export async function discoverPageDownloads(
     candidates = candidates.filter((c) => !isImplausibleArtifactUrl(c.url));
   } catch {
     /* ignore hub follow errors */
+  }
+
+  // Tier A.7a: follow same-site product detail pages for listing hubs (e.g. /products → /products/right-crane/)
+  if (!opts.htmlFixture) {
+    try {
+      candidates = await enrichProductDetailPages(candidates, finalPageUrl, body, { log });
+      candidates = candidates.filter((c) => !isImplausibleArtifactUrl(c.url));
+      // Re-enrich newly discovered GitHub repos to DMG assets
+      candidates = await enrichGithubReleaseAssets(candidates, finalPageUrl, { log });
+    } catch {
+      /* ignore product detail follow errors */
+    }
   }
 
   // Tier A.7b: JS download(type, code) → same-origin JSON /download API (iA Writer)
