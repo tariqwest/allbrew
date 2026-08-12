@@ -1424,13 +1424,24 @@ async function handleGithubRepo(classification, opts) {
       case "npm": {
         const pkgJson = await getFileContent(owner, repo, "package.json");
         let packageName = repoInfo.name;
+        let parsedPkg: Record<string, unknown> | null = null;
         if (pkgJson) {
           try {
-            const pkg = JSON.parse(pkgJson);
-            packageName = pkg.name || packageName;
+            parsedPkg = JSON.parse(pkgJson);
+            packageName = (parsedPkg?.name as string) || packageName;
           } catch {
             /* use repo name */
           }
+        }
+        const { shouldSkipNpmPackageGenerator } = await import("./analyzer.ts");
+        const skipNpm = shouldSkipNpmPackageGenerator(parsedPkg, fileNames);
+        if (skipNpm.skip) {
+          console.log(
+            chalk.dim(
+              `  Detected package.json but ${skipNpm.reason} — skipping npm registry, checking source/desktop fallbacks`,
+            ),
+          );
+          break;
         }
         return await generateWithConfirmation(
           "npm-package",
@@ -1528,6 +1539,33 @@ async function handleGithubRepo(classification, opts) {
           },
           opts,
         );
+    }
+  }
+
+  // Tauri desktop app without release DMG/ZIP — not a Homebrew formula/CLI.
+  {
+    const { hasTauriProjectLayout, isTauriDesktopPackage, isPrivateNpmPackage } =
+      await import("./analyzer.ts");
+    let tauriPkg = false;
+    let pkgPrivate = false;
+    try {
+      const pkgJson = await getFileContent(owner, repo, "package.json");
+      if (pkgJson) {
+        const pkg = JSON.parse(pkgJson);
+        tauriPkg = isTauriDesktopPackage(pkg);
+        pkgPrivate = isPrivateNpmPackage(pkg);
+      }
+    } catch {
+      /* ignore */
+    }
+    if (hasTauriProjectLayout(fileNames) || tauriPkg) {
+      throw new Error(
+        `Repository ${repoInfo.fullName} looks like a Tauri desktop app ` +
+          `(src-tauri=${hasTauriProjectLayout(fileNames)} tauriDeps=${tauriPkg} private=${pkgPrivate}) ` +
+          `with no recognized macOS app release assets (DMG/ZIP/PKG) and no Homebrew-installable CLI. ` +
+          `Build via pnpm tauri build / ship a release cask — not a generated formula. ` +
+          `If a separate CLI repo exists, allbrew that URL instead.`,
+      );
     }
   }
 

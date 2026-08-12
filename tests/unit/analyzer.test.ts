@@ -6,6 +6,10 @@ import {
   detectServiceConfigFromFiles,
   detectBuildSystemFromFiles,
   detectBuildSystemFromArchive,
+  isPrivateNpmPackage,
+  isTauriDesktopPackage,
+  hasTauriProjectLayout,
+  shouldSkipNpmPackageGenerator,
 } from "../../lib/analyzer.ts";
 
 // ─── A5: Analyzer unit suite ─────────────────────────────────────────────
@@ -919,5 +923,64 @@ describe("detectBuildSystemFromArchive", () => {
 
   it("returns null when no recognizable files are found", () => {
     expect(detectBuildSystemFromArchive(["foo-1.0/LICENSE"])).toBeNull();
+  });
+});
+
+describe("private/tauri npm skip helpers (jockey)", () => {
+  it("detects private package.json", () => {
+    expect(isPrivateNpmPackage({ private: true })).toBe(true);
+    expect(isPrivateNpmPackage({ private: false })).toBe(false);
+    expect(isPrivateNpmPackage({})).toBe(false);
+    expect(isPrivateNpmPackage(null)).toBe(false);
+  });
+
+  it("detects Tauri desktop deps (@tauri-apps/*)", () => {
+    expect(
+      isTauriDesktopPackage({
+        dependencies: { "@tauri-apps/api": "^2.0.0" },
+        devDependencies: { "@tauri-apps/cli": "^2.0.0" },
+      }),
+    ).toBe(true);
+    expect(
+      isTauriDesktopPackage({
+        dependencies: { chalk: "^5.0.0" },
+      }),
+    ).toBe(false);
+  });
+
+  it("detects src-tauri layout from root listing", () => {
+    expect(hasTauriProjectLayout(["package.json", "src-tauri", "src"])).toBe(true);
+    expect(hasTauriProjectLayout(["package.json", "src"])).toBe(false);
+    expect(hasTauriProjectLayout(["app/src-tauri/Cargo.toml"])).toBe(true);
+  });
+
+  it("skips npm generator for recailai/jockey-shaped private Tauri app", () => {
+    const pkg = {
+      name: "jockey",
+      private: true,
+      dependencies: { "@tauri-apps/api": "^2.11.0", "solid-js": "^1.9.13" },
+      devDependencies: { "@tauri-apps/cli": "^2.11.2" },
+    };
+    const files = [
+      "package.json",
+      "src-tauri",
+      "src",
+      "pnpm-lock.yaml",
+      "vite.config.ts",
+    ];
+    const r = shouldSkipNpmPackageGenerator(pkg, files);
+    expect(r.skip).toBe(true);
+    expect(r.reason).toContain("private=true");
+    expect(r.reason).toContain("tauri-deps");
+    expect(r.reason).toContain("src-tauri");
+  });
+
+  it("does not skip public npm CLI packages", () => {
+    const r = shouldSkipNpmPackageGenerator(
+      { name: "npkill", dependencies: { chalk: "^4" }, bin: { npkill: "lib/index.js" } },
+      ["package.json", "lib", "bin"],
+    );
+    expect(r.skip).toBe(false);
+    expect(r.reason).toBeNull();
   });
 });

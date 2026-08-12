@@ -1057,6 +1057,66 @@ export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null 
   return null;
 }
 
+
+/**
+ * True when package.json is marked private (not published to npm registry).
+ * Generating npm-package for these collides with unrelated public packages of the same name.
+ */
+export function isPrivateNpmPackage(pkg: { private?: unknown } | null | undefined): boolean {
+  return Boolean(pkg && (pkg as { private?: unknown }).private);
+}
+
+/**
+ * True when package.json depends on Tauri (@tauri-apps/*) — a desktop app shell, not an npm CLI.
+ */
+export function isTauriDesktopPackage(pkg: Record<string, unknown> | null | undefined): boolean {
+  if (!pkg || typeof pkg !== "object") return false;
+  const deps = {
+    ...((pkg.dependencies as Record<string, unknown>) || {}),
+    ...((pkg.devDependencies as Record<string, unknown>) || {}),
+    ...((pkg.optionalDependencies as Record<string, unknown>) || {}),
+    ...((pkg.peerDependencies as Record<string, unknown>) || {}),
+  };
+  return Object.keys(deps).some(
+    (name) =>
+      name === "tauri" ||
+      name.startsWith("@tauri-apps/") ||
+      name === "@tauri-apps/cli" ||
+      name === "@tauri-apps/api",
+  );
+}
+
+/**
+ * True when root listing includes a Tauri project layout (src-tauri/).
+ * GitHub contents API returns directory names at the root; archive listings may include paths.
+ */
+export function hasTauriProjectLayout(fileNames: string[] | null | undefined): boolean {
+  if (!Array.isArray(fileNames)) return false;
+  return fileNames.some((f) => {
+    const n = String(f).split("\\").join("/").toLowerCase();
+    const segments = n.split("/").filter(Boolean);
+    return segments.some((seg) => seg === "src-tauri");
+  });
+}
+
+/** Combined: skip npm-package generator for private and/or Tauri desktop package.json. */
+export function shouldSkipNpmPackageGenerator(
+  pkg: Record<string, unknown> | null | undefined,
+  fileNames?: string[] | null,
+): { skip: boolean; reason: string | null } {
+  const priv = isPrivateNpmPackage(pkg);
+  const tauriPkg = isTauriDesktopPackage(pkg);
+  const tauriLayout = hasTauriProjectLayout(fileNames || []);
+  if (priv || tauriPkg || tauriLayout) {
+    const parts: string[] = [];
+    if (priv) parts.push("private=true");
+    if (tauriPkg) parts.push("tauri-deps");
+    if (tauriLayout) parts.push("src-tauri");
+    return { skip: true, reason: parts.join(",") };
+  }
+  return { skip: false, reason: null };
+}
+
 export function detectBuildSystemFromArchive(fileNames) {
   const names = new Set(
     fileNames.map((f) => {
