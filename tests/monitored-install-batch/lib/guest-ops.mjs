@@ -449,23 +449,33 @@ if brew list --formula "$NAME" >/dev/null 2>&1 || brew list "$NAME" >/dev/null 2
 if brew list --cask "$NAME" >/dev/null 2>&1; then echo CASK_LISTED=1; else echo CASK_LISTED=0; fi
 if test -f "$HOME/.config/allbrew/packages/$NAME.json"; then echo MANIFEST_OK; else echo MANIFEST_MISSING; fi
 BIN_OK=0
+# Prefer fast libexec import for pip/venv formulae BEFORE GUI --version hangs
+# (cq-editor / pyqt-openai etc. open windows and waste the whole verify budget).
+PREFIX=$(brew --prefix "$NAME" 2>/dev/null || true)
+if [ -n "$PREFIX" ] && [ -x "$PREFIX/libexec/bin/python" ]; then
+  MOD=$(echo "$NAME" | tr '-' '_')
+  if perl -e "alarm 30; exec @ARGV" "$PREFIX/libexec/bin/python" -c "import ${MOD}; print(getattr(${MOD}, '__version__', 'ok'))" >/tmp/ab-bin-out 2>&1; then
+    echo BIN_OK; BIN_OK=1; echo IMPORT_OK; echo "IMPORT_MOD=$MOD"; head -5 /tmp/ab-bin-out
+  else
+    echo IMPORT_EARLY_FAIL; head -10 /tmp/ab-bin-out 2>/dev/null || true
+  fi
+fi
 run_bin_check() {
   local bin="$1"
   # macOS has no timeout(1); use perl alarm
-  if perl -e "alarm 12; exec @ARGV" "$bin" --version >/tmp/ab-bin-out 2>&1 \
-    || perl -e "alarm 12; exec @ARGV" "$bin" --help >/tmp/ab-bin-out 2>&1 \
-    || perl -e "alarm 12; exec @ARGV" "$bin" -h >/tmp/ab-bin-out 2>&1; then
+  if perl -e "alarm 8; exec @ARGV" "$bin" --version >/tmp/ab-bin-out 2>&1 \
+    || perl -e "alarm 8; exec @ARGV" "$bin" --help >/tmp/ab-bin-out 2>&1 \
+    || perl -e "alarm 8; exec @ARGV" "$bin" -h >/tmp/ab-bin-out 2>&1; then
     return 0
   fi
   return 1
 }
-if command -v "$NAME" >/dev/null 2>&1; then
+if [ "$BIN_OK" = "0" ] && command -v "$NAME" >/dev/null 2>&1; then
   echo "BIN_CANDIDATE=$(command -v "$NAME")"
   if run_bin_check "$NAME"; then echo BIN_OK; BIN_OK=1; head -5 /tmp/ab-bin-out; else echo BIN_HELP_FAIL; cat /tmp/ab-bin-out 2>/dev/null | head -5; fi
 fi
 # Renamed formulae (core collision → name-tap) keep the original bin (e.g. starship-tap ships bin/starship).
 if [ "$BIN_OK" = "0" ]; then
-  PREFIX=$(brew --prefix "$NAME" 2>/dev/null || true)
   if [ -n "$PREFIX" ] && [ -d "$PREFIX/bin" ]; then
     for b in "$PREFIX/bin"/*; do
       [ -e "$b" ] || continue
@@ -477,15 +487,24 @@ if [ "$BIN_OK" = "0" ]; then
     done
   fi
 fi
+# GUI / long-lived launchers often hang or open windows on --version/--help
+# (e.g. pyqt-openai). Prefer the formula's own test do (import-based).
+if [ "$BIN_OK" = "0" ]; then
+  if brew test --verbose "$NAME" >/tmp/ab-brew-test 2>&1; then
+    echo BIN_OK; BIN_OK=1; echo BREW_TEST_OK; head -15 /tmp/ab-brew-test
+  else
+    echo BREW_TEST_FAIL; tail -20 /tmp/ab-brew-test 2>/dev/null || true
+  fi
+fi
 if [ "$BIN_OK" = "0" ]; then echo BIN_MISSING; fi
 ls "$HOME/Applications" 2>/dev/null | head -10 || true
 if ls "$HOME/Applications" 2>/dev/null | grep -qi "$NAME"; then echo APP_OK; fi
-INFO=$(brew info "$NAME" 2>/dev/null || true)
-echo "$INFO" | head -40
-if echo "$INFO" | grep -qi service; then echo SERVICE_STANZA=1; else echo SERVICE_STANZA=0; fi
+INFO=$(brew info --formula "$NAME" 2>/dev/null || brew info "$NAME" 2>/dev/null || true)
+echo "$INFO" | head -20
+# Detect real service stanza, not the word "service" inside license text
+if echo "$INFO" | grep -Eiq 'Service:|brew services'; then echo SERVICE_STANZA=1; else echo SERVICE_STANZA=0; fi
 `;
 }
-
 export function uninstallCmd({ pkg, mountPoint, tapPath }) {
   return `${brewEnvPreamble(mountPoint)}
 NAME=${JSON.stringify(pkg)}
