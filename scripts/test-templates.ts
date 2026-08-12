@@ -509,6 +509,13 @@ function buildInstallScriptCase(): Case {
     "    ENV[\"HOME\"] = buildpath.to_s\n" +
     "    # Common generic override accepted by some installers.\n" +
     "    ENV[\"BIN_DIR\"] = (buildpath/\"bin\").to_s\n" +
+    "    # Deno install.sh uses DENO_INSTALL (default $HOME/.deno) → bin_dir=$DENO_INSTALL/bin.\n" +
+    "    # Point at buildpath so the binary lands in buildpath/bin (a known candidate dir).\n" +
+    "    ENV[\"DENO_INSTALL\"] = buildpath.to_s\n" +
+    "    # Cargo/rustup-style tools that default under $HOME/.cargo/bin\n" +
+    "    ENV[\"CARGO_HOME\"] = (buildpath/\".cargo\").to_s\n" +
+    "    # Skip interactive shell-setup prompts in vendor installers (deno install.sh, etc.).\n" +
+    "    ENV[\"CI\"] = \"1\"\n" +
     "    # Warp Agent CLI honors WARP_TUI_* (defaults to $HOME/.warp and $HOME/.local/bin);\n" +
     "    # point them inside buildpath so the versioned layout is discoverable.\n" +
     "    ENV[\"WARP_TUI_INSTALL_DIR\"] = (buildpath/\"warp-tui\").to_s\n" +
@@ -528,8 +535,10 @@ function buildInstallScriptCase(): Case {
     "\n" +
     "    candidates = [\n" +
     "      buildpath/\"bin\",\n" +
-    "      buildpath/\".local/bin\",\n" +
-    "      buildpath/\"usr/local/bin\",\n" +
+    "      buildpath/\".local\"/\"bin\",\n" +
+    "      buildpath/\".deno\"/\"bin\",\n" +
+    "      buildpath/\".cargo\"/\"bin\",\n" +
+    "      buildpath/\"usr\"/\"local\"/\"bin\",\n" +
     "      Pathname.new(ENV.fetch(\"PREFIX\"))/\"bin\",\n" +
     "    ].uniq\n" +
     "    installed = false\n" +
@@ -545,8 +554,11 @@ function buildInstallScriptCase(): Case {
     "      break\n" +
     "    end\n" +
     "    unless installed\n" +
-    "      bins = Dir[buildpath/\"**/*\"].select do |f|\n" +
-    "        File.file?(f) && File.executable?(f) && !File.basename(f).start_with?(\".\")\n" +
+    "      # Dir[\"**/*\"] skips hidden dirs (.deno, .cargo); FNM_DOTMATCH includes them.\n" +
+    "      bins = Dir.glob(buildpath.join(\"**\", \"*\").to_s, File::FNM_DOTMATCH).select do |f|\n" +
+    "        base = File.basename(f)\n" +
+    "        next false if base == \".\" || base == \"..\" || base.start_with?(\".\")\n" +
+    "        File.file?(f) && File.executable?(f)\n" +
     "      end\n" +
     "      odie \"install script produced no executable binaries under buildpath\" if bins.empty?\n" +
     "      bin.install bins\n" +

@@ -2147,6 +2147,43 @@ async function brewAutoInstall(result: any, opts: any) {
     HOMEBREW_DEVELOPER: "1",
     HOMEBREW_NO_AUTO_UPDATE: "1",
   };
+  // Sync formula/cask into the canonical brew tap checkout so
+  // `brew install --formula <path>` is accepted (newer Homebrew rejects files
+  // outside /opt/homebrew/Library/Taps). Prefer brew --repo for known taps.
+  try {
+    const { execFileSync } = await import("node:child_process");
+    const { copyFile, mkdir } = await import("node:fs/promises");
+    const { join, dirname } = await import("node:path");
+    const tapCandidates = [
+      opts.tapSlug,
+      "tariqwest/allbrew",
+      "tariqwest/tap",
+    ].filter(Boolean);
+    for (const tap of tapCandidates) {
+      try {
+        const repo = execFileSync("brew", ["--repo", String(tap)], {
+          encoding: "utf-8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        if (!repo || !result.filePath) continue;
+        const canonical = join(
+          repo,
+          isCask ? "Casks" : "Formula",
+          `${result.name}.rb`,
+        );
+        if (canonical !== result.filePath) {
+          await mkdir(dirname(canonical), { recursive: true });
+          await copyFile(result.filePath, canonical);
+          result.filePath = canonical;
+        }
+        break;
+      } catch {
+        /* try next tap */
+      }
+    }
+  } catch {
+    /* best-effort; fall through to original path */
+  }
   const installSpinner = ora(`Running ${installLabel}...`).start();
   try {
     await execFileAsync(
