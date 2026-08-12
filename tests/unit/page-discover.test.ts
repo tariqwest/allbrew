@@ -811,3 +811,20 @@ describe("html-attr SPA soft-404 DMG (Kosmik class)", () => {
     expect(kept.find((c) => c.url === dmg)).toBeUndefined();
   });
 });
+
+describe("MAS name precision (false prefix)", () => {
+  it("rejects unrelated prefix MAS hits (Kosmik vs Kosmik Revenge)", async () => {
+    const page = "https://kosmik.app/downloads";
+    const mas = await discoverMasFallbackCandidates(page, {
+      itunesSearch: async () => [
+        {
+          kind: "mac-software",
+          trackId: 868908823,
+          trackName: "Kosmik Revenge",
+          sellerUrl: "https://www.realtech-vr.com/kr/",
+        },
+      ],
+    });
+    expect(mas.some((c) => /868908823/.test(c.url))).toBe(false);
+  });
+});

@@ -1050,9 +1050,21 @@ export async function discoverMasFallbackCandidates(
 
       const nameNorm = normalizeProductToken(trackName);
       const exact = nameNorm === termNorm;
-      const prefix =
-        nameNorm.startsWith(termNorm) || termNorm.startsWith(nameNorm);
-      if (!exact && !(prefix && Math.min(nameNorm.length, termNorm.length) >= 4)) {
+      // Prefix only for edition suffixes (Pro/App/Desktop…), not different products
+      // e.g. reject "Kosmik Revenge" for term "kosmik".
+      const masEditionSuffix =
+        /^(app|pro|desktop|mac|formac|studio|lite|plus|premium|client|native)$/i;
+      let prefix = false;
+      if (!exact && Math.min(nameNorm.length, termNorm.length) >= 4) {
+        if (nameNorm.startsWith(termNorm)) {
+          const rest = nameNorm.slice(termNorm.length);
+          prefix = !rest || masEditionSuffix.test(rest);
+        } else if (termNorm.startsWith(nameNorm)) {
+          const rest = termNorm.slice(nameNorm.length);
+          prefix = !rest || masEditionSuffix.test(rest);
+        }
+      }
+      if (!exact && !prefix) {
         continue;
       }
 
