@@ -151,6 +151,7 @@ export async function classifyWithHead(url) {
     // Some endpoints (e.g. https://app.warp.dev/download/agent-cli) return
     // text/html for HEAD but text/x-shellscript for GET. Fall back to a
     // ranged GET when HEAD was html/unknown.
+    // https://get.volta.sh returns text/plain with a bash shebang — sniff body.
     if (!ct || ct.includes('text/html') || ct.includes('text/plain')) {
       try {
         const getRes = await fetch(url, {
@@ -170,6 +171,17 @@ export async function classifyWithHead(url) {
             gct.includes('application/x-tar') || gct.includes('application/x-bzip2') ||
             gct.includes('application/x-xz')) {
           return { type: 'archive', url };
+        }
+        if (gct.includes('text/plain') || gct.includes('text/html') || !gct) {
+          try {
+            const snippet = await getRes.text();
+            const head = snippet.slice(0, 1024);
+            if (/^#!\s*\/.*\b(bash|sh)\b/m.test(head) || /volta-install|get\.volta\.sh/i.test(head)) {
+              return { type: 'bash-script', url };
+            }
+          } catch {
+            // fall through
+          }
         }
       } catch {
         // fall through
