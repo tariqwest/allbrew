@@ -807,6 +807,11 @@ const BARE_BINARY_SKIP_SUFFIXES = [
   ".sha512sum",
   ".sha384",
   ".sig",
+  // minisign sidecars (e.g. paw-0.27.0-macos-arm64.zip.minisig) — must not be
+  // treated as bare binaries; ".minisig" does not end with ".sig".
+  ".minisig",
+  ".minisign",
+  ".sign",
   ".asc",
   ".pem",
   ".sbom",
@@ -822,6 +827,7 @@ const BARE_BINARY_SKIP_SUFFIXES = [
   ".appimage",
   ".msi",
   ".app",
+  ".pub",
 ];
 const BARE_BINARY_SKIP_NAMES = new Set([
   "sha256.txt",
@@ -829,6 +835,7 @@ const BARE_BINARY_SKIP_NAMES = new Set([
   "checksums.txt",
   "checksums",
   "checksums.txt.asc",
+  "minisign.pub",
 ]);
 
 export function isArchiveBinaryAsset(assetName) {

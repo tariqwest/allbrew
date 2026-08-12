@@ -148,7 +148,7 @@ export function buildBinaryReleaseInstallBody(
     // hardcoding every arch-specific name into the formula.
     return [
       `bin_path = Dir["*"].find { |f| File.file?(f) && File.executable?(f) }`,
-      `bin_path ||= Dir["*"].find { |f| File.file?(f) && !f.end_with?(".txt", ".sha256", ".sig", ".asc") }`,
+      `bin_path ||= Dir["*"].find { |f| File.file?(f) && !f.end_with?(".txt", ".sha256", ".sig", ".asc", ".minisig", ".minisign", ".pub") }`,
       `odie "No binary found in download" unless bin_path`,
       `bin.install bin_path => ${rubyString(binName)}`,
     ].join("\n    ");
@@ -227,7 +227,18 @@ export async function collectBinaryReleasePayload(
   for (const asset of release.assets) {
     if (!isBinaryAsset(asset.name)) continue;
     const arch = matchAssetToArch(asset.name);
-    if (arch) archAssets[arch] = asset;
+    if (!arch) continue;
+    // Prefer real archives over bare/sidecars when both claim the same arch
+    // (e.g. paw-*.zip vs a misclassified paw-*.zip.minisig that arrives later).
+    const existing = archAssets[arch];
+    if (
+      existing &&
+      isArchiveBinaryAsset(existing.name) &&
+      !isArchiveBinaryAsset(asset.name)
+    ) {
+      continue;
+    }
+    archAssets[arch] = asset;
   }
 
   if (archAssets.macosUniversal) {

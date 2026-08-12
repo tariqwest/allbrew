@@ -499,6 +499,18 @@ describe("isBinaryAsset", () => {
     expect(isBinaryAsset("README.md")).toBe(false);
   });
 
+  it("rejects minisign/signature sidecars (not bare binaries)", () => {
+    // lucor/paw ships paw-*-macos-arm64.zip + paw-*-macos-arm64.zip.minisig;
+    // ".minisig" does not end with ".sig", so it must be listed explicitly.
+    expect(isBinaryAsset("paw-0.27.0-macos-arm64.zip.minisig")).toBe(false);
+    expect(isBinaryAsset("paw-0.27.0-linux-amd64.tar.xz.minisig")).toBe(false);
+    expect(isBinaryAsset("foo-darwin-arm64.minisig")).toBe(false);
+    expect(isBinaryAsset("minisign.pub")).toBe(false);
+    // Real archives still match.
+    expect(isBinaryAsset("paw-0.27.0-macos-arm64.zip")).toBe(true);
+    expect(isBinaryAsset("paw-0.27.0-linux-amd64.tar.xz")).toBe(true);
+  });
+
   it("matches versioned bare binaries like afm_0.1.0_macOS_universal", () => {
     expect(isBinaryAsset("afm_0.1.0_macOS_universal")).toBe(true);
     expect(matchAssetToArch("afm_0.1.0_macOS_universal")).toBe("macosUniversal");
