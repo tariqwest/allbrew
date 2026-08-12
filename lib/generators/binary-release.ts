@@ -58,7 +58,41 @@ export function resolveBinaryReleaseBinName(
 
 /** Doc / legal files that must never become the install entrypoint. */
 const ARCHIVE_DOC_BASENAME_RE =
-  /^(license|licence|readme|changelog|changes|authors|contributing|copying|notice|install|todo|code_of_conduct|security|history|news|credits|acknowledgements?)(\.[a-z0-9]+)?$/i;
+  /^(license|licence|readme|changelog|changes|authors|contributing|copying|notice|install|todo|code_of_conduct|security|history|news|credits|acknowledgements?|third[_-]?party[_-]?licen[cs]es?|licenses?)(\.[a-z0-9]+)?$/i;
+
+/** True when archive members include a macOS .app bundle (GUI, not bare CLI). */
+export function archiveMembersContainAppBundle(members: string[]): string | null {
+  for (const m of members) {
+    const norm = m.replace(/\\/g, "/");
+    const match = norm.match(/(?:^|\/)([^/]+\.app)(?:\/|$)/i);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+export class AppBundleInArchiveError extends Error {
+  code = "APP_BUNDLE_IN_ARCHIVE" as const;
+  appName: string;
+  constructor(appName: string, assetName?: string) {
+    super(
+      `Archive contains macOS .app bundle (${appName})${
+        assetName ? ` in ${assetName}` : ""
+      }; not a CLI binary archive`,
+    );
+    this.name = "AppBundleInArchiveError";
+    this.appName = appName;
+  }
+}
+
+export function isAppBundleInArchiveError(err: unknown): err is AppBundleInArchiveError {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { code?: string; message?: string; name?: string };
+  return (
+    e.code === "APP_BUNDLE_IN_ARCHIVE" ||
+    e.name === "AppBundleInArchiveError" ||
+    /contains macOS \.app bundle/i.test(String(e.message || ""))
+  );
+}
 
 /** Prefer entrypoint names that match formula / common CLI conventions. */
 export function pickArchiveEntrypoint(
@@ -275,6 +309,14 @@ export async function collectBinaryReleasePayload(
         hashes[arch] = { url: asset.url, sha256: dl.sha256, name: asset.name };
         try {
           const members = await listArchiveMembersFromPath(dl.path);
+          // Arch-tagged macos zips (e.g. paw-*-macos-arm64.zip) are classified as
+          // CLI binaries by isAppAsset, but Fyne/desktop releases often ship a
+          // real .app inside — re-route to cask-app-release rather than installing
+          // a license file as the bin entrypoint.
+          const appBundle = archiveMembersContainAppBundle(members);
+          if (appBundle) {
+            throw new AppBundleInArchiveError(appBundle, asset.name);
+          }
           const picked = pickArchiveEntrypoint(members, name, options);
           if (picked) {
             let src = picked.sourcePath;
@@ -295,7 +337,8 @@ export async function collectBinaryReleasePayload(
             archiveEntrypoint = src;
             archiveBinName = picked.binName;
           }
-        } catch {
+        } catch (err) {
+          if (isAppBundleInArchiveError(err)) throw err;
           // Fall back to formula-name install if listing fails.
         }
       } finally {

@@ -1013,11 +1013,38 @@ async function handleGithubRepo(classification, opts) {
       console.log(
         `  Detected ${chalk.cyan("binary")} assets: ${binAssets.map((a) => a.name).join(", ")}`,
       );
-      return await generateWithConfirmation(
-        "binary-release",
-        { repoInfo, release },
-        opts,
-      );
+      try {
+        return await generateWithConfirmation(
+          "binary-release",
+          { repoInfo, release },
+          opts,
+        );
+      } catch (err: any) {
+        // Arch-tagged macos zips (Fyne/desktop) may contain a real .app that
+        // isAppAsset missed. Re-route to cask instead of shipping a broken formula.
+        const { isAppBundleInArchiveError } = await import(
+          "./generators/binary-release.ts"
+        );
+        if (isAppBundleInArchiveError(err)) {
+          const appLabel = err.appName || "App.app";
+          console.log(
+            chalk.dim(
+              `  Binary archive contains macOS app bundle ${chalk.cyan(appLabel)}; generating cask instead`,
+            ),
+          );
+          // forceAppAssets / appName must land in opts (mergedOpts), not params.
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release },
+            {
+              ...opts,
+              forceAppAssets: true,
+              appName: err.appName || opts.appName,
+            },
+          );
+        }
+        throw err;
+      }
     }
 
     if (linuxOnlyBinAssets) {

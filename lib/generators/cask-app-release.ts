@@ -3,6 +3,7 @@ import {
   extractVersionFromTag,
   rubyEscape,
   isAppAsset,
+  isArchiveBinaryAsset,
   matchAssetToArch,
 } from "../utils.ts";
 import { downloadToTemp } from "../sha256.ts";
@@ -52,7 +53,22 @@ export async function collectCaskAppReleasePayload(
 ): Promise<CaskAppReleasePayload> {
   const version = extractVersionFromTag(release.tagName);
 
-  const appAssets = release.assets.filter((a: any) => isAppAsset(a.name));
+  // forceAppAssets: binary-release peeks found a .app inside an arch-tagged
+  // macos zip that isAppAsset rejected (e.g. paw-*-macos-arm64.zip). Treat
+  // macOS archive binary assets as cask candidates.
+  let appAssets = release.assets.filter((a: any) => isAppAsset(a.name));
+  if (appAssets.length === 0 && options.forceAppAssets) {
+    appAssets = release.assets.filter((a: any) => {
+      if (!isArchiveBinaryAsset(a.name) && !/\.dmg$/i.test(a.name)) return false;
+      const arch = matchAssetToArch(a.name);
+      return (
+        arch === "macosArm" ||
+        arch === "macosIntel" ||
+        arch === "macosUniversal" ||
+        (!arch && /\.dmg$/i.test(a.name))
+      );
+    });
+  }
   if (appAssets.length === 0) {
     throw new Error("No .dmg or macOS .zip assets found in release");
   }

@@ -5,6 +5,9 @@ import {
   templateEntrypointPath,
   pickArchiveEntrypoint,
   buildBinaryReleaseInstallBody,
+  archiveMembersContainAppBundle,
+  AppBundleInArchiveError,
+  isAppBundleInArchiveError,
 } from "../../../lib/generators/binary-release.ts";
 import wakapiFixture from "../../fixtures/github/wakapi.json";
 
@@ -278,6 +281,32 @@ describe("pickArchiveEntrypoint / nested package archives", () => {
     expect(picked).not.toBeNull();
     expect(picked!.sourcePath).toBe("television");
     expect(picked!.binName).toBe("television");
+  });
+
+  it("refuses THIRD_PARTY_LICENSES as entrypoint (paw-style desktop zip)", () => {
+    const members = [
+      "paw-0.27.0-macos-arm64/LICENSE",
+      "paw-0.27.0-macos-arm64/THIRD_PARTY_LICENSES",
+      "paw-0.27.0-macos-arm64/Paw.app/Contents/MacOS/paw",
+    ];
+    // Nested .app binary is depth>1 so not a CLI entrypoint; docs alone → null
+    // (binary-release should re-route via AppBundleInArchiveError instead).
+    const picked = pickArchiveEntrypoint(members, "paw");
+    expect(picked).toBeNull();
+  });
+
+  it("detects .app bundle members for cask re-route (lucor/paw)", () => {
+    const members = [
+      "paw-0.27.0-macos-arm64/",
+      "paw-0.27.0-macos-arm64/Paw.app/",
+      "paw-0.27.0-macos-arm64/Paw.app/Contents/MacOS/paw",
+      "paw-0.27.0-macos-arm64/THIRD_PARTY_LICENSES",
+    ];
+    expect(archiveMembersContainAppBundle(members)).toBe("Paw.app");
+    expect(archiveMembersContainAppBundle(["bin/tool", "README.md"])).toBeNull();
+    const err = new AppBundleInArchiveError("Paw.app", "paw-0.27.0-macos-arm64.zip");
+    expect(isAppBundleInArchiveError(err)).toBe(true);
+    expect(err.code).toBe("APP_BUNDLE_IN_ARCHIVE");
   });
 
   it("returns null when archive only has documentation", () => {
