@@ -431,29 +431,33 @@ function buildPipPackageCase(): Case {
     `  def rewrite_delocate_dylib_ids\n` +
     `    return unless OS.mac?\n\n` +
     `    rewritten = 0\n` +
-    `    # Use find(1): Ruby Dir.glob("**/*") does NOT descend into dotdirs, and\n` +
+    `    scanned = 0\n` +
+    `    # Pathname#find descends into dotdirs; Dir.glob("**/*") does not, and\n` +
     `    # delocate/opencv wheels put bundled libs under site-packages/*/.dylibs/.\n` +
-    `    dylibs = Utils.safe_popen_read(\n` +
-    `      "find", libexec.to_s, "-type", "f", "-name", "*.dylib"\n` +
-    `    ).split("\\n").map(&:strip).reject(&:empty?)\n\n` +
-    `    dylibs.each do |dylib|\n` +
-    `      next unless File.file?(dylib)\n\n` +
+    `    libexec.find do |path|\n` +
+    `      next unless path.extname == ".dylib" && path.file?\n\n` +
+    `      scanned += 1\n` +
+    `      dylib = path.to_s\n\n` +
     `      # otool -D prints: path\\ninstall_name\n` +
     `      lines = Utils.popen_read("/usr/bin/otool", "-D", dylib).lines.map(&:strip).reject(&:empty?)\n` +
     `      id = lines.find { |l| l.start_with?("/DLC/") } || lines[1]\n` +
-    `      next if id.nil? || id.empty?\n` +
-    `      next unless id.start_with?("/DLC/")\n\n` +
+    `      next if id.nil? || id.empty? || !id.start_with?("/DLC/")\n\n` +
     `      new_id = "@rpath/#{File.basename(id)}"\n` +
     `      next if new_id == id\n\n` +
-    `      # pip may hardlink from the cache as mode 0444; install_name_tool needs write.\n` +
-    `      File.chmod(File.stat(dylib).mode | 0200, dylib)\n` +
-    `      # Best-effort strip; quiet_system ignores non-zero (unsigned binaries).\n` +
+    `      # pip may extract as mode 0444; install_name_tool needs write.\n` +
+    `      path.chmod(path.stat.mode | 0200)\n` +
+    `      # Strip signature so install_name_tool can rewrite LC_ID_DYLIB; ignore failure.\n` +
     `      quiet_system "/usr/bin/codesign", "--remove-signature", dylib\n` +
-    `      odie "install_name_tool -id failed for #{dylib}" unless system "/usr/bin/install_name_tool", "-id", new_id, dylib\n` +
-    `      odie "codesign failed for #{dylib}" unless system "/usr/bin/codesign", "--force", "--sign", "-", dylib\n` +
+    `      unless system "/usr/bin/install_name_tool", "-id", new_id, dylib\n` +
+    `        odie "install_name_tool -id #{new_id} failed for #{dylib} (was #{id})"\n` +
+    `      end\n` +
+    `      # Ad-hoc re-sign is best-effort: brew's own fix_dynamic_linkage will\n` +
+    `      # codesign_patched_binary when it mutates files; the install sandbox can\n` +
+    `      # also reject codesign. Do not odie — invalid signature is recoverable.\n` +
+    `      quiet_system "/usr/bin/codesign", "--force", "--sign", "-", dylib\n` +
     `      rewritten += 1\n` +
     `    end\n` +
-    `    ohai "Rewrote #{rewritten} delocate /DLC/ dylib IDs to @rpath (scanned #{dylibs.size})" if rewritten > 0 || dylibs.any?\n` +
+    `    ohai "Rewrote #{rewritten} delocate /DLC/ dylib IDs to @rpath (scanned #{scanned})" if scanned > 0\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +

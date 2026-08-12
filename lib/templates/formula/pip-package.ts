@@ -81,33 +81,37 @@ ${p.resourcesBlock}  def install
     return unless OS.mac?
 
     rewritten = 0
-    # Use find(1): Ruby Dir.glob("**/*") does NOT descend into dotdirs, and
+    scanned = 0
+    # Pathname#find descends into dotdirs; Dir.glob("**/*") does not, and
     # delocate/opencv wheels put bundled libs under site-packages/*/.dylibs/.
-    dylibs = Utils.safe_popen_read(
-      "find", libexec.to_s, "-type", "f", "-name", "*.dylib"
-    ).split("\\n").map(&:strip).reject(&:empty?)
+    libexec.find do |path|
+      next unless path.extname == ".dylib" && path.file?
 
-    dylibs.each do |dylib|
-      next unless File.file?(dylib)
+      scanned += 1
+      dylib = path.to_s
 
       # otool -D prints: path\\ninstall_name
       lines = Utils.popen_read("/usr/bin/otool", "-D", dylib).lines.map(&:strip).reject(&:empty?)
       id = lines.find { |l| l.start_with?("/DLC/") } || lines[1]
-      next if id.nil? || id.empty?
-      next unless id.start_with?("/DLC/")
+      next if id.nil? || id.empty? || !id.start_with?("/DLC/")
 
       new_id = "@rpath/#{File.basename(id)}"
       next if new_id == id
 
-      # pip may hardlink from the cache as mode 0444; install_name_tool needs write.
-      File.chmod(File.stat(dylib).mode | 0200, dylib)
-      # Best-effort strip; quiet_system ignores non-zero (unsigned binaries).
+      # pip may extract as mode 0444; install_name_tool needs write.
+      path.chmod(path.stat.mode | 0200)
+      # Strip signature so install_name_tool can rewrite LC_ID_DYLIB; ignore failure.
       quiet_system "/usr/bin/codesign", "--remove-signature", dylib
-      odie "install_name_tool -id failed for #{dylib}" unless system "/usr/bin/install_name_tool", "-id", new_id, dylib
-      odie "codesign failed for #{dylib}" unless system "/usr/bin/codesign", "--force", "--sign", "-", dylib
+      unless system "/usr/bin/install_name_tool", "-id", new_id, dylib
+        odie "install_name_tool -id #{new_id} failed for #{dylib} (was #{id})"
+      end
+      # Ad-hoc re-sign is best-effort: brew's own fix_dynamic_linkage will
+      # codesign_patched_binary when it mutates files; the install sandbox can
+      # also reject codesign. Do not odie — invalid signature is recoverable.
+      quiet_system "/usr/bin/codesign", "--force", "--sign", "-", dylib
       rewritten += 1
     end
-    ohai "Rewrote #{rewritten} delocate /DLC/ dylib IDs to @rpath (scanned #{dylibs.size})" if rewritten > 0 || dylibs.any?
+    ohai "Rewrote #{rewritten} delocate /DLC/ dylib IDs to @rpath (scanned #{scanned})" if scanned > 0
   end
 
 ${p.serviceBlock}  test do
