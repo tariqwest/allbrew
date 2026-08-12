@@ -1,11 +1,15 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectNpmPackagePayload } from "../../../lib/generators/npm-package.ts";
+import {
+  collectNpmPackagePayload,
+  isNpmTuiNoVersion,
+} from "../../../lib/generators/npm-package.ts";
 import maildevFixture from "../../fixtures/npm/maildev.json";
 import diracCliFixture from "../../fixtures/npm/dirac-cli.json";
 import clineFixture from "../../fixtures/npm/cline.json";
 import taskbookFixture from "../../fixtures/npm/taskbook.json";
 import npkillFixture from "../../fixtures/npm/npkill.json";
 import vtopFixture from "../../fixtures/npm/vtop.json";
+import gtopFixture from "../../fixtures/npm/gtop.json";
 import samanhappyMcphubFixture from "../../fixtures/npm/samanhappy-mcphub.json";
 import augmentcodeAuggieFixture from "../../fixtures/npm/augmentcode-auggie.json";
 import smitheryCliFixture from "../../fixtures/npm/smithery-cli.json";
@@ -724,3 +728,64 @@ describe("collectNpmPackagePayload — @officecli/officecli", () => {
     expect(payload.serviceBlock).toBe("");
   });
 });
+
+describe("isNpmTuiNoVersion", () => {
+  it("flags known TUI packages by name", () => {
+    expect(isNpmTuiNoVersion("gtop")).toBe(true);
+    expect(isNpmTuiNoVersion("mapscii")).toBe(true);
+    expect(isNpmTuiNoVersion("vtop")).toBe(true);
+  });
+
+  it("flags packages depending on blessed-contrib", () => {
+    expect(
+      isNpmTuiNoVersion("other-top", {
+        dependencies: { "blessed-contrib": "^4.0.0" },
+      }),
+    ).toBe(true);
+  });
+
+  it("does not flag ordinary CLIs", () => {
+    expect(
+      isNpmTuiNoVersion("npkill", {
+        dependencies: { chalk: "^4.0.0" },
+      }, { description: "clean node_modules", keywords: ["cli"] }),
+    ).toBe(false);
+  });
+});
+
+describe("collectNpmPackagePayload — gtop", () => {
+  beforeEach(() => {
+    mock.restore();
+
+    global.fetch = mock((url: string) => {
+      if (url.includes("registry.npmjs.org/gtop")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(gtopFixture),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    }) as any;
+  });
+
+  it("returns npm_package payload", async () => {
+    const payload = await collectNpmPackagePayload("gtop");
+    expect(payload.template).toBe("npm_package");
+    expect(payload.name).toBe("gtop");
+    expect(payload.testBinName).toBe("gtop");
+  });
+
+  it("uses assert_path_exists test for TUI (no --version)", async () => {
+    const payload = await collectNpmPackagePayload("gtop");
+    expect(payload.testDoBody).toContain('assert_path_exists bin/"gtop"');
+    expect(payload.testDoBody).not.toContain("--version");
+  });
+
+  it("uses tarball URL from latest version", async () => {
+    const payload = await collectNpmPackagePayload("gtop");
+    expect(payload.url).toBe(
+      "https://registry.npmjs.org/gtop/-/gtop-1.1.5.tgz",
+    );
+  });
+});
+

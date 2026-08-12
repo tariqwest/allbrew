@@ -27,6 +27,8 @@ export type NpmPackagePayload = FormulaCommonFields & {
   sha256: string;
   licenseLine: string;
   livecheckBlock: string;
+  /** Full body line(s) inside `test do` (pre-indented). TUI packages omit --version. */
+  testDoBody: string;
 };
 
 export type PipPackagePayload = FormulaCommonFields & {

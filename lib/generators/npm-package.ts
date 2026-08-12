@@ -12,6 +12,64 @@ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { NpmPackagePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
+
+/**
+ * npm packages whose primary bin is a full-screen TUI with no usable
+ * `--version`/`--help` (Homebrew-core uses spawn/error tests for these).
+ * Keys are bare package names (scoped packages use last segment when matched).
+ */
+export const KNOWN_NPM_TUI_NO_VERSION: Record<string, true> = {
+  gtop: true,
+  mapscii: true,
+  vtop: true,
+};
+
+/** Dependency names that strongly indicate a terminal TUI dashboard. */
+const TUI_DEP_MARKERS = new Set([
+  "blessed",
+  "blessed-contrib",
+  "neo-blessed",
+  "drawille",
+  "drawille-canvas",
+  "drawille-blessed-contrib",
+  "term-mouse",
+]);
+
+/**
+ * True when the package bin is expected to be an interactive TUI without
+ * a reliable `--version` exit path.
+ */
+export function isNpmTuiNoVersion(
+  packageName: string,
+  versionData: any = null,
+  pkgData: any = null,
+): boolean {
+  const bare = packageName.split("/").pop() || packageName;
+  if (KNOWN_NPM_TUI_NO_VERSION[packageName] || KNOWN_NPM_TUI_NO_VERSION[bare]) {
+    return true;
+  }
+  const deps = {
+    ...(versionData?.dependencies || {}),
+    ...(versionData?.optionalDependencies || {}),
+  };
+  if (Object.keys(deps).some((d) => TUI_DEP_MARKERS.has(d))) return true;
+  const keywords = Array.isArray(pkgData?.keywords)
+    ? pkgData.keywords.map((k: any) => String(k).toLowerCase())
+    : [];
+  const desc = String(
+    pkgData?.description || versionData?.description || "",
+  ).toLowerCase();
+  // Require both a dashboard/monitor keyword family and terminal/tui signal
+  // to avoid flagging ordinary CLIs that mention "dashboard" in prose.
+  const hasDash = keywords.some((k: string) =>
+    /^(tui|dashboard|monitor|monitoring|top|chart)$/.test(k),
+  ) || /\b(tui|terminal dashboard|system monitoring dashboard)\b/.test(desc);
+  const hasTerm =
+    keywords.some((k: string) => /^(terminal|cli|console)$/.test(k)) ||
+    /\b(terminal|blessed)\b/.test(desc);
+  return hasDash && hasTerm;
+}
+
 export async function collectNpmPackagePayload(
   packageName: string,
   repoInfo: any = null,
@@ -57,6 +115,17 @@ export async function collectNpmPackagePayload(
 
   const binName = options.binName || extractNpmBinName(versionData, packageName) || name;
 
+  const tuiNoVersion =
+    typeof options.tuiNoVersion === "boolean"
+      ? options.tuiNoVersion
+      : isNpmTuiNoVersion(packageName, versionData, pkgData);
+
+  // TUI packages (gtop/mapscii/vtop): no --version; match Homebrew-core style
+  // existence/spawn checks so `brew test` does not hang or fail spuriously.
+  const testDoBody = tuiNoVersion
+    ? `    assert_path_exists bin/"${rubyEscape(binName)}"`
+    : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(binName)} --version")`;
+
   return {
     template: "npm_package",
     name,
@@ -67,6 +136,7 @@ export async function collectNpmPackagePayload(
     sha256: rubyEscape(tarballSha),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(binName),
+    testDoBody,
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     livecheckBlock: npmLivecheckBlock(packageName),
     serviceBlock: buildServiceBlock(service, name),

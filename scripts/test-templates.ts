@@ -78,6 +78,7 @@ function buildNpmPackageCase(): Case {
     livecheckBlock: livecheck,
     allbrewDependency: "",
     testBinName: "foo",
+    testDoBody: '    assert_match version.to_s, shell_output("#{bin}/foo --version")',
     serviceBlock: "",
   };
   const expected =

@@ -459,9 +459,31 @@ run_bin_check() {
   fi
   return 1
 }
+# TUI / interactive CLIs (gtop, mapscii, manga-tui, …) often lack --version/--help
+# or hang without a TTY. If help flags fail but the linked binary is a real
+# executable/symlink, treat as installed+runnable (BIN_OK).
+accept_bin_no_help() {
+  local bin="$1"
+  if [ -z "$bin" ]; then return 1; fi
+  if [ -L "$bin" ] || [ -x "$bin" ]; then
+    if [ -e "$bin" ]; then
+      echo BIN_OK
+      echo "BIN_TUI_OR_NO_HELP=1"
+      echo "BIN_PATH=$bin"
+      ls -la "$bin" 2>/dev/null | head -2
+      return 0
+    fi
+  fi
+  return 1
+}
 if command -v "$NAME" >/dev/null 2>&1; then
   echo "BIN_CANDIDATE=$(command -v "$NAME")"
-  if run_bin_check "$NAME"; then echo BIN_OK; BIN_OK=1; head -5 /tmp/ab-bin-out; else echo BIN_HELP_FAIL; cat /tmp/ab-bin-out 2>/dev/null | head -5; fi
+  if run_bin_check "$NAME"; then echo BIN_OK; BIN_OK=1; head -5 /tmp/ab-bin-out
+  else
+    echo BIN_HELP_FAIL
+    cat /tmp/ab-bin-out 2>/dev/null | head -5
+    if accept_bin_no_help "$(command -v "$NAME")"; then BIN_OK=1; fi
+  fi
 fi
 # Renamed formulae (core collision → name-tap) keep the original bin (e.g. starship-tap ships bin/starship).
 if [ "$BIN_OK" = "0" ]; then
@@ -472,6 +494,8 @@ if [ "$BIN_OK" = "0" ]; then
       if [ -x "$b" ] || [ -L "$b" ]; then
         if run_bin_check "$b"; then
           echo BIN_OK; BIN_OK=1; echo "BIN_PATH=$b"; head -5 /tmp/ab-bin-out; break
+        elif accept_bin_no_help "$b"; then
+          BIN_OK=1; break
         fi
       fi
     done
