@@ -26,9 +26,18 @@ export const UNDECLARED_RUNTIME_DEPS: Record<string, string[]> = {
   // surface only after console_scripts import; keep high-value complements here.
   elia: ["textual", "textual-plotext", "pyperclip"],
   chainlit: ["uvicorn", "literalai", "fastapi", "starlette", "watchfiles"],
-  // literalai publishes requires_dist: null for many versions; setup.py still
-  // declares chevron/httpx/pydantic (chainlit hard-pins literalai==0.1.201).
-  literalai: ["chevron", "httpx", "packaging", "pydantic"],
+  // literalai publishes requires_dist: null for many versions; setup.py /
+  // egg-info still declares install_requires (chainlit hard-pins
+  // literalai==0.1.201). Without traceloop-sdk, `from literalai import …`
+  // fails at `from traceloop.sdk import Traceloop` → BIN_HELP_FAIL after a
+  // clean brew install of chainlit.
+  literalai: [
+    "chevron",
+    "httpx",
+    "packaging",
+    "pydantic",
+    "traceloop-sdk",
+  ],
   mlflow: ["pyyaml", "click", "cloudpickle", "entrypoints", "gitpython", "sqlalchemy"],
 };
 

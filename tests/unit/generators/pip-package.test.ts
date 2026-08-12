@@ -970,3 +970,177 @@ describe("collectPipPackagePayload — dependency extras expansion", () => {
   });
 });
 
+describe("collectPipPackagePayload — transitive UNDECLARED_RUNTIME_DEPS (literalai)", () => {
+  beforeEach(() => {
+    mock.restore();
+
+    const chainlit = {
+      info: {
+        name: "chainlit",
+        version: "2.11.1",
+        summary: "Build Conversational AI",
+        home_page: "https://chainlit.io/",
+        license: "Apache-2.0",
+        requires_dist: ["literalai==0.1.201", "click>=8.1.3"],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "chainlit-2.11.1-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/chainlit-2.11.1-py3-none-any.whl",
+          digests: { sha256: "aa".repeat(32) },
+        },
+      ],
+    };
+
+    // Mirrors real literalai: PyPI requires_dist is null/empty; setup.py lists
+    // chevron + traceloop-sdk. UNDECLARED_RUNTIME_DEPS must supply them.
+    const literalai = {
+      info: {
+        name: "literalai",
+        version: "0.1.201",
+        summary: "Literal AI client",
+        requires_dist: null as string[] | null,
+      },
+      urls: [
+        {
+          packagetype: "sdist",
+          filename: "literalai-0.1.201.tar.gz",
+          url: "https://files.pythonhosted.org/packages/xx/literalai-0.1.201.tar.gz",
+          digests: { sha256: "bb".repeat(32) },
+        },
+      ],
+    };
+
+    const chevron = {
+      info: {
+        name: "chevron",
+        version: "0.14.0",
+        summary: "Mustache",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "chevron-0.14.0-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/chevron-0.14.0-py3-none-any.whl",
+          digests: { sha256: "cc".repeat(32) },
+        },
+      ],
+    };
+
+    const traceloop = {
+      info: {
+        name: "traceloop-sdk",
+        version: "0.33.12",
+        summary: "Traceloop SDK",
+        requires_dist: ["colorama>=0.4.6"],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "traceloop_sdk-0.33.12-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/traceloop_sdk-0.33.12-py3-none-any.whl",
+          digests: { sha256: "dd".repeat(32) },
+        },
+      ],
+    };
+
+    const colorama = {
+      info: {
+        name: "colorama",
+        version: "0.4.6",
+        summary: "colorama",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "colorama-0.4.6-py2.py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/colorama-0.4.6-py2.py3-none-any.whl",
+          digests: { sha256: "ee".repeat(32) },
+        },
+      ],
+    };
+
+    const click = {
+      info: {
+        name: "click",
+        version: "8.1.8",
+        summary: "click",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: "click-8.1.8-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/click-8.1.8-py3-none-any.whl",
+          digests: { sha256: "ff".repeat(32) },
+        },
+      ],
+    };
+
+    // Other undeclared literalai deps (httpx/packaging/pydantic) as empty leaves.
+    const leaf = (name: string, version: string) => ({
+      info: {
+        name,
+        version,
+        summary: name,
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          python_version: "py3",
+          filename: `${name.replace(/-/g, "_")}-${version}-py3-none-any.whl`,
+          url: `https://files.pythonhosted.org/packages/xx/${name}-${version}-py3-none-any.whl`,
+          digests: { sha256: "11".repeat(32) },
+        },
+      ],
+    });
+
+    global.fetch = mock((url: string) => {
+      const u = String(url);
+      let body: unknown;
+      if (u.includes("/chainlit/")) body = chainlit;
+      else if (u.includes("/literalai/")) body = literalai;
+      else if (u.includes("/chevron/")) body = chevron;
+      else if (u.includes("/traceloop-sdk/")) body = traceloop;
+      else if (u.includes("/colorama/")) body = colorama;
+      else if (u.includes("/click/")) body = click;
+      else if (u.includes("/httpx/")) body = leaf("httpx", "0.28.0");
+      else if (u.includes("/packaging/")) body = leaf("packaging", "24.0");
+      else if (u.includes("/pydantic/")) body = leaf("pydantic", "2.10.0");
+      else {
+        body = {
+          info: {
+            name: "unknown",
+            version: "1.0.0",
+            summary: "Unknown",
+            requires_dist: [],
+          },
+          urls: [],
+        };
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(body),
+      });
+    }) as any;
+  });
+
+  it("pulls chevron + traceloop-sdk (+ nested colorama) via literalai undeclared deps", async () => {
+    const payload = await collectPipPackagePayload("chainlit");
+    expect(payload.resourcesBlock).toContain('resource "literalai"');
+    expect(payload.resourcesBlock).toContain('resource "chevron"');
+    expect(payload.resourcesBlock).toContain('resource "traceloop-sdk"');
+    expect(payload.resourcesBlock).toContain('resource "colorama"');
+    expect(payload.resourcesBlock).toContain('resource "click"');
+  });
+});
+
