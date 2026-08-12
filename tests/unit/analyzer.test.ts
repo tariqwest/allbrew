@@ -295,6 +295,31 @@ omnigent server --background
     expect(result).toEqual({ method: "gem", package: "foo-bar" });
   });
 
+  it("prefers preferredPackageName when README lists prerequisite gem install first", () => {
+    // Smashing: gem install bundler then gem install smashing
+    const readme = [
+      "## Installation",
+      "",
+      "# Install bundler",
+      "$ gem install bundler",
+      "# Install smashing",
+      "$ gem install smashing",
+      "# Create a new project",
+      "$ smashing new my-project",
+    ].join("\n");
+    const withoutPref = detectInstallMethod(readme);
+    expect(withoutPref).toEqual({ method: "gem", package: "bundler" });
+    const withPref = detectInstallMethod(readme, "smashing");
+    expect(withPref).toEqual({ method: "gem", package: "smashing" });
+  });
+
+  it("returns null gem match when preferred name is absent so gemspec can win", () => {
+    const readme = "$ gem install bundler\n";
+    // preferred app not in gem install lines → skip README gem path
+    const result = detectInstallMethod(readme, "smashing");
+    expect(result).toBeNull();
+  });
+
   it("detects go install with version and strips tag for module path", () => {
     const result = detectInstallMethod("```bash\ngo install github.com/foo/bar@v1.2.3\n```");
     expect(result).toEqual({ method: "go", package: "github.com/foo/bar" });

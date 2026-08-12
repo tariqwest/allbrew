@@ -198,11 +198,8 @@ export function detectInstallMethod(
     if (pkg) return { method: "dotnet", package: pkg };
   }
 
-  match = readmeText.match(GEM_INSTALL_RE);
-  if (match) {
-    const pkg = String(match[1] || "").trim();
-    if (pkg) return { method: "gem", package: pkg };
-  }
+  const gemPackage = pickPreferredGemPackage(readmeText, preferredPackageName);
+  if (gemPackage) return { method: "gem", package: gemPackage };
 
   match = readmeText.match(DENO_INSTALL_RE);
   if (match)
@@ -741,6 +738,54 @@ function pickPreferredNpmPackage(readmeText, preferredPackageName = "") {
 
   const globalHit = candidates.find((c) => c.globalInstall);
   if (globalHit) return globalHit.package;
+  return candidates[0].package;
+}
+
+/**
+ * Collect `gem install` package names from README and pick the app gem.
+ * When preferredPackageName is set (repo name / --name), prefer that over
+ * prerequisite gems (e.g. Smashing README documents `gem install bundler`
+ * before `gem install smashing`). If preferred is set but no gem hit matches,
+ * return null so file-based gemspec detection can win.
+ */
+function pickPreferredGemPackage(readmeText, preferredPackageName = "") {
+  const candidates = [];
+  const globalRe = new RegExp(
+    GEM_INSTALL_RE.source,
+    GEM_INSTALL_RE.flags.includes("g") ? GEM_INSTALL_RE.flags : `${GEM_INSTALL_RE.flags}g`,
+  );
+  let match;
+  while ((match = globalRe.exec(readmeText)) !== null) {
+    const pkg = String(match[1] || "").trim();
+    if (!pkg || pkg.startsWith("-")) continue;
+    candidates.push({
+      package: pkg,
+      raw: match[0],
+      index: match.index,
+    });
+  }
+  if (candidates.length === 0) return null;
+
+  const preferred = String(preferredPackageName || "").trim();
+  if (preferred) {
+    const preferredLower = preferred.toLowerCase();
+    const preferredLast = preferredLower.split("/").pop() || preferredLower;
+    const matchPreferred = candidates.find((c) => {
+      const pkg = c.package.toLowerCase();
+      const last = pkg.split("/").pop() || pkg;
+      return (
+        pkg === preferredLower ||
+        pkg === preferredLast ||
+        last === preferredLower ||
+        last === preferredLast
+      );
+    });
+    if (matchPreferred) return matchPreferred.package;
+    // Preferred set but no gem hit for it — let gemspec / other methods try
+    // instead of falling back to an unrelated prerequisite gem like bundler.
+    return null;
+  }
+
   return candidates[0].package;
 }
 
