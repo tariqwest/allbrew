@@ -42,12 +42,14 @@ export const KNOWN_BIN_NAMES: Record<string, string> = {
 
 /**
  * Root PyPI extras activated at install time (docs recommend pip install pkg[extra]).
- * Without a Qt binding, tabulous/napari console entries cannot import.
+ * Without a Qt binding, tabulous/napari/caliscope console entries cannot import.
  */
 export const KNOWN_ROOT_EXTRAS: Record<string, string[]> = {
   napari: ["pyqt6"],
   tabulous: ["pyqt5"],
   "pyqt-openai": ["full"],
+  // README: `uv pip install caliscope[gui]` for desktop app; bare wheel exits 1 on `caliscope`.
+  caliscope: ["gui"],
   elia: [],
   chainlit: [],
 };
@@ -63,6 +65,25 @@ export const KNOWN_PYTHON_IMPORT_VERSION_TEST: Record<string, string> = {
   elia: "elia_chat",
   chainlit: "chainlit",
   mlflow: "mlflow",
+};
+
+/**
+ * Packages whose console_script always launches a GUI and does not handle
+ * --version/--help (e.g. argparse parse_known_args then Qt). Formula installs a
+ * thin bin wrapper that answers those flags via importlib.metadata / a static
+ * help blurb so brew test and batch verify succeed without a display.
+ */
+export const KNOWN_GUI_CLI_WRAP: Record<string, true> = {
+  caliscope: true,
+};
+
+/**
+ * Prefer importlib.metadata.version(dist) for formula tests when the package has
+ * no module.__version__ (or GUI launcher would hang). Key is pkgKey; value is the
+ * distribution name passed to importlib.metadata.
+ */
+export const KNOWN_METADATA_VERSION_TEST: Record<string, string> = {
+  caliscope: "caliscope",
 };
 
 type PypiUrl = {
@@ -165,9 +186,26 @@ export async function collectPipPackagePayload(
     options.importVersionModule ||
     KNOWN_PYTHON_IMPORT_VERSION_TEST[pkgKey] ||
     null;
+  const metaDist =
+    options.metadataVersionDist ||
+    KNOWN_METADATA_VERSION_TEST[pkgKey] ||
+    null;
+  const wrapGuiCli =
+    options.wrapGuiCli === true || KNOWN_GUI_CLI_WRAP[pkgKey] === true;
+
+  // Prefer non-GUI checks: module.__version__ → importlib.metadata → bin --version.
+  // After wrap_gui_cli_bin, bin --version is safe for KNOWN_GUI_CLI_WRAP packages.
   const testDoBody = importMod
     ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import ${importMod}; print(${importMod}.__version__)'")`
-    : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`;
+    : metaDist
+      ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'from importlib.metadata import version as v; print(v(\"${rubyEscape(metaDist)}\"))'")`
+      : wrapGuiCli
+        ? `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`
+        : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`;
+
+  const wrapGuiCliCall = wrapGuiCli
+    ? `    wrap_gui_cli_bin "${rubyEscape(testBinName)}", "${rubyEscape(packageName)}"\n`
+    : "";
 
   return {
     template: "pip_package",
@@ -183,6 +221,7 @@ export async function collectPipPackagePayload(
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(testBinName),
     testDoBody,
+    wrapGuiCliCall,
     // Service argv should target the console-script bin, which may differ from
     // the formula token when homebrew/core forces a rename (nanobot-ai → bin nanobot).
     serviceBlock: buildServiceBlock(

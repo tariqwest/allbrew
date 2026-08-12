@@ -9,6 +9,9 @@ import {
   compareVersions,
   normalizePackageName,
   KNOWN_BIN_NAMES,
+  KNOWN_ROOT_EXTRAS,
+  KNOWN_GUI_CLI_WRAP,
+  KNOWN_METADATA_VERSION_TEST,
 } from "../../../lib/generators/pip-package.ts";
 import marimoFixture from "../../fixtures/pypi/marimo.json";
 import clickFixture from "../../fixtures/pypi/click.json";
@@ -442,6 +445,73 @@ describe("collectPipPackagePayload — shell-gpt", () => {
   it("defaults test binary to sgpt without explicit binName", async () => {
     const payload = await collectPipPackagePayload("shell-gpt");
     expect(payload.testBinName).toBe("sgpt");
+  });
+});
+
+describe("caliscope GUI / delocate knobs", () => {
+  it("maps caliscope to gui root extras and GUI CLI wrap", () => {
+    expect(KNOWN_ROOT_EXTRAS.caliscope).toEqual(["gui"]);
+    expect(KNOWN_GUI_CLI_WRAP.caliscope).toBe(true);
+    expect(KNOWN_METADATA_VERSION_TEST.caliscope).toBe("caliscope");
+  });
+
+  it("emits wrapGuiCliCall and metadata version test for caliscope", async () => {
+    global.fetch = mock((url: string) => {
+      if (String(url).includes("/caliscope/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              info: {
+                name: "caliscope",
+                version: "0.11.5",
+                summary: "Multicamera Calibration",
+                requires_dist: [
+                  "numpy>=1.24.0",
+                  'pyside6-essentials>=6.10.1; extra == "gui"',
+                ],
+                license: "BSD-2-Clause",
+              },
+              urls: [
+                {
+                  packagetype: "bdist_wheel",
+                  python_version: "py3",
+                  filename: "caliscope-0.11.5-py3-none-any.whl",
+                  url: "https://files.pythonhosted.org/packages/xx/caliscope-0.11.5-py3-none-any.whl",
+                  digests: { sha256: "ab".repeat(32) },
+                },
+              ],
+            }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            info: {
+              name: "numpy",
+              version: "2.0.0",
+              summary: "numpy",
+              requires_dist: [],
+            },
+            urls: [
+              {
+                packagetype: "bdist_wheel",
+                python_version: "py3",
+                filename: "numpy-2.0.0-py3-none-any.whl",
+                url: "https://files.pythonhosted.org/packages/xx/numpy-2.0.0-py3-none-any.whl",
+                digests: { sha256: "cd".repeat(32) },
+              },
+            ],
+          }),
+      });
+    }) as any;
+
+    const payload = await collectPipPackagePayload("caliscope");
+    expect(payload.wrapGuiCliCall).toContain('wrap_gui_cli_bin "caliscope", "caliscope"');
+    expect(payload.testDoBody).toContain("importlib.metadata");
+    expect(payload.testDoBody).toContain("caliscope");
+    expect(payload.testDoBody).not.toContain("#{bin}/caliscope --version");
   });
 });
 

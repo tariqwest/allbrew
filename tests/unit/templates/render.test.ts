@@ -98,8 +98,41 @@ describe("renderFormula", () => {
     expect(ruby).toContain("pip_install_main");
     expect(ruby).toContain("formula_bin");
     expect(ruby).toContain("install_symlink formula_bin");
+    expect(ruby).toContain("rewrite_delocate_dylib_ids");
+    expect(ruby).toContain("wrap_gui_cli_bin");
+    expect(ruby).toContain("/DLC/");
     expect(ruby).toContain(".whl");
     expect(ruby).toContain('assert_match version.to_s, shell_output("#{bin}/foo --version")');
+  });
+
+  it("renders pip_package wrap_gui_cli_bin call when payload requests it", () => {
+    const livecheck =
+      `  livecheck do\n` +
+      `    url "https://pypi.org/pypi/caliscope/json"\n` +
+      `    regex(/"version"\\s*:\\s*"([^"]+)"/i)\n` +
+      `  end\n\n`;
+    const payload: FormulaPayload = {
+      template: "pip_package",
+      name: "caliscope",
+      className: "Caliscope",
+      desc: "Caliscope",
+      homepage: "https://pypi.org/project/caliscope/",
+      url: "https://example.com/caliscope.whl",
+      sha256: "aa",
+      licenseLine: '  license "BSD-2-Clause"\n',
+      livecheckBlock: livecheck,
+      resourcesBlock: "",
+      allbrewDependency: "",
+      testBinName: "caliscope",
+      testDoBody:
+        `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'from importlib.metadata import version as v; print(v(\\"caliscope\\"))'")`,
+      wrapGuiCliCall: `    wrap_gui_cli_bin "caliscope", "caliscope"\n`,
+      serviceBlock: "",
+    };
+    const ruby = renderFormula(payload);
+    expect(ruby).toContain('wrap_gui_cli_bin "caliscope", "caliscope"');
+    expect(ruby).toContain("rewrite_delocate_dylib_ids");
+    expect(ruby).toContain("importlib.metadata");
   });
 
   it("renders cargo_package template", () => {

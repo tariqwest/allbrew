@@ -38,6 +38,11 @@ export type PipPackagePayload = FormulaCommonFields & {
   resourcesBlock: string;
   /** Full body line(s) inside `test do` (pre-indented). */
   testDoBody: string;
+  /**
+   * Optional pre-indented call to `wrap_gui_cli_bin "name", "dist"` after install.
+   * Empty string when the console_script already handles --version/--help.
+   */
+  wrapGuiCliCall?: string;
 };
 
 export type CargoPackagePayload = FormulaCommonFields & {

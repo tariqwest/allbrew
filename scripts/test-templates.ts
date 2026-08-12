@@ -372,9 +372,10 @@ function buildPipPackageCase(): Case {
     `\n` +
     livecheck +
     `  depends_on "python@3.13"\n\n` +
-    `  # Native wheels (jiter, pydantic-core, …) ship dylib IDs like\n` +
-    `  # @rpath/foo.so. Homebrew's fix_dynamic_linkage expands those to long\n` +
-    `  # Cellar paths that do not fit the Mach-O header. Preserve @rpath IDs.\n` +
+    `  # Native wheels (jiter, pydantic-core, delocate-bundled av/opencv, …) ship\n` +
+    `  # dylib IDs like @rpath/foo.so or short /DLC/pkg/.dylibs/foo.dylib.\n` +
+    `  # Homebrew's fix_dynamic_linkage expands those to long Cellar/opt paths that\n` +
+    `  # do not fit the Mach-O header. Preserve @rpath IDs; rewrite /DLC/ below.\n` +
     `  preserve_rpath\n\n` +
     resources +
     `  def install\n` +
@@ -403,6 +404,7 @@ function buildPipPackageCase(): Case {
     `    # present under libexec/bin but missing from bin.\n` +
     `    formula_bin = libexec/"bin"/"foo"\n` +
     `    bin.install_symlink formula_bin if formula_bin.exist? && !(bin/"foo").exist?\n` +
+    `    rewrite_delocate_dylib_ids\n` +
     `  end\n\n` +
     `  def pip_install_dist(venv, dist)\n` +
     `    url = dist.url.to_s\n` +
@@ -430,6 +432,78 @@ function buildPipPackageCase(): Case {
     `    else\n` +
     `      venv.pip_install_and_link buildpath\n` +
     `    end\n` +
+    `  end\n\n` +
+    `  # delocate (and auditwheel-style macOS bundlers) stamp dylib IDs with a short\n` +
+    `  # absolute prefix /DLC/pkg/.dylibs/libfoo.dylib so load commands fit. After\n` +
+    `  # pip install, Homebrew tries to rewrite those IDs to\n` +
+    `  # $HOMEBREW_PREFIX/opt/<formula>/libexec/.../libfoo.dylib which overflows the\n` +
+    `  # Mach-O header ("Failed changing dylib ID"). Convert /DLC/ IDs to\n` +
+    `  # @rpath/<basename> so preserve_rpath keeps them and linkage still resolves\n` +
+    `  # via the wheel's existing @loader_path references.\n` +
+    `  def rewrite_delocate_dylib_ids\n` +
+    `    return unless OS.mac?\n\n` +
+    `    # Use ruby-macho (same stack as keg_relocate). install_name_tool is often\n` +
+    `    # blocked or flaky inside the formula install sandbox; pure-Ruby rewrite is not.\n` +
+    `    require "macho"\n\n` +
+    `    rewritten = 0\n` +
+    `    scanned = 0\n` +
+    `    dlc = 0\n` +
+    `    # Pathname#find descends into dotdirs; Dir.glob("**/*") does not, and\n` +
+    `    # delocate/opencv wheels put bundled libs under site-packages/*/.dylibs/.\n` +
+    `    libexec.find do |path|\n` +
+    `      next unless path.extname == ".dylib" && path.file?\n\n` +
+    `      scanned += 1\n` +
+    `      begin\n` +
+    `        file = MachO.open(path.to_s)\n` +
+    `      rescue MachO::NotAMachOError, MachO::MachOError\n` +
+    `        next\n` +
+    `      end\n\n` +
+    `      id = file.dylib_id\n` +
+    `      next if id.nil? || !id.start_with?("/DLC/")\n\n` +
+    `      dlc += 1\n` +
+    `      new_id = "@rpath/#{File.basename(id)}"\n` +
+    `      next if new_id == id\n\n` +
+    `      begin\n` +
+    `        path.chmod(path.stat.mode | 0200)\n` +
+    `        file.change_dylib_id(new_id)\n` +
+    `        file.write!\n` +
+    `        rewritten += 1\n` +
+    `      rescue => e\n` +
+    `        opoo "delocate dylib rewrite failed for #{path}: #{e}"\n` +
+    `      end\n` +
+    `    end\n` +
+    `    ohai "Rewrote #{rewritten}/#{dlc} delocate /DLC/ dylib IDs to @rpath (scanned #{scanned})" if scanned > 0\n` +
+    `    return if dlc.zero? || rewritten.positive?\n\n` +
+    `    odie "Failed to rewrite any of #{dlc} /DLC/ dylib IDs (Homebrew linkage would fail)"\n` +
+    `  end\n\n` +
+    `  # GUI console_scripts that ignore --version/--help and start Qt (caliscope class).\n` +
+    `  # Replace the linked bin with a wrapper so brew test / batch verify stay headless.\n` +
+    `  def wrap_gui_cli_bin(name, dist_name)\n` +
+    `    real = libexec/"bin"/name\n` +
+    `    return unless real.exist?\n\n` +
+    `    target = bin/name\n` +
+    `    target.unlink if target.exist? || target.symlink?\n` +
+    `    target.write <<~EOS\n` +
+    `      #!/bin/bash\n` +
+    `      set -euo pipefail\n` +
+    `      REAL="#{real}"\n` +
+    `      PY="#{libexec}/bin/python"\n` +
+    `      case "\${1:-}" in\n` +
+    `        --version|-V)\n` +
+    `          exec "$PY" -c "from importlib.metadata import version; print(version('#{dist_name}'))"\n` +
+    `          ;;\n` +
+    `        --help|-h)\n` +
+    `          cat <<'HELP'\n` +
+    `      usage: #{name} [--workspace PATH]\n` +
+    `      Launch the #{name} GUI (requires a display).\n` +
+    `      HELP\n` +
+    `          ;;\n` +
+    `        *)\n` +
+    `          exec "$REAL" "$@"\n` +
+    `          ;;\n` +
+    `      esac\n` +
+    `    EOS\n` +
+    `    target.chmod 0755\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
