@@ -2308,6 +2308,20 @@ async function brewAutoInstall(result: any, opts: any) {
     if (stdout) console.log(chalk.dim(String(stdout).split("\n").slice(-20).join("\n")));
     if (stderr) console.log(chalk.dim(String(stderr).split("\n").slice(-10).join("\n")));
     installSpinner.succeed(`Installed: ${chalk.green(result.name)}`);
+    // Probe installed binaries for verify diagnostics (bin may differ from formula name).
+    try {
+      const { stdout: prefix } = await execFileAsync("brew", ["--prefix", result.name], {
+        env: installEnv,
+      });
+      const p = String(prefix).trim();
+      const { stdout: lsOut } = await execFileAsync("bash", [
+        "-c",
+        `ls -la ${JSON.stringify(p + "/bin")} 2>&1; for b in ${JSON.stringify(p + "/bin")}/* /opt/homebrew/bin/${result.name} /opt/homebrew/bin/*; do [ -e "$b" ] || continue; case "$b" in *trae*|*${result.name}*) echo "PROBE $b"; "$b" --version 2>&1 | head -3; "$b" --help 2>&1 | head -5; esac; done`,
+      ], { env: installEnv, maxBuffer: 4 * 1024 * 1024 });
+      if (lsOut?.trim()) console.log(chalk.dim(String(lsOut).slice(0, 2000)));
+    } catch (probeErr: any) {
+      console.log(chalk.dim(`  bin probe: ${probeErr?.message || probeErr}`));
+    }
 
     if (!isCask && opts.serviceConfig && opts.service !== false) {
       console.log(

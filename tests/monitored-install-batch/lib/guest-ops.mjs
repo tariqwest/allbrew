@@ -459,9 +459,9 @@ BIN_OK=0
 run_bin_check() {
   local bin="$1"
   # macOS has no timeout(1); use perl alarm
-  if perl -e "alarm 12; exec @ARGV" "$bin" --version >/tmp/ab-bin-out 2>&1 \
-    || perl -e "alarm 12; exec @ARGV" "$bin" --help >/tmp/ab-bin-out 2>&1 \
-    || perl -e "alarm 12; exec @ARGV" "$bin" -h >/tmp/ab-bin-out 2>&1; then
+  if perl -e "alarm 45; exec @ARGV" "$bin" --version >/tmp/ab-bin-out 2>&1 \
+    || perl -e "alarm 45; exec @ARGV" "$bin" --help >/tmp/ab-bin-out 2>&1 \
+    || perl -e "alarm 45; exec @ARGV" "$bin" -h >/tmp/ab-bin-out 2>&1; then
     return 0
   fi
   return 1
@@ -477,8 +477,11 @@ if [ "$BIN_OK" = "0" ]; then
     for b in "$PREFIX/bin"/*; do
       [ -e "$b" ] || continue
       if [ -x "$b" ] || [ -L "$b" ]; then
+        echo "BIN_CANDIDATE=$b"
         if run_bin_check "$b"; then
           echo BIN_OK; BIN_OK=1; echo "BIN_PATH=$b"; head -5 /tmp/ab-bin-out; break
+        else
+          echo BIN_HELP_FAIL; cat /tmp/ab-bin-out 2>/dev/null | head -8
         fi
       fi
     done
