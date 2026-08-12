@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
 import {
   setappAppPaths,
   setappCliFormulaPath,
+  deriveTapSlug,
 } from "../../lib/setapp-bootstrap.ts";
 
 describe("setapp-bootstrap helpers", () => {
@@ -15,5 +16,27 @@ describe("setapp-bootstrap helpers", () => {
     expect(setappCliFormulaPath("/tmp/tap")).toBe(
       "/tmp/tap/Formula/setapp-cli.rb",
     );
+  });
+
+  it("deriveTapSlug uses config githubUser + tapName", () => {
+    expect(
+      deriveTapSlug("/Users/x/homebrew-allbrew", {
+        githubUser: "tariqwest",
+        tapName: "homebrew-allbrew",
+      }),
+    ).toBe("tariqwest/allbrew");
+  });
+
+  it("deriveTapSlug strips homebrew- prefix from path basename", () => {
+    expect(
+      deriveTapSlug("/Users/th-allbrew/homebrew-allbrew", {
+        githubUser: "th-allbrew",
+      }),
+    ).toBe("th-allbrew/allbrew");
+  });
+
+  it("deriveTapSlug falls back when config empty", () => {
+    const slug = deriveTapSlug("/tmp/homebrew-mytapp", {});
+    expect(slug).toMatch(/\/mytapp$/);
   });
 });
