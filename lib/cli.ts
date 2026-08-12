@@ -2316,7 +2316,7 @@ async function brewAutoInstall(result: any, opts: any) {
       const p = String(prefix).trim();
       const { stdout: lsOut } = await execFileAsync("bash", [
         "-c",
-        `ls -la ${JSON.stringify(p + "/bin")} 2>&1; for b in ${JSON.stringify(p + "/bin")}/* /opt/homebrew/bin/${result.name} /opt/homebrew/bin/*; do [ -e "$b" ] || continue; case "$b" in *trae*|*${result.name}*) echo "PROBE $b"; "$b" --version 2>&1 | head -3; "$b" --help 2>&1 | head -5; esac; done`,
+        `ls -la ${JSON.stringify(p + "/bin")} 2>&1; B=${JSON.stringify(p + "/bin/trae-cli")}; if [ -e "$B" ]; then echo "PROBE $B"; "$B" --version 2>&1 | tail -40; echo "---"; ${JSON.stringify(p + "/libexec/bin/python")} -c "import trae_agent; print('import ok')" 2>&1 | tail -40; fi`,
       ], { env: installEnv, maxBuffer: 4 * 1024 * 1024 });
       if (lsOut?.trim()) console.log(chalk.dim(String(lsOut).slice(0, 2000)));
     } catch (probeErr: any) {
