@@ -535,6 +535,7 @@ describe("collectSourceBuildPayload — trae-agent (Python CLI, no PyPI, no rele
     expect(payload.urlLines).toContain(
       "https://github.com/bytedance/trae-agent/archive/refs/heads/main.tar.gz",
     );
+    expect(payload.urlLines).toContain('version "0.1.0"');
     expect(payload.urlLines).toContain("sha256");
     expect(payload.testBinName).toBe("trae-cli");
     expect(payload.isPython).toBe(true);

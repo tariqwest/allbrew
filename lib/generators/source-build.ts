@@ -40,7 +40,12 @@ export async function collectSourceBuildPayload(
   let urlLines = "";
   if (sourceUrl && version !== "HEAD") {
     const sha256 = await hashUrl(sourceUrl);
-    urlLines = `  url ${rubyString(sourceUrl)}\n  sha256 ${rubyString(sha256)}\n`;
+    // Branch archives (refs/heads/...) do not embed a version Homebrew can parse —
+    // always emit an explicit version stanza when we have one from the release tag.
+    urlLines =
+      `  url ${rubyString(sourceUrl)}\n` +
+      `  version ${rubyString(version)}\n` +
+      `  sha256 ${rubyString(sha256)}\n`;
   }
 
   const system = buildSystem?.system || "make";
