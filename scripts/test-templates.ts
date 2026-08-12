@@ -430,21 +430,26 @@ function buildPipPackageCase(): Case {
     `  # via the wheel's existing @loader_path references.\n` +
     `  def rewrite_delocate_dylib_ids\n` +
     `    return unless OS.mac?\n\n` +
+    `    rewritten = 0\n` +
     `    Dir.glob("#{libexec}/**/*.dylib").each do |dylib|\n` +
     `      next unless File.file?(dylib)\n\n` +
     `      # otool -D prints: path\\ninstall_name\n` +
     `      lines = Utils.popen_read("otool", "-D", dylib).lines.map(&:strip).reject(&:empty?)\n` +
-    `      id = lines[1]\n` +
+    `      id = lines.find { |l| l.start_with?("/DLC/") } || lines[1]\n` +
     `      next if id.nil? || id.empty?\n` +
     `      next unless id.start_with?("/DLC/")\n\n` +
     `      new_id = "@rpath/#{File.basename(id)}"\n` +
     `      next if new_id == id\n\n` +
-    `      system "install_name_tool", "-id", new_id, dylib\n` +
-    `      # install_name_tool invalidates the code signature; ad-hoc re-sign so\n` +
-    `      # dyld accepts the binary on Apple Silicon (Homebrew only re-signs when\n` +
-    `      # its own fix_dynamic_linkage mutates the file).\n` +
-    `      system "codesign", "--force", "--sign", "-", dylib\n` +
+    `      # pip may hardlink from the cache as mode 0444; install_name_tool needs write.\n` +
+    `      File.chmod(File.stat(dylib).mode | 0200, dylib)\n` +
+    `      # Best-effort strip of any existing signature so install_name_tool can\n` +
+    `      # rewrite LC_ID_DYLIB on Apple Silicon; ignore strip failure.\n` +
+    `      system "codesign", "--remove-signature", dylib\n` +
+    `      odie "install_name_tool -id failed for #{dylib}" unless system "install_name_tool", "-id", new_id, dylib\n` +
+    `      odie "codesign failed for #{dylib}" unless system "codesign", "--force", "--sign", "-", dylib\n` +
+    `      rewritten += 1\n` +
     `    end\n` +
+    `    ohai "Rewrote #{rewritten} delocate /DLC/ dylib IDs to @rpath" if rewritten > 0\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +

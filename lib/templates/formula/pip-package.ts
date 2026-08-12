@@ -80,24 +80,29 @@ ${p.resourcesBlock}  def install
   def rewrite_delocate_dylib_ids
     return unless OS.mac?
 
+    rewritten = 0
     Dir.glob("#{libexec}/**/*.dylib").each do |dylib|
       next unless File.file?(dylib)
 
       # otool -D prints: path\\ninstall_name
       lines = Utils.popen_read("otool", "-D", dylib).lines.map(&:strip).reject(&:empty?)
-      id = lines[1]
+      id = lines.find { |l| l.start_with?("/DLC/") } || lines[1]
       next if id.nil? || id.empty?
       next unless id.start_with?("/DLC/")
 
       new_id = "@rpath/#{File.basename(id)}"
       next if new_id == id
 
-      system "install_name_tool", "-id", new_id, dylib
-      # install_name_tool invalidates the code signature; ad-hoc re-sign so
-      # dyld accepts the binary on Apple Silicon (Homebrew only re-signs when
-      # its own fix_dynamic_linkage mutates the file).
-      system "codesign", "--force", "--sign", "-", dylib
+      # pip may hardlink from the cache as mode 0444; install_name_tool needs write.
+      File.chmod(File.stat(dylib).mode | 0200, dylib)
+      # Best-effort strip of any existing signature so install_name_tool can
+      # rewrite LC_ID_DYLIB on Apple Silicon; ignore strip failure.
+      system "codesign", "--remove-signature", dylib
+      odie "install_name_tool -id failed for #{dylib}" unless system "install_name_tool", "-id", new_id, dylib
+      odie "codesign failed for #{dylib}" unless system "codesign", "--force", "--sign", "-", dylib
+      rewritten += 1
     end
+    ohai "Rewrote #{rewritten} delocate /DLC/ dylib IDs to @rpath" if rewritten > 0
   end
 
 ${p.serviceBlock}  test do
