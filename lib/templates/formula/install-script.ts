@@ -58,6 +58,9 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
       odie "install script produced no executable binaries under buildpath" if bins.empty?
       bin.install bins
     end
+    if "${p.testBinName}" != "${p.name}" && (bin/"${p.testBinName}").exist? && !(bin/"${p.name}").exist?
+      bin.install_symlink "${p.testBinName}" => "${p.name}"
+    end
   end
 
 ${p.serviceBlock}  test do

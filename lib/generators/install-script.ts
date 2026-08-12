@@ -66,12 +66,20 @@ export async function collectInstallScriptPayload(
   const license = guessLicenseIdentifier(options.license || repoInfo?.license || null);
   const version = await resolveInstallScriptVersion(url, options);
   let binName = options.binName || name;
-  if (!options.binName && /agent-cli/i.test(url) && /warp/i.test(name)) {
-    try {
-      const scriptText = await (await fetch(url, { signal: AbortSignal.timeout(15_000) })).text();
-      const m = scriptText.match(/CLI_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/);
-      if (m?.[1]) binName = m[1];
-    } catch { /* fallback to name */ }
+  if (!options.binName) {
+    const shouldProbe =
+      (/agent-cli/i.test(url) && /warp/i.test(name)) ||
+      /muse/i.test(name) ||
+      /code/i.test(url) ||
+      /meta\.ai/i.test(url);
+    if (shouldProbe) {
+      try {
+        const scriptText = await (await fetch(url, { signal: AbortSignal.timeout(15_000) })).text();
+        let m = scriptText.match(/CLI_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/);
+        if (!m) m = scriptText.match(/command_name\s*=\s*["']([A-Za-z0-9._-]+)["']/);
+        if (m?.[1]) binName = m[1];
+      } catch { /* fallback to name */ }
+    }
   }
 
   return {
