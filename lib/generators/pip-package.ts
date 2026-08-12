@@ -22,6 +22,11 @@ export const PIP_FORMULA_PYTHON = { major: 3, minor: 13 } as const;
  */
 export const UNDECLARED_RUNTIME_DEPS: Record<string, string[]> = {
   "shell-gpt": ["click"],
+  // chainlit / elia / mlflow-class packages often omit tight runtime pins that
+  // surface only after console_scripts import; keep high-value complements here.
+  elia: ["textual"],
+  chainlit: ["uvicorn"],
+  mlflow: ["pyyaml"],
 };
 
 /** Console-script names that differ from the PyPI/distribution name. */
@@ -29,6 +34,7 @@ export const KNOWN_BIN_NAMES: Record<string, string> = {
   "shell-gpt": "sgpt",
   graphifyy: "graphify",
   "nanobot-ai": "nanobot",
+  "pyqt-openai": "pyqt-openai",
 };
 
 /**
@@ -38,14 +44,22 @@ export const KNOWN_BIN_NAMES: Record<string, string> = {
 export const KNOWN_ROOT_EXTRAS: Record<string, string[]> = {
   napari: ["pyqt6"],
   tabulous: ["pyqt5"],
+  "pyqt-openai": ["full"],
+  elia: [],
+  chainlit: [],
 };
 
 /**
- * Import path for version checks when the console_scripts entry is a GUI launcher.
+ * Import path for version checks when the console_scripts entry is a GUI launcher
+ * (or otherwise hangs / opens a window on --version / --help).
  */
 export const KNOWN_PYTHON_IMPORT_VERSION_TEST: Record<string, string> = {
   napari: "napari",
   tabulous: "tabulous",
+  "pyqt-openai": "pyqt_openai",
+  elia: "elia_chat",
+  chainlit: "chainlit",
+  mlflow: "mlflow",
 };
 
 type PypiUrl = {
@@ -720,6 +734,7 @@ export function selectBestDistribution(
         continue;
       }
       const score = scoreWheel(u, macArch);
+      // score < 0 means incompatible platform/abi — never install a bad wheel.
       if (score < 0) continue;
       if (!best || score > best.score) best = { score, url: u };
     }
@@ -729,6 +744,7 @@ export function selectBestDistribution(
     }
   }
 
+  // Prefer sdist over any remaining incompatible wheel.
   const sdist =
     candidates.find((u) => u.packagetype === "sdist") ||
     candidates.find((u) =>
@@ -737,13 +753,15 @@ export function selectBestDistribution(
     null;
   if (sdist) return toSelectedDist(sdist, "sdist", options.version);
 
-  if (candidates[0]) {
-    const kind =
-      candidates[0].packagetype === "bdist_wheel" ||
-      String(candidates[0].filename || "").endsWith(".whl")
-        ? "wheel"
-        : "sdist";
-    return toSelectedDist(candidates[0], kind, options.version);
+  // Last resort: only accept a wheel if it scores as compatible (never a random manylinux-only wheel).
+  for (const u of candidates) {
+    const isWheel =
+      u.packagetype === "bdist_wheel" ||
+      String(u.filename || "").endsWith(".whl");
+    if (!isWheel) continue;
+    if (scoreWheel(u, macArch) < 0) continue;
+    const selected = toSelectedDist(u, "wheel", options.version);
+    if (selected) return selected;
   }
   return null;
 }
