@@ -198,10 +198,37 @@ export function detectInstallMethod(
     if (pkg) return { method: "dotnet", package: pkg };
   }
 
-  match = readmeText.match(GEM_INSTALL_RE);
-  if (match) {
-    const pkg = String(match[1] || "").trim();
-    if (pkg) return { method: "gem", package: pkg };
+  {
+    const gemCandidates: string[] = [];
+    const gemGlobalRe = new RegExp(
+      GEM_INSTALL_RE.source,
+      GEM_INSTALL_RE.flags.includes("g") ? GEM_INSTALL_RE.flags : `${GEM_INSTALL_RE.flags}g`,
+    );
+    let gemMatch: RegExpExecArray | null;
+    while ((gemMatch = gemGlobalRe.exec(readmeText)) !== null) {
+      const pkg = String(gemMatch[1] || "").trim();
+      if (!pkg) continue;
+      // Filter obvious non-package tokens (flags)
+      if (pkg.startsWith("-")) continue;
+      gemCandidates.push(pkg);
+    }
+    if (gemCandidates.length > 0) {
+      const preferred = String(preferredPackageName || "").trim();
+      if (preferred) {
+        const preferredLower = preferred.toLowerCase();
+        const preferredLast = preferredLower.split("/").pop() || preferredLower;
+        const matched = gemCandidates.find((c) => {
+          const lower = c.toLowerCase();
+          const last = lower.split("/").pop() || lower;
+          return lower === preferredLower || lower === preferredLast || last === preferredLower || last === preferredLast;
+        });
+        if (matched) return { method: "gem", package: matched };
+        // Preferred set but no gem hit for it — let file-based detection (gemspec) try instead of falling back to an unrelated gem like bundler.
+        // Continue to next heuristic rather than returning bundler.
+      } else {
+        return { method: "gem", package: gemCandidates[0] };
+      }
+    }
   }
 
   match = readmeText.match(DENO_INSTALL_RE);
