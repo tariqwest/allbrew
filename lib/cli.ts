@@ -169,6 +169,12 @@ function isNonInteractive(opts: any = {}): boolean {
   return !process.stdin.isTTY || !process.stdout.isTTY;
 }
 
+/** Release zips that pass isAppAsset but have no .app inside (portable GUI archives, source-ish product zips). */
+function isNoAppBundleError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return /No \.app bundle found inside release asset/i.test(msg);
+}
+
 async function maybeDiscoverFromUnknownPage(url: string, opts: any) {
   const mode = parseDiscoverMode(
     opts.discover === undefined ? (opts.noDiscover ? "off" : "auto") : opts.discover,
@@ -984,11 +990,25 @@ async function handleGithubRepo(classification, opts) {
       }
 
       if (choice === "cask") {
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release },
+            opts,
+          );
+        } catch (err) {
+          if (!isNoAppBundleError(err)) throw err;
+          console.log(
+            chalk.dim(
+              `  App assets lack a .app bundle; falling back to CLI binary formula...`,
+            ),
+          );
+          return await generateWithConfirmation(
+            "binary-release",
+            { repoInfo, release },
+            opts,
+          );
+        }
       } else {
         return await generateWithConfirmation(
           "binary-release",
@@ -1002,11 +1022,21 @@ async function handleGithubRepo(classification, opts) {
       console.log(
         `  Detected ${chalk.cyan("macOS app")} assets: ${appAssets.map((a) => a.name).join(", ")}`,
       );
-      return await generateWithConfirmation(
-        "cask-app-release",
-        { repoInfo, release },
-        opts,
-      );
+      try {
+        return await generateWithConfirmation(
+          "cask-app-release",
+          { repoInfo, release },
+          opts,
+        );
+      } catch (err) {
+        if (!isNoAppBundleError(err)) throw err;
+        console.log(
+          chalk.dim(
+            `  App-named assets have no .app bundle inside (${appAssets.map((a) => a.name).join(", ")}); checking README / repo files...`,
+          ),
+        );
+        // Fall through to README + repo-file install method detection (e.g. pip for pyNastran).
+      }
     }
 
     if (binAssets.length > 0) {
@@ -1056,11 +1086,20 @@ async function handleGithubRepo(classification, opts) {
         console.log(
           `  Found macOS app assets on older release ${chalk.bold(olderWithApp.tagName)}: ${names.join(", ")}`,
         );
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release: olderWithApp },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release: olderWithApp },
+            opts,
+          );
+        } catch (err) {
+          if (!isNoAppBundleError(err)) throw err;
+          console.log(
+            chalk.dim(
+              `  Older-release app assets lack a .app bundle; continuing README / repo analysis...`,
+            ),
+          );
+        }
       }
     } catch (err) {
       if (opts.verbose) {
