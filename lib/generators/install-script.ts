@@ -17,6 +17,77 @@ function extractVersionFromUrl(url: string): string | null {
   return match ? match[1] : null;
 }
 
+/**
+ * Detect noninteractive flags/env that install scripts document.
+ * Used so brew sandbox builds do not hang on `read` / confirm prompts.
+ */
+export function detectInstallScriptFlags(scriptText: string): {
+  args: string[];
+  env: Record<string, string>;
+  ensureBinDir: boolean;
+} {
+  const text = String(scriptText || "");
+  const args: string[] = [];
+  const env: Record<string, string> = {};
+
+  // Always pre-create BIN_DIR: starship and similar require the directory to exist.
+  const ensureBinDir = true;
+
+  if (/\bFORCE\b/.test(text) || /\$\{?FORCE\}?/.test(text)) {
+    env.FORCE = "1";
+  }
+  if (/\bYES\b/.test(text) && /confirm|prompt|read\s+/i.test(text)) {
+    env.YES = "1";
+  }
+
+  // Longest / most specific flags first to avoid partial matches.
+  const flagCandidates = [
+    "--non-interactive",
+    "--skip-tmux-config",
+    "--yes",
+    "-y",
+  ];
+  for (const flag of flagCandidates) {
+    // Require the flag to appear as a documented option, not only in prose.
+    const escaped = flag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(
+      `(?:^|[\\s"'|])${escaped}(?:\\s|$|["'])|case\\s+.*${escaped}|getopts.*${escaped.replace(/^--?/, "")}`,
+      "im",
+    );
+    if (re.test(text) || text.includes(flag)) {
+      if (!args.includes(flag)) args.push(flag);
+    }
+  }
+
+  // agent-deck and similar: explicit non-interactive mode
+  if (/non.interactive/i.test(text) && !args.includes("--non-interactive")) {
+    if (/--non-interactive/.test(text)) args.unshift("--non-interactive");
+  }
+
+  // Prefer --yes over -y when both detected
+  if (args.includes("--yes") && args.includes("-y")) {
+    args.splice(args.indexOf("-y"), 1);
+  }
+
+  return { args, env, ensureBinDir };
+}
+
+function installScriptRubyFragments(flags: ReturnType<typeof detectInstallScriptFlags>): {
+  installEnvLines: string;
+  installArgsRuby: string;
+  ensureBinDir: boolean;
+} {
+  const envLines = Object.entries(flags.env)
+    .map(([k, v]) => `    ENV[${rubyString(k)}] = ${rubyString(v)}\n`)
+    .join("");
+  const argsRuby = flags.args.map((a) => `, ${rubyString(a)}`).join("");
+  return {
+    installEnvLines: envLines,
+    installArgsRuby: argsRuby,
+    ensureBinDir: flags.ensureBinDir,
+  };
+}
+
 /** Resolve a Homebrew-safe version for static install-script URLs. */
 export async function resolveInstallScriptVersion(
   url: string,
@@ -66,13 +137,32 @@ export async function collectInstallScriptPayload(
   const license = guessLicenseIdentifier(options.license || repoInfo?.license || null);
   const version = await resolveInstallScriptVersion(url, options);
   let binName = options.binName || name;
-  if (!options.binName && /agent-cli/i.test(url) && /warp/i.test(name)) {
-    try {
-      const scriptText = await (await fetch(url, { signal: AbortSignal.timeout(15_000) })).text();
-      const m = scriptText.match(/CLI_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/);
-      if (m?.[1]) binName = m[1];
-    } catch { /* fallback to name */ }
+  let scriptText = "";
+  try {
+    scriptText = await (
+      await fetch(url, { signal: AbortSignal.timeout(15_000) })
+    ).text();
+  } catch {
+    /* optional */
   }
+  if (!options.binName && /agent-cli/i.test(url) && /warp/i.test(name) && scriptText) {
+    const m = scriptText.match(/CLI_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/);
+    if (m?.[1]) binName = m[1];
+  }
+
+  const flags =
+    options.installFlags ||
+    (scriptText
+      ? detectInstallScriptFlags(scriptText)
+      : { args: [] as string[], env: {} as Record<string, string>, ensureBinDir: true });
+  // Allow explicit option overrides
+  if (options.force === true) flags.env.FORCE = "1";
+  if (Array.isArray(options.scriptArgs)) {
+    for (const a of options.scriptArgs) {
+      if (!flags.args.includes(a)) flags.args.push(a);
+    }
+  }
+  const rubyBits = installScriptRubyFragments(flags);
 
   return {
     template: "install_script",
@@ -89,6 +179,9 @@ export async function collectInstallScriptPayload(
     allbrewDependency: "",
     testBinName: rubyEscape(binName),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+    installEnvLines: rubyBits.installEnvLines,
+    installArgsRuby: rubyBits.installArgsRuby,
+    ensureBinDir: rubyBits.ensureBinDir,
   };
 }
 

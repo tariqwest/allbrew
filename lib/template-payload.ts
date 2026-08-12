@@ -49,6 +49,11 @@ export type CargoPackagePayload = FormulaCommonFields & {
   livecheckBlock: string;
   /** Pre-rendered `*std_cargo_args` or `*std_cargo_args(path: "…")` fragment. */
   cargoInstallArgs: string;
+  /**
+   * Same as cargoInstallArgs but with `locked: false` for the lockfile-mismatch
+   * rescue path (gobang / oatmeal / rainfrog class of failures).
+   */
+  cargoInstallArgsUnlocked: string;
 };
 
 export type GoPackagePayload = FormulaCommonFields & {
@@ -95,6 +100,12 @@ export type InstallScriptPayload = FormulaCommonFields & {
   sha256: string;
   scriptFilename: string;
   livecheckBlock: string;
+  /** Extra ENV lines inside `def install` (pre-indented, trailing newline or empty). */
+  installEnvLines: string;
+  /** Ruby fragment after `cached_download.to_s` for script args, e.g. `, "--yes"`. */
+  installArgsRuby: string;
+  /** Whether to `mkdir -p` BIN_DIR before running the script. */
+  ensureBinDir: boolean;
 };
 
 export type ArchiveBuildPayload = FormulaCommonFields & {
@@ -195,6 +206,10 @@ export type GemPackagePayload = FormulaCommonFields & {
   licenseLine: string;
   urlLines: string;
   livecheckBlock: string;
+  /** Extra `depends_on` lines (build tools / native libs), each with trailing newline. */
+  dependsOnLines: string;
+  /** Full `test do` body lines (pre-indented), default bin --version. */
+  testDoBody: string;
 };
 
 export type MintPackagePayload = FormulaCommonFields & {

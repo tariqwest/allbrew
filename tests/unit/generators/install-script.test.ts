@@ -1,5 +1,8 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectInstallScriptPayload } from "../../../lib/generators/install-script.ts";
+import {
+  collectInstallScriptPayload,
+  detectInstallScriptFlags,
+} from "../../../lib/generators/install-script.ts";
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("mocked_sha256"),
@@ -7,9 +10,42 @@ mock.module("../../../lib/sha256.ts", () => ({
     .mockResolvedValue({ sha256: "script_sha256_mock_value_64chars_pad_abcdef0123456789abcdef" }),
 }));
 
+describe("detectInstallScriptFlags", () => {
+  it("detects FORCE and ensures BIN_DIR", () => {
+    const flags = detectInstallScriptFlags(
+      'if [ -n "${FORCE}" ]; then echo force; fi\nBIN_DIR=${BIN_DIR:-$HOME/.local/bin}\n',
+    );
+    expect(flags.env.FORCE).toBe("1");
+    expect(flags.ensureBinDir).toBe(true);
+  });
+
+  it("detects --yes and --non-interactive", () => {
+    const flags = detectInstallScriptFlags(
+      "Usage: install.sh [--yes] [--non-interactive]\n",
+    );
+    expect(flags.args).toContain("--yes");
+    expect(flags.args).toContain("--non-interactive");
+  });
+
+  it("prefers --yes over -y", () => {
+    const flags = detectInstallScriptFlags("opts: --yes -y\n");
+    expect(flags.args).toContain("--yes");
+    expect(flags.args).not.toContain("-y");
+  });
+});
+
 describe("collectInstallScriptPayload", () => {
   beforeEach(() => {
     mock.restore();
+    global.fetch = mock(() =>
+      Promise.resolve({
+        ok: true,
+        text: () =>
+          Promise.resolve(
+            '#!/bin/bash\n# FORCE=1 skips prompts\nif [ "$FORCE" = "1" ]; then true; fi\n',
+          ),
+      }),
+    ) as any;
   });
 
   it("returns payload with correct template identifier", async () => {
@@ -89,6 +125,29 @@ describe("collectInstallScriptPayload", () => {
       { desc: "Cross-shell prompt" },
     );
     expect(payload.desc).toBe("Cross-shell prompt");
+  });
+
+  it("emits FORCE env and ensureBinDir from script text", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://starship.rs/install.sh",
+      { name: "starship" },
+    );
+    expect(payload.installEnvLines).toContain('ENV["FORCE"]');
+    expect(payload.ensureBinDir).toBe(true);
+  });
+
+  it("honors explicit scriptArgs and force options", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://example.com/install.sh",
+      {
+        name: "agent-deck",
+        force: true,
+        scriptArgs: ["--non-interactive"],
+        installFlags: { args: [], env: {}, ensureBinDir: true },
+      },
+    );
+    expect(payload.installEnvLines).toContain("FORCE");
+    expect(payload.installArgsRuby).toContain("--non-interactive");
   });
 
   it("generates livecheck block with URL", async () => {

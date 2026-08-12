@@ -264,6 +264,7 @@ function buildCargoPackageCase(): Case {
     urlLines: '  url "https://example.com/foo-1.0.tar.gz"\n  sha256 "cc"\n',
     livecheckBlock: livecheck,
     cargoInstallArgs: "*std_cargo_args",
+    cargoInstallArgsUnlocked: "*std_cargo_args(locked: false)",
     allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
@@ -279,7 +280,13 @@ function buildCargoPackageCase(): Case {
     livecheck +
     `  depends_on "rust" => :build\n\n` +
     `  def install\n` +
+    `    # Prefer --locked (std_cargo_args) so builds match Cargo.lock; if the lockfile\n` +
+    `    # is out of date relative to Cargo.toml (common on crates.io snapshots),\n` +
+    `    # retry without --locked so install can still succeed.\n` +
     `    system "cargo", "install", *std_cargo_args\n` +
+    `  rescue\n` +
+    `    ohai "cargo install --locked failed; retrying without --locked"\n` +
+    `    system "cargo", "install", *std_cargo_args(locked: false)\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
@@ -477,52 +484,74 @@ function buildInstallScriptCase(): Case {
     allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
+    installEnvLines: "",
+    installArgsRuby: "",
+    ensureBinDir: false,
   };
   const expected =
-    `class Foo < Formula\n` +
-    `  desc "Install foo via setup script"\n` +
-    `  homepage "https://example.com/install.sh"\n` +
-    `  url "https://example.com/install.sh"\n` +
-    `  version "0.0.1"\n` +
-    `  sha256 "11"\n` +
-    `\n` +
-    `  def install\n` +
-    `    ENV["PREFIX"] = prefix.to_s\n` +
-    `    ENV["DESTDIR"] = prefix.to_s\n` +
-    `    # Many vendor installers honor PREFIX/DESTDIR; others ignore them and write under $HOME\n` +
-    `    # (commonly ~/.local/bin). Sandbox HOME so those paths stay inside the buildpath.\n` +
-    `    ENV["HOME"] = buildpath.to_s\n` +
-    `    # Common generic override accepted by some installers.\n` +
-    `    ENV["BIN_DIR"] = (buildpath/"bin").to_s\n` +
-    `    system "bash", cached_download.to_s\n` +
-    `\n` +
-    `    candidates = [\n` +
-    `      buildpath/"bin",\n` +
-    `      buildpath/".local/bin",\n` +
-    `      buildpath/"usr/local/bin",\n` +
-    `      Pathname.new(ENV.fetch("PREFIX"))/"bin",\n` +
-    `    ].uniq\n` +
-    `    installed = false\n` +
-    `    candidates.each do |dir|\n` +
-    `      next unless dir.directory?\n` +
-    `      bins = Dir[dir/"*"].select { |f| File.file?(f) && File.executable?(f) }\n` +
-    `      next if bins.empty?\n` +
-    `      bin.install bins\n` +
-    `      installed = true\n` +
-    `      break\n` +
-    `    end\n` +
-    `    unless installed\n` +
-    `      bins = Dir[buildpath/"**/*"].select do |f|\n` +
-    `        File.file?(f) && File.executable?(f) && !File.basename(f).start_with?(".")\n` +
-    `      end\n` +
-    `      odie "install script produced no executable binaries under buildpath" if bins.empty?\n` +
-    `      bin.install bins\n` +
-    `    end\n` +
-    `  end\n\n` +
-    `  test do\n` +
-    `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
-    `  end\n` +
-    `end\n`;
+    "class Foo < Formula\n" +
+    "  desc \"Install foo via setup script\"\n" +
+    "  homepage \"https://example.com/install.sh\"\n" +
+    "  url \"https://example.com/install.sh\"\n" +
+    "  version \"0.0.1\"\n" +
+    "  sha256 \"11\"\n" +
+    "\n" +
+    "  def install\n" +
+    "    ENV[\"PREFIX\"] = prefix.to_s\n" +
+    "    ENV[\"DESTDIR\"] = prefix.to_s\n" +
+    "    # Many vendor installers honor PREFIX/DESTDIR; others ignore them and write under $HOME\n" +
+    "    # (commonly ~/.local/bin). Sandbox HOME so those paths stay inside the buildpath.\n" +
+    "    ENV[\"HOME\"] = buildpath.to_s\n" +
+    "    # Common generic override accepted by some installers.\n" +
+    "    ENV[\"BIN_DIR\"] = (buildpath/\"bin\").to_s\n" +
+    "    # Warp Agent CLI honors WARP_TUI_* (defaults to $HOME/.warp and $HOME/.local/bin);\n" +
+    "    # point them inside buildpath so the versioned layout is discoverable.\n" +
+    "    ENV[\"WARP_TUI_INSTALL_DIR\"] = (buildpath/\"warp-tui\").to_s\n" +
+    "    ENV[\"WARP_TUI_BIN_DIR\"] = (buildpath/\"bin\").to_s\n" +
+    "    system \"bash\", cached_download.to_s\n" +
+    "\n" +
+    "    # Warp Agent CLI uses a versioned layout: $WARP_TUI_INSTALL_DIR/warp-tui/versions/<version>/warp-tui-stable\n" +
+    "    # with a symlink $WARP_TUI_BIN_DIR/warp -> .../current/warp-tui-stable. The symlink target\n" +
+    "    # is under buildpath and would be broken after install, so install the real binary directly.\n" +
+    "    warp_bin = Dir[buildpath/\"warp-tui\"/\"versions\"/\"*\"/\"warp-tui-*\"].select { |f| File.file?(f) && File.executable?(f) }.first\n" +
+    "    if warp_bin\n" +
+    "      bin.install warp_bin => \"warp\"\n" +
+    "      # Also ensure the versioned layout's resources are available if needed (optional)\n" +
+    "      # The installer already staged everything under warp-tui/ — Homebrew only needs the binary.\n" +
+    "      return\n" +
+    "    end\n" +
+    "\n" +
+    "    candidates = [\n" +
+    "      buildpath/\"bin\",\n" +
+    "      buildpath/\".local/bin\",\n" +
+    "      buildpath/\"usr/local/bin\",\n" +
+    "      Pathname.new(ENV.fetch(\"PREFIX\"))/\"bin\",\n" +
+    "    ].uniq\n" +
+    "    installed = false\n" +
+    "    candidates.each do |dir|\n" +
+    "      next unless dir.directory?\n" +
+    "      bins = Dir[dir/\"*\"].select { |f| File.file?(f) && File.executable?(f) }\n" +
+    "      next if bins.empty?\n" +
+    "      # If the only bin is a broken symlink (warp -> warp-tui/...), resolve to the real binary.\n" +
+    "      # Homebrew's bin.install would copy the symlink as-is, leaving a broken link.\n" +
+    "      # For warp, the real binary is already handled above; for others, install as-is.\n" +
+    "      bin.install bins\n" +
+    "      installed = true\n" +
+    "      break\n" +
+    "    end\n" +
+    "    unless installed\n" +
+    "      bins = Dir[buildpath/\"**/*\"].select do |f|\n" +
+    "        File.file?(f) && File.executable?(f) && !File.basename(f).start_with?(\".\")\n" +
+    "      end\n" +
+    "      odie \"install script produced no executable binaries under buildpath\" if bins.empty?\n" +
+    "      bin.install bins\n" +
+    "    end\n" +
+    "  end\n" +
+    "\n" +
+    "  test do\n" +
+    "    assert_match version.to_s, shell_output(\"#{bin}/foo --version\")\n" +
+    "  end\n" +
+    "end\n" ;
   return { template: "install_script", kind: "formula", payload, expected };
 }
 
