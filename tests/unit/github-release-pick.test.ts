@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { pickReleaseWithAppAssets } from "../../lib/github.ts";
+import {
+  pickNewestNonDraftRelease,
+  pickReleaseWithAppAssets,
+} from "../../lib/github.ts";
 import { isAppAsset } from "../../lib/utils.ts";
 
 function rel(
@@ -69,5 +72,60 @@ describe("pickReleaseWithAppAssets", () => {
       isAppAsset,
     );
     expect(picked).toBeNull();
+  });
+
+  test("PortDeck-style prerelease-only arm64 dmg is an app asset", () => {
+    const picked = pickReleaseWithAppAssets(
+      [
+        rel(
+          "v0.1.0-beta.17",
+          [
+            "PortDeck-0.1.0-beta.17-macos-arm64.dmg",
+            "PortDeck-0.1.0-beta.17-macos-arm64.zip",
+          ],
+          { prerelease: true },
+        ),
+      ],
+      isAppAsset,
+    );
+    expect(picked?.tagName).toBe("v0.1.0-beta.17");
+    expect(
+      isAppAsset("PortDeck-0.1.0-beta.17-macos-arm64.dmg"),
+    ).toBe(true);
+  });
+});
+
+describe("pickNewestNonDraftRelease", () => {
+  test("returns null for empty or draft-only lists", () => {
+    expect(pickNewestNonDraftRelease([])).toBeNull();
+    expect(
+      pickNewestNonDraftRelease([
+        rel("1.0.0-wip", ["a.dmg"], { draft: true }),
+      ]),
+    ).toBeNull();
+  });
+
+  test("prefers stable over newer prerelease when both present", () => {
+    const picked = pickNewestNonDraftRelease([
+      rel("2.0.0-rc1", ["a.dmg"], { prerelease: true }),
+      rel("1.9.0", ["a.dmg"]),
+    ]);
+    expect(picked?.tagName).toBe("1.9.0");
+  });
+
+  test("falls back to newest prerelease when only prereleases exist (PortDeck)", () => {
+    const picked = pickNewestNonDraftRelease([
+      rel(
+        "v0.1.0-beta.17",
+        ["PortDeck-0.1.0-beta.17-macos-arm64.dmg"],
+        { prerelease: true },
+      ),
+      rel(
+        "v0.1.0-beta.16",
+        ["PortDeck-0.1.0-beta.16-macos-arm64.dmg"],
+        { prerelease: true },
+      ),
+    ]);
+    expect(picked?.tagName).toBe("v0.1.0-beta.17");
   });
 });

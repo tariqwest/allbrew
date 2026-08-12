@@ -120,13 +120,37 @@ function mapRelease(data: any) {
   };
 }
 
+/**
+ * Newest non-draft release from a list (newest-first). Prefer stable over
+ * prerelease so callers that only care about "some release" still get GA when
+ * both exist. Used when GitHub `/releases/latest` 404s (prerelease-only repos).
+ */
+export function pickNewestNonDraftRelease(
+  releases: ReturnType<typeof mapRelease>[],
+): ReturnType<typeof mapRelease> | null {
+  const usable = (releases || []).filter((r) => r && !r.draft);
+  if (usable.length === 0) return null;
+  return usable.find((r) => !r.prerelease) || usable[0] || null;
+}
+
+/**
+ * GitHub `/repos/{owner}/{repo}/releases/latest` only returns non-prerelease
+ * releases and 404s when a repo has only prereleases (e.g. PortDeck beta).
+ * Fall back to the newest non-draft release from the list endpoint so app/binary
+ * assets on beta tags remain discoverable.
+ */
 export async function getLatestRelease(owner, repo) {
   try {
     const { data } = await getOctokit().rest.repos.getLatestRelease({ owner, repo });
     return mapRelease(data);
   } catch (err) {
-    if (err.status === 404) return null;
-    throw err;
+    if (err.status !== 404) throw err;
+    try {
+      const recent = await listReleases(owner, repo, { perPage: 30 });
+      return pickNewestNonDraftRelease(recent);
+    } catch {
+      return null;
+    }
   }
 }
 
