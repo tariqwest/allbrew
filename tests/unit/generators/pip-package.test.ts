@@ -350,6 +350,12 @@ describe("collectPipPackagePayload — toolong", () => {
     const payload = await collectPipPackagePayload("toolong");
     expect(payload.livecheckBlock).toContain("pypi.org/pypi/toolong/json");
   });
+
+  it("defaults test binary to tl (console_scripts entry)", async () => {
+    const payload = await collectPipPackagePayload("toolong");
+    expect(payload.testBinName).toBe("tl");
+    expect(payload.testDoBody).toContain("#{bin}/tl --version");
+  });
 });
 
 describe("collectPipPackagePayload — shell-gpt", () => {
@@ -615,6 +621,10 @@ describe("pip requirement parsing helpers", () => {
 
   it("knows shell-gpt binary alias", () => {
     expect(KNOWN_BIN_NAMES["shell-gpt"]).toBe("sgpt");
+  });
+
+  it("knows toolong binary alias (tl)", () => {
+    expect(KNOWN_BIN_NAMES.toolong).toBe("tl");
   });
 });
 

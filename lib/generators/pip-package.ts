@@ -38,6 +38,8 @@ export const KNOWN_BIN_NAMES: Record<string, string> = {
   graphifyy: "graphify",
   "nanobot-ai": "nanobot",
   "pyqt-openai": "pyqt-openai",
+  // console_scripts entry is `tl` (Textualize terminal log viewer)
+  toolong: "tl",
 };
 
 /**
