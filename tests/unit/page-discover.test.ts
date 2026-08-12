@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import {
   discoverPageDownloads,
   discoverMasFallbackCandidates,
+  inventBrandAlternateOrigins,
   productNameHintsFromUrl,
   extractArtifactUrlsFromJson,
   extractCandidatesFromHtml,
@@ -716,6 +717,44 @@ describe("MAS iTunes fallback (auth-walled marketing pages)", () => {
     expect(cands[0].score).toBeGreaterThanOrEqual(90);
   });
 
+  it("accepts iTunes kind=software and prefers token-exact over compound prefix", async () => {
+    // paste.app: real Paste returns kind "software"; PasteEasy is compound prefix noise
+    const cands = await discoverMasFallbackCandidates("https://paste.app/", {
+      itunesSearch: async () => [
+        {
+          kind: "software",
+          trackId: 967805235,
+          trackName: "Paste – Limitless Clipboard",
+          sellerUrl: "https://pasteapp.io/?utm_source=appstore",
+        },
+        {
+          kind: "mac-software",
+          trackId: 1554034946,
+          trackName: "PasteEasy",
+        },
+        {
+          kind: "mac-software",
+          trackId: 1407015686,
+          trackName: "Paste Plain Text",
+          sellerUrl: "https://fiplab.com",
+        },
+      ],
+    });
+    expect(cands.length).toBeGreaterThanOrEqual(2);
+    expect(cands[0].url).toContain("id967805235");
+    expect(cands[0].evidence).toContain("mas-name-token-exact");
+    expect(cands[0].evidence).toContain("mas-seller-host-related");
+    expect(cands[0].score).toBeGreaterThan(
+      cands.find((c) => c.url.includes("1554034946"))!.score,
+    );
+  });
+
+  it("inventBrandAlternateOrigins maps vanity .app hosts to product SPAs", () => {
+    const alts = inventBrandAlternateOrigins("https://paste.app/");
+    expect(alts).toContain("https://pasteapp.io");
+    expect(alts).toContain("https://pasteapp.com");
+  });
+
   it("discoverPageDownloads recovers MAS when page fetch would be empty via fixture+search", async () => {
     // Empty HTML shell + no static links → A.10 MAS fallback
     const result = await discoverPageDownloads("https://pieoneer.app/", {
@@ -732,6 +771,36 @@ describe("MAS iTunes fallback (auth-walled marketing pages)", () => {
     });
     expect(result.chosen?.kind).toBe("mac-app-store");
     expect(result.chosen?.url).toContain("id6739781207");
+  });
+
+  it("prefers HEAD-probed vendor ZIP over MAS compound-prefix noise", async () => {
+    const result = await discoverPageDownloads("https://paste.app/", {
+      mode: "static",
+      htmlFixture: {
+        body: "<html><body>WeTransfer shell</body></html>",
+        finalUrl: "https://wetransfer.com/",
+      },
+      itunesSearch: async () => [
+        {
+          kind: "software",
+          trackId: 967805235,
+          trackName: "Paste – Limitless Clipboard",
+          sellerUrl: "https://pasteapp.io/",
+        },
+        {
+          kind: "mac-software",
+          trackId: 1554034946,
+          trackName: "PasteEasy",
+        },
+      ],
+      // Simulate brand-alternate /download/mac → Paste-6.6.6.zip
+    });
+    // With only fixtures (no live HEAD), MAS token-exact should win over PasteEasy
+    const paste = result.candidates.find((c) => c.url.includes("967805235"));
+    const easy = result.candidates.find((c) => c.url.includes("1554034946"));
+    expect(paste).toBeTruthy();
+    expect(easy).toBeTruthy();
+    expect(paste!.score).toBeGreaterThan(easy!.score);
   });
 });
 

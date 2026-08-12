@@ -123,6 +123,32 @@ export async function classifyWithHead(url) {
 
   assertSafeFetchUrl(url);
 
+  const classifyFromMeta = (ctRaw, dispRaw, finalUrl) => {
+    const ct = (ctRaw || '').toLowerCase();
+    const disp = (dispRaw || '').toLowerCase();
+    const resolved = finalUrl || url;
+    if (ct.includes('application/x-apple-diskimage') || disp.includes('.dmg') ||
+        /\.dmg(?:\?|#|$)/i.test(resolved) || /\.dmg["']/i.test(disp)) {
+      return { type: 'cask-dmg', url: resolved };
+    }
+    if (ct.includes('application/zip') || ct.includes('application/gzip') ||
+        ct.includes('application/x-tar') || ct.includes('application/x-bzip2') ||
+        ct.includes('application/x-xz') ||
+        /\.(zip|tgz|tar\.gz)(?:\?|#|$)/i.test(resolved)) {
+      // Prefer archive when final URL after redirects is a vendor ZIP
+      // (e.g. pasteapp.io/download/mac → Paste-6.6.6.zip).
+      if (/\.dmg(?:\?|#|$)/i.test(resolved)) return { type: 'cask-dmg', url: resolved };
+      return { type: 'archive', url: resolved };
+    }
+    if (ct.includes('text/x-shellscript') || ct.includes('application/x-sh')) {
+      return { type: 'bash-script', url: resolved };
+    }
+    if (/\.pkg(?:\?|#|$)/i.test(resolved) || ct.includes('pkg')) {
+      return { type: 'cask-dmg', url: resolved };
+    }
+    return null;
+  };
+
   try {
     const response = await fetch(url, {
       method: 'HEAD',
@@ -131,27 +157,17 @@ export async function classifyWithHead(url) {
       signal: AbortSignal.timeout(30_000),
     });
 
-    const ct = (response.headers.get('content-type') || '').toLowerCase();
-    const disp = (response.headers.get('content-disposition') || '').toLowerCase();
-
-    if (ct.includes('application/x-apple-diskimage') || disp.includes('.dmg')) {
-      return { type: 'cask-dmg', url };
-    }
-
-    if (ct.includes('application/zip') || ct.includes('application/gzip') ||
-        ct.includes('application/x-tar') || ct.includes('application/x-bzip2') ||
-        ct.includes('application/x-xz')) {
-      return { type: 'archive', url };
-    }
-
-    if (ct.includes('text/x-shellscript') || ct.includes('application/x-sh')) {
-      return { type: 'bash-script', url };
-    }
+    const ct = response.headers.get('content-type') || '';
+    const disp = response.headers.get('content-disposition') || '';
+    const finalUrl = response.url || url;
+    const fromHead = classifyFromMeta(ct, disp, finalUrl);
+    if (fromHead) return fromHead;
 
     // Some endpoints (e.g. https://app.warp.dev/download/agent-cli) return
     // text/html for HEAD but text/x-shellscript for GET. Fall back to a
     // ranged GET when HEAD was html/unknown.
-    if (!ct || ct.includes('text/html') || ct.includes('text/plain')) {
+    const ctLower = ct.toLowerCase();
+    if (!ctLower || ctLower.includes('text/html') || ctLower.includes('text/plain')) {
       try {
         const getRes = await fetch(url, {
           method: 'GET',
@@ -159,18 +175,12 @@ export async function classifyWithHead(url) {
           redirect: 'follow',
           signal: AbortSignal.timeout(30_000),
         });
-        const gct = (getRes.headers.get('content-type') || '').toLowerCase();
-        if (gct.includes('text/x-shellscript') || gct.includes('application/x-sh')) {
-          return { type: 'bash-script', url };
-        }
-        if (gct.includes('application/x-apple-diskimage') || disp.includes('.dmg')) {
-          return { type: 'cask-dmg', url };
-        }
-        if (gct.includes('application/zip') || gct.includes('application/gzip') ||
-            gct.includes('application/x-tar') || gct.includes('application/x-bzip2') ||
-            gct.includes('application/x-xz')) {
-          return { type: 'archive', url };
-        }
+        const fromGet = classifyFromMeta(
+          getRes.headers.get('content-type'),
+          getRes.headers.get('content-disposition') || disp,
+          getRes.url || finalUrl,
+        );
+        if (fromGet) return fromGet;
       } catch {
         // fall through
       }

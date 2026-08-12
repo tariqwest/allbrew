@@ -470,6 +470,8 @@ export function looksLikeDistributedMacAppArchive(url: string): boolean {
   if (/mac|darwin|osx|universal|arm64|apple.?silicon/i.test(base)) return true;
   // ProductName.zip / ProductName3.zip (capitalized vendor app builds)
   if (/^[A-Z][A-Za-z0-9]+(?:\d+(?:\.\d+)*)?\.zip$/i.test(base)) return true;
+  // ProductName-1.2.3.zip / ProductName_1.2.3.zip (Paste-6.6.6.zip, etc.)
+  if (/^[A-Z][A-Za-z0-9]+[-_][\d]+(?:\.\d+)+.*\.zip$/i.test(base)) return true;
   return false;
 }
 
@@ -996,6 +998,15 @@ function normalizeProductToken(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
+/** First significant word of an App Store title (handles en-dash / hyphen subtitles). */
+function firstProductNameToken(trackName: string): string {
+  const token = String(trackName)
+    .split(/[\s–—\-:|·/]+/)
+    .map((t) => t.trim())
+    .find((t) => t.length >= 2);
+  return token ? normalizeProductToken(token) : "";
+}
+
 /**
  * When a marketing page is unreadable (401/403) or yields no install artifacts,
  * search the Mac App Store via iTunes for an exact/high-confidence macSoftware hit.
@@ -1034,25 +1045,46 @@ export async function discoverMasFallbackCandidates(
     }
     const termNorm = normalizeProductToken(term);
     for (const r of results) {
-      const kind = String(r.kind || "");
-      if (kind && kind !== "mac-software") continue;
+      // entity=macSoftware already scopes to Mac; iTunes often returns kind
+      // "software" (not only "mac-software") for legitimate Mac apps.
+      const kind = String(r.kind || "").toLowerCase();
+      if (kind && kind !== "mac-software" && kind !== "software") continue;
       const trackId = r.trackId != null ? String(r.trackId) : "";
       const trackName = String(r.trackName || "");
       if (!trackId || !trackName) continue;
       if (seenIds.has(trackId)) continue;
 
       const nameNorm = normalizeProductToken(trackName);
+      const firstToken = firstProductNameToken(trackName);
       const exact = nameNorm === termNorm;
-      const prefix =
-        nameNorm.startsWith(termNorm) || termNorm.startsWith(nameNorm);
-      if (!exact && !(prefix && Math.min(nameNorm.length, termNorm.length) >= 4)) {
+      const tokenExact = Boolean(firstToken && firstToken === termNorm);
+      // Compound prefix only: PasteEasy vs paste (single glued token, no subtitle)
+      const compoundPrefix =
+        !exact &&
+        !tokenExact &&
+        nameNorm.startsWith(termNorm) &&
+        nameNorm.length > termNorm.length &&
+        Math.min(nameNorm.length, termNorm.length) >= 4;
+      const loosePrefix =
+        !exact &&
+        !tokenExact &&
+        !compoundPrefix &&
+        (nameNorm.startsWith(termNorm) || termNorm.startsWith(nameNorm)) &&
+        Math.min(nameNorm.length, termNorm.length) >= 4;
+      if (!exact && !tokenExact && !compoundPrefix && !loosePrefix) {
         continue;
       }
 
-      let score = exact ? 96 : 82;
+      let score = exact ? 96 : tokenExact ? 94 : compoundPrefix ? 70 : 82;
       const evidence = [
         "mas-itunes-search-fallback",
-        exact ? "mas-name-exact" : "mas-name-prefix",
+        exact
+          ? "mas-name-exact"
+          : tokenExact
+            ? "mas-name-token-exact"
+            : compoundPrefix
+              ? "mas-name-compound-prefix"
+              : "mas-name-prefix",
         `term:${term}`,
       ];
 
@@ -1088,6 +1120,44 @@ export async function discoverMasFallbackCandidates(
   }
 
   return candidates.sort((a, b) => b.score - a.score);
+}
+
+/**
+ * When a vanity marketing host redirects to an unrelated corporate parent
+ * (paste.app → wetransfer.com), invent brand-related alternate origins that
+ * often host the real download SPA (pasteapp.io).
+ */
+export function inventBrandAlternateOrigins(pageUrl: string): string[] {
+  try {
+    const host = new URL(pageUrl).hostname.toLowerCase().replace(/^www\./, "");
+    const parts = host.split(".").filter(Boolean);
+    if (parts.length < 2) return [];
+    const label = parts[0];
+    if (!label || label.length < 2 || label.length > 32) return [];
+    if (!/^[a-z0-9-]+$/i.test(label)) return [];
+    const tld = parts[parts.length - 1];
+    const out: string[] = [];
+    const push = (h: string) => {
+      if (h === host) return;
+      const origin = `https://${h}`;
+      if (!out.includes(origin)) out.push(origin);
+    };
+    // foo.app → fooapp.io / fooapp.com (common Mac product SPA pattern)
+    if (tld === "app") {
+      push(`${label}app.io`);
+      push(`${label}app.com`);
+      push(`${label}.io`);
+      push(`downloads.${label}app.io`);
+    }
+    // foo.io / foo.com → fooapp.io sometimes
+    if (tld === "io" || tld === "com") {
+      push(`${label}app.io`);
+      push(`${label}app.com`);
+    }
+    return out;
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -1251,10 +1321,12 @@ export async function enrichExtensionlessArtifactUrls(
     log?: (msg: string) => void;
     maxProbes?: number;
     classifyHead?: (url: string) => Promise<{ type: string; url: string }>;
+    /** Original user URL when pageUrl is a post-redirect final URL */
+    originalPageUrl?: string;
   } = {},
 ): Promise<DiscoverCandidate[]> {
   const log = opts.log || (() => {});
-  const maxProbes = opts.maxProbes ?? 10;
+  const maxProbes = opts.maxProbes ?? 16;
   const hasDmg = candidates.some(
     (c) => c.kind === "cask-dmg" || /\.dmg(?:\?|#|$)/i.test(c.url),
   );
@@ -1290,24 +1362,52 @@ export async function enrichExtensionlessArtifactUrls(
     const host = new URL(pageUrl).hostname.replace(/^www\./i, "");
     // Unpeel/AimeFlux-class SPAs: stable extensionless DMG at /download/mac
     // (Content-Disposition: Unpeel-latest.dmg) without a homepage .dmg href.
-    const guesses = [
-      `https://api.${host}/download/latest`,
-      `${origin}/download/latest`,
-      `${origin}/downloads/latest`,
-      `${origin}/download/mac`,
-      `${origin}/download/macos`,
-      `${origin}/download/osx`,
-      `${origin}/download/darwin`,
-      `${origin}/downloads/mac`,
-      `${origin}/downloads/macos`,
+    const pathGuesses = [
+      "/download/mac",
+      "/download/macos",
+      "/download/latest",
+      "/downloads/latest",
+      "/download/osx",
+      "/download/darwin",
+      "/downloads/mac",
+      "/downloads/macos",
+      "/downloads/stable/latest",
     ];
-    for (const g of guesses) {
-      if (seen.has(g)) continue;
-      if (!looksLikeExtensionlessArtifactUrl(g)) continue;
-      seen.add(g);
-      probes.push(
-        scoreCandidateUrl(g, pageUrl, ["extensionless-guess"]),
-      );
+    // Prefer brand alternates from the *original* vanity host when the landing
+    // page redirected to an unrelated corporate domain (paste.app → wetransfer).
+    const brandSources = [opts.originalPageUrl, pageUrl].filter(
+      (u): u is string => Boolean(u),
+    );
+    const brandOrigins: string[] = [];
+    for (const src of brandSources) {
+      for (const o of inventBrandAlternateOrigins(src)) {
+        if (!brandOrigins.includes(o)) brandOrigins.push(o);
+      }
+    }
+    const origins: string[] = [
+      ...brandOrigins,
+      origin,
+      `https://api.${host}`,
+    ];
+    for (const o of origins) {
+      for (const path of pathGuesses) {
+        const g = `${o}${path}`;
+        if (seen.has(g)) continue;
+        // Extensionless artifact heuristic may reject brand-alternate paths;
+        // still probe common /download/* download SPA routes.
+        if (!looksLikeExtensionlessArtifactUrl(g) && !/\/download/i.test(path)) {
+          continue;
+        }
+        seen.add(g);
+        const isBrand = brandOrigins.includes(o);
+        probes.push(
+          scoreCandidateUrl(g, opts.originalPageUrl || pageUrl, [
+            "extensionless-guess",
+            isBrand ? "brand-alternate-origin" : "same-origin-guess",
+          ]),
+        );
+        if (probes.length >= maxProbes) break;
+      }
       if (probes.length >= maxProbes) break;
     }
   } catch {
@@ -1321,10 +1421,14 @@ export async function enrichExtensionlessArtifactUrls(
     try {
       const head = await classifyHead!(p.url);
       if (head.type === "unknown") continue;
-      const scored = scoreCandidateUrl(p.url, pageUrl, [
+      // Prefer final redirected artifact URL (download/mac → Paste-6.6.6.zip)
+      const artifactUrl =
+        head.url && head.url !== p.url ? head.url : p.url;
+      const scored = scoreCandidateUrl(artifactUrl, opts.originalPageUrl || pageUrl, [
         ...(p.evidence || []),
         "extensionless-head-probe",
         `head:${head.type}`,
+        ...(artifactUrl !== p.url ? [`redirect-from:${p.url}`] : []),
       ]);
       // Force kind from HEAD when path had no extension
       scored.kind = head.type;
@@ -1333,11 +1437,17 @@ export async function enrichExtensionlessArtifactUrls(
         scored.evidence.push("head-cask-dmg");
       } else if (head.type === "archive") {
         scored.score = Math.max(scored.score, 95);
+        if (looksLikeDistributedMacAppArchive(artifactUrl)) {
+          scored.score = Math.max(scored.score, 110);
+          scored.evidence.push("mac-app-archive");
+        }
       } else if (head.type === "bash-script") {
         scored.score = Math.max(scored.score, 100);
       }
       extras.push(scored);
-      log(`extensionless HEAD ${p.url} → ${head.type} (score ${scored.score})`);
+      log(
+        `extensionless HEAD ${p.url} → ${head.type} ${artifactUrl} (score ${scored.score})`,
+      );
     } catch (err: any) {
       log(`extensionless HEAD failed ${p.url}: ${err?.message || err}`);
     }
@@ -1739,9 +1849,14 @@ export async function discoverPageDownloads(
 
   // Tier A.8: HEAD-probe extensionless download APIs (Content-Type → cask-dmg)
   // Skip when offline fixture without network unless injectors provided later.
+  // Pass original pageUrl so brand-alternate origins survive cross-domain redirects
+  // (paste.app → wetransfer.com still probes pasteapp.io/download/mac).
   if (!opts.htmlFixture) {
     try {
-      candidates = await enrichExtensionlessArtifactUrls(candidates, finalPageUrl, { log });
+      candidates = await enrichExtensionlessArtifactUrls(candidates, finalPageUrl, {
+        log,
+        originalPageUrl: pageUrl,
+      });
     } catch {
       /* ignore head probe errors */
     }
@@ -1843,6 +1958,8 @@ export async function discoverPageDownloads(
         if (mas.length) {
           candidates = mergeCandidates(candidates, mas);
           log(`MAS iTunes fallback added ${mas.length} candidate(s)`);
+          // Re-apply after MAS merge so vendor ZIP/DMG still beats store links.
+          candidates = preferNativeInstallersOverStore(candidates);
         }
       } catch (err: any) {
         log(`MAS iTunes fallback failed: ${err?.message || err}`);
@@ -2189,7 +2306,11 @@ export function preferNativeInstallersOverStore(
   const hasNative = candidates.some(
     (c) =>
       c.kind === "cask-dmg" ||
-      /\.(dmg|pkg)(?:\?|#|$)/i.test(c.url),
+      /\.(dmg|pkg)(?:\?|#|$)/i.test(c.url) ||
+      // Vendor ZIP of a Mac GUI app (Paste-6.6.6.zip) beats Mac App Store /
+      // Setapp when both appear — direct install works offline and without MAS.
+      ((c.kind === "archive" || /\.zip(?:\?|#|$)/i.test(c.url)) &&
+        looksLikeDistributedMacAppArchive(c.url)),
   );
   if (!hasNative) return candidates;
   return candidates
