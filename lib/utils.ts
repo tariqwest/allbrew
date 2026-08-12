@@ -419,10 +419,16 @@ export function rubyEscape(value) {
 
 export function guessLicenseIdentifier(license) {
   if (!license) return null;
+  if (typeof license !== "string") return null;
+  const trimmed = license.trim();
+  if (!trimmed) return null;
+
   const map = {
     mit: "MIT",
     "apache-2.0": "Apache-2.0",
     "apache 2.0": "Apache-2.0",
+    "apache license 2.0": "Apache-2.0",
+    "apache software license": "Apache-2.0",
     "gpl-2.0": "GPL-2.0-only",
     "gpl-3.0": "GPL-3.0-only",
     "gpl-2.0-only": "GPL-2.0-only",
@@ -436,8 +442,41 @@ export function guessLicenseIdentifier(license) {
     unlicense: "Unlicense",
     "artistic-2.0": "Artistic-2.0",
   };
-  const key = license.toLowerCase().trim();
-  return map[key] || license;
+  const key = trimmed.toLowerCase();
+  if (map[key]) return map[key];
+
+  // PyPI often dumps the entire LICENSE file into info.license (e.g. CQ-editor).
+  // Match common full-text headers → SPDX; never emit multi-line blobs into formulas.
+  const head = key.slice(0, 800);
+  if (/apache\s+license/.test(head) && /version\s+2\.0/.test(head)) {
+    return "Apache-2.0";
+  }
+  if (
+    (/^mit\s+license/.test(head) || /permission is hereby granted, free of charge/.test(head)) &&
+    /the software is provided ["']as is["']/.test(key)
+  ) {
+    return "MIT";
+  }
+  if (/gnu general public license/.test(head) && /version\s*3/.test(head)) {
+    return "GPL-3.0-only";
+  }
+  if (/gnu general public license/.test(head) && /version\s*2/.test(head)) {
+    return "GPL-2.0-only";
+  }
+  if (/mozilla public license/.test(head) && /2\.0/.test(head)) {
+    return "MPL-2.0";
+  }
+  if (/bsd 3-clause/.test(head) || (/redistribution and use in source and binary forms/.test(head) && /neither the name/.test(key))) {
+    return "BSD-3-Clause";
+  }
+  if (/bsd 2-clause/.test(head)) {
+    return "BSD-2-Clause";
+  }
+
+  // Refuse multi-line / huge strings — Homebrew expects a short SPDX id.
+  if (trimmed.includes("\n") || trimmed.length > 80) return null;
+
+  return trimmed;
 }
 
 function isCloudMetadataHostname(hostname: string): boolean {

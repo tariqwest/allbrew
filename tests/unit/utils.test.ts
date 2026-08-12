@@ -388,6 +388,27 @@ describe("guessLicenseIdentifier", () => {
   it("passes through unknown licenses as-is", () => {
     expect(guessLicenseIdentifier("WTFPL")).toBe("WTFPL");
   });
+
+  it("maps full Apache License 2.0 text to Apache-2.0", () => {
+    const full = `Apache License
+                                   Version 2.0, January 2004
+                                http://www.apache.org/licenses/
+
+           TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+           1. Definitions.
+              "License" shall mean the terms and conditions for use, reproduction,
+              and distribution as defined by Sections 1 through 9 of this document.`;
+    expect(guessLicenseIdentifier(full)).toBe("Apache-2.0");
+  });
+
+  it("drops multi-line unknown license blobs", () => {
+    expect(guessLicenseIdentifier("Custom License\nline two\nline three")).toBeNull();
+  });
+
+  it("maps Apache Software License phrasing", () => {
+    expect(guessLicenseIdentifier("Apache Software License")).toBe("Apache-2.0");
+  });
 });
 
 describe("matchAssetToArch", () => {

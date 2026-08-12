@@ -63,7 +63,42 @@ export const KNOWN_PYTHON_IMPORT_VERSION_TEST: Record<string, string> = {
   elia: "elia_chat",
   chainlit: "chainlit",
   mlflow: "mlflow",
+  // GUI launcher (PyQt); --version hangs without a display.
+  "cq-editor": "cq_editor",
 };
+
+/**
+ * True when the PyPI package is a desktop GUI launcher (PyQt/PySide/etc.) whose
+ * console_scripts entry opens a window and does not answer --version/--help.
+ */
+export function looksLikeGuiPipPackage(opts: {
+  packageName: string;
+  summary?: string | null;
+  requiresDist?: string[] | null;
+}): boolean {
+  const blob = [
+    opts.packageName,
+    opts.summary || "",
+    ...(opts.requiresDist || []),
+  ]
+    .join(" ")
+    .toLowerCase();
+  if (/\b(pyqt5|pyqt6|pyside2|pyside6|wxpython)\b/.test(blob)) return true;
+  if (/\b(qtawesome|pyqtgraph|qtconsole)\b/.test(blob)) return true;
+  if (/\b(gui|desktop|viewer)\b/.test(blob) && /\b(qt|pyqt|pyside)\b/.test(blob)) {
+    return true;
+  }
+  return false;
+}
+
+/** Derive a default Python import path from a PyPI distribution name. */
+export function defaultPythonImportModule(packageName: string): string {
+  return packageName
+    .trim()
+    .toLowerCase()
+    .replace(/[-_.]+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
+}
 
 type PypiUrl = {
   packagetype?: string;
@@ -164,9 +199,16 @@ export async function collectPipPackagePayload(
   const importMod =
     options.importVersionModule ||
     KNOWN_PYTHON_IMPORT_VERSION_TEST[pkgKey] ||
-    null;
+    (looksLikeGuiPipPackage({
+      packageName,
+      summary: pypiData.info.summary,
+      requiresDist: pypiData.info.requires_dist,
+    })
+      ? defaultPythonImportModule(packageName)
+      : null);
+  // GUI launchers hang on --version; prefer a libexec import of the package module.
   const testDoBody = importMod
-    ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import ${importMod}; print(${importMod}.__version__)'")`
+    ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import ${importMod} as m; print(getattr(m, \"__version__\", \"#{version}\"))'")`
     : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`;
 
   return {
