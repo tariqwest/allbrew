@@ -664,6 +664,10 @@ export function archPatterns() {
       /aarch64.*darwin/i,
       /aarch64.*apple/i,
       /apple.*silicon/i,
+      // Short platform token "mac" (not macos/darwin): mac_krokiet_arm64, mac_czkawka_cli_arm64
+      /(?:^|[^a-z])mac[-_.][^/\s]*?arm64/i,
+      /(?:^|[^a-z])mac[-_.][^/\s]*?aarch64/i,
+      /(?:^|[^a-z])arm64[-_.]mac(?:[^a-z]|$)/i,
     ],
     macosIntel: [
       /darwin.*amd64/i,
@@ -674,6 +678,8 @@ export function archPatterns() {
       /macos.*x64/i,
       /x86_64.*darwin/i,
       /x86_64.*macos/i,
+      // Short "mac" + intel arch (mac_foo_x86_64)
+      /(?:^|[^a-z])mac[-_.][^/\s]*?(?:amd64|x86_64|x64)(?:[^a-z]|$)/i,
     ],
     macosUniversal: [
       /macos[-_.]?universal/i,

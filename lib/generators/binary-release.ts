@@ -44,10 +44,13 @@ export function resolveBinaryReleaseBinName(
   const stripped = bare.map((n) =>
     n
       .replace(/\.exe$/i, "")
+      // Leading short platform (mac_krokiet_arm64 → krokiet_arm64)
+      .replace(/^(?:darwin|macos|osx|mac|linux|windows|win32|apple)[-_.]/i, "")
       .replace(
-        /[-_.]?(darwin|macos|osx|linux|windows|win32|apple)[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal|all)?$/i,
+        /[-_.]?(darwin|macos|osx|mac|linux|windows|win32|apple)[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal|all)?$/i,
         "",
       )
+      .replace(/[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal|all)$/i, "")
       .replace(/[-_.]\d+\.\d+(?:\.\d+)*(?:[-_][0-9A-Za-z]+)?$/i, "")
       .replace(/[-_.]+$/g, ""),
   );
@@ -224,10 +227,56 @@ export async function collectBinaryReleasePayload(
   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
 
   const archAssets: Record<string, any> = {};
+  const productToken = String(name || "")
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .trim();
+  const assetMentionsProduct = (assetName: string): boolean => {
+    if (!productToken || productToken.length < 2) return false;
+    const t = assetName.toLowerCase().replace(/_/g, "-");
+    // Delimited product segment: mac-krokiet-arm64, krokiet-macos-arm64, etc.
+    return (
+      t === productToken ||
+      t.startsWith(productToken + "-") ||
+      t.includes("-" + productToken + "-") ||
+      t.includes("-" + productToken + ".") ||
+      t.endsWith("-" + productToken) ||
+      // bare underscore-style already normalized to hyphens
+      new RegExp(
+        `(?:^|[-.])${productToken.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:[-.]|$)`,
+      ).test(t)
+    );
+  };
   for (const asset of release.assets) {
     if (!isBinaryAsset(asset.name)) continue;
     const arch = matchAssetToArch(asset.name);
-    if (arch) archAssets[arch] = asset;
+    if (!arch) continue;
+    const prev = archAssets[arch];
+    if (!prev) {
+      archAssets[arch] = asset;
+      continue;
+    }
+    // Monorepo releases (czkawka) ship many frontends under one tag — prefer the
+    // asset whose name matches the formula/product (--name krokiet).
+    const prevHit = assetMentionsProduct(prev.name);
+    const curHit = assetMentionsProduct(asset.name);
+    if (curHit && !prevHit) {
+      archAssets[arch] = asset;
+      continue;
+    }
+    if (curHit === prevHit) {
+      // Prefer simpler default bare binaries over feature-heavy variants
+      // (mac_krokiet_arm64 over mac_krokiet_skia_vulkan_heif_avif_arm64).
+      const prevBare = isBareBinaryAsset(prev.name);
+      const curBare = isBareBinaryAsset(asset.name);
+      if (curBare && !prevBare) {
+        archAssets[arch] = asset;
+      } else if (curBare === prevBare && asset.name.length < prev.name.length) {
+        if (!productToken || curHit) archAssets[arch] = asset;
+      } else if (!productToken) {
+        archAssets[arch] = asset; // legacy last-wins when no product filter
+      }
+    }
   }
 
   if (archAssets.macosUniversal) {

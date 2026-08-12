@@ -984,11 +984,28 @@ async function handleGithubRepo(classification, opts) {
       }
 
       if (choice === "cask") {
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release },
+            opts,
+          );
+        } catch (err: any) {
+          const msg = err?.message || String(err);
+          if (msg.includes("No .app bundle")) {
+            console.log(
+              chalk.yellow(
+                `  App cask for ${appAssets.map((a) => a.name).join(", ")} contains no .app bundle — falling back to binary release...`,
+              ),
+            );
+            return await generateWithConfirmation(
+              "binary-release",
+              { repoInfo, release },
+              opts,
+            );
+          }
+          throw err;
+        }
       } else {
         return await generateWithConfirmation(
           "binary-release",
@@ -1002,11 +1019,39 @@ async function handleGithubRepo(classification, opts) {
       console.log(
         `  Detected ${chalk.cyan("macOS app")} assets: ${appAssets.map((a) => a.name).join(", ")}`,
       );
-      return await generateWithConfirmation(
-        "cask-app-release",
-        { repoInfo, release },
-        opts,
-      );
+      try {
+        return await generateWithConfirmation(
+          "cask-app-release",
+          { repoInfo, release },
+          opts,
+        );
+      } catch (err: any) {
+        const msg = err?.message || String(err);
+        if (msg.includes("No .app bundle")) {
+          console.log(
+            chalk.yellow(
+              `  App asset ${appAssets.map((a) => a.name).join(", ")} contains no .app bundle — falling back to binary/README detection...`,
+            ),
+          );
+          // Prefer binary-release when macOS binaries exist (e.g. mac_krokiet_arm64);
+          // otherwise continue to older-release scan / README (cargo/source).
+          if (binAssets.length > 0 || binAssetsRaw.length > 0) {
+            const bins = binAssets.length > 0 ? binAssets : binAssetsRaw;
+            console.log(
+              chalk.dim(
+                `  Falling back to binary assets: ${bins.map((a) => a.name).join(", ")}`,
+              ),
+            );
+            return await generateWithConfirmation(
+              "binary-release",
+              { repoInfo, release },
+              opts,
+            );
+          }
+        } else {
+          throw err;
+        }
+      }
     }
 
     if (binAssets.length > 0) {
@@ -1056,11 +1101,21 @@ async function handleGithubRepo(classification, opts) {
         console.log(
           `  Found macOS app assets on older release ${chalk.bold(olderWithApp.tagName)}: ${names.join(", ")}`,
         );
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release: olderWithApp },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release: olderWithApp },
+            opts,
+          );
+        } catch (err: any) {
+          const msg = err?.message || String(err);
+          if (!msg.includes("No .app bundle")) throw err;
+          console.log(
+            chalk.yellow(
+              `  Older release ${olderWithApp.tagName} app asset contains no .app bundle — continuing to README...`,
+            ),
+          );
+        }
       }
     } catch (err) {
       if (opts.verbose) {
@@ -2288,11 +2343,11 @@ async function resolveCargoGithubInstall(
 
   const rootName = parseCargoPackageName(cargoToml);
   let crateName =
-    opts.crateName || opts.package || rootName || repoInfo?.name || repo;
+    opts.crateName || opts.package || opts.name || rootName || repoInfo?.name || repo;
   let cargoPath = ".";
 
   if (rootName) {
-    return { crateName: opts.crateName || opts.package || rootName, cargoPath };
+    return { crateName: opts.crateName || opts.package || opts.name || rootName, cargoPath };
   }
 
   if (!isCargoWorkspaceRoot(cargoToml)) {
@@ -2301,7 +2356,7 @@ async function resolveCargoGithubInstall(
 
   const members = parseCargoWorkspaceMembers(cargoToml);
   const preferred =
-    String(opts.crateName || opts.package || repoInfo?.name || repo || "")
+    String(opts.crateName || opts.package || opts.name || repoInfo?.name || repo || "")
       .toLowerCase()
       .replace(/_/g, "-");
 
@@ -2319,7 +2374,7 @@ async function resolveCargoGithubInstall(
     const norm = pkgName.toLowerCase().replace(/_/g, "-");
     if (norm === preferred || preferred.endsWith(norm) || norm.endsWith(preferred)) {
       return {
-        crateName: opts.crateName || opts.package || pkgName,
+        crateName: opts.crateName || opts.package || opts.name || pkgName,
         cargoPath: member.replace(/\/$/, ""),
       };
     }
@@ -2340,7 +2395,7 @@ async function resolveCargoGithubInstall(
 
   if (fallbackPath) {
     return {
-      crateName: opts.crateName || opts.package || fallbackName || crateName,
+      crateName: opts.crateName || opts.package || opts.name || fallbackName || crateName,
       cargoPath: fallbackPath,
     };
   }
@@ -2355,7 +2410,7 @@ async function resolveCargoGithubInstall(
     const pkgName = parseCargoPackageName(memberToml);
     if (pkgName) {
       return {
-        crateName: opts.crateName || opts.package || pkgName,
+        crateName: opts.crateName || opts.package || opts.name || pkgName,
         cargoPath: member.replace(/\/$/, ""),
       };
     }

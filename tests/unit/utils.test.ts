@@ -10,6 +10,7 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  isBareBinaryAsset,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
@@ -427,6 +428,15 @@ describe("matchAssetToArch", () => {
     // Linux_all must not be treated as macOS
     expect(matchAssetToArch("wander_1.1.0_Linux_all.tar.gz")).toBeNull();
   });
+
+  it("recognizes short mac platform token (czkawka/krokiet)", () => {
+    expect(matchAssetToArch("mac_krokiet_arm64")).toBe("macosArm");
+    expect(matchAssetToArch("mac_czkawka_cli_arm64")).toBe("macosArm");
+    expect(matchAssetToArch("mac_krokiet_all_backends_arm64.zip")).toBe("macosArm");
+    expect(matchAssetToArch("mac_foo_x86_64")).toBe("macosIntel");
+    // must not treat random words containing mac as platform
+    expect(matchAssetToArch("machine-arm64")).toBeNull();
+  });
 });
 
 describe("isAppAsset", () => {
@@ -504,5 +514,15 @@ describe("isBinaryAsset", () => {
     expect(matchAssetToArch("afm_0.1.0_macOS_universal")).toBe("macosUniversal");
     expect(isBinaryAsset("tool-1.2.3-linux-x64")).toBe(true);
     expect(isBinaryAsset("afm_0.1.0_checksums.txt")).toBe(false);
+  });
+
+  it("classifies mac_krokiet short-token assets (zip=app candidate, bare=binary)", () => {
+    // Short mac+arch zip is still treated as potential app; cask peeks for .app
+    expect(isAppAsset("mac_krokiet_all_backends_arm64.zip")).toBe(true);
+    expect(isBinaryAsset("mac_krokiet_all_backends_arm64.zip")).toBe(false);
+    // Extensionless mac_*_arm64 bare binaries are installable CLI/GUI binaries
+    expect(isBareBinaryAsset("mac_krokiet_arm64")).toBe(true);
+    expect(isBinaryAsset("mac_krokiet_arm64")).toBe(true);
+    expect(isAppAsset("mac_krokiet_arm64")).toBe(false);
   });
 });

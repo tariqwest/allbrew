@@ -255,6 +255,52 @@ describe("collectBinaryReleasePayload", () => {
 });
 
 
+
+  it("prefers product-matching bare binary in monorepo multi-frontend releases", async () => {
+    const czkawkaRelease = {
+      tagName: "12.0.1",
+      assets: [
+        {
+          name: "mac_czkawka_cli_arm64",
+          url: "https://example.com/mac_czkawka_cli_arm64",
+        },
+        {
+          name: "mac_czkawka_gui_arm64",
+          url: "https://example.com/mac_czkawka_gui_arm64",
+        },
+        {
+          name: "mac_krokiet_skia_vulkan_heif_avif_arm64",
+          url: "https://example.com/mac_krokiet_skia_vulkan_heif_avif_arm64",
+        },
+        {
+          name: "mac_krokiet_arm64",
+          url: "https://example.com/mac_krokiet_arm64",
+        },
+        {
+          name: "linux_krokiet_arm64",
+          url: "https://example.com/linux_krokiet_arm64",
+        },
+      ],
+    };
+    const repo = {
+      name: "czkawka",
+      fullName: "qarmin/czkawka",
+      description: "Duplicate finder",
+      homepage: "https://github.com/qarmin/czkawka",
+      htmlUrl: "https://github.com/qarmin/czkawka",
+      license: "MIT",
+    };
+    const payload = await collectBinaryReleasePayload(repo, czkawkaRelease, {
+      name: "krokiet",
+    });
+    expect(payload.name).toBe("krokiet");
+    expect(payload.binName).toBe("krokiet");
+    // Prefer shorter product-matching bare binary over feature variants / other frontends
+    expect(payload.platformBlocks).toContain("mac_krokiet_arm64");
+    expect(payload.platformBlocks).not.toContain("mac_czkawka_cli_arm64");
+    expect(payload.platformBlocks).not.toContain("skia_vulkan");
+  });
+
 describe("pickArchiveEntrypoint / nested package archives", () => {
   it("picks bin/interpreter for open-interpreter package layout", () => {
     const members = [
