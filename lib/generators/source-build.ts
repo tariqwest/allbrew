@@ -207,12 +207,26 @@ function getInstallBlock(
       return `    system "go", "build", *std_go_args(ldflags: "-s -w")\n`;
     case "python":
       if (opts.hasPythonResources) {
-        // Offline install: brew fetches resource URLs pre-sandbox; Virtualenv
-        // pip_install uses --no-deps. Main package then installs without
-        // contacting PyPI.
+        // Offline install mirroring pip-package: wheels must be installed by
+        // path (venv.pip_install resource stages some wheels as dirs without
+        // setup.py). Inline the wheel handling (no extra formula methods —
+        // source_build template only embeds install body).
         return (
           `    venv = virtualenv_create(libexec, "python3.13")\n` +
-          `    resources.each { |r| venv.pip_install r }\n` +
+          `    resources.each do |r|\n` +
+          `      url = r.url.to_s\n` +
+          `      if url.include?(".whl")\n` +
+          `        r.fetch unless r.downloaded?\n` +
+          `        path = URI(url).path.to_s\n` +
+          `        basename = File.basename(path.empty? ? url : path)\n` +
+          `        whl = buildpath/basename\n` +
+          `        rm_f whl\n` +
+          `        ln_sf r.cached_download, whl\n` +
+          `        venv.pip_install whl\n` +
+          `      else\n` +
+          `        venv.pip_install r\n` +
+          `      end\n` +
+          `    end\n` +
           `    system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."\n` +
           `    Dir[libexec/"bin/*"].each do |exe|\n` +
           `      bn = File.basename(exe)\n` +
