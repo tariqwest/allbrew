@@ -207,8 +207,10 @@ export async function collectPipPackagePayload(
       ? defaultPythonImportModule(packageName)
       : null);
   // GUI launchers hang on --version; prefer a libexec import of the package module.
+  // Keep the Python command in single quotes so Ruby shell_output("...") needs no
+  // nested double-quote escapes (getattr(..., "__version__") broke formulary parse).
   const testDoBody = importMod
-    ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import ${importMod} as m; print(getattr(m, \"__version__\", \"#{version}\"))'")`
+    ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import ${importMod}; print(${importMod}.__version__)'")`
     : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`;
 
   return {
