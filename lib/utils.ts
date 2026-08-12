@@ -647,6 +647,17 @@ export function matchAssetToArch(assetName) {
   for (const [arch, regexes] of Object.entries(patterns)) {
     if (regexes.some((r) => r.test(assetName))) return arch;
   }
+  // Bare macOS platform tag without a CPU arch (e.g. swiftpolyglot-2.0.2-macos.tar.gz)
+  // is commonly a universal fat binary. CPU-tagged names already matched above;
+  // linux/windows must not fall through here.
+  const name = String(assetName || "");
+  const hasMacOs =
+    /(?:^|[^a-z])(?:macos|osx|darwin)(?:[^a-z]|$)/i.test(name);
+  const hasCpuOrOtherOs =
+    /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386|linux|windows|win32)(?:[^a-z]|$)/i.test(
+      name,
+    );
+  if (hasMacOs && !hasCpuOrOtherOs) return "macosUniversal";
   return null;
 }
 

@@ -397,6 +397,18 @@ describe("matchAssetToArch", () => {
     // Linux_all must not be treated as macOS
     expect(matchAssetToArch("wander_1.1.0_Linux_all.tar.gz")).toBeNull();
   });
+
+  it("treats bare macos/darwin/osx (no CPU arch) as macosUniversal", () => {
+    // Prebuilt universal CLI tarballs (SwiftPolyglot, etc.)
+    expect(matchAssetToArch("swiftpolyglot-2.0.2-macos.tar.gz")).toBe(
+      "macosUniversal",
+    );
+    expect(matchAssetToArch("tool-1.0.0-darwin.tar.gz")).toBe("macosUniversal");
+    expect(matchAssetToArch("cli_osx.zip")).toBe("macosUniversal");
+    // CPU-tagged still wins via explicit patterns
+    expect(matchAssetToArch("tool-macos-arm64.tar.gz")).toBe("macosArm");
+    expect(matchAssetToArch("tool-macos-x86_64.tar.gz")).toBe("macosIntel");
+  });
 });
 
 describe("isAppAsset", () => {
