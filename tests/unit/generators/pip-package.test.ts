@@ -534,6 +534,41 @@ describe("selectBestDistribution", () => {
   it("returns null when urls empty", () => {
     expect(selectBestDistribution([])).toBeNull();
   });
+
+  it("returns null for incompatible wheels instead of falling back to candidates[0]", () => {
+    const onlyX64 = {
+      packagetype: "bdist_wheel",
+      python_version: "cp310",
+      filename: "pkg-1.0.0-cp310-cp310-macosx_10_9_x86_64.whl",
+      url: "https://example.com/x64.whl",
+      digests: { sha256: "11".repeat(32) },
+    };
+    expect(
+      selectBestDistribution([onlyX64], { macArch: "arm64" }),
+    ).toBeNull();
+  });
+
+  it("selects arm64 wheel for an older CPython when python option is lowered", () => {
+    const cp312Arm = {
+      packagetype: "bdist_wheel",
+      python_version: "cp312",
+      filename: "pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl",
+      url: "https://example.com/cp312-arm.whl",
+      digests: { sha256: "22".repeat(32) },
+    };
+    expect(
+      selectBestDistribution([cp312Arm], {
+        macArch: "arm64",
+        python: { major: 3, minor: 13 },
+      }),
+    ).toBeNull();
+    const dist = selectBestDistribution([cp312Arm], {
+      macArch: "arm64",
+      python: { major: 3, minor: 12 },
+    });
+    expect(dist?.filename).toContain("cp312");
+    expect(dist?.filename).toContain("arm64");
+  });
 });
 
 describe("pip requirement parsing helpers", () => {

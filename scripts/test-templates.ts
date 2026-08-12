@@ -353,6 +353,8 @@ function buildPipPackageCase(): Case {
     testDoBody:
       `    assert_match version.to_s, shell_output("#{bin}/foo --version")`,
     serviceBlock: "",
+    pythonDep: "python@3.13",
+    pythonBin: "python3.13",
   };
   const expected =
     `class Foo < Formula\n` +
@@ -372,7 +374,7 @@ function buildPipPackageCase(): Case {
     resources +
     `  def install\n` +
     `    venv = virtualenv_create(libexec, "python3.13")\n` +
-    `    # Homebrew python@3.13 venvs may inherit system site-packages. Isolate so\n` +
+    `    # Homebrew python venvs may inherit system site-packages. Isolate so\n` +
     `    # formula resources cannot resolve against /opt/homebrew/lib/python*.\n` +
     `    pyvenv_cfg = libexec/"pyvenv.cfg"\n` +
     `    if pyvenv_cfg.exist?\n` +

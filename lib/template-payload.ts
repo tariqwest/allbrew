@@ -38,6 +38,10 @@ export type PipPackagePayload = FormulaCommonFields & {
   resourcesBlock: string;
   /** Full body line(s) inside `test do` (pre-indented). */
   testDoBody: string;
+  /** e.g. `python@3.13` — may lower when native wheels lag. */
+  pythonDep: string;
+  /** e.g. `python3.13` for virtualenv_create. */
+  pythonBin: string;
 };
 
 export type CargoPackagePayload = FormulaCommonFields & {
