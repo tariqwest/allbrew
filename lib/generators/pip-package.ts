@@ -33,11 +33,13 @@ export const KNOWN_BIN_NAMES: Record<string, string> = {
 
 /**
  * Root PyPI extras activated at install time (docs recommend pip install pkg[extra]).
- * Without a Qt binding, tabulous/napari console entries cannot import.
+ * Without a Qt binding, tabulous/napari/caliscope console entries cannot import.
  */
 export const KNOWN_ROOT_EXTRAS: Record<string, string[]> = {
   napari: ["pyqt6"],
   tabulous: ["pyqt5"],
+  // README: `uv pip install caliscope[gui]` for desktop app; bare wheel exits 1 on `caliscope`.
+  caliscope: ["gui"],
 };
 
 /**
@@ -46,6 +48,14 @@ export const KNOWN_ROOT_EXTRAS: Record<string, string[]> = {
 export const KNOWN_PYTHON_IMPORT_VERSION_TEST: Record<string, string> = {
   napari: "napari",
   tabulous: "tabulous",
+};
+
+/**
+ * `bin --help` match when the entrypoint has no useful `--version` (argparse GUI launchers).
+ * Used instead of `bin --version` for the formula test block.
+ */
+export const KNOWN_BIN_HELP_MATCH: Record<string, string> = {
+  caliscope: "workspace",
 };
 
 type PypiUrl = {
@@ -148,9 +158,13 @@ export async function collectPipPackagePayload(
     options.importVersionModule ||
     KNOWN_PYTHON_IMPORT_VERSION_TEST[pkgKey] ||
     null;
+  const helpMatch =
+    options.binHelpMatch || KNOWN_BIN_HELP_MATCH[pkgKey] || null;
   const testDoBody = importMod
     ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import ${importMod}; print(${importMod}.__version__)'")`
-    : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`;
+    : helpMatch
+      ? `    assert_match ${rubyString(helpMatch)}, shell_output("#{bin}/${rubyEscape(testBinName)} --help 2>&1")`
+      : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`;
 
   return {
     template: "pip_package",
