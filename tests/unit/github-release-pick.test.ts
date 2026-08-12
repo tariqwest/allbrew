@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { pickReleaseWithAppAssets } from "../../lib/github.ts";
+import {
+  extractAssetsFromReleaseBody,
+  mergeBodyAssetsIntoRelease,
+  pickReleaseWithAppAssets,
+} from "../../lib/github.ts";
 import { isAppAsset } from "../../lib/utils.ts";
 
 function rel(
@@ -69,5 +73,77 @@ describe("pickReleaseWithAppAssets", () => {
       isAppAsset,
     );
     expect(picked).toBeNull();
+  });
+});
+
+describe("extractAssetsFromReleaseBody (CDN / CrabNebula)", () => {
+  const capBody = `
+## Downloads
+- [macOS (Apple Silicon)](https://cdn.crabnebula.app/asset/01KZEFZ68WNSB388NYX4CS5WR3)
+- [macOS (Intel)](https://cdn.crabnebula.app/asset/01KZEFNE730CAPDCNP2RQ066VT)
+- [Windows](https://cdn.crabnebula.app/asset/01KZEK613F20ZWMV8ZC1JY7HMR)
+- [Linux](https://cdn.crabnebula.app/asset/01KZEFJYCGN6YJ32PQ7AX334RZ)
+
+<!-- DOWNLOADS_JSON {"macos-arm64":"https://cdn.crabnebula.app/asset/01KZEFZ68WNSB388NYX4CS5WR3","macos-x64":"https://cdn.crabnebula.app/asset/01KZEFNE730CAPDCNP2RQ066VT","windows":"https://cdn.crabnebula.app/asset/01KZEK613F20ZWMV8ZC1JY7HMR","linux":"https://cdn.crabnebula.app/asset/01KZEFJYCGN6YJ32PQ7AX334RZ"} -->
+`;
+
+  test("parses DOWNLOADS_JSON macos keys only", () => {
+    const assets = extractAssetsFromReleaseBody(capBody, {
+      productName: "Cap",
+    });
+    expect(assets.length).toBe(2);
+    expect(assets.every((a) => a.name.endsWith(".dmg"))).toBe(true);
+    expect(assets.some((a) => /arm64/i.test(a.name))).toBe(true);
+    expect(assets.some((a) => /x64/i.test(a.name))).toBe(true);
+    expect(
+      assets.every((a) => a.url.includes("cdn.crabnebula.app")),
+    ).toBe(true);
+  });
+
+  test("isAppAsset accepts synthesized names", () => {
+    const assets = extractAssetsFromReleaseBody(capBody, {
+      productName: "Cap",
+    });
+    for (const a of assets) {
+      expect(isAppAsset(a.name)).toBe(true);
+    }
+  });
+
+  test("mergeBodyAssetsIntoRelease fills empty assets", () => {
+    const merged = mergeBodyAssetsIntoRelease(
+      {
+        tagName: "cap-v0.5.9",
+        name: "0.5.9",
+        body: capBody,
+        assets: [],
+      },
+      { productName: "Cap" },
+    );
+    expect(merged?.assets?.length).toBe(2);
+  });
+
+  test("mergeBodyAssetsIntoRelease keeps real GitHub assets", () => {
+    const merged = mergeBodyAssetsIntoRelease(
+      {
+        tagName: "v1",
+        body: capBody,
+        assets: [
+          {
+            name: "Real.dmg",
+            url: "https://github.com/ex/r/releases/download/v1/Real.dmg",
+          },
+        ],
+      },
+      { productName: "Cap" },
+    );
+    expect(merged?.assets?.length).toBe(1);
+    expect(merged?.assets?.[0].name).toBe("Real.dmg");
+  });
+
+  test("ignores non-mac labels", () => {
+    const assets = extractAssetsFromReleaseBody(
+      "[Windows](https://cdn.example.com/win) [Linux](https://cdn.example.com/lin)",
+    );
+    expect(assets.length).toBe(0);
   });
 });

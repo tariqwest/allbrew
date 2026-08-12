@@ -102,8 +102,126 @@ export async function getRepoInfo(owner, repo) {
   };
 }
 
-function mapRelease(data: any) {
+/**
+ * Synthesize a macOS app asset name so isAppAsset / matchAssetToArch work when
+ * the real CDN URL is extensionless (e.g. CrabNebula asset IDs).
+ */
+function synthesizeMacAppAssetName(
+  product: string,
+  keyOrLabel: string,
+  url: string,
+): string {
+  try {
+    const u = new URL(url);
+    const base = decodeURIComponent(u.pathname.split("/").pop() || "");
+    if (/\.(dmg|pkg|zip)$/i.test(base)) return base;
+  } catch {
+    /* ignore */
+  }
+  const k = String(keyOrLabel || "").toLowerCase();
+  let arch = "macos";
+  if (/arm64|aarch64|apple\s*silicon|\bm[1-4]\b/i.test(k)) arch = "macos_arm64";
+  else if (/x64|x86_64|amd64|intel/i.test(k)) arch = "macos_x64";
+  else if (/universal/i.test(k)) arch = "macos_universal";
+  const safe = String(product || "App").replace(/[^\w.-]+/g, "") || "App";
+  return `${safe}_${arch}.dmg`;
+}
+
+function isMacOsDownloadLabel(label: string): boolean {
+  const l = String(label || "").toLowerCase();
+  if (!l) return false;
+  if (/\b(windows|win32|linux|android|deb|rpm|appimage)\b/i.test(l)) {
+    return false;
+  }
+  return /mac\s*os|macos|apple\s*silicon|darwin|osx|\bmac\b|intel.*mac|mac.*intel|aarch64|arm64/i.test(
+    l,
+  );
+}
+
+/**
+ * Parse macOS app download URLs from a GitHub release body when the API
+ * `assets` array is empty (common for CrabNebula / CDN-hosted Tauri apps).
+ *
+ * Supports:
+ * - `<!-- DOWNLOADS_JSON {"macos-arm64":"https://..."} -->`
+ * - Markdown links like `[macOS (Apple Silicon)](https://cdn…)`
+ */
+export function extractAssetsFromReleaseBody(
+  body: string | null | undefined,
+  opts: { productName?: string } = {},
+): Array<{ name: string; url: string; size: number; contentType: string }> {
+  if (!body || typeof body !== "string") return [];
+  const product =
+    String(opts.productName || "App").replace(/[^\w.-]+/g, "") || "App";
+  const found = new Map<
+    string,
+    { name: string; url: string; size: number; contentType: string }
+  >();
+
+  const jsonMatch = body.match(/DOWNLOADS_JSON\s*(\{[\s\S]*?\})/);
+  if (jsonMatch) {
+    try {
+      const obj = JSON.parse(jsonMatch[1]) as Record<string, unknown>;
+      for (const [key, rawUrl] of Object.entries(obj)) {
+        if (typeof rawUrl !== "string" || !/^https?:\/\//i.test(rawUrl)) {
+          continue;
+        }
+        const k = key.toLowerCase();
+        if (!/mac|darwin|osx|apple/i.test(k)) continue;
+        if (/windows|win32|linux|android/i.test(k)) continue;
+        const name = synthesizeMacAppAssetName(product, key, rawUrl);
+        found.set(rawUrl, {
+          name,
+          url: rawUrl,
+          size: 0,
+          contentType: "application/octet-stream",
+        });
+      }
+    } catch {
+      /* ignore malformed DOWNLOADS_JSON */
+    }
+  }
+
+  for (const m of body.matchAll(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g)) {
+    const label = m[1];
+    const url = m[2];
+    if (!isMacOsDownloadLabel(label)) continue;
+    if (found.has(url)) continue;
+    found.set(url, {
+      name: synthesizeMacAppAssetName(product, label, url),
+      url,
+      size: 0,
+      contentType: "application/octet-stream",
+    });
+  }
+
+  return [...found.values()];
+}
+
+/**
+ * When GitHub release assets are empty, merge macOS app URLs parsed from the
+ * release body so cask-app-release can see DMGs hosted on external CDNs.
+ */
+export function mergeBodyAssetsIntoRelease<
+  T extends { body?: string | null; assets?: Array<{ name: string; url: string }> },
+>(release: T | null | undefined, opts: { productName?: string } = {}): T | null {
+  if (!release) return null;
+  const assets = Array.isArray(release.assets) ? release.assets : [];
+  const hasDmgOrAppZip = assets.some((a) => {
+    const n = String(a?.name || "").toLowerCase();
+    return n.endsWith(".dmg") || n.endsWith(".pkg") || (n.endsWith(".zip") && /mac|osx|darwin|\.app/i.test(n));
+  });
+  if (hasDmgOrAppZip) return release;
+  const bodyAssets = extractAssetsFromReleaseBody(release.body, opts);
+  if (bodyAssets.length === 0) return release;
   return {
+    ...release,
+    assets: [...assets, ...bodyAssets],
+  };
+}
+
+function mapRelease(data: any) {
+  const mapped = {
     tagName: data.tag_name,
     name: data.name,
     body: data.body,
@@ -118,6 +236,11 @@ function mapRelease(data: any) {
     tarballUrl: data.tarball_url,
     zipballUrl: data.zipball_url,
   };
+  // Prefer body-derived macOS DMG links when the assets array is empty
+  // (CrabNebula / CDN releases, e.g. CapSoftware/Cap).
+  return mergeBodyAssetsIntoRelease(mapped, {
+    productName: data.name || data.tag_name,
+  }) as typeof mapped;
 }
 
 export async function getLatestRelease(owner, repo) {
