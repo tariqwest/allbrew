@@ -24,10 +24,15 @@ const execFileAsync = promisify(execFile);
 
 type ArchHash = { url: string; sha256: string; name: string };
 
+/** Asset basenames like product-cli often ship as product in docs/Homebrew. */
+const PRODUCT_CLI_SUFFIX_RE = /^(.+?)[-_](cli|client|bin|app|tool|cmd)$/i;
+
 /**
  * Homebrew stages a bare binary URL as a file named after the asset basename.
  * Archives unpack and typically expose a binary named like the formula.
  * Prefer options.binName, else a common prefix from bare asset names, else formula name.
+ * When assets strip to `product-cli` and the formula is `product` (or product-cli),
+ * install as the shorter product token — matches README renames and homebrew/core.
  */
 export function resolveBinaryReleaseBinName(
   formulaName: string,
@@ -51,7 +56,27 @@ export function resolveBinaryReleaseBinName(
       .replace(/[-_.]\d+\.\d+(?:\.\d+)*(?:[-_][0-9A-Za-z]+)?$/i, "")
       .replace(/[-_.]+$/g, ""),
   );
-  if (stripped.every((s) => s && s === stripped[0])) return stripped[0];
+  if (stripped.every((s) => s && s === stripped[0])) {
+    const fromAssets = stripped[0];
+    const formula = (formulaName || "").toLowerCase();
+    if (formula && fromAssets.toLowerCase() === formula) return fromAssets;
+
+    // gotify-cli-darwin-arm64 → gotify-cli; formula gotify / gotify-tap → gotify
+    // (README uses -O gotify; homebrew/core ships bin/gotify).
+    const m = PRODUCT_CLI_SUFFIX_RE.exec(fromAssets);
+    if (m) {
+      const product = m[1];
+      const productLc = product.toLowerCase();
+      if (
+        formula === productLc ||
+        formula === `${productLc}-tap` ||
+        formula.startsWith(`${productLc}-tap`)
+      ) {
+        return product;
+      }
+    }
+    return fromAssets;
+  }
 
   return formulaName;
 }

@@ -5,6 +5,7 @@ import {
   templateEntrypointPath,
   pickArchiveEntrypoint,
   buildBinaryReleaseInstallBody,
+  resolveBinaryReleaseBinName,
 } from "../../../lib/generators/binary-release.ts";
 import wakapiFixture from "../../fixtures/github/wakapi.json";
 
@@ -190,6 +191,43 @@ describe("collectBinaryReleasePayload", () => {
     });
     expect(payload.binName).toBe("chatctl");
     expect(payload.installBody).toContain('bin.install bin_path => "chatctl"');
+  });
+
+  it("maps product-cli bare assets to formula product bin (gotify-cli → gotify)", async () => {
+    const assets = [
+      "gotify-cli-darwin-arm64",
+      "gotify-cli-darwin-amd64",
+      "gotify-cli-linux-arm64",
+      "gotify-cli-linux-amd64",
+    ];
+    expect(resolveBinaryReleaseBinName("gotify", assets)).toBe("gotify");
+    expect(resolveBinaryReleaseBinName("gotify-tap", assets)).toBe("gotify");
+    expect(resolveBinaryReleaseBinName("gotify-cli", assets)).toBe("gotify-cli");
+    expect(
+      resolveBinaryReleaseBinName("unrelated-tool", assets),
+    ).toBe("gotify-cli");
+
+    const bareRelease = {
+      tagName: "v2.4.0",
+      assets: assets.map((name) => ({
+        name,
+        url: `https://example.com/${name}`,
+      })),
+    };
+    const bareRepo = {
+      name: "cli",
+      fullName: "gotify/cli",
+      description: "CLI for gotify/server",
+      homepage: "https://github.com/gotify/cli",
+      htmlUrl: "https://github.com/gotify/cli",
+      license: "MIT",
+      defaultBranch: "master",
+    };
+    const payload = await collectBinaryReleasePayload(bareRepo, bareRelease, {
+      name: "gotify",
+    });
+    expect(payload.binName).toBe("gotify");
+    expect(payload.installBody).toContain('bin.install bin_path => "gotify"');
   });
 
   it("templateReleaseUrl preserves bare version tags without injecting v", () => {

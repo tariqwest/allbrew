@@ -1834,6 +1834,9 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       // class name and bottle block stay aligned with the file name.
       userOpts.name = preferred;
     } else {
+      // Prefer owner-repo alts over bare repo names (gotify/cli → gotify-cli, not "cli").
+      const owner = params.repoInfo?.fullName?.split?.("/")?.[0];
+      const repoName = params.repoInfo?.name;
       const altSources = [
         params.packageName,
         params.crateName,
@@ -1842,7 +1845,13 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
         opts.package,
         opts.crateName,
         opts.binName,
-        params.repoInfo?.name,
+        owner && repoName ? `${owner}-${repoName}` : null,
+        owner && repoName ? `${repoName}-${owner}` : null,
+        owner ? `${preferred}-${owner}` : null,
+        params.repoInfo?.fullName
+          ? String(params.repoInfo.fullName).replace("/", "-")
+          : null,
+        repoName,
       ];
       const resolved = resolveNonCollidingFormulaName(preferred, altSources);
       if (resolved.renamedFrom && resolved.name !== preferred) {
