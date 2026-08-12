@@ -55,6 +55,10 @@ export function resolveBinaryReleaseBinName(
   return formulaName;
 }
 
+/** Doc / legal files that must never become the install entrypoint. */
+const ARCHIVE_DOC_BASENAME_RE =
+  /^(license|licence|readme|changelog|changes|authors|contributing|copying|notice|install|todo|code_of_conduct|security|history|news|credits|acknowledgements?)(\.[a-z0-9]+)?$/i;
+
 /** Prefer entrypoint names that match formula / common CLI conventions. */
 export function pickArchiveEntrypoint(
   members: string[],
@@ -68,8 +72,12 @@ export function pickArchiveEntrypoint(
   const candidates = files.filter((m) => {
     const base = m.split("/").pop() || "";
     if (!base || base.startsWith(".")) return false;
-    if (/\.(txt|md|json|sha256|sig|asc|1|html|sample|dylib|so|a|ps1|psm1|bat|sh)$/i.test(base)) return false;
-    if (m.includes("/node_modules/") || m.includes("/vendor/")) return false;
+    // Hard-refuse documentation / license files (television, toolong archives).
+    if (ARCHIVE_DOC_BASENAME_RE.test(base)) return false;
+    if (/\.(txt|md|json|sha256|sig|asc|1|html|sample|dylib|so|a|ps1|psm1|bat|sh|rb|py|rs|go|ts|js|css|map)$/i.test(base)) {
+      return false;
+    }
+    if (m.includes("/node_modules/") || m.includes("/vendor/") || m.includes("/.git/")) return false;
     // Prefer bin/ layout; also allow root-level binaries and files one directory
     // deep (common for release archives with a top-level wrapper directory like
     // `project-arch/binary`).
@@ -102,18 +110,28 @@ export function pickArchiveEntrypoint(
     // Deprioritize helper hosts / path tools.
     if (/host|rg$|zsh|node|python/i.test(base)) s -= 20;
     if (base.length === 1) s -= 5; // e.g. "i"
-    // Boost binary-like files (no extension or known non-doc) over
-    // documentation/license files (common in release archives).
-    const DOC_PATTERNS = /^(license|licence|readme|changelog|changes|authors|contributing|copying|notice|authors|install|todo)\b/i;
-    if (DOC_PATTERNS.test(base)) s -= 10;
-    else if (!base.includes(".")) s += 5;
+    // Prefer extensionless binaries (typical CLI) over named scripts with dots.
+    if (!base.includes(".")) s += 5;
+    // Prefer versioned layout binaries that look like the product binary.
+    if (new RegExp(`^${formulaName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(base)) {
+      s += 15;
+    }
     return s;
   };
 
   const ranked = [...candidates].sort((a, b) => score(b) - score(a));
   const best = ranked[0];
+  if (!best || ARCHIVE_DOC_BASENAME_RE.test(best.split("/").pop() || "")) {
+    return null;
+  }
   const base = best.split("/").pop() || formulaName;
-  const binName = options.binName || preferredNames[0] || base;
+  // Prefer formula name as the installed bin token when the entrypoint is a
+  // versioned path (e.g. television-0.1.2/television) rather than the full
+  // versioned basename.
+  const binName =
+    options.binName ||
+    preferredNames[0] ||
+    (ARCHIVE_DOC_BASENAME_RE.test(base) ? formulaName : base);
   return { sourcePath: best, binName };
 }
 
@@ -136,17 +154,23 @@ export function buildBinaryReleaseInstallBody(
   }
 
   // Nested package archives (e.g. open-interpreter-package-*/bin/interpreter + resources).
+  // Source path may embed a release version; emit #{version} so livecheck upgrades work.
   if (archiveEntrypoint) {
     const src = archiveEntrypoint.replace(/\\/g, "/");
+    const srcRuby = templateEntrypointPath(src);
     const lines = [
       `libexec.install Dir["*"]`,
-      `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(binName)}`,
+      `bin.install_symlink libexec/${srcRuby} => ${rubyString(binName)}`,
     ];
     // Also expose the upstream entrypoint basename when it differs (interpreter vs open-interpreter).
     const upstreamBase = src.split("/").pop() || "";
-    if (upstreamBase && upstreamBase !== binName) {
+    if (
+      upstreamBase &&
+      upstreamBase !== binName &&
+      !ARCHIVE_DOC_BASENAME_RE.test(upstreamBase)
+    ) {
       lines.push(
-        `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(upstreamBase)}`,
+        `bin.install_symlink libexec/${srcRuby} => ${rubyString(upstreamBase)}`,
       );
     }
     return lines.join("\n    ");
@@ -310,6 +334,34 @@ export async function collectBinaryReleasePayload(
     testBinName: rubyEscape(binName),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
+}
+
+/**
+ * When an archive member path embeds a dotted version (e.g. television-0.12.1/tv),
+ * rewrite that segment to use Homebrew's #{version} so upgrades keep working.
+ * Leaves paths without a version segment unchanged.
+ */
+export function templateEntrypointPath(path: string): string {
+  const src = String(path || "").replace(/\\/g, "/");
+  // Path segments like name-1.2.3 or name_1.2.3
+  const versionedSeg = src.match(
+    /(?:^|\/)([A-Za-z0-9._-]*?)[-_](\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.]+)?)(?=\/|$)/,
+  );
+  if (!versionedSeg) {
+    return rubyString(src);
+  }
+  // Build a Ruby string interpolation: "prefix-#{version}/rest"
+  const full = versionedSeg[0].replace(/^\//, "");
+  const idx = src.indexOf(full);
+  const before = src.slice(0, idx);
+  const after = src.slice(idx + full.length);
+  const prefix = versionedSeg[1];
+  const sep = full.includes(`_${versionedSeg[2]}`) ? "_" : "-";
+  // before may include leading path with slash
+  const left = before.endsWith("/") || before === "" ? before : before;
+  // Use double-quoted Ruby so #{version} interpolates at brew time.
+  const rubyPath = `${left}${prefix}${sep}#{version}${after}`;
+  return `"${rubyPath.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 /** Replace release tag / version in download URLs with Homebrew #{version}. */

@@ -2,6 +2,7 @@ import { describe, it, expect, mock, beforeEach } from "bun:test";
 import {
   collectBinaryReleasePayload,
   templateReleaseUrl,
+  templateEntrypointPath,
   pickArchiveEntrypoint,
   buildBinaryReleaseInstallBody,
 } from "../../../lib/generators/binary-release.ts";
@@ -271,6 +272,22 @@ describe("pickArchiveEntrypoint / nested package archives", () => {
     expect(picked!.binName).toBe("open-interpreter");
   });
 
+  it("refuses LICENSE/README as entrypoint", () => {
+    const members = ["LICENSE", "README.md", "television", "CHANGELOG.md"];
+    const picked = pickArchiveEntrypoint(members, "television");
+    expect(picked).not.toBeNull();
+    expect(picked!.sourcePath).toBe("television");
+    expect(picked!.binName).toBe("television");
+  });
+
+  it("returns null when archive only has documentation", () => {
+    const picked = pickArchiveEntrypoint(
+      ["LICENSE", "README.md", "NOTICE"],
+      "toolong",
+    );
+    expect(picked).toBeNull();
+  });
+
   it("buildBinaryReleaseInstallBody uses libexec + symlink for nested entrypoint", () => {
     const body = buildBinaryReleaseInstallBody(
       "open-interpreter",
@@ -288,6 +305,25 @@ describe("pickArchiveEntrypoint / nested package archives", () => {
     expect(templateReleaseUrl(url, "0.0.34", "rust-v0.0.34")).toBe(
       "https://github.com/openinterpreter/openinterpreter/releases/download/rust-v#{version}/open-interpreter-package-aarch64-apple-darwin.tar.gz",
     );
+  });
+
+  it("templateEntrypointPath rewrites versioned path segments", () => {
+    expect(templateEntrypointPath("television-0.12.1/tv")).toBe(
+      '"television-#{version}/tv"',
+    );
+    expect(templateEntrypointPath("bin/interpreter")).toBe(
+      '"bin/interpreter"',
+    );
+  });
+
+  it("buildBinaryReleaseInstallBody templates versioned entrypoint paths", () => {
+    const body = buildBinaryReleaseInstallBody(
+      "television",
+      ["television-macos-aarch64.tar.gz"],
+      "television-0.12.1/television",
+    );
+    expect(body).toContain("television-#{version}/television");
+    expect(body).not.toContain("0.12.1");
   });
 
   it("collectBinaryReleasePayload inspects nested archive members", async () => {
