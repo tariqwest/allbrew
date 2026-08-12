@@ -2146,6 +2146,9 @@ async function brewAutoInstall(result: any, opts: any) {
     ...process.env,
     HOMEBREW_DEVELOPER: "1",
     HOMEBREW_NO_AUTO_UPDATE: "1",
+    // User taps (tariqwest/allbrew, disposable e2e taps) are often untrusted;
+    // install would refuse "Refusing to load formula … from untrusted tap".
+    HOMEBREW_NO_REQUIRE_TAP_TRUST: "1",
   };
   // Sync formula/cask into the canonical brew tap checkout so
   // `brew install --formula <path>` is accepted (newer Homebrew rejects files
@@ -2175,6 +2178,28 @@ async function brewAutoInstall(result: any, opts: any) {
           await mkdir(dirname(canonical), { recursive: true });
           await copyFile(result.filePath, canonical);
           result.filePath = canonical;
+        }
+        // Trust the tap/formula so path install under Library/Taps is allowed
+        // even when HOMEBREW_NO_REQUIRE_TAP_TRUST is ignored by older brew.
+        try {
+          execFileSync("brew", ["trust", String(tap)], {
+            encoding: "utf-8",
+            stdio: ["ignore", "pipe", "ignore"],
+          });
+        } catch {
+          try {
+            execFileSync(
+              "brew",
+              [
+                "trust",
+                isCask ? "--cask" : "--formula",
+                `${tap}/${result.name}`,
+              ],
+              { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] },
+            );
+          } catch {
+            /* best-effort */
+          }
         }
         break;
       } catch {
