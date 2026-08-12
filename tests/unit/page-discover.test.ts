@@ -799,7 +799,6 @@ describe("html-attr SPA soft-404 DMG (Kosmik class)", () => {
     });
     expect(kept.some((c) => c.url === dmg)).toBe(true);
   });
-});
 
   it("drops high-score webview href .dmg that HEAD as text/html", async () => {
     const page = "https://kosmik.app/downloads";
@@ -811,3 +810,4 @@ describe("html-attr SPA soft-404 DMG (Kosmik class)", () => {
     });
     expect(kept.find((c) => c.url === dmg)).toBeUndefined();
   });
+});
