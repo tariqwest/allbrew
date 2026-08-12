@@ -1,5 +1,8 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectCaskAppReleasePayload } from "../../../lib/generators/cask-app-release.ts";
+import {
+  collectCaskAppReleasePayload,
+  isMissingAppBundleError,
+} from "../../../lib/generators/cask-app-release.ts";
 import mcpsmFixture from "../../fixtures/github/mcpsm.json";
 
 mock.module("../../../lib/sha256.ts", () => ({
@@ -260,6 +263,32 @@ describe("collectCaskAppReleasePayload", () => {
     await expect(
       collectCaskAppReleasePayload(repoInfo, zipRelease),
     ).rejects.toThrow(/No \.app bundle found/);
+  });
+
+  it("isMissingAppBundleError matches CLI-zip false-positive errors", async () => {
+    mockArchiveInspector({ zip: ["swift-outdated-0.15.3-macos/swift-outdated"] });
+    const zipRelease = {
+      tagName: "0.15.3",
+      assets: [
+        {
+          name: "swift-outdated-0.15.3-macos.zip",
+          url: "https://example.com/swift-outdated-0.15.3-macos.zip",
+        },
+      ],
+    };
+    let caught: unknown;
+    try {
+      await collectCaskAppReleasePayload(
+        { name: "swift-outdated", fullName: "kiliankoe/swift-outdated" },
+        zipRelease,
+      );
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeTruthy();
+    expect(isMissingAppBundleError(caught)).toBe(true);
+    expect(isMissingAppBundleError(new Error("other failure"))).toBe(false);
+    expect(isMissingAppBundleError(null)).toBe(false);
   });
 });
 

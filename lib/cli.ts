@@ -26,10 +26,12 @@ import {
   detectServiceConfigFromFiles,
 } from "./analyzer.ts";
 import { inspectArchive } from "./archive-inspector.ts";
+import { isMissingAppBundleError } from "./generators/cask-app-release.ts";
 import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  isCliPlatformZipRelease,
   chooseReleaseArtifactKind,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
@@ -922,7 +924,19 @@ async function handleGithubRepo(classification, opts) {
       );
     }
 
-    const appAssets = release.assets.filter((a) => isAppAsset(a.name));
+    // Multi-platform CLI zips (foo-macos.zip + foo-linux.zip, no DMG/.app) are
+    // not desktop apps — skip cask-app-release so we fall through to SPM/source.
+    const cliPlatformZips = isCliPlatformZipRelease(release.assets);
+    if (cliPlatformZips) {
+      console.log(
+        chalk.dim(
+          "  Release looks like multi-platform CLI zips (macos+linux, no DMG/.app); not treating as macOS app cask",
+        ),
+      );
+    }
+    const appAssets = cliPlatformZips
+      ? []
+      : release.assets.filter((a) => isAppAsset(a.name));
     // Platform-tagged binaries. Homebrew on macOS needs at least one macOS
     // asset; Linux-only releases (e.g. ugm, gpg-tui) must fall through to README
     // install methods (go, cargo, source-build) instead of binary-release.
@@ -984,11 +998,29 @@ async function handleGithubRepo(classification, opts) {
       }
 
       if (choice === "cask") {
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release },
+            opts,
+          );
+        } catch (err) {
+          // False-positive isAppAsset (e.g. CLI tool-macos.zip with bare binary).
+          // Prefer binary formula when available; else fall through to README/repo.
+          if (isMissingAppBundleError(err)) {
+            console.log(
+              chalk.dim(
+                `  App-looking assets contain no .app bundle; preferring CLI binary formula...`,
+              ),
+            );
+            return await generateWithConfirmation(
+              "binary-release",
+              { repoInfo, release },
+              opts,
+            );
+          }
+          throw err;
+        }
       } else {
         return await generateWithConfirmation(
           "binary-release",
@@ -1002,11 +1034,26 @@ async function handleGithubRepo(classification, opts) {
       console.log(
         `  Detected ${chalk.cyan("macOS app")} assets: ${appAssets.map((a) => a.name).join(", ")}`,
       );
-      return await generateWithConfirmation(
-        "cask-app-release",
-        { repoInfo, release },
-        opts,
-      );
+      try {
+        return await generateWithConfirmation(
+          "cask-app-release",
+          { repoInfo, release },
+          opts,
+        );
+      } catch (err) {
+        // CLI release zips like swift-outdated-*-macos.zip are classified as app
+        // assets (macos token, no cpu arch) but contain a bare binary, not .app.
+        // Fall through so README/Package.swift/cargo/go paths can generate a formula.
+        if (isMissingAppBundleError(err)) {
+          console.log(
+            chalk.dim(
+              `  Release zip(s) look like apps but contain no .app bundle; continuing with README/repo analysis...`,
+            ),
+          );
+        } else {
+          throw err;
+        }
+      }
     }
 
     if (binAssets.length > 0) {
@@ -1032,7 +1079,7 @@ async function handleGithubRepo(classification, opts) {
           `  Release has Intel-only macOS binary assets (${binAssetsRaw.map((a) => a.name).join(", ")}); no arm64/universal bottle — checking older releases / README...`,
         ),
       );
-    } else {
+    } else if (appAssets.length === 0) {
       console.log(
         chalk.dim(
           "  No recognized binary or app assets on latest release, checking older releases...",
@@ -1056,11 +1103,23 @@ async function handleGithubRepo(classification, opts) {
         console.log(
           `  Found macOS app assets on older release ${chalk.bold(olderWithApp.tagName)}: ${names.join(", ")}`,
         );
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release: olderWithApp },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release: olderWithApp },
+            opts,
+          );
+        } catch (err) {
+          if (isMissingAppBundleError(err)) {
+            console.log(
+              chalk.dim(
+                `  Older-release app assets also lack a .app bundle; continuing with README/repo analysis...`,
+              ),
+            );
+          } else {
+            throw err;
+          }
+        }
       }
     } catch (err) {
       if (opts.verbose) {

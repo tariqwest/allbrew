@@ -707,6 +707,17 @@ export function matchAssetToArch(assetName) {
   for (const [arch, regexes] of Object.entries(patterns)) {
     if (regexes.some((r) => r.test(assetName))) return arch;
   }
+  // Bare macOS platform tag without a CPU arch (e.g. swift-outdated-0.15.3-macos.zip,
+  // swiftpolyglot-2.0.2-macos.tar.gz) is commonly a universal fat binary. CPU-tagged
+  // names already matched above; linux/windows must not fall through here.
+  const name = String(assetName || "");
+  const hasMacOs =
+    /(?:^|[^a-z])(?:macos|osx|darwin)(?:[^a-z]|$)/i.test(name);
+  const hasCpuOrOtherOs =
+    /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386|linux|windows|win32)(?:[^a-z]|$)/i.test(
+      name,
+    );
+  if (hasMacOs && !hasCpuOrOtherOs) return "macosUniversal";
   return null;
 }
 
@@ -761,6 +772,44 @@ export function isAppAsset(assetName) {
   // common for single-platform macOS .app releases where version is in tag not filename.
   if (!hasCpuArch && isBareAppZipName(lower)) return true;
   return false;
+}
+
+/**
+ * Multi-platform CLI release heuristic: product-version-macos.zip + linux archive,
+ * with no DMG / .app-named assets. Those zips are bare CLI binaries (e.g.
+ * swift-outdated-0.15.3-macos.zip), not desktop app bundles — even though
+ * isAppAsset() matches the macos token. Callers should skip cask-app-release
+ * and fall through to binary-release / SPM / README install methods.
+ */
+export function isCliPlatformZipRelease(
+  assets: Array<{ name?: string } | string> | null | undefined,
+): boolean {
+  if (!assets?.length) return false;
+  const names = assets.map((a) =>
+    String(typeof a === "string" ? a : a?.name || "").toLowerCase(),
+  );
+  if (names.some((n) => !n)) return false;
+  if (names.some((n) => n.endsWith(".dmg") || n.includes(".app"))) return false;
+
+  const hasMacZipNoArch = names.some((n) => {
+    if (!n.endsWith(".zip")) return false;
+    const hasMac =
+      /(?:^|[^a-z])(?:macos|darwin|osx)(?:[^a-z]|$)/i.test(n);
+    if (!hasMac) return false;
+    const hasCpuArch =
+      /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(n);
+    return !hasCpuArch;
+  });
+
+  const hasLinux = names.some((n) => {
+    if (!/(?:^|[^a-z])linux(?:[^a-z]|$)/i.test(n)) return false;
+    return (
+      /\.(?:zip|tgz|tar\.gz|tar\.bz2|tar\.xz)$/i.test(n) ||
+      (!n.includes(".") && n.length > 0)
+    );
+  });
+
+  return hasMacZipNoArch && hasLinux;
 }
 
 function isBareAppZipName(lowerName: string): boolean {
@@ -833,10 +882,21 @@ const BARE_BINARY_SKIP_NAMES = new Set([
 
 export function isArchiveBinaryAsset(assetName) {
   const lower = assetName.toLowerCase();
-  return (
-    ARCHIVE_BINARY_EXTS.some((ext) => lower.endsWith(ext)) &&
-    !isAppAsset(assetName)
-  );
+  if (!ARCHIVE_BINARY_EXTS.some((ext) => lower.endsWith(ext))) return false;
+  if (!isAppAsset(assetName)) return true;
+  // Dual-class platform zips: bare macos/darwin/osx without CPU arch and without
+  // an explicit .app token (e.g. swift-outdated-0.15.3-macos.zip) are often CLI
+  // binaries, not desktop apps. Keep isAppAsset true so the cask path still peeks
+  // for a real .app first; also treat as binary-capable so binary-release can
+  // select them after fallthrough / isCliPlatformZipRelease.
+  if (!lower.endsWith(".zip") || lower.includes(".app")) return false;
+  const hasMac =
+    /(?:^|[^a-z])(?:macos|darwin|osx)(?:[^a-z]|$)/i.test(lower);
+  const hasCpuArch =
+    /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(
+      lower,
+    );
+  return hasMac && !hasCpuArch;
 }
 
 /** Extensionless (or .exe) platform-tagged release binaries, e.g. csctf-macos-arm64.

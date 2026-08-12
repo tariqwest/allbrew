@@ -10,6 +10,7 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  isCliPlatformZipRelease,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
@@ -427,6 +428,20 @@ describe("matchAssetToArch", () => {
     // Linux_all must not be treated as macOS
     expect(matchAssetToArch("wander_1.1.0_Linux_all.tar.gz")).toBeNull();
   });
+
+  it("treats bare macos/darwin/osx (no CPU arch) as macosUniversal", () => {
+    expect(matchAssetToArch("swift-outdated-0.15.3-macos.zip")).toBe(
+      "macosUniversal",
+    );
+    expect(matchAssetToArch("swiftpolyglot-2.0.2-macos.tar.gz")).toBe(
+      "macosUniversal",
+    );
+    expect(matchAssetToArch("tool-1.0.0-darwin.tar.gz")).toBe("macosUniversal");
+    expect(matchAssetToArch("cli_osx.zip")).toBe("macosUniversal");
+    // CPU-tagged still wins via explicit patterns
+    expect(matchAssetToArch("tool-macos-arm64.tar.gz")).toBe("macosArm");
+    expect(matchAssetToArch("tool-macos-x86_64.tar.gz")).toBe("macosIntel");
+  });
 });
 
 describe("isAppAsset", () => {
@@ -464,6 +479,35 @@ describe("isAppAsset", () => {
   });
 });
 
+describe("isCliPlatformZipRelease", () => {
+  it("detects swift-outdated-style macos+linux CLI zips (no DMG/.app)", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "swift-outdated-0.15.3-macos.zip" },
+        { name: "swift-outdated-0.15.3-linux.zip" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("rejects real app releases with DMG or .app in the name", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "App-1.0-macos.zip" },
+        { name: "App-1.0.dmg" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCliPlatformZipRelease([{ name: "Foo.app.zip" }, { name: "Foo-linux.zip" }]),
+    ).toBe(false);
+  });
+
+  it("rejects macos-only releases without a linux counterpart", () => {
+    expect(
+      isCliPlatformZipRelease([{ name: "tool-0.1.0-macos.zip" }]),
+    ).toBe(false);
+  });
+});
+
 describe("isBinaryAsset", () => {
   it("matches archive extensions that aren't app assets", () => {
     expect(isBinaryAsset("foo-linux-amd64.tar.gz")).toBe(true);
@@ -481,8 +525,12 @@ describe("isBinaryAsset", () => {
     expect(matchAssetToArch("csctf-macos-x64")).toBe("macosIntel");
   });
 
-  it("rejects app assets", () => {
-    expect(isBinaryAsset("Foo-macos.zip")).toBe(false);
+  it("rejects pure app assets (dmg / .app zip) but dual-classes bare macos CLI zips", () => {
+    // Bare macos/darwin/osx zip without CPU arch: dual-class (isAppAsset + isBinaryAsset)
+    // so cask peeks first and binary-release can fall through (swift-outdated).
+    expect(isAppAsset("Foo-macos.zip")).toBe(true);
+    expect(isBinaryAsset("Foo-macos.zip")).toBe(true);
+    expect(isBinaryAsset("swift-outdated-0.15.3-macos.zip")).toBe(true);
     expect(isBinaryAsset("Foo.dmg")).toBe(false);
     expect(isBinaryAsset("MyApp.app.zip")).toBe(false);
   });
