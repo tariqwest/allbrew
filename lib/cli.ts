@@ -1337,6 +1337,35 @@ async function handleGithubRepo(classification, opts) {
               opts,
             );
           }
+          // README `pip install -r requirements.txt` / `pip install .` maps to
+          // build(python). Prefer PyPI pip-package when packaging markers exist
+          // (e.g. pyqt-openai / VividNode has pyproject.toml + project.scripts).
+          const pyprojectTomlForBuild = await getFileContent(
+            owner,
+            repo,
+            "pyproject.toml",
+          );
+          const setupPyForBuild = pyprojectTomlForBuild
+            ? null
+            : await getFileContent(owner, repo, "setup.py");
+          if (pyprojectTomlForBuild || setupPyForBuild) {
+            console.log(
+              chalk.dim(
+                `  Preferring pip over README build (${method.system || "make"}): ${
+                  pyprojectTomlForBuild ? "pyproject.toml" : "setup.py"
+                } present`,
+              ),
+            );
+            return await generateWithConfirmation(
+              "pip-package",
+              {
+                packageName: opts.package || repoInfo.name,
+                repoInfo,
+                serviceConfig: serviceConfigFromReadme,
+              },
+              opts,
+            );
+          }
           return await generateWithConfirmation(
             "source-build",
             {
