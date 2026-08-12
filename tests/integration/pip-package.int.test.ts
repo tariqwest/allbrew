@@ -168,6 +168,7 @@ describe.concurrent("pip-package integration", () => {
     expect(payload.testBinName).toBe("sgpt");
     expect(ruby).toContain("class ShellGpt < Formula");
     expect(ruby).toContain("preserve_rpath");
+    expect(ruby).toContain("rewrite_delocate_dylib_ids");
     expect(ruby).toContain("include-system-site-packages = false");
     expect(payload.resourcesBlock).toContain('resource "click"');
     expect(payload.url).toMatch(/shell_gpt-[\d.]+-py3-none-any\.whl$/);

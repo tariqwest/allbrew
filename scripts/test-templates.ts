@@ -365,9 +365,10 @@ function buildPipPackageCase(): Case {
     `\n` +
     livecheck +
     `  depends_on "python@3.13"\n\n` +
-    `  # Native wheels (jiter, pydantic-core, …) ship dylib IDs like\n` +
-    `  # @rpath/foo.so. Homebrew's fix_dynamic_linkage expands those to long\n` +
-    `  # Cellar paths that do not fit the Mach-O header. Preserve @rpath IDs.\n` +
+    `  # Native wheels (jiter, pydantic-core, delocate-bundled av/opencv, …) ship\n` +
+    `  # dylib IDs like @rpath/foo.so or short /DLC/pkg/.dylibs/foo.dylib.\n` +
+    `  # Homebrew's fix_dynamic_linkage expands those to long Cellar/opt paths that\n` +
+    `  # do not fit the Mach-O header. Preserve @rpath IDs; rewrite /DLC/ below.\n` +
     `  preserve_rpath\n\n` +
     resources +
     `  def install\n` +
@@ -391,6 +392,7 @@ function buildPipPackageCase(): Case {
     `    end\n` +
     `    resources.each { |r| pip_install_dist(venv, r) }\n` +
     `    pip_install_main(venv)\n` +
+    `    rewrite_delocate_dylib_ids\n` +
     `  end\n\n` +
     `  def pip_install_dist(venv, dist)\n` +
     `    url = dist.url.to_s\n` +
@@ -417,6 +419,31 @@ function buildPipPackageCase(): Case {
     `      venv.pip_install_and_link whl\n` +
     `    else\n` +
     `      venv.pip_install_and_link buildpath\n` +
+    `    end\n` +
+    `  end\n\n` +
+    `  # delocate (and auditwheel-style macOS bundlers) stamp dylib IDs with a short\n` +
+    `  # absolute prefix /DLC/pkg/.dylibs/libfoo.dylib so load commands fit. After\n` +
+    `  # pip install, Homebrew tries to rewrite those IDs to\n` +
+    `  # $HOMEBREW_PREFIX/opt/<formula>/libexec/.../libfoo.dylib which overflows the\n` +
+    `  # Mach-O header ("Failed changing dylib ID"). Convert /DLC/ IDs to\n` +
+    `  # @rpath/<basename> so preserve_rpath keeps them and linkage still resolves\n` +
+    `  # via the wheel's existing @loader_path references.\n` +
+    `  def rewrite_delocate_dylib_ids\n` +
+    `    return unless OS.mac?\n\n` +
+    `    Dir.glob("#{libexec}/**/*.dylib").each do |dylib|\n` +
+    `      next unless File.file?(dylib)\n\n` +
+    `      # otool -D prints: path\\ninstall_name\n` +
+    `      lines = Utils.popen_read("otool", "-D", dylib).lines.map(&:strip).reject(&:empty?)\n` +
+    `      id = lines[1]\n` +
+    `      next if id.nil? || id.empty?\n` +
+    `      next unless id.start_with?("/DLC/")\n\n` +
+    `      new_id = "@rpath/#{File.basename(id)}"\n` +
+    `      next if new_id == id\n\n` +
+    `      system "install_name_tool", "-id", new_id, dylib\n` +
+    `      # install_name_tool invalidates the code signature; ad-hoc re-sign so\n` +
+    `      # dyld accepts the binary on Apple Silicon (Homebrew only re-signs when\n` +
+    `      # its own fix_dynamic_linkage mutates the file).\n` +
+    `      system "codesign", "--force", "--sign", "-", dylib\n` +
     `    end\n` +
     `  end\n\n` +
     `  test do\n` +

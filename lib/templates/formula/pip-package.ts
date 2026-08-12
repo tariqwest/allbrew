@@ -11,9 +11,10 @@ export default function renderPipPackage(p: PipPackagePayload): string {
 ${p.licenseLine}
 ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "python@3.13"
 
-  # Native wheels (jiter, pydantic-core, …) ship dylib IDs like
-  # @rpath/foo.so. Homebrew's fix_dynamic_linkage expands those to long
-  # Cellar paths that do not fit the Mach-O header. Preserve @rpath IDs.
+  # Native wheels (jiter, pydantic-core, delocate-bundled av/opencv, …) ship
+  # dylib IDs like @rpath/foo.so or short /DLC/pkg/.dylibs/foo.dylib.
+  # Homebrew's fix_dynamic_linkage expands those to long Cellar/opt paths that
+  # do not fit the Mach-O header. Preserve @rpath IDs; rewrite /DLC/ below.
   preserve_rpath
 
 ${p.resourcesBlock}  def install
@@ -37,6 +38,7 @@ ${p.resourcesBlock}  def install
     end
     resources.each { |r| pip_install_dist(venv, r) }
     pip_install_main(venv)
+    rewrite_delocate_dylib_ids
   end
 
   def pip_install_dist(venv, dist)
@@ -65,6 +67,36 @@ ${p.resourcesBlock}  def install
       venv.pip_install_and_link whl
     else
       venv.pip_install_and_link buildpath
+    end
+  end
+
+  # delocate (and auditwheel-style macOS bundlers) stamp dylib IDs with a short
+  # absolute prefix /DLC/pkg/.dylibs/libfoo.dylib so load commands fit. After
+  # pip install, Homebrew tries to rewrite those IDs to
+  # $HOMEBREW_PREFIX/opt/<formula>/libexec/.../libfoo.dylib which overflows the
+  # Mach-O header ("Failed changing dylib ID"). Convert /DLC/ IDs to
+  # @rpath/<basename> so preserve_rpath keeps them and linkage still resolves
+  # via the wheel's existing @loader_path references.
+  def rewrite_delocate_dylib_ids
+    return unless OS.mac?
+
+    Dir.glob("#{libexec}/**/*.dylib").each do |dylib|
+      next unless File.file?(dylib)
+
+      # otool -D prints: path\\ninstall_name
+      lines = Utils.popen_read("otool", "-D", dylib).lines.map(&:strip).reject(&:empty?)
+      id = lines[1]
+      next if id.nil? || id.empty?
+      next unless id.start_with?("/DLC/")
+
+      new_id = "@rpath/#{File.basename(id)}"
+      next if new_id == id
+
+      system "install_name_tool", "-id", new_id, dylib
+      # install_name_tool invalidates the code signature; ad-hoc re-sign so
+      # dyld accepts the binary on Apple Silicon (Homebrew only re-signs when
+      # its own fix_dynamic_linkage mutates the file).
+      system "codesign", "--force", "--sign", "-", dylib
     end
   end
 
