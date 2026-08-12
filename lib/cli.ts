@@ -1283,6 +1283,49 @@ async function handleGithubRepo(classification, opts) {
               opts,
             );
           }
+          // Makefile often wraps `swift build` (e.g. SwiftPlantUML). Prefer
+          // Package.swift with .executable products over bare make install.
+          const packageSwiftForBuild = await getFileContent(
+            owner,
+            repo,
+            "Package.swift",
+          );
+          if (packageSwiftForBuild) {
+            const { parseSpmExecutableProducts } = await import(
+              "./generators/spm-package.ts"
+            );
+            const spmBins = parseSpmExecutableProducts(packageSwiftForBuild);
+            if (spmBins.length > 0) {
+              const rootFilesForBuild = await getRepoContents(owner, repo);
+              const rootNamesForBuild = rootFilesForBuild.map((f) => f.name);
+              await assertSpmPackageInstallable(
+                packageSwiftForBuild,
+                rootNamesForBuild,
+                repoInfo,
+                opts,
+              );
+              const spmOpts = await resolveSpmBinOptions(
+                packageSwiftForBuild,
+                repoInfo,
+                opts,
+              );
+              console.log(
+                chalk.dim(
+                  `  Preferring spm over README build (${method.system || "make"}): Package.swift has executable product(s) (${spmBins.join(", ")})`,
+                ),
+              );
+              return await generateWithConfirmation(
+                "spm-package",
+                {
+                  repoInfo,
+                  release,
+                  serviceConfig: serviceConfigFromReadme,
+                  packageSwiftText: packageSwiftForBuild,
+                },
+                { ...opts, ...spmOpts },
+              );
+            }
+          }
           return await generateWithConfirmation(
             "source-build",
             {

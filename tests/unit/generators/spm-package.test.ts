@@ -215,6 +215,68 @@ let package = Package(
   });
 });
 
+describe("collectSpmPackagePayload — SwiftPlantUML (Makefile + Package.swift CLI)", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
+  // README advertises `make install` and `brew install swiftplantuml`; the
+  // Makefile wraps `swift build`. allbrew must prefer spm-package when
+  // Package.swift declares an executable (see cli.ts README build preference).
+  const repoInfo = {
+    name: "SwiftPlantUML",
+    fullName: "MarcoEidinger/SwiftPlantUML",
+    description:
+      "A command-line tool and Swift Package for generating class diagrams powered by PlantUML",
+    homepage: "https://marcoeidinger.github.io/SwiftPlantUML/",
+    htmlUrl: "https://github.com/MarcoEidinger/SwiftPlantUML",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const release = { tagName: "0.8.1" };
+  const packageSwift = `
+// swift-tools-version:5.3
+import PackageDescription
+
+let package = Package(
+    name: "SwiftPlantUML",
+    platforms: [.macOS(.v10_11)],
+    products: [
+        .library(
+            name: "SwiftPlantUMLFramework",
+            targets: ["SwiftPlantUMLFramework"]
+        ),
+        .executable(name: "swiftplantuml", targets: ["swiftplantuml"]),
+    ],
+    targets: [
+        .target(name: "swiftplantuml", dependencies: ["SwiftPlantUMLFramework"]),
+        .target(name: "SwiftPlantUMLFramework", dependencies: []),
+    ]
+)
+`;
+
+  it("parses swiftplantuml executable (not library-only)", () => {
+    const bins = parseSpmExecutableProducts(packageSwift);
+    expect(bins).toEqual(["swiftplantuml"]);
+    expect(isLibraryOnlyPackageSwift(packageSwift)).toBe(false);
+  });
+
+  it("generates spm payload with bin .build/release/swiftplantuml", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release, {
+      packageSwiftText: packageSwift,
+      name: "swiftplantuml",
+    });
+    expect(payload.template).toBe("spm_package");
+    expect(payload.name).toBe("swiftplantuml");
+    expect(payload.testBinName).toBe("swiftplantuml");
+    expect(payload.binInstallPaths).toContain(
+      ".build/release/swiftplantuml",
+    );
+    expect(payload.serviceBlock).toBe("");
+  });
+});
+
 describe("collectSpmPackagePayload — utiluti", () => {
   beforeEach(() => {
     mock.restore();
