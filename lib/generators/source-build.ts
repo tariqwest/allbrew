@@ -122,9 +122,11 @@ function getInstallBlock(system: string) {
     case "go":
       return `    system "go", "build", *std_go_args(ldflags: "-s -w")\n`;
     case "python":
+      // Install package + runtime deps from PyPI. source-build has no resource
+      // graph (unlike pip-package), so --no-deps would leave CLIs import-broken.
       return (
         `    venv = virtualenv_create(libexec, "python3.13")\n` +
-        `    system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."\n` +
+        `    system libexec/"bin/pip", "install", "-v", "--ignore-installed", "."\n` +
         `    bin.install_symlink Dir["#{libexec}/bin/*"]\n`
       );
     default:

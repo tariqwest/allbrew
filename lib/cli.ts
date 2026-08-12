@@ -1195,16 +1195,76 @@ async function handleGithubRepo(classification, opts) {
             },
             opts,
           );
-        case "pip":
-          return await generateWithConfirmation(
-            "pip-package",
-            {
-              packageName: opts.package || method.package,
-              repoInfo,
-              serviceConfig: serviceConfigFromReadme,
-            },
-            opts,
-          );
+        case "pip": {
+          try {
+            return await generateWithConfirmation(
+              "pip-package",
+              {
+                packageName: opts.package || method.package,
+                repoInfo,
+                serviceConfig: serviceConfigFromReadme,
+              },
+              opts,
+            );
+          } catch (e) {
+            if (
+              !/PyPI lookup failed.*404/.test(
+                String((e as Error)?.message || String(e)),
+              )
+            )
+              throw e;
+            console.log(
+              chalk.dim(
+                "  PyPI lookup failed (404), falling back to source-build (python)",
+              ),
+            );
+            let binName: string | undefined = opts.binName;
+            let fallbackRelease = release;
+            try {
+              const pyproject = await getFileContent(
+                owner,
+                repo,
+                "pyproject.toml",
+              );
+              if (pyproject) {
+                if (!binName) {
+                  const m = pyproject.match(
+                    /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
+                  );
+                  if (m) binName = m[1].trim();
+                }
+                // Prefer versioned GitHub archive over HEAD-only so brew install
+                // does not use --HEAD (unstable; fails more often).
+                if (!fallbackRelease) {
+                  const ver =
+                    pyproject.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1] ||
+                    pyproject.match(
+                      /\[project\][\s\S]*?^version\s*=\s*["']([^"']+)["']/m,
+                    )?.[1];
+                  if (ver) {
+                    const branch = repoInfo.defaultBranch || "main";
+                    fallbackRelease = {
+                      tagName: ver,
+                      tarballUrl: `https://github.com/${repoInfo.fullName}/archive/refs/heads/${branch}.tar.gz`,
+                    };
+                  }
+                }
+              }
+            } catch {
+              /* best-effort metadata */
+            }
+            return await generateWithConfirmation(
+              "source-build",
+              {
+                repoInfo,
+                release: fallbackRelease,
+                buildSystem: { system: "python" },
+                serviceConfig: serviceConfigFromReadme,
+              },
+              { ...opts, binName },
+            );
+          }
+        }
         case "cargo":
           return await generateWithConfirmation(
             "cargo-package",
@@ -1438,16 +1498,70 @@ async function handleGithubRepo(classification, opts) {
           opts,
         );
       }
-      case "pip":
-        return await generateWithConfirmation(
-          "pip-package",
-          {
-            packageName: opts.package || repoInfo.name,
-            repoInfo,
-            serviceConfig,
-          },
-          opts,
-        );
+      case "pip": {
+        try {
+          return await generateWithConfirmation(
+            "pip-package",
+            {
+              packageName: opts.package || repoInfo.name,
+              repoInfo,
+              serviceConfig,
+            },
+            opts,
+          );
+        } catch (e) {
+          if (
+            !/PyPI lookup failed.*404/.test(
+              String((e as Error)?.message || String(e)),
+            )
+          )
+            throw e;
+          console.log(
+            chalk.dim(
+              "  PyPI lookup failed (404), falling back to source-build (python)",
+            ),
+          );
+          let binName: string | undefined = opts.binName;
+          let fallbackRelease = release;
+          try {
+            const pyproject = await getFileContent(owner, repo, "pyproject.toml");
+            if (pyproject) {
+              if (!binName) {
+                const m = pyproject.match(
+                  /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
+                );
+                if (m) binName = m[1].trim();
+              }
+              if (!fallbackRelease) {
+                const ver =
+                  pyproject.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1] ||
+                  pyproject.match(
+                    /\[project\][\s\S]*?^version\s*=\s*["']([^"']+)["']/m,
+                  )?.[1];
+                if (ver) {
+                  const branch = repoInfo.defaultBranch || "main";
+                  fallbackRelease = {
+                    tagName: ver,
+                    tarballUrl: `https://github.com/${repoInfo.fullName}/archive/refs/heads/${branch}.tar.gz`,
+                  };
+                }
+              }
+            }
+          } catch {
+            /* best-effort metadata */
+          }
+          return await generateWithConfirmation(
+            "source-build",
+            {
+              repoInfo,
+              release: fallbackRelease,
+              buildSystem: { system: "python" },
+              serviceConfig,
+            },
+            { ...opts, binName },
+          );
+        }
+      }
       case "cargo": {
         const cargoToml = await getFileContent(owner, repo, "Cargo.toml");
         const resolved = await resolveCargoGithubInstall(

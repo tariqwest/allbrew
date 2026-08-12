@@ -380,6 +380,8 @@ export async function syncAllbrewSrcToVM(h, hostSrcPath, vmDest) {
     `BRANCH=${h.q(effectiveBranch)}`,
     `REMOTE=${h.q(remoteUrl)}`,
     `WANT_SHA=${h.q(wantSha)}`,
+    `git config --global --add safe.directory '*' 2>/dev/null || true`,
+    `git config --global --add safe.directory ${destQ} 2>/dev/null || true`,
     `echo "[sync-src] user=$(id -un) branch=$BRANCH remote=$REMOTE dest=$SRC want=$WANT_SHA"`,
     `mkdir -p "$(dirname "$SRC")"`,
     `if [ -d "$SRC/.git" ]; then`,
