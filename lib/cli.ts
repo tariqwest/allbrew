@@ -1173,16 +1173,41 @@ async function handleGithubRepo(classification, opts) {
             },
             opts,
           );
-        case "pip":
+        case "pip": {
+          const pipPkg = opts.package || method.package || repoInfo.name;
+          const identity = await resolvePipGithubOrFallback(
+            pipPkg,
+            owner,
+            repo,
+            repoInfo,
+          );
+          if (identity.use === "pip-package") {
+            return await generateWithConfirmation(
+              "pip-package",
+              {
+                packageName: identity.packageName,
+                repoInfo,
+                serviceConfig: serviceConfigFromReadme,
+              },
+              opts,
+            );
+          }
+          console.log(
+            chalk.dim(
+              `  PyPI identity mismatch for ${pipPkg}: ${identity.reason}; falling back to source-build (python)`,
+            ),
+          );
           return await generateWithConfirmation(
-            "pip-package",
+            "source-build",
             {
-              packageName: opts.package || method.package,
               repoInfo,
+              release,
+              buildSystem: { system: "python" },
               serviceConfig: serviceConfigFromReadme,
             },
             opts,
           );
+        }
         case "cargo":
           return await generateWithConfirmation(
             "cargo-package",
@@ -1416,16 +1441,41 @@ async function handleGithubRepo(classification, opts) {
           opts,
         );
       }
-      case "pip":
+      case "pip": {
+        const pipPkg = opts.package || repoInfo.name;
+        const identity = await resolvePipGithubOrFallback(
+          pipPkg,
+          owner,
+          repo,
+          repoInfo,
+        );
+        if (identity.use === "pip-package") {
+          return await generateWithConfirmation(
+            "pip-package",
+            {
+              packageName: identity.packageName,
+              repoInfo,
+              serviceConfig,
+            },
+            opts,
+          );
+        }
+        console.log(
+          chalk.dim(
+            `  PyPI identity mismatch for ${pipPkg}: ${identity.reason}; falling back to source-build (python)`,
+          ),
+        );
         return await generateWithConfirmation(
-          "pip-package",
+          "source-build",
           {
-            packageName: opts.package || repoInfo.name,
             repoInfo,
+            release,
+            buildSystem: { system: "python" },
             serviceConfig,
           },
           opts,
         );
+      }
       case "cargo": {
         const cargoToml = await getFileContent(owner, repo, "Cargo.toml");
         const resolved = await resolveCargoGithubInstall(
@@ -2211,6 +2261,40 @@ async function collectServiceOptions(params: any, opts: any, formulaName: any) {
       command,
       keepAlive,
     },
+  };
+}
+
+/**
+ * When a GitHub repo has pyproject.toml / README `pip install <name>`, verify the
+ * PyPI package of that name is the same project (project_urls / home_page point at
+ * this owner/repo). Name collisions (e.g. lfnovo/open-notebook vs NIST open-notebook
+ * on PyPI) must fall back to source-build from the GitHub tarball — never install
+ * the wrong registry package.
+ */
+async function resolvePipGithubOrFallback(
+  packageName: string,
+  owner: string,
+  repo: string,
+  _repoInfo: any,
+): Promise<
+  | { use: "pip-package"; packageName: string; reason: string }
+  | { use: "source-build"; packageName: string; reason: string }
+> {
+  const { resolvePypiGithubIdentity } = await import(
+    "./generators/pip-package.ts"
+  );
+  const identity = await resolvePypiGithubIdentity(packageName, owner, repo);
+  if (identity.matches) {
+    return {
+      use: "pip-package",
+      packageName: identity.packageName || packageName,
+      reason: identity.reason,
+    };
+  }
+  return {
+    use: "source-build",
+    packageName,
+    reason: identity.reason,
   };
 }
 

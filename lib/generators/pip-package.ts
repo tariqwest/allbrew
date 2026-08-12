@@ -64,12 +64,131 @@ type PypiPackageJson = {
     summary?: string;
     home_page?: string | null;
     project_url?: string | null;
+    project_urls?: Record<string, string | null> | null;
     license?: string | null;
     requires_dist?: string[] | null;
   };
   urls?: PypiUrl[];
   releases?: Record<string, PypiUrl[]>;
 };
+
+export type PypiGithubIdentityResult = {
+  matches: boolean;
+  packageName: string;
+  reason: string;
+  /** Present when PyPI returned 200; null when missing or lookup failed. */
+  pypiData: PypiPackageJson | null;
+};
+
+/**
+ * Collect candidate URLs from a PyPI info block (home_page, project_url, project_urls).
+ * Used to verify a GitHub-derived package name is not a registry name collision.
+ */
+export function collectPypiProjectUrls(info: {
+  home_page?: string | null;
+  project_url?: string | null;
+  project_urls?: Record<string, string | null> | null;
+} | null | undefined): string[] {
+  if (!info) return [];
+  const out: string[] = [];
+  for (const v of [info.home_page, info.project_url]) {
+    if (v && String(v).trim()) out.push(String(v).trim());
+  }
+  if (info.project_urls && typeof info.project_urls === "object") {
+    for (const v of Object.values(info.project_urls)) {
+      if (v && String(v).trim()) out.push(String(v).trim());
+    }
+  }
+  return out;
+}
+
+/**
+ * True when any PyPI project URL points at github.com/{owner}/{repo}
+ * (case-insensitive; strips trailing slash and .git).
+ *
+ * Prevents installing a different PyPI package that happens to share the
+ * repo slug (e.g. lfnovo/open-notebook vs usnistgov/open-notebook on PyPI).
+ */
+export function pypiInfoMatchesGithub(
+  info: {
+    home_page?: string | null;
+    project_url?: string | null;
+    project_urls?: Record<string, string | null> | null;
+  } | null | undefined,
+  owner: string,
+  repo: string,
+): boolean {
+  if (!owner || !repo) return false;
+  const ownerL = String(owner).toLowerCase();
+  const repoL = String(repo).toLowerCase().replace(/\.git$/, "");
+  // Match github.com/owner/repo with optional .git / trailing slash / path suffix
+  const re = new RegExp(
+    `(?:^|//|\\.)github\\.com[/:]${escapeRegExp(ownerL)}/${escapeRegExp(repoL)}(?:\\.git)?(?:/|$|[#?])`,
+    "i",
+  );
+  for (const raw of collectPypiProjectUrls(info)) {
+    const normalized = raw.replace(/\.git$/i, "").replace(/\/+$/, "");
+    if (re.test(normalized) || re.test(raw)) return true;
+  }
+  return false;
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Look up packageName on PyPI and check whether it is the same project as
+ * github.com/owner/repo. On 404 / network error, matches=false (caller should
+ * fall back to source-build from the GitHub tarball rather than guess).
+ */
+export async function resolvePypiGithubIdentity(
+  packageName: string,
+  owner: string,
+  repo: string,
+): Promise<PypiGithubIdentityResult> {
+  const name = String(packageName || "").trim();
+  if (!name) {
+    return {
+      matches: false,
+      packageName: name,
+      reason: "empty package name",
+      pypiData: null,
+    };
+  }
+  try {
+    const pypiData = await fetchPypiData(name);
+    const matches = pypiInfoMatchesGithub(pypiData.info, owner, repo);
+    if (matches) {
+      return {
+        matches: true,
+        packageName: name,
+        reason: "pypi project urls match github.com/" + owner + "/" + repo,
+        pypiData,
+      };
+    }
+    const urls = collectPypiProjectUrls(pypiData.info);
+    return {
+      matches: false,
+      packageName: name,
+      reason:
+        urls.length > 0
+          ? `pypi package exists but project urls do not match github.com/${owner}/${repo} (got: ${urls.slice(0, 4).join(", ")})`
+          : `pypi package exists but has no github project urls for ${owner}/${repo}`,
+      pypiData,
+    };
+  } catch (err: any) {
+    const msg = String(err?.message || err || "lookup failed");
+    return {
+      matches: false,
+      packageName: name,
+      reason: /404/.test(msg)
+        ? `not published on PyPI (${msg})`
+        : `pypi lookup failed: ${msg}`,
+      pypiData: null,
+    };
+  }
+}
 
 type SelectedDist = {
   url: string;
