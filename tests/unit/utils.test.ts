@@ -10,6 +10,7 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  releaseHasMacosArmBinaryAssets,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
@@ -429,6 +430,46 @@ describe("matchAssetToArch", () => {
   });
 });
 
+describe("releaseHasMacosArmBinaryAssets", () => {
+  it("returns true for oatmeal-style darwin_arm64 release assets", () => {
+    expect(
+      releaseHasMacosArmBinaryAssets({
+        assets: [
+          { name: "oatmeal_0.13.0_darwin_arm64.tar.gz" },
+          { name: "oatmeal_0.13.0_darwin_amd64.tar.gz" },
+          { name: "oatmeal_0.13.0_linux_amd64.tar.gz" },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true for macos universal assets", () => {
+    expect(
+      releaseHasMacosArmBinaryAssets({
+        assets: [{ name: "tool_Darwin_all.tar.gz" }],
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false for intel-only macOS assets", () => {
+    expect(
+      releaseHasMacosArmBinaryAssets({
+        assets: [{ name: "tool_0.1.0_darwin_amd64.tar.gz" }],
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false for linux-only or empty releases", () => {
+    expect(
+      releaseHasMacosArmBinaryAssets({
+        assets: [{ name: "tool_0.1.0_linux_arm64.tar.gz" }],
+      }),
+    ).toBe(false);
+    expect(releaseHasMacosArmBinaryAssets({ assets: [] })).toBe(false);
+    expect(releaseHasMacosArmBinaryAssets(null)).toBe(false);
+  });
+});
+
 describe("isAppAsset", () => {
   it("matches .dmg files", () => {
     expect(isAppAsset("Foo.dmg")).toBe(true);
@@ -448,6 +489,10 @@ describe("isAppAsset", () => {
     // CLI multi-platform zips with cpu arch but no mac token
     expect(isAppAsset("television-aarch64.zip")).toBe(false);
     expect(isAppAsset("toolong_x86_64.zip")).toBe(false);
+    // go2tv-style desktop app zips reuse CLI naming; content peek (cli.ts)
+    // reclassifies them — filename alone stays non-app.
+    expect(isAppAsset("go2tv_v2.5.0_macOS_arm64.zip")).toBe(false);
+    expect(isAppAsset("go2tv_v2.5.0_macOS_amd64.zip")).toBe(false);
   });
 
   it("rejects non-mac .zip files", () => {

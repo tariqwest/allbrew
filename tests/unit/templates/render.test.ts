@@ -102,6 +102,35 @@ describe("renderFormula", () => {
     expect(ruby).toContain('assert_match version.to_s, shell_output("#{bin}/foo --version")');
   });
 
+  it("renders pip_package with pythonFormula and extraDependsBlock", () => {
+    const payload: FormulaPayload = {
+      template: "pip_package",
+      name: "pyqt-openai",
+      className: "PyqtOpenai",
+      desc: "GUI chatbot",
+      homepage: "https://pypi.org/project/pyqt-openai/",
+      url: "https://example.com/pyqt_openai.whl",
+      sha256: "aa",
+      licenseLine: '  license "MIT"\n',
+      livecheckBlock: "",
+      resourcesBlock: "",
+      allbrewDependency: "",
+      testBinName: "pyqt-openai",
+      testDoBody:
+        `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import pyqt_openai; print(pyqt_openai.__version__)'")`,
+      serviceBlock: "",
+      pythonFormula: "3.12",
+      pythonBin: "python3.12",
+      extraDependsBlock: '  depends_on "portaudio"\n',
+    };
+    const ruby = renderFormula(payload);
+    expect(ruby).toContain('depends_on "python@3.12"');
+    expect(ruby).toContain('depends_on "portaudio"');
+    expect(ruby).toContain('virtualenv_create(libexec, "python3.12")');
+    expect(ruby).not.toContain('depends_on "python@3.13"');
+    expect(ruby).toContain("import pyqt_openai");
+  });
+
   it("renders cargo_package template", () => {
     const livecheck =
       `  livecheck do\n` +

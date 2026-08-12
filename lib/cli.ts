@@ -25,7 +25,12 @@ import {
   detectServiceConfig,
   detectServiceConfigFromFiles,
 } from "./analyzer.ts";
-import { inspectArchive } from "./archive-inspector.ts";
+import {
+  inspectArchive,
+  findAppBundleNameInMembers,
+  listZipEntries,
+  listArchiveEntries,
+} from "./archive-inspector.ts";
 import {
   matchAssetToArch,
   isAppAsset,
@@ -36,6 +41,7 @@ import {
   toFormulaName,
   toCaskToken,
 } from "./utils.ts";
+import { downloadToTemp } from "./sha256.ts";
 import { buildManifest } from "./build-manifest.ts";
 import { saveManifest } from "./manifest.ts";
 import type { GeneratorName } from "./manifest.ts";
@@ -1010,6 +1016,68 @@ async function handleGithubRepo(classification, opts) {
     }
 
     if (binAssets.length > 0) {
+      // Filename heuristics treat arch-tagged darwin/macos zips as CLI binaries
+      // (gogs_*_darwin_amd64.zip). Some desktop apps reuse that naming while
+      // shipping a real .app (go2tv_v*_macOS_arm64.zip). Peek one macOS zip
+      // before committing to binary-release.
+      const macZipBins = binAssets.filter((a) => {
+        const lower = String(a.name || "").toLowerCase();
+        if (!lower.endsWith(".zip") && !lower.endsWith(".tar.gz") && !lower.endsWith(".tgz")) {
+          return false;
+        }
+        const arch = matchAssetToArch(a.name);
+        return (
+          arch === "macosArm" ||
+          arch === "macosIntel" ||
+          arch === "macosUniversal"
+        );
+      });
+      if (appAssets.length === 0 && macZipBins.length > 0) {
+        const peekAsset =
+          macZipBins.find((a) => matchAssetToArch(a.name) === "macosArm") ||
+          macZipBins.find((a) => matchAssetToArch(a.name) === "macosUniversal") ||
+          macZipBins[0];
+        try {
+          const dl = await downloadToTemp(peekAsset.url, peekAsset.name);
+          try {
+            const lower = String(peekAsset.name || "").toLowerCase();
+            const members = lower.endsWith(".zip")
+              ? await listZipEntries(dl.path)
+              : await listArchiveEntries(dl.path);
+            const appName = findAppBundleNameInMembers(members);
+            if (appName) {
+              console.log(
+                `  Detected ${chalk.cyan("macOS app")} inside ${chalk.bold(peekAsset.name)}: ${appName}`,
+              );
+              console.log(
+                chalk.dim(
+                  `  (filename looked like a CLI zip; content peek found .app — generating cask)`,
+                ),
+              );
+              return await generateWithConfirmation(
+                "cask-app-release",
+                { repoInfo, release },
+                {
+                  ...opts,
+                  appName,
+                  extraAppAssetNames: macZipBins.map((a) => a.name),
+                },
+              );
+            }
+          } finally {
+            await dl.cleanup();
+          }
+        } catch (err: any) {
+          if (opts.verbose) {
+            console.log(
+              chalk.dim(
+                `  macOS zip content peek failed: ${err?.message || err}; continuing as binary-release`,
+              ),
+            );
+          }
+        }
+      }
+
       console.log(
         `  Detected ${chalk.cyan("binary")} assets: ${binAssets.map((a) => a.name).join(", ")}`,
       );
@@ -1685,6 +1753,70 @@ async function handleCargoPackage(classification, opts) {
       "crates.io crate name required (use --package or a crates.io URL)",
     );
   }
+
+  // Prefer prebuilt GitHub release binaries when the crate advertises a GitHub
+  // repository with macOS arm/universal assets. Source builds from crates.io
+  // often fail on modern Homebrew rust (old Cargo.lock / rust-toolchain pins
+  // e.g. time 0.3.30 + rustc 1.97) while authors ship GoReleaser binaries
+  // (oatmeal: brew install dustinblackman/tap/oatmeal).
+  // Skip when the user forced --type cargo-package.
+  const forcedCargo =
+    opts.type === "cargo-package" || opts.forceCargoPackage === true;
+  if (!forcedCargo) {
+    try {
+      const { releaseHasMacosArmBinaryAssets } = await import("./utils.ts");
+      const { fetchCratesIoCrate, repoInfoFromCratesMeta, githubFullNameFromRepoUrl } =
+        await import("./generators/cargo-package.ts");
+      const cratesMeta = await fetchCratesIoCrate(crateName);
+      const fullName = githubFullNameFromRepoUrl(cratesMeta.repository);
+      if (fullName) {
+        const [owner, repo] = fullName.split("/");
+        const spinner = ora(
+          `Checking GitHub releases for prebuilt macOS binaries (${fullName})...`,
+        ).start();
+        let release: any = null;
+        try {
+          release = await getLatestRelease(owner, repo);
+        } catch {
+          release = null;
+        }
+        if (release && releaseHasMacosArmBinaryAssets(release)) {
+          spinner.succeed(
+            `Using prebuilt binaries from ${chalk.bold(release.tagName)} instead of crates.io source build`,
+          );
+          const repoInfo = repoInfoFromCratesMeta(cratesMeta);
+          return await generateWithConfirmation(
+            "binary-release",
+            { repoInfo, release },
+            {
+              ...opts,
+              // Keep crates.io origin in opts for manifest/notes; force type
+              // so generate path does not re-route.
+              type: "binary-release",
+              crateName,
+              fromCratesIo: true,
+              cratesMeta,
+            },
+          );
+        }
+        spinner.info(
+          release
+            ? `No macOS arm/universal binary assets on ${release.tagName}; building from crates.io`
+            : `No GitHub release found for ${fullName}; building from crates.io`,
+        );
+      }
+    } catch (err) {
+      // Soft-fail: keep crates.io cargo-package path.
+      if (opts.verbose) {
+        console.log(
+          chalk.dim(
+            `  crates.io→binary probe skipped: ${err?.message || err}`,
+          ),
+        );
+      }
+    }
+  }
+
   return await generateWithConfirmation(
     "cargo-package",
     { repoInfo: null, release: null, crateName },
@@ -1838,6 +1970,9 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       // class name and bottle block stay aligned with the file name.
       userOpts.name = preferred;
     } else {
+      // Prefer owner-repo alts over bare repo names (gotify/cli → gotify-cli, not "cli").
+      const owner = params.repoInfo?.fullName?.split?.("/")?.[0];
+      const repoName = params.repoInfo?.name;
       const altSources = [
         params.packageName,
         params.crateName,
@@ -1846,7 +1981,13 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
         opts.package,
         opts.crateName,
         opts.binName,
-        params.repoInfo?.name,
+        owner && repoName ? `${owner}-${repoName}` : null,
+        owner && repoName ? `${repoName}-${owner}` : null,
+        owner ? `${preferred}-${owner}` : null,
+        params.repoInfo?.fullName
+          ? String(params.repoInfo.fullName).replace("/", "-")
+          : null,
+        repoName,
       ];
       const resolved = resolveNonCollidingFormulaName(preferred, altSources);
       if (resolved.renamedFrom && resolved.name !== preferred) {
@@ -2146,11 +2287,31 @@ async function brewAutoInstall(result: any, opts: any) {
   }
 
   // Step 2: brew install
+  // HOMEBREW_NO_REQUIRE_TAP_TRUST: generated packages live in the user's private
+  // tap. Homebrew 6+ refuses to load formulae/casks from untrusted third-party
+  // taps unless the tap is explicitly trusted or this env is set. Matches
+  // update-formulas livecheck + e2e-tap helpers.
   const installEnv = {
     ...process.env,
     HOMEBREW_DEVELOPER: "1",
     HOMEBREW_NO_AUTO_UPDATE: "1",
+    HOMEBREW_NO_REQUIRE_TAP_TRUST: "1",
   };
+  // Best-effort trust of this formula/cask so subsequent brew ops (services,
+  // reinstall) also work without the env override when the path is inside a tap.
+  try {
+    const trustFlag = isCask ? "--cask" : "--formula";
+    await execFileAsync("brew", ["trust", trustFlag, result.filePath], {
+      env: installEnv,
+    }).catch(() => {});
+    if (result.name) {
+      await execFileAsync("brew", ["trust", trustFlag, result.name], {
+        env: installEnv,
+      }).catch(() => {});
+    }
+  } catch {
+    // ignore — env override above is the guaranteed path
+  }
   const installSpinner = ora(`Running ${installLabel}...`).start();
   try {
     await execFileAsync(

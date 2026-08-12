@@ -9,6 +9,8 @@ import {
   compareVersions,
   normalizePackageName,
   KNOWN_BIN_NAMES,
+  selectPipFormulaPython,
+  RESOURCE_SYSTEM_DEPS,
 } from "../../../lib/generators/pip-package.ts";
 import marimoFixture from "../../fixtures/pypi/marimo.json";
 import clickFixture from "../../fixtures/pypi/click.json";
@@ -967,6 +969,107 @@ describe("collectPipPackagePayload — dependency extras expansion", () => {
     expect(payload.resourcesBlock).toContain('resource "platformdirs"');
     // unrelated optional extra stays off
     expect(payload.resourcesBlock).not.toContain('resource "anthropic"');
+  });
+});
+
+describe("selectPipFormulaPython", () => {
+  it("picks newest Homebrew Python satisfying requires_python", () => {
+    expect(selectPipFormulaPython("<3.13,>=3.10")).toEqual({
+      major: 3,
+      minor: 12,
+    });
+    expect(selectPipFormulaPython(">=3.10")).toEqual({ major: 3, minor: 13 });
+    expect(selectPipFormulaPython(null)).toEqual({ major: 3, minor: 13 });
+    expect(selectPipFormulaPython("")).toEqual({ major: 3, minor: 13 });
+  });
+});
+
+describe("pyqt-openai pip formula knobs", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
+  it("uses python@3.12, portaudio, and import-based version test", async () => {
+    const root = {
+      info: {
+        name: "pyqt-openai",
+        version: "1.8.3",
+        summary: "VividNode chatbot",
+        requires_python: "<3.13,>=3.10",
+        requires_dist: ["PySide6", "pyaudio"],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          filename: "pyqt_openai-1.8.3-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/pyqt_openai-1.8.3-py3-none-any.whl",
+          digests: { sha256: "aa".repeat(32) },
+        },
+      ],
+    };
+    const pyside = {
+      info: {
+        name: "PySide6",
+        version: "6.11.1",
+        summary: "Qt",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          filename:
+            "pyside6-6.11.1-cp310-abi3-macosx_13_0_universal2.whl",
+          url: "https://files.pythonhosted.org/packages/pyside6-6.11.1-cp310-abi3-macosx_13_0_universal2.whl",
+          digests: { sha256: "bb".repeat(32) },
+        },
+      ],
+    };
+    const pyaudio = {
+      info: {
+        name: "pyaudio",
+        version: "0.2.14",
+        summary: "PortAudio bindings",
+        requires_dist: [],
+      },
+      urls: [
+        {
+          packagetype: "sdist",
+          filename: "PyAudio-0.2.14.tar.gz",
+          url: "https://files.pythonhosted.org/packages/PyAudio-0.2.14.tar.gz",
+          digests: { sha256: "cc".repeat(32) },
+        },
+      ],
+    };
+
+    global.fetch = mock((url: string) => {
+      const u = String(url);
+      let body: unknown = {
+        info: {
+          name: "unknown",
+          version: "1.0.0",
+          summary: "Unknown",
+          requires_dist: [],
+        },
+        urls: [],
+      };
+      if (u.includes("/pyqt-openai/")) body = root;
+      else if (u.includes("/PySide6/") || u.includes("/pyside6/")) body = pyside;
+      else if (u.includes("/pyaudio/") || u.includes("/PyAudio/")) body = pyaudio;
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(body),
+      });
+    }) as any;
+
+    const payload = await collectPipPackagePayload("pyqt-openai");
+    expect(payload.pythonFormula).toBe("3.12");
+    expect(payload.pythonBin).toBe("python3.12");
+    expect(payload.extraDependsBlock).toContain('depends_on "portaudio"');
+    expect(payload.testDoBody).toContain("import pyqt_openai");
+    expect(payload.testDoBody).not.toContain("--version");
+    expect(payload.resourcesBlock).toContain('resource "pyaudio"');
+    expect(RESOURCE_SYSTEM_DEPS.pyaudio).toContain("portaudio");
+    expect(KNOWN_BIN_NAMES["pyqt-openai"]).toBe("pyqt-openai");
   });
 });
 

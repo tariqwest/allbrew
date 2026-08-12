@@ -1,28 +1,47 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import {
   collectBinaryReleasePayload,
   templateReleaseUrl,
   templateEntrypointPath,
   pickArchiveEntrypoint,
   buildBinaryReleaseInstallBody,
+  resolveBinaryReleaseBinName,
 } from "../../../lib/generators/binary-release.ts";
 import wakapiFixture from "../../fixtures/github/wakapi.json";
 
+const execFileAsync = promisify(execFile);
+
+/** Mutable download path so tests can inject a real zip for content inspection. */
+const downloadState = {
+  path: "/tmp/allbrew-mock-asset.bin",
+  dir: "/tmp",
+  sha256: "binary_sha256_mock_64chars_pad_abcdef0123456789abcdef01234567",
+};
+
 mock.module("../../../lib/sha256.ts", () => ({
-  hashUrl: mock().mockResolvedValue("binary_sha256_mock_64chars_pad_abcdef0123456789abcdef01234567"),
-  downloadAndHash: mock()
-    .mockResolvedValue({ sha256: "binary_sha256_mock_64chars_pad_abcdef0123456789abcdef01234567" }),
-  downloadToTemp: mock().mockResolvedValue({
+  hashUrl: mock().mockResolvedValue(
+    "binary_sha256_mock_64chars_pad_abcdef0123456789abcdef01234567",
+  ),
+  downloadAndHash: mock().mockResolvedValue({
     sha256: "binary_sha256_mock_64chars_pad_abcdef0123456789abcdef01234567",
-    path: "/tmp/allbrew-mock-asset.bin",
-    dir: "/tmp",
-    cleanup: mock().mockResolvedValue(undefined),
   }),
+  downloadToTemp: mock().mockImplementation(async () => ({
+    sha256: downloadState.sha256,
+    path: downloadState.path,
+    dir: downloadState.dir,
+    cleanup: mock().mockResolvedValue(undefined),
+  })),
 }));
 
 describe("collectBinaryReleasePayload", () => {
   beforeEach(() => {
-    mock.restore();
+    downloadState.path = "/tmp/allbrew-mock-asset.bin";
+    downloadState.dir = "/tmp";
   });
 
   const repoInfo = wakapiFixture.repo;
@@ -112,6 +131,46 @@ describe("collectBinaryReleasePayload", () => {
     ).rejects.toThrow(/No macOS binary assets/);
   });
 
+  it("refuses archives that contain a macOS .app bundle (go2tv-style)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "allbrew-binrel-app-"));
+    const zipPath = join(dir, "go2tv_v2.5.0_macOS_arm64.zip");
+    try {
+      await execFileAsync("python3", [
+        "-c",
+        `import zipfile; z=zipfile.ZipFile(${JSON.stringify(zipPath)},'w');
+z.writestr('go2tv.app/Contents/MacOS/go2tv', b'\\x7fELF');
+z.writestr('go2tv.app/Contents/Info.plist', b'plist');
+z.writestr('LICENSE', b'mit');
+z.close()`,
+      ]);
+      downloadState.path = zipPath;
+      downloadState.dir = dir;
+      const go2tvRelease = {
+        tagName: "v2.5.0",
+        assets: [
+          {
+            name: "go2tv_v2.5.0_macOS_arm64.zip",
+            url: "https://example.com/go2tv_v2.5.0_macOS_arm64.zip",
+          },
+        ],
+      };
+      await expect(
+        collectBinaryReleasePayload(
+          {
+            name: "go2tv",
+            fullName: "alexballas/go2tv",
+            description: "cast",
+            htmlUrl: "https://github.com/alexballas/go2tv",
+            license: "MIT",
+          },
+          go2tvRelease,
+        ),
+      ).rejects.toThrow(/cask-app-release|macOS app bundle/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("includes empty service block by default", async () => {
     const payload = await collectBinaryReleasePayload(repoInfo, release);
     expect(payload.serviceBlock).toBe("");
@@ -190,6 +249,43 @@ describe("collectBinaryReleasePayload", () => {
     });
     expect(payload.binName).toBe("chatctl");
     expect(payload.installBody).toContain('bin.install bin_path => "chatctl"');
+  });
+
+  it("maps product-cli bare assets to formula product bin (gotify-cli → gotify)", async () => {
+    const assets = [
+      "gotify-cli-darwin-arm64",
+      "gotify-cli-darwin-amd64",
+      "gotify-cli-linux-arm64",
+      "gotify-cli-linux-amd64",
+    ];
+    expect(resolveBinaryReleaseBinName("gotify", assets)).toBe("gotify");
+    expect(resolveBinaryReleaseBinName("gotify-tap", assets)).toBe("gotify");
+    expect(resolveBinaryReleaseBinName("gotify-cli", assets)).toBe("gotify-cli");
+    expect(
+      resolveBinaryReleaseBinName("unrelated-tool", assets),
+    ).toBe("gotify-cli");
+
+    const bareRelease = {
+      tagName: "v2.4.0",
+      assets: assets.map((name) => ({
+        name,
+        url: `https://example.com/${name}`,
+      })),
+    };
+    const bareRepo = {
+      name: "cli",
+      fullName: "gotify/cli",
+      description: "CLI for gotify/server",
+      homepage: "https://github.com/gotify/cli",
+      htmlUrl: "https://github.com/gotify/cli",
+      license: "MIT",
+      defaultBranch: "master",
+    };
+    const payload = await collectBinaryReleasePayload(bareRepo, bareRelease, {
+      name: "gotify",
+    });
+    expect(payload.binName).toBe("gotify");
+    expect(payload.installBody).toContain('bin.install bin_path => "gotify"');
   });
 
   it("templateReleaseUrl preserves bare version tags without injecting v", () => {

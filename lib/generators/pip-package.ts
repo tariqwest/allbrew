@@ -12,8 +12,49 @@ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { PipPackagePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
-/** Python version used by the pip formula template (`depends_on "python@3.13"`). */
+/** Default Python version for pip formulas (`depends_on "python@3.13"`). */
 export const PIP_FORMULA_PYTHON = { major: 3, minor: 13 } as const;
+
+export type PipFormulaPython = { major: number; minor: number };
+
+/** Homebrew python@X.Y candidates, newest first. */
+export const PIP_FORMULA_PYTHON_CANDIDATES: readonly PipFormulaPython[] = [
+  { major: 3, minor: 13 },
+  { major: 3, minor: 12 },
+  { major: 3, minor: 11 },
+  { major: 3, minor: 10 },
+] as const;
+
+/**
+ * Active formula Python for the current collectPipPackagePayload pass.
+ * Used by wheel scoring / marker evaluation so requires_python <3.13 packages
+ * (e.g. pyqt-openai) do not select cp313-only wheels while depending on 3.12.
+ */
+let activePipFormulaPython: PipFormulaPython = { ...PIP_FORMULA_PYTHON };
+
+export function getActivePipFormulaPython(): PipFormulaPython {
+  return activePipFormulaPython;
+}
+
+/**
+ * Pick the newest Homebrew Python that satisfies PyPI requires_python.
+ * e.g. "<3.13,>=3.10" → 3.12 (not 3.13).
+ */
+export function selectPipFormulaPython(
+  requiresPython: string | null | undefined,
+): PipFormulaPython {
+  const raw = String(requiresPython || "").trim();
+  if (!raw) return { ...PIP_FORMULA_PYTHON };
+  const constraint = parseVersionConstraint(raw);
+  if (!constraint.clauses.length) return { ...PIP_FORMULA_PYTHON };
+  for (const cand of PIP_FORMULA_PYTHON_CANDIDATES) {
+    const ver = `${cand.major}.${cand.minor}`;
+    if (versionSatisfies(ver, constraint)) {
+      return { major: cand.major, minor: cand.minor };
+    }
+  }
+  return { ...PIP_FORMULA_PYTHON };
+}
 
 /**
  * Runtime deps that packages import but omit from requires_dist.
@@ -36,6 +77,14 @@ export const UNDECLARED_RUNTIME_DEPS: Record<string, string[]> = {
     "traceloop-sdk",
   ],
   mlflow: ["pyyaml", "click", "cloudpickle", "entrypoints", "gitpython", "sqlalchemy"],
+};
+
+/**
+ * Homebrew formula deps required when certain PyPI resources are present
+ * (native extension build deps).
+ */
+export const RESOURCE_SYSTEM_DEPS: Record<string, string[]> = {
+  pyaudio: ["portaudio"],
 };
 
 /** Console-script names that differ from the PyPI/distribution name. */
@@ -91,6 +140,7 @@ type PypiPackageJson = {
     project_url?: string | null;
     license?: string | null;
     requires_dist?: string[] | null;
+    requires_python?: string | null;
   };
   urls?: PypiUrl[];
   releases?: Record<string, PypiUrl[]>;
@@ -122,82 +172,110 @@ export async function collectPipPackagePayload(
   options: any = {},
 ): Promise<PipPackagePayload> {
   const pypiData = await fetchPypiData(packageName);
-  const dist = selectBestDistribution(pypiData.urls || [], {
-    preferWheel: options.preferWheel !== false,
-    version: pypiData.info.version,
-  });
+  const formulaPy = selectPipFormulaPython(pypiData.info.requires_python);
+  const prevPy = activePipFormulaPython;
+  activePipFormulaPython = formulaPy;
+  try {
+    const dist = selectBestDistribution(pypiData.urls || [], {
+      preferWheel: options.preferWheel !== false,
+      version: pypiData.info.version,
+    });
 
-  if (!dist)
-    throw new Error(
-      `No suitable wheel or source distribution found for ${packageName} on PyPI`,
+    if (!dist)
+      throw new Error(
+        `No suitable wheel or source distribution found for ${packageName} on PyPI`,
+      );
+
+    // Walk requires_dist from the same release we install (not always latest).
+    const rootVersion = dist.version || pypiData.info.version;
+    const pkgKey = normalizePackageName(packageName);
+    const rootExtras: string[] = Array.isArray(options.extras)
+      ? options.extras
+      : KNOWN_ROOT_EXTRAS[pkgKey] || [];
+    const deps = await resolveTransitiveDeps(
+      packageName,
+      new Map(),
+      5,
+      0,
+      rootVersion,
+      rootExtras,
+    );
+    const undeclared = await resolveUndeclaredDeps(packageName, deps);
+    const allDeps = dedupeResources([...deps, ...undeclared]);
+
+    const name = options.name || toFormulaName(packageName);
+    const className = toClassName(name);
+    const desc =
+      options.desc ||
+      pypiData.info.summary ||
+      repoInfo?.description ||
+      `Install ${packageName}`;
+    const homepage =
+      options.homepage ||
+      pypiData.info.home_page ||
+      pypiData.info.project_url ||
+      repoInfo?.homepage ||
+      `https://pypi.org/project/${packageName}/`;
+    const license = guessLicenseIdentifier(
+      pypiData.info.license || repoInfo?.license,
     );
 
-  // Walk requires_dist from the same release we install (not always latest).
-  const rootVersion = dist.version || pypiData.info.version;
-  const pkgKey = normalizePackageName(packageName);
-  const rootExtras: string[] = Array.isArray(options.extras)
-    ? options.extras
-    : KNOWN_ROOT_EXTRAS[pkgKey] || [];
-  const deps = await resolveTransitiveDeps(
-    packageName,
-    new Map(),
-    5,
-    0,
-    rootVersion,
-    rootExtras,
-  );
-  const undeclared = await resolveUndeclaredDeps(packageName, deps);
-  const allDeps = dedupeResources([...deps, ...undeclared]);
+    const testBinName =
+      options.binName || KNOWN_BIN_NAMES[pkgKey] || name;
 
-  const name = options.name || toFormulaName(packageName);
-  const className = toClassName(name);
-  const desc =
-    options.desc ||
-    pypiData.info.summary ||
-    repoInfo?.description ||
-    `Install ${packageName}`;
-  const homepage =
-    options.homepage ||
-    pypiData.info.home_page ||
-    pypiData.info.project_url ||
-    repoInfo?.homepage ||
-    `https://pypi.org/project/${packageName}/`;
-  const license = guessLicenseIdentifier(
-    pypiData.info.license || repoInfo?.license,
-  );
+    const importMod =
+      options.importVersionModule ||
+      KNOWN_PYTHON_IMPORT_VERSION_TEST[pkgKey] ||
+      null;
+    const testDoBody = importMod
+      ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import ${importMod}; print(${importMod}.__version__)'")`
+      : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`;
 
-  const testBinName =
-    options.binName || KNOWN_BIN_NAMES[pkgKey] || name;
+    const pythonFormula = `${formulaPy.major}.${formulaPy.minor}`;
+    const pythonBin = `python${pythonFormula}`;
+    const systemDeps = collectSystemDepsForResources(allDeps);
+    const extraDependsBlock = systemDeps
+      .map((d) => `  depends_on ${rubyString(d)}\n`)
+      .join("");
 
-  const importMod =
-    options.importVersionModule ||
-    KNOWN_PYTHON_IMPORT_VERSION_TEST[pkgKey] ||
-    null;
-  const testDoBody = importMod
-    ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import ${importMod}; print(${importMod}.__version__)'")`
-    : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`;
+    return {
+      template: "pip_package",
+      name,
+      className,
+      desc: rubyEscape(desc),
+      homepage: rubyEscape(homepage),
+      url: rubyEscape(dist.url),
+      sha256: rubyEscape(dist.sha256),
+      licenseLine: license ? `  license ${rubyString(license)}\n` : "",
+      livecheckBlock: pypiLivecheckBlock(packageName),
+      resourcesBlock: buildResourcesBlock(allDeps),
+      allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
+      testBinName: rubyEscape(testBinName),
+      testDoBody,
+      pythonFormula,
+      pythonBin,
+      extraDependsBlock,
+      // Service argv should target the console-script bin, which may differ from
+      // the formula token when homebrew/core forces a rename (nanobot-ai → bin nanobot).
+      serviceBlock: buildServiceBlock(
+        serviceFromOptions(options, testBinName),
+        testBinName,
+      ),
+    };
+  } finally {
+    activePipFormulaPython = prevPy;
+  }
+}
 
-  return {
-    template: "pip_package",
-    name,
-    className,
-    desc: rubyEscape(desc),
-    homepage: rubyEscape(homepage),
-    url: rubyEscape(dist.url),
-    sha256: rubyEscape(dist.sha256),
-    licenseLine: license ? `  license ${rubyString(license)}\n` : "",
-    livecheckBlock: pypiLivecheckBlock(packageName),
-    resourcesBlock: buildResourcesBlock(allDeps),
-    allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    testBinName: rubyEscape(testBinName),
-    testDoBody,
-    // Service argv should target the console-script bin, which may differ from
-    // the formula token when homebrew/core forces a rename (nanobot-ai → bin nanobot).
-    serviceBlock: buildServiceBlock(
-      serviceFromOptions(options, testBinName),
-      testBinName,
-    ),
-  };
+function collectSystemDepsForResources(deps: ResolvedResource[]): string[] {
+  const out = new Set<string>();
+  for (const dep of deps) {
+    const key = normalizePackageName(dep.name);
+    for (const sys of RESOURCE_SYSTEM_DEPS[key] || []) {
+      out.add(sys);
+    }
+  }
+  return [...out].sort();
 }
 
 function buildResourcesBlock(deps: ResolvedResource[]) {
@@ -344,9 +422,9 @@ export function isRequirementApplicable(
       : process.platform === "win32"
         ? "Windows"
         : "Linux");
+  const py = getActivePipFormulaPython();
   const pythonVersion =
-    env.pythonVersion ??
-    `${PIP_FORMULA_PYTHON.major}.${PIP_FORMULA_PYTHON.minor}`;
+    env.pythonVersion ?? `${py.major}.${py.minor}`;
 
   let expr = marker;
   expr = expr.replace(/\bextra\b/g, JSON.stringify(env.extra ?? ""));
@@ -595,7 +673,7 @@ function parseWheelTags(filename: string): {
 
 function pythonTagCompatible(
   tag: string,
-  py = PIP_FORMULA_PYTHON,
+  py: PipFormulaPython = getActivePipFormulaPython(),
 ): { ok: boolean; pure: boolean; score: number } {
   const t = tag.toLowerCase();
   if (t === "py2.py3" || t === "py3" || /^py3(\.\d+)?$/.test(t)) {
@@ -613,7 +691,10 @@ function pythonTagCompatible(
   return { ok: false, pure: false, score: 0 };
 }
 
-function abiTagCompatible(tag: string, py = PIP_FORMULA_PYTHON): boolean {
+function abiTagCompatible(
+  tag: string,
+  py: PipFormulaPython = getActivePipFormulaPython(),
+): boolean {
   const t = tag.toLowerCase();
   if (t === "none") return true;
   if (t === "abi3") return true;
@@ -686,12 +767,13 @@ function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
   }
   const hasAbi3 = tags.abiTags.some((t) => t.toLowerCase() === "abi3");
   if (!bestPy.ok && hasAbi3) {
+    const py = getActivePipFormulaPython();
     for (const pt of tags.pythonTags) {
       const m = pt.toLowerCase().match(/^cp(\d)(\d+)$/);
       if (!m) continue;
       const major = Number(m[1]);
       const minor = Number(m[2]);
-      if (major === PIP_FORMULA_PYTHON.major && minor <= PIP_FORMULA_PYTHON.minor) {
+      if (major === py.major && minor <= py.minor) {
         bestPy = { ok: true, pure: false, score: 85 };
         break;
       }

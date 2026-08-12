@@ -1,96 +1,124 @@
-# Monitored-install-batch reconcile — 2026-08-10 (≈213 patches)
+# Monitored-install-batch reconcile — updated 2026-08-12
 
-> Integrate ~100–213 `fix-package/` patches from `tests/monitored-install-batch/` (35 on `main`, 178 archived) into `main` without losing new use-cases and without regressions.
+> Integrate `fix-package/` patches from monitored-install-batch into `main` without bulk-am, without host live-patch during waves, and without regressions.
 
-## Context (grounded)
+## Status (2026-08-12 evening)
 
-- **Current lean state:** `tests/monitored-install-batch/fix-packages/` 35 dirs (agent-deck..tusk), `archive/manifest.json` points to `~/.cache/allbrew/batch-artifacts/2026-08-10/batch-2026-08-10.tar.zst` (9.2M, sha256 `01af8e`, 213 fixPackages + 1501 runs + 1516 logs, gitSha `2fc0d66`). `state/fix-index.jsonl` 1903 entries, `state/index.jsonl` 1009 runs, `state/progress.json` `done 256/256`. `scripts/archive-batch-artifacts.mjs --verify --prune-move` keeps `main` lean; index stays tracked.
-- **Per fix-package shape:** `FIX.md` (failureClass `brew_fail|generate_fail|prompt_hang`, root-cause), `patches/*.patch` (worktree `git diff` vs `HEAD`, not committed to main), `manifest.json`/`validation.json` (`bun run check` + targeted `bun test`), `agent-judgment.json`/`classifier-rule.mjs` when deltas, plus `worktrees/<slug>-<ts>/` for local re-verify.
-- **Tooling:** `reconcile-fix-packages.mjs` (disposable `worktrees/`, never mutates working tree, promotes `fix/<slug>` branch, enqueues retry), `lib/patch-coordinator.mjs` (`discoverFixPackages`, `reconcileOne/Pending`), `batch-ops.mjs` (list/restore archived slice), `vm-install-one.mjs` (VM `th-allbrew` exclusive `/opt/homebrew` via `vm-pool.json`, `vm-guest-health.mjs`), `archive/manifest.json` as remote index.
-- **Current HEAD:** `7b3559f` (0.0.30) includes `binary-release` wrapper fix for `atomic-agent` (`4d6a06b`). Patches based on `2fc0d66` will drift — skill phase renumber (`ec3d6ad`) already accounted.
+| Milestone | State |
+|-----------|--------|
+| Bottle | **`0.0.31` released** (P0 category fixes + first residual wave) |
+| P0 category product | **Landed** (install-script, prerelease, core API, binary-release, gem, pip seeds, cargo unlock, npm service) |
+| Residual P0 patches | **Landed** in `390eb89` (starship `sh`, toolong `tl`, cargo reject-locked, verdaccio GH README, core third-party false positive) |
+| Wave 2 product patches (this execute) | **oatmeal** binary prefer, **go2tv** app-peek cask route, **gotify** product-cli bin, **elia** tap trust, **pyqt-openai** python@ requires_python + portaudio |
+| Cold smoke 0.0.31 | **6/6 green** (verdaccio after link residual retry) |
+| Full 213-archive bulk merge | **Not done** (superseded by selective high-value integration; archive remains in `~/.cache/allbrew/batch-artifacts/2026-08-10/`) |
 
-## Goals
+### Already on `main` (do not re-apply)
 
-- All distinct new scenarios (e.g., `agent-deck` install-script `--non-interactive`, `bear` `page-discover` `mt=12`) merged to `main` as minimal, typed patches.
-- No regression: `bun run check` (tsc --noEmit), `bun run test` (868 unit, mocked), `bun run test:templates` (13 fixtures byte-parity) green; selective `test:int:gate` and VM `brew install` retries.
+| Area | Evidence |
+|------|----------|
+| install-script FORCE/BIN_DIR/`sh`/`-y` | `390eb89`, templates |
+| cargo unlock | reject `--locked` |
+| pip undeclared + force-link bin | `d857e25`+ |
+| gem native + library mode | `5ee2778` |
+| binary-release entrypoint/docs refuse | `70488f6` |
+| GitHub prerelease fallback | `73a6189` |
+| core collision API + third-party reject | `19b1fc5`, `390eb89` |
+| npm service + GH README fallback | `bb1ae28`, `390eb89` |
+
+### This execute (applied cleanly via `git apply --3way`)
+
+| Slug | Patch | Product effect |
+|------|-------|----------------|
+| oatmeal | `oatmeal-20260812T191623Z.patch` | crates.io → GitHub macOS arm binary-release when available |
+| go2tv | `go2tv-20260812T191231Z.patch` | Peek macOS zip for `.app` → cask-app-release; refuse `.app` as binary-release |
+| gotify | `gotify-binname-product-cli-*.patch` | bare `*-cli` assets → product bin name |
+| elia | `elia-*-tap-trust.patch` | `HOMEBREW_NO_REQUIRE_TAP_TRUST` in auto-install path |
+| pyqt-openai | `pyqt-openai-20260812T184429Z.patch` | `selectPipFormulaPython` / `RESOURCE_SYSTEM_DEPS` (portaudio) / dynamic `python@X.Y` |
+
+### Deferred / do not bulk-merge
+
+| Class | Why |
+|-------|-----|
+| Permanent skips (ugm, electrum, tes3edit, dotnet-counters, nix, brew.sh cask URLs, marketing) | Catalog out-of-scope — see `failed-queue-remaining-2026-08-12.md` |
+| MAS Apple-ID apps (bear, …) | env_fail without `mas signin` — selection fixes only |
+| Overlapping stale patches vs already-landed hunks | `git apply --check` fails; treat as superseded |
+| Full 213-archive fan-out | Diminishing returns; selective product fixes + bottle release preferred |
+
+## Goals (unchanged)
+
+- Distinct new scenarios merged as minimal typed product changes
+- Gate: `bun run check`, targeted unit tests, `bun run test:templates`
+- Optional VM cold smoke after release
 
 ## Non-goals
 
-- No bulk `git am` on `main`; no `bun run release` during batch (harness `TH_BATCH_FIX_MODE=docs`).
-- No per-URL branches on `main` — option-A worktrees only.
+- No bulk `git am` of 213 patches onto `main`
+- No `bun run release` from batch children
+- No host `brew install` as success path
 
-## Strategy — staged reconcile
+## Strategy (current)
 
-### 1. Inventory + restore (read-only)
+### 1. Prefer product reimplementation / clean apply over worktree promote
 
 ```bash
-bun tests/monitored-install-batch/batch-ops.mjs --list-archived --tar ~/.cache/allbrew/batch-artifacts/2026-08-10/batch-2026-08-10.tar.zst | head
-tar -I zstd -tf ~/.cache/.../batch-*.tar.zst | grep fix-packages | wc -l  # 213
+# Inventory applyability
+for p in tests/monitored-install-batch/fix-packages/<slug>/patches/*.patch; do
+  git apply --check "$p" && echo CLEAN $p || echo FAIL $p
+done
+# Apply only CLEAN product patches (lib/ + tests/unit)
+git apply --3way path/to/clean.patch
+bun run check && bun run test:templates && bun test ./tests/unit/...
+```
+
+### 2. When conflicts: hand-port FIX.md root cause into main
+
+Read `FIX.md` + patch hunks; land minimal equivalent (as done for P0 residuals). Preserve tests from patch when possible.
+
+### 3. Archive hygiene
+
+```bash
 bun scripts/archive-batch-artifacts.mjs --dry-run
-# materialize slice on demand (keep main lean):
-tar -I zstd -xf ~/.cache/.../batch-*.tar.zst -C /tmp/restore fix-packages/<slug>/
-# or:
-bun tests/monitored-install-batch/batch-ops.mjs --restore --slug bear --dest /tmp/restore
+# after large waves:
+bun scripts/archive-batch-artifacts.mjs --verify --prune-move
 ```
 
-Bucket: `rg "^## Failure class" fix-packages/*/FIX.md | sort | uniq -c`; `rg --files patches | xargs rg -l "page-discover|binary-release|install-script|classifier|templates/formula"` → group by `lib/*.ts` touch-set. Dedup by `patch sha256` and `failureClass+file` → 213 → ~110–130 distinct logical fixes (e.g., duplicate `bear` MAS, overlapping `binary-release` wrapper).
-
-### 2. Conflict preflight (no mutation)
+### 4. Release after product land
 
 ```bash
-node tests/monitored-install-batch/reconcile-fix-packages.mjs --dry-run --limit 100 --json | jq '.[] | {slug, files, conflicts, validation}'
-git apply --check fix-packages/*/patches/*.patch   # hunk overlap
+# clean tree required
+GITHUB_TOKEN=… bun run release patch
+brew update && brew upgrade allbrew && allbrew --version
 ```
 
-Merge order: `template-payload/utils` → generators (`binary-release`, `npm`, `pip`, `go`, `cargo`, `cask`) → `analyzer/classifier/page-discover` (most cross-cutting) last. Note: `binary-release` wrapper already on `main` (`4d6a06b`) — mark overlapping picks superseded.
-
-### 3. Worktree per logical group (never on main working tree)
+### 5. Cold smoke sample (bottle only)
 
 ```bash
-node tests/monitored-install-batch/reconcile-fix-packages.mjs --path fix-packages/agent-deck --no-cleanup
-# inspect: cat worktrees/agent-deck-*/FIX.md; git -C worktrees/... log --oneline -2; cat validation.json
-
-# batch next group (10 at a time, baseline is current release):
-node tests/monitored-install-batch/reconcile-fix-packages.mjs --limit 10 --baseline 7b3559f --json > /tmp/reconcile-1.json
+# no --allbrew-src
+LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
+  --url <url> --name <slug> --log /tmp/<slug>.log
 ```
 
-Each promotion is `fix/<slug>-<shortsha>` with single commit. Same-file conflicts (5 patches touch `pickArchiveEntrypoint`) → squash into one topic branch `fix/binary-release-batch1` by `git apply --3way` sequentially in `worktrees/`, preserving each `FIX.md` as trailer. Requires `zstd` for archive.
+Suggested sample after next release: oatmeal, go2tv, pyqt-openai, gotify, elia (plus prior 6/6 set).
 
-Lock hygiene: prefer `TH_BATCH_CONCURRENCY=1 TH_BATCH_WORKERS=th-allbrew` until multi-prefix Homebrew works; `vm-guest-health.mjs` + `forceUnlockHomebrewPrefix` avoids mass `env_fail` (stale `/var/run/lume-homebrew.lock` with dead host PID).
+## Verification gates
 
-### 4. Verification (gating before merge to main)
+| Gate | When |
+|------|------|
+| `bun run check` | every land |
+| `bun run test:templates` | every land |
+| Targeted unit tests for touched generators | every land |
+| Full `bun test ./tests/unit` | before release |
+| VM cold smoke 1/generator group | after release |
 
-- **Fast gate (host, every group):** `bun run check` + `bun test tests/unit --test-name-pattern "<generator>"` + `bun run test:templates`. Already in `validateBeforePromote`; use `--skip-validation` only for `--dry-run`.
-- **Per-use-case gate (VM, selective 1 per generator group):** `vm-install-one.mjs --allbrew-src $WT --url <original URL> --name <slug>` → harness acquires exclusive `/opt/homebrew`, runs `agent-judgment` + `brew install` + `bin --help/--version` or `.app` + optional `service` stanza + `brew uninstall` + `assertUninstallResiduals`. Sample coverage suffices for new scenario.
-- **Regression gate (on `integration/batch-2026-08-10`):** merge topics via `git merge --no-ff fix/binary-release-batch1 fix/page-discover-batch1 ...` then `bun run test` (full mocked), `bun run test:templates`, at least `bun run test:int:gate` for live registries; casks/mas need `vm-guest-health.mjs --json` healthy before `brew install --cask`.
+## Risks
 
-### 5. Catalog promotion (lock new use-cases)
-
-```bash
-bun tests/monitored-install-batch/regen-catalog-queue.py   # or add-test-case/add-row.mjs
-# uses md-spreadsheet-parser (never raw split('|')) for .agents/plans/allbrew-test-cases.md (24-col GFM, backtick pipes)
-# and tests/e2e/catalog.json (skip:true unless live E2E requested)
-```
-
-### 6. Final merge → main
-
-```bash
-git checkout main && git merge --no-ff integration/batch-2026-08-10 -m "batch: reconcile 2026-08-10 213 fix-packages (120 distinct) via worktrees"
-git status  # must be clean (release script requires it)
-GITHUB_TOKEN=... bun run release patch  # pushes tag + tap tariqwest/tap
-brew update && brew upgrade allbrew && allbrew --version  # verify bottle
-```
-
-## Risks & mitigations
-
-- **Same-file hunk conflicts (score/filter in `pickArchiveEntrypoint`, `scoreCandidateUrl`):** mitigate by grouping and 3-way apply in worktrees; preserve `FIX.md` evidence (`mas-mac-storefront +8` for `mt=12` vs iOS tie).
-- **Wrapper flattening (`libexec.install Dir["*"]` vs `darwin-arm64/` wrapper):** already fixed for `atomic-agent`; re-check any `binary-release` patch that re-introduces wrapper path.
-- **MAS/iOS env limitation (`bear` id 1091189122 requires Apple ID via `mas`):** keep as doc, not VM gate — corrected selection is the deliverable; brew install will still `env_fail` on headless VM without `mas signin`.
-- **VM pool contention (homeserver/local-1/local-2):** throttle to single-worker, preflight-unlock before/after bootstrap.
-- **Disk pressure:** batch artifacts ~107M per wave (archived to 9.2M zstd); `brew cleanup -s` before large waves.
+- **Same-file hunk drift** after 0.0.31 — prefer `--3way` or hand-port
+- **guest-ops patches** mixed into product patches — already partly on main; re-apply carefully
+- **MAS/env** — never gate product on headless `mas signin`
 
 ## Files
 
-- Inputs: `tests/monitored-install-batch/fix-packages/*/FIX.md|patches/*.patch|validation.json`, `state/fix-index.jsonl`, `archive/manifest.json`, `~/.cache/allbrew/batch-artifacts/2026-08-10/batch-2026-08-10.tar.zst`
-- Tools: `reconcile-fix-packages.mjs`, `lib/patch-coordinator.mjs`, `batch-ops.mjs`, `vm-install-one.mjs`, `vm-guest-health.mjs`, `scripts/archive-batch-artifacts.mjs`, `add-test-case` skill
-- Outputs: `integration/batch-2026-08-10` branch → `main`, `tests/e2e-runs/<ts>/readout.txt` analogue, `allbrew 0.0.31+` bottle
+- Plan companion: `failed-queue-remaining-2026-08-12.md`, `failed-queue-category-fixes-2026-08-12.md`
+- Archive: `tests/monitored-install-batch/archive/manifest.json` → `~/.cache/allbrew/batch-artifacts/2026-08-10/`
+- Tools: `reconcile-fix-packages.mjs`, `batch-ops.mjs`, `vm-install-one.mjs`
