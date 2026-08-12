@@ -962,11 +962,28 @@ async function handleGithubRepo(classification, opts) {
       }
 
       if (choice === "cask") {
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release },
+            opts,
+          );
+        } catch (err: any) {
+          const msg = err?.message || String(err);
+          if (msg.includes("No .app bundle")) {
+            console.log(
+              chalk.yellow(
+                `  App cask for ${appAssets.map((a) => a.name).join(", ")} contains no .app bundle — falling back to binary release...`,
+              ),
+            );
+            return await generateWithConfirmation(
+              "binary-release",
+              { repoInfo, release },
+              opts,
+            );
+          }
+          throw err;
+        }
       } else {
         return await generateWithConfirmation(
           "binary-release",
@@ -980,11 +997,24 @@ async function handleGithubRepo(classification, opts) {
       console.log(
         `  Detected ${chalk.cyan("macOS app")} assets: ${appAssets.map((a) => a.name).join(", ")}`,
       );
-      return await generateWithConfirmation(
-        "cask-app-release",
-        { repoInfo, release },
-        opts,
-      );
+      try {
+        return await generateWithConfirmation(
+          "cask-app-release",
+          { repoInfo, release },
+          opts,
+        );
+      } catch (err: any) {
+        const msg = err?.message || String(err);
+        if (msg.includes("No .app bundle")) {
+          console.log(
+            chalk.yellow(
+              `  App asset ${appAssets.map((a) => a.name).join(", ")} contains no .app bundle — falling back to README/source detection...`,
+            ),
+          );
+        } else {
+          throw err;
+        }
+      }
     }
 
     if (binAssets.length > 0) {
@@ -1034,11 +1064,17 @@ async function handleGithubRepo(classification, opts) {
         console.log(
           `  Found macOS app assets on older release ${chalk.bold(olderWithApp.tagName)}: ${names.join(", ")}`,
         );
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release: olderWithApp },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release: olderWithApp },
+            opts,
+          );
+        } catch (err: any) {
+          const msg = err?.message || String(err);
+          if (!msg.includes("No .app bundle")) throw err;
+          console.log(chalk.yellow(`  Older release ${olderWithApp.tagName} app asset contains no .app bundle — continuing to README...`));
+        }
       }
     } catch (err) {
       if (opts.verbose) {
