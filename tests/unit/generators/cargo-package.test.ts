@@ -71,19 +71,19 @@ describe("collectCargoPackagePayload", () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
     expect(payload.cargoInstallArgs).toBe("*std_cargo_args");
     expect(payload.cargoInstallArgsUnlocked).toBe(
-      "*std_cargo_args(locked: false)",
+      '*std_cargo_args.reject { |arg| arg == "--locked" }',
     );
   });
 
-  it("cargoStdInstallArgs supports locked:false", async () => {
+  it("cargoStdInstallArgs unlocks via reject --locked (no locked: kwarg)", async () => {
     const { cargoStdInstallArgs } = await import(
       "../../../lib/generators/cargo-package.ts"
     );
     expect(cargoStdInstallArgs(null, { locked: false })).toBe(
-      "*std_cargo_args(locked: false)",
+      '*std_cargo_args.reject { |arg| arg == "--locked" }',
     );
     expect(cargoStdInstallArgs("crates/x", { locked: false })).toBe(
-      '*std_cargo_args(locked: false, path: "crates/x")',
+      '*std_cargo_args(path: "crates/x").reject { |arg| arg == "--locked" }',
     );
   });
 
@@ -92,7 +92,8 @@ describe("collectCargoPackagePayload", () => {
       cargoPath: "crates/all-in-one",
     });
     expect(payload.cargoInstallArgs).toContain('path: "crates/all-in-one"');
-    expect(payload.cargoInstallArgsUnlocked).toContain("locked: false");
+    expect(payload.cargoInstallArgsUnlocked).toContain('--locked');
+    expect(payload.cargoInstallArgsUnlocked).toContain(".reject");
     expect(payload.cargoInstallArgsUnlocked).toContain(
       'path: "crates/all-in-one"',
     );

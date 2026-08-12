@@ -74,7 +74,13 @@ export function isCargoWorkspaceRoot(
   );
 }
 
-/** Ruby fragment for `system "cargo", "install", …`. */
+/**
+ * Ruby fragment for `system "cargo", "install", …`.
+ *
+ * When `opts.locked === false`, emit `.reject { |arg| arg == "--locked" }` after
+ * std_cargo_args. Homebrew's API has no `locked:` keyword (only root/path/features)
+ * and always injects "--locked"; the reject form is the only portable unlock.
+ */
 export function cargoStdInstallArgs(
   installPath?: string | null,
   opts: { locked?: boolean } = {},
@@ -88,8 +94,12 @@ export function cargoStdInstallArgs(
     if (!pathOk) return "*std_cargo_args";
     return `*std_cargo_args(path: ${rubyString(p)})`;
   }
-  if (!pathOk) return "*std_cargo_args(locked: false)";
-  return `*std_cargo_args(locked: false, path: ${rubyString(p)})`;
+  // Homebrew std_cargo_args only accepts root/path/features — there is no
+  // `locked:` kwarg. It always injects "--locked". Drop that string so cargo
+  // can re-resolve outdated transitive pins (gobang → num-bigint 0.3.2).
+  const rejectLocked = '.reject { |arg| arg == "--locked" }';
+  if (!pathOk) return `*std_cargo_args${rejectLocked}`;
+  return `*std_cargo_args(path: ${rubyString(p)})${rejectLocked}`;
 }
 
 export type CratesIoCrateMeta = {

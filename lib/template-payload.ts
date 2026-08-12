@@ -50,8 +50,9 @@ export type CargoPackagePayload = FormulaCommonFields & {
   /** Pre-rendered `*std_cargo_args` or `*std_cargo_args(path: "…")` fragment. */
   cargoInstallArgs: string;
   /**
-   * Same as cargoInstallArgs but with `locked: false` for the lockfile-mismatch
-   * rescue path (gobang / oatmeal / rainfrog class of failures).
+   * Same as cargoInstallArgs but with `.reject { |arg| arg == "--locked" }`
+   * for the lockfile-mismatch rescue path (gobang / oatmeal class).
+   * Homebrew std_cargo_args has no `locked:` keyword.
    */
   cargoInstallArgsUnlocked: string;
 };
