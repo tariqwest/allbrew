@@ -716,6 +716,9 @@ export function isAppAsset(assetName) {
   if (!lower.endsWith(".zip")) return false;
   // Explicit app-bundle archives
   if (lower.includes(".app")) return true;
+  // SwiftPM binary targets ship as *.artifactbundle.zip — CLI toolchains, not .app casks
+  // (e.g. LicensePlistBinary-macos.artifactbundle.zip).
+  if (lower.includes("artifactbundle")) return false;
 
   // Non-mac desktop/OS tags never count as macOS app assets
   if (
@@ -763,10 +766,68 @@ export function isAppAsset(assetName) {
   return false;
 }
 
+/**
+ * Untagged single-platform CLI zip heuristic for binary-release fallthrough.
+ * Matches bare product zips / portable_* zips that isAppAsset often flags as
+ * desktop apps but that actually ship a root-level CLI binary (e.g.
+ * license-plist.zip, portable_licenseplist.zip). Callers still peek for .app
+ * before cask; use this when cask peek failed and we want a universal bottle.
+ */
+export function isUntaggedCliZipName(assetName: string): boolean {
+  const lower = String(assetName || "").toLowerCase();
+  if (!lower.endsWith(".zip")) return false;
+  if (lower.includes(".app") || lower.includes("artifactbundle")) return false;
+  if (
+    /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions|linux|windows|win32|android)(?:[^a-z]|$)/i.test(
+      lower,
+    )
+  ) {
+    return false;
+  }
+  if (matchAssetToArch(assetName)) return false;
+  const base = lower.slice(0, -".zip".length);
+  if (!base || base.length < 3) return false;
+  // portable_foo / foo-portable style CLI redistributables
+  if (/(?:^|[_-])portable(?:[_-]|$)/i.test(base)) return true;
+  // Bare product zip (no version / arch) that isAppAsset would also match
+  return isBareAppZipName(lower);
+}
+
+/**
+ * Multi-platform CLI release heuristic: product-version-macos.zip + linux archive,
+ * with no DMG / .app-named assets. Those zips are bare CLI binaries (e.g.
+ * swift-outdated-0.15.3-macos.zip), not desktop app bundles — even though
+ * isAppAsset() matches the macos token. Callers should skip cask-app-release
+ * and fall through to binary-release / SPM / README install methods.
+ */
+export function isCliPlatformZipRelease(
+  assets: Array<{ name?: string } | string> | null | undefined,
+): boolean {
+  if (!assets?.length) return false;
+  const names = assets.map((a) =>
+    String(typeof a === "string" ? a : a?.name || "").toLowerCase(),
+  );
+  if (names.some((n) => n.endsWith(".dmg") || n.includes(".app"))) return false;
+  const hasMacCliZip = names.some((n) => {
+    if (!n.endsWith(".zip")) return false;
+    if (n.includes("artifactbundle")) return false;
+    const hasMac =
+      /(?:^|[^a-z])(?:mac|macos|osx|darwin)(?:[^a-z]|$)/i.test(n);
+    const hasCpu =
+      /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(n);
+    return hasMac && !hasCpu;
+  });
+  const hasLinuxArchive = names.some((n) => {
+    if (!/\.(zip|tar\.gz|tgz|tar\.bz2|tar\.xz)$/i.test(n)) return false;
+    return /(?:^|[^a-z])linux(?:[^a-z]|$)/i.test(n);
+  });
+  return hasMacCliZip && hasLinuxArchive;
+}
+
 function isBareAppZipName(lowerName: string): boolean {
   if (!lowerName.endsWith(".zip")) return false;
   if (
-    /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions)(?:[^a-z]|$)/i.test(
+    /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions|portable|artifactbundle)(?:[^a-z]|$)/i.test(
       lowerName,
     )
   ) {

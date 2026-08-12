@@ -8,6 +8,7 @@ import {
   isBinaryAsset,
   isBareBinaryAsset,
   isArchiveBinaryAsset,
+  isUntaggedCliZipName,
   rubyString,
   rubyEscape,
   guessLicenseIdentifier,
@@ -236,6 +237,35 @@ export async function collectBinaryReleasePayload(
     delete archAssets.macosUniversal;
   }
 
+  // When cask-app-release peeks a bare product zip (license-plist.zip) and finds
+  // no .app, callers pass allowUntaggedCliZips so we bottle it as universal macOS.
+  if (Object.keys(archAssets).length === 0 && options.allowUntaggedCliZips) {
+    const untagged = (release.assets || []).filter((a: any) =>
+      isUntaggedCliZipName(a?.name || ""),
+    );
+    if (untagged.length > 0) {
+      const score = (name: string): number => {
+        const l = name.toLowerCase();
+        let s = 0;
+        if (/(?:^|[_-])portable(?:[_-]|$)/i.test(l)) s -= 20;
+        if (l.includes("artifactbundle")) s -= 50;
+        // Prefer shorter product zips (license-plist.zip over long marketing names)
+        s -= Math.min(l.length, 40) / 10;
+        return s;
+      };
+      untagged.sort(
+        (a: any, b: any) => score(b.name) - score(a.name) || a.name.length - b.name.length,
+      );
+      archAssets.macosUniversal = untagged[0];
+    }
+  }
+
+  if (archAssets.macosUniversal) {
+    archAssets.macosArm = archAssets.macosUniversal;
+    archAssets.macosIntel = archAssets.macosUniversal;
+    delete archAssets.macosUniversal;
+  }
+
   if (Object.keys(archAssets).length === 0) {
     throw new Error("No platform-specific binary assets found in release");
   }
@@ -255,7 +285,10 @@ export async function collectBinaryReleasePayload(
   for (const arch of orderedArchs) {
     const asset = archAssets[arch];
     const shouldInspect =
-      !inspectedArchive && isArchiveBinaryAsset(asset.name);
+      !inspectedArchive &&
+      (isArchiveBinaryAsset(asset.name) ||
+        (options.allowUntaggedCliZips &&
+          isUntaggedCliZipName(asset.name)));
 
     if (shouldInspect) {
       inspectedArchive = true;

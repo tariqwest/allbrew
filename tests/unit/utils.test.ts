@@ -10,6 +10,8 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  isUntaggedCliZipName,
+  isCliPlatformZipRelease,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
@@ -461,6 +463,57 @@ describe("isAppAsset", () => {
 
   it("rejects non-archive files", () => {
     expect(isAppAsset("README.md")).toBe(false);
+  });
+
+  it("rejects SwiftPM artifactbundle zips (CLI toolchains, not .app)", () => {
+    expect(isAppAsset("LicensePlistBinary-macos.artifactbundle.zip")).toBe(
+      false,
+    );
+    expect(isAppAsset("Foo.artifactbundle.zip")).toBe(false);
+  });
+
+  it("still matches bare product zips (Clipped.zip / license-plist.zip heuristic)", () => {
+    expect(isAppAsset("Clipped.zip")).toBe(true);
+    expect(isAppAsset("license-plist.zip")).toBe(true);
+  });
+});
+
+describe("isUntaggedCliZipName", () => {
+  it("matches LicensePlist-style bare CLI product zips", () => {
+    expect(isUntaggedCliZipName("license-plist.zip")).toBe(true);
+    expect(isUntaggedCliZipName("portable_licenseplist.zip")).toBe(true);
+  });
+
+  it("rejects arch-tagged, source, and artifactbundle zips", () => {
+    expect(isUntaggedCliZipName("tool-darwin-arm64.zip")).toBe(false);
+    expect(isUntaggedCliZipName("LicensePlistBinary-macos.artifactbundle.zip")).toBe(
+      false,
+    );
+    expect(isUntaggedCliZipName("src.zip")).toBe(false);
+    expect(isUntaggedCliZipName("Foo.dmg")).toBe(false);
+  });
+});
+
+describe("isCliPlatformZipRelease", () => {
+  it("detects multi-platform CLI zips (macos + linux, no DMG/.app)", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "swift-outdated-0.15.3-macos.zip" },
+        { name: "swift-outdated-0.15.3-linux.zip" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("rejects DMG / .app and macos-only releases", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "App-macos.zip" },
+        { name: "App.dmg" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCliPlatformZipRelease([{ name: "license-plist.zip" }]),
+    ).toBe(false);
   });
 });
 
