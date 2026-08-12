@@ -99,7 +99,7 @@ function getDependencies(system: string): string[] {
     case "go":
       return ['"go" => :build'];
     case "python":
-      return ['"python@3.13"'];
+      return ['"python@3.12"'];
     default:
       return [];
   }
@@ -130,7 +130,7 @@ function getInstallBlock(system: string) {
       // Install package + runtime deps from PyPI. source-build has no resource
       // graph (unlike pip-package), so --no-deps would leave CLIs import-broken.
       return (
-        `    venv = virtualenv_create(libexec, "python3.13")\n` +
+        `    venv = virtualenv_create(libexec, "python3.12")\n` +
         `    system libexec/"bin/pip", "install", "-v", "--ignore-installed", "."\n` +
         `    bin.install_symlink Dir["#{libexec}/bin/*"]\n`
       );
