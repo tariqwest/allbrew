@@ -87,6 +87,9 @@ describe("renderFormula", () => {
       testDoBody:
         `    assert_match version.to_s, shell_output("#{bin}/foo --version")`,
       serviceBlock: "",
+      pythonFormula: "3.13",
+      pythonBin: "python3.13",
+      extraDependsBlock: "",
     };
     const ruby = renderFormula(payload);
     expect(ruby).toContain("include Language::Python::Virtualenv");

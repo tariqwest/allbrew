@@ -1,6 +1,8 @@
 import type { PipPackagePayload } from "../../template-payload.ts";
 
 export default function renderPipPackage(p: PipPackagePayload): string {
+  const pythonFormula = p.pythonFormula || "3.13";
+  const pythonBin = p.pythonBin || `python${pythonFormula}`;
   return `class ${p.className} < Formula
   include Language::Python::Virtualenv
 
@@ -9,16 +11,16 @@ export default function renderPipPackage(p: PipPackagePayload): string {
   url "${p.url}"
   sha256 "${p.sha256}"
 ${p.licenseLine}
-${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "python@3.13"
-
+${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "python@${pythonFormula}"
+${p.extraDependsBlock || ""}
   # Native wheels (jiter, pydantic-core, …) ship dylib IDs like
   # @rpath/foo.so. Homebrew's fix_dynamic_linkage expands those to long
   # Cellar paths that do not fit the Mach-O header. Preserve @rpath IDs.
   preserve_rpath
 
 ${p.resourcesBlock}  def install
-    venv = virtualenv_create(libexec, "python3.13")
-    # Homebrew python@3.13 venvs may inherit system site-packages. Isolate so
+    venv = virtualenv_create(libexec, "${pythonBin}")
+    # Homebrew python@${pythonFormula} venvs may inherit system site-packages. Isolate so
     # formula resources cannot resolve against /opt/homebrew/lib/python*.
     pyvenv_cfg = libexec/"pyvenv.cfg"
     if pyvenv_cfg.exist?

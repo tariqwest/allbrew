@@ -9,6 +9,7 @@ import {
   compareVersions,
   normalizePackageName,
   KNOWN_BIN_NAMES,
+  selectPipFormulaPython,
 } from "../../../lib/generators/pip-package.ts";
 import marimoFixture from "../../fixtures/pypi/marimo.json";
 import clickFixture from "../../fixtures/pypi/click.json";
@@ -533,6 +534,32 @@ describe("selectBestDistribution", () => {
 
   it("returns null when urls empty", () => {
     expect(selectBestDistribution([])).toBeNull();
+  });
+});
+
+describe("selectPipFormulaPython", () => {
+  it("defaults to 3.13 when requires_python is empty", () => {
+    expect(selectPipFormulaPython(null)).toEqual({ major: 3, minor: 13 });
+    expect(selectPipFormulaPython("")).toEqual({ major: 3, minor: 13 });
+  });
+
+  it("selects 3.12 when package requires python <3.13 (pyqt-openai)", () => {
+    expect(selectPipFormulaPython("<3.13,>=3.10")).toEqual({
+      major: 3,
+      minor: 12,
+    });
+    expect(selectPipFormulaPython(">=3.10,<3.13")).toEqual({
+      major: 3,
+      minor: 12,
+    });
+  });
+
+  it("keeps 3.13 when upper bound allows it", () => {
+    expect(selectPipFormulaPython(">=3.10")).toEqual({ major: 3, minor: 13 });
+    expect(selectPipFormulaPython(">=3.9,<3.14")).toEqual({
+      major: 3,
+      minor: 13,
+    });
   });
 });
 

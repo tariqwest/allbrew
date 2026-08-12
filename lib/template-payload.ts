@@ -38,6 +38,12 @@ export type PipPackagePayload = FormulaCommonFields & {
   resourcesBlock: string;
   /** Full body line(s) inside `test do` (pre-indented). */
   testDoBody: string;
+  /** Homebrew python formula minor tag, e.g. "3.12" for depends_on "python@3.12". */
+  pythonFormula: string;
+  /** virtualenv_create interpreter name, e.g. "python3.12". */
+  pythonBin: string;
+  /** Extra depends_on lines (portaudio, etc.), each ending with newline. */
+  extraDependsBlock: string;
 };
 
 export type CargoPackagePayload = FormulaCommonFields & {
