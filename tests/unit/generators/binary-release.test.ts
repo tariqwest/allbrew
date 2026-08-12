@@ -299,6 +299,17 @@ describe("pickArchiveEntrypoint / nested package archives", () => {
     expect(body).toContain('bin.install_symlink libexec/"bin/interpreter" => "interpreter"');
   });
 
+  it("buildBinaryReleaseInstallBody installs flat root CLI binary into bin", () => {
+    const body = buildBinaryReleaseInstallBody(
+      "licenseplist",
+      ["license-plist.zip"],
+      "license-plist",
+    );
+    expect(body).toContain('bin.install "license-plist" => "licenseplist"');
+    expect(body).toContain('bin.install_symlink "licenseplist" => "license-plist"');
+    expect(body).not.toContain("libexec.install");
+  });
+
   it("templateReleaseUrl preserves rust-v tag prefix", () => {
     const url =
       "https://github.com/openinterpreter/openinterpreter/releases/download/rust-v0.0.34/open-interpreter-package-aarch64-apple-darwin.tar.gz";

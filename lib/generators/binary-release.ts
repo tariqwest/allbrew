@@ -159,13 +159,33 @@ export function buildBinaryReleaseInstallBody(
   // Source path may embed a release version; emit #{version} so livecheck upgrades work.
   if (archiveEntrypoint) {
     const src = archiveEntrypoint.replace(/\\/g, "/");
+    const upstreamBase = src.split("/").pop() || "";
+    // Flat single-file CLI zips (license-plist.zip → root "license-plist"): install
+    // the binary directly into bin. libexec+symlink has been observed to leave
+    // PREFIX/bin unusable for some root-level Mach-O redistributables under
+    // verify (BIN_MISSING despite FORMULA_LISTED).
+    if (!src.includes("/")) {
+      const lines = [
+        `chmod "a+rx", ${rubyString(src)} if File.exist?(${rubyString(src)})`,
+        `bin.install ${rubyString(src)} => ${rubyString(binName)}`,
+      ];
+      if (
+        upstreamBase &&
+        upstreamBase !== binName &&
+        !ARCHIVE_DOC_BASENAME_RE.test(upstreamBase)
+      ) {
+        lines.push(
+          `bin.install_symlink ${rubyString(binName)} => ${rubyString(upstreamBase)}`,
+        );
+      }
+      return lines.join("\n    ");
+    }
     const srcRuby = templateEntrypointPath(src);
     const lines = [
       `libexec.install Dir["*"]`,
       `bin.install_symlink libexec/${srcRuby} => ${rubyString(binName)}`,
     ];
     // Also expose the upstream entrypoint basename when it differs (interpreter vs open-interpreter).
-    const upstreamBase = src.split("/").pop() || "";
     if (
       upstreamBase &&
       upstreamBase !== binName &&
