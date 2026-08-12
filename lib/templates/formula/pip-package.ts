@@ -36,7 +36,40 @@ ${p.resourcesBlock}  def install
       pyvenv_cfg.atomic_write(lines.join)
     end
     resources.each { |r| pip_install_dist(venv, r) }
+    # setuptools>=82 removed pkg_resources; older setup.py (e.g. visdom) still
+    # import it at module level and fail PEP 517 isolated builds.
+    patch_legacy_setup_py_pkg_resources
     pip_install_main(venv)
+  end
+
+  def patch_legacy_setup_py_pkg_resources
+    setup_py = buildpath/"setup.py"
+    return unless setup_py.exist?
+
+    text = setup_py.read
+    return unless text.include?("pkg_resources")
+
+    shim = <<~'PY'
+      try:
+          from pkg_resources import get_distribution, DistributionNotFound
+      except ImportError:
+          try:
+              from importlib.metadata import distribution as _imd_distribution
+              from importlib.metadata import PackageNotFoundError as DistributionNotFound
+              def get_distribution(name):
+                  class _Dist:
+                      def __init__(self, n):
+                          self.project_name = n
+                          _imd_distribution(n)
+                  return _Dist(name)
+          except ImportError:
+              class DistributionNotFound(Exception):
+                  pass
+              def get_distribution(name):
+                  raise DistributionNotFound(name)
+    PY
+    patched = text.gsub(/^from pkg_resources import[^\\n]*\\n/, "#{shim}\\n")
+    setup_py.atomic_write(patched) if patched != text
   end
 
   def pip_install_dist(venv, dist)

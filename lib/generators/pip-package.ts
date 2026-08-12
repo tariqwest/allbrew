@@ -1,4 +1,8 @@
-import { arch as osArch } from "node:os";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { arch as osArch, tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 import {
   toFormulaName,
   toClassName,
@@ -7,10 +11,13 @@ import {
   guessLicenseIdentifier,
   getAllbrewFormulaDependency,
 } from "../utils.ts";
+import { detectServiceConfig } from "../analyzer.ts";
 import { pypiLivecheckBlock } from "./livecheck.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { PipPackagePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
+
+const execFileAsync = promisify(execFile);
 
 /** Python version used by the pip formula template (`depends_on "python@3.13"`). */
 export const PIP_FORMULA_PYTHON = { major: 3, minor: 13 } as const;
@@ -19,9 +26,22 @@ export const PIP_FORMULA_PYTHON = { major: 3, minor: 13 } as const;
  * Runtime deps that packages import but omit from requires_dist.
  * shell-gpt imports click directly; typer>=0.26 vendors click and no longer
  * declares it, so transitive resolution never pulls it in.
+ * visdom ships install_requires in egg-info/requires.txt but PyPI JSON
+ * requires_dist is null (legacy PKG-INFO without Requires-Dist headers).
  */
 export const UNDECLARED_RUNTIME_DEPS: Record<string, string[]> = {
   "shell-gpt": ["click"],
+  visdom: [
+    "numpy",
+    "scipy",
+    "requests",
+    "tornado",
+    "six",
+    "jsonpatch",
+    "websocket-client",
+    "networkx",
+    "pillow",
+  ],
 };
 
 /** Console-script names that differ from the PyPI/distribution name. */
@@ -41,11 +61,14 @@ export const KNOWN_ROOT_EXTRAS: Record<string, string[]> = {
 };
 
 /**
- * Import path for version checks when the console_scripts entry is a GUI launcher.
+ * Import path for version checks when the console_scripts entry is a GUI
+ * launcher or a long-lived server that does not support `--version`.
  */
 export const KNOWN_PYTHON_IMPORT_VERSION_TEST: Record<string, string> = {
   napari: "napari",
   tabulous: "tabulous",
+  // `visdom` starts Tornado on :8097; no --version flag.
+  visdom: "visdom",
 };
 
 type PypiUrl = {
@@ -62,6 +85,7 @@ type PypiPackageJson = {
     name?: string;
     version?: string;
     summary?: string;
+    description?: string | null;
     home_page?: string | null;
     project_url?: string | null;
     license?: string | null;
@@ -113,7 +137,7 @@ export async function collectPipPackagePayload(
   const rootExtras: string[] = Array.isArray(options.extras)
     ? options.extras
     : KNOWN_ROOT_EXTRAS[pkgKey] || [];
-  const deps = await resolveTransitiveDeps(
+  let deps = await resolveTransitiveDeps(
     packageName,
     new Map(),
     5,
@@ -121,6 +145,24 @@ export async function collectPipPackagePayload(
     rootVersion,
     rootExtras,
   );
+
+  // Legacy sdists often omit Requires-Dist from PKG-INFO / PyPI JSON while
+  // still shipping egg-info/requires.txt (visdom 0.2.4). Fall back so the
+  // formula vendors runtime deps instead of an empty resource list.
+  if (deps.length === 0 && dist.kind === "sdist") {
+    try {
+      const seedReqs = await extractRequiresFromSdistUrl(dist.url);
+      if (seedReqs.length) {
+        deps = await resolveResourcesFromRequiresDistLines(
+          seedReqs,
+          packageName,
+        );
+      }
+    } catch {
+      // fall through to UNDECLARED_RUNTIME_DEPS
+    }
+  }
+
   const undeclared = await resolveUndeclaredDeps(packageName, deps);
   const allDeps = dedupeResources([...deps, ...undeclared]);
 
@@ -152,6 +194,27 @@ export async function collectPipPackagePayload(
     ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import ${importMod}; print(${importMod}.__version__)'")`
     : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`;
 
+  // Registry (pypi.org) URLs never fetch a GitHub README; use the package
+  // long_description when present so server packages get a service block.
+  let serviceOptions = options;
+  if (
+    options.service !== false &&
+    !options.service &&
+    !options.serviceConfig &&
+    !options.serviceCommand
+  ) {
+    const longDesc = pypiData.info.description || "";
+    if (longDesc.length > 80) {
+      const detected = detectServiceConfig(longDesc, packageName);
+      if (
+        detected?.command &&
+        detected.confidence !== "low"
+      ) {
+        serviceOptions = { ...options, serviceConfig: detected };
+      }
+    }
+  }
+
   return {
     template: "pip_package",
     name,
@@ -169,7 +232,7 @@ export async function collectPipPackagePayload(
     // Service argv should target the console-script bin, which may differ from
     // the formula token when homebrew/core forces a rename (nanobot-ai → bin nanobot).
     serviceBlock: buildServiceBlock(
-      serviceFromOptions(options, testBinName),
+      serviceFromOptions(serviceOptions, testBinName),
       testBinName,
     ),
   };
@@ -946,6 +1009,146 @@ async function resolveTransitiveDeps(
     // skip
   }
 
+  return resources;
+}
+
+/**
+ * Parse setuptools egg-info/requires.txt base requirements (stop at extras).
+ * Lines are bare requires_dist entries (`numpy>=1.8`, `pillow`).
+ */
+export function parseRequiresTxt(text: string): string[] {
+  const out: string[] = [];
+  for (const raw of String(text || "").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) {
+      // Blank line separates base deps from extras sections in some files;
+      // keep scanning until an [extra] header so trailing blanks are fine.
+      continue;
+    }
+    if (line.startsWith("#")) continue;
+    if (line.startsWith("[")) break;
+    out.push(line);
+  }
+  return out;
+}
+
+/**
+ * Download an sdist tarball and read egg-info/requires.txt (or PKG-INFO
+ * Requires-Dist) when PyPI JSON omits requires_dist.
+ */
+export async function extractRequiresFromSdistUrl(
+  url: string,
+): Promise<string[]> {
+  if (!url) return [];
+  const dir = await mkdtemp(join(tmpdir(), "allbrew-sdist-req-"));
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "allbrew/1.0" },
+    });
+    if (!res.ok) return [];
+    const buf = Buffer.from(await res.arrayBuffer());
+    const tarball = join(dir, "pkg.tar.gz");
+    await writeFile(tarball, buf);
+
+    const { stdout: listing } = await execFileAsync("tar", ["tzf", tarball], {
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    const members = String(listing)
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    const requiresMember =
+      members.find(
+        (m) =>
+          m.endsWith(".egg-info/requires.txt") ||
+          m.endsWith("/requires.txt"),
+      ) || null;
+
+    if (requiresMember) {
+      await execFileAsync("tar", ["xzf", tarball, "-C", dir, requiresMember]);
+      const text = await readFile(join(dir, requiresMember), "utf8");
+      return parseRequiresTxt(text);
+    }
+
+    const pkgInfoMember =
+      members.find(
+        (m) =>
+          /(^|\/)PKG-INFO$/.test(m) ||
+          m.endsWith(".egg-info/PKG-INFO") ||
+          m.endsWith(".dist-info/METADATA"),
+      ) || null;
+    if (!pkgInfoMember) return [];
+
+    await execFileAsync("tar", ["xzf", tarball, "-C", dir, pkgInfoMember]);
+    const pkgInfo = await readFile(join(dir, pkgInfoMember), "utf8");
+    const reqs: string[] = [];
+    for (const line of pkgInfo.split(/\r?\n/)) {
+      const m = line.match(/^Requires-Dist:\s*(.+)$/i);
+      if (m) reqs.push(m[1].trim());
+    }
+    return reqs;
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/** Resolve formula resources from raw requires_dist / requires.txt lines. */
+async function resolveResourcesFromRequiresDistLines(
+  requires: string[],
+  rootPackageName: string,
+): Promise<ResolvedResource[]> {
+  const visited: VisitedExtras = new Map([
+    [normalizePackageName(rootPackageName), new Set([BASE_EXTRA])],
+  ]);
+  const resources: ResolvedResource[] = [];
+  const have = new Set<string>();
+
+  for (const req of requires) {
+    const parsed = parseRequiresDistEntry(req);
+    if (!parsed) continue;
+    if (
+      !isRequirementApplicable(parsed.marker, {
+        activeExtras: [],
+      })
+    ) {
+      continue;
+    }
+    const depKey = normalizePackageName(parsed.name);
+    if (have.has(depKey)) continue;
+
+    try {
+      const dist = await selectDistForDependency(
+        parsed.name,
+        parsed.constraint,
+      );
+      if (!dist) continue;
+      resources.push({
+        name: parsed.name,
+        url: dist.url,
+        sha256: dist.sha256,
+        version: dist.version,
+      });
+      have.add(depKey);
+
+      const transitive = await resolveTransitiveDeps(
+        parsed.name,
+        visited,
+        5,
+        0,
+        dist.version,
+        parsed.extras.map((e) => e.trim().toLowerCase()).filter(Boolean),
+      );
+      for (const t of transitive) {
+        const tk = normalizePackageName(t.name);
+        if (have.has(tk)) continue;
+        resources.push(t);
+        have.add(tk);
+      }
+    } catch {
+      // skip unresolvable seed deps
+    }
+  }
   return resources;
 }
 

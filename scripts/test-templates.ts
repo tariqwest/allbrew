@@ -390,7 +390,37 @@ function buildPipPackageCase(): Case {
     `      pyvenv_cfg.atomic_write(lines.join)\n` +
     `    end\n` +
     `    resources.each { |r| pip_install_dist(venv, r) }\n` +
+    `    # setuptools>=82 removed pkg_resources; older setup.py (e.g. visdom) still\n` +
+    `    # import it at module level and fail PEP 517 isolated builds.\n` +
+    `    patch_legacy_setup_py_pkg_resources\n` +
     `    pip_install_main(venv)\n` +
+    `  end\n\n` +
+    `  def patch_legacy_setup_py_pkg_resources\n` +
+    `    setup_py = buildpath/"setup.py"\n` +
+    `    return unless setup_py.exist?\n\n` +
+    `    text = setup_py.read\n` +
+    `    return unless text.include?("pkg_resources")\n\n` +
+    `    shim = <<~'PY'\n` +
+    `      try:\n` +
+    `          from pkg_resources import get_distribution, DistributionNotFound\n` +
+    `      except ImportError:\n` +
+    `          try:\n` +
+    `              from importlib.metadata import distribution as _imd_distribution\n` +
+    `              from importlib.metadata import PackageNotFoundError as DistributionNotFound\n` +
+    `              def get_distribution(name):\n` +
+    `                  class _Dist:\n` +
+    `                      def __init__(self, n):\n` +
+    `                          self.project_name = n\n` +
+    `                          _imd_distribution(n)\n` +
+    `                  return _Dist(name)\n` +
+    `          except ImportError:\n` +
+    `              class DistributionNotFound(Exception):\n` +
+    `                  pass\n` +
+    `              def get_distribution(name):\n` +
+    `                  raise DistributionNotFound(name)\n` +
+    `    PY\n` +
+    `    patched = text.gsub(/^from pkg_resources import[^\\n]*\\n/, "#{shim}\\n")\n` +
+    `    setup_py.atomic_write(patched) if patched != text\n` +
     `  end\n\n` +
     `  def pip_install_dist(venv, dist)\n` +
     `    url = dist.url.to_s\n` +

@@ -9,6 +9,9 @@ import {
   compareVersions,
   normalizePackageName,
   KNOWN_BIN_NAMES,
+  KNOWN_PYTHON_IMPORT_VERSION_TEST,
+  UNDECLARED_RUNTIME_DEPS,
+  parseRequiresTxt,
 } from "../../../lib/generators/pip-package.ts";
 import marimoFixture from "../../fixtures/pypi/marimo.json";
 import clickFixture from "../../fixtures/pypi/click.json";
@@ -615,6 +618,122 @@ describe("pip requirement parsing helpers", () => {
 
   it("knows shell-gpt binary alias", () => {
     expect(KNOWN_BIN_NAMES["shell-gpt"]).toBe("sgpt");
+  });
+
+  it("parses egg-info requires.txt base deps and stops at extras", () => {
+    const text = [
+      "numpy>=1.8",
+      "scipy",
+      "pillow",
+      "",
+      "[dev]",
+      "pytest",
+    ].join("\n");
+    expect(parseRequiresTxt(text)).toEqual([
+      "numpy>=1.8",
+      "scipy",
+      "pillow",
+    ]);
+  });
+
+  it("knows visdom undeclared deps and import-based version test", () => {
+    expect(UNDECLARED_RUNTIME_DEPS.visdom).toContain("tornado");
+    expect(UNDECLARED_RUNTIME_DEPS.visdom).toContain("numpy");
+    expect(KNOWN_PYTHON_IMPORT_VERSION_TEST.visdom).toBe("visdom");
+  });
+});
+
+describe("collectPipPackagePayload — empty requires_dist + description service", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
+  it("seeds undeclared visdom resources and detects service from long_description", async () => {
+    const visdomSdist =
+      "https://files.pythonhosted.org/packages/visdom/visdom-0.2.4.tar.gz";
+    const tornadoWheel =
+      "https://files.pythonhosted.org/packages/tornado/tornado-6.4-py3-none-any.whl";
+    const desc =
+      "Start the server:\n\n```\n> visdom\n```\n\n" +
+      "Visdom now can be accessed by going to http://localhost:8097 in your browser.";
+
+    global.fetch = mock((url: string) => {
+      const u = String(url);
+      if (u.includes("/pypi/visdom/") && !u.includes("/0.2.4/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              info: {
+                name: "visdom",
+                version: "0.2.4",
+                summary: "Live rich data viz",
+                description: desc,
+                home_page: "https://github.com/fossasia/visdom",
+                license: "Apache-2.0",
+                requires_dist: null,
+              },
+              urls: [
+                {
+                  packagetype: "sdist",
+                  filename: "visdom-0.2.4.tar.gz",
+                  url: visdomSdist,
+                  digests: { sha256: "aa".repeat(32) },
+                },
+              ],
+            }),
+        });
+      }
+      // extractRequiresFromSdistUrl will fetch the sdist URL — return empty
+      // so UNDECLARED_RUNTIME_DEPS path is exercised without a real tarball.
+      if (u === visdomSdist || u.endsWith("visdom-0.2.4.tar.gz")) {
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          arrayBuffer: async () => new ArrayBuffer(0),
+        });
+      }
+      // Transitive undeclared deps look up each package on PyPI
+      if (u.includes("/pypi/")) {
+        const name = u.match(/\/pypi\/([^/]+)\//)?.[1] || "dep";
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              info: {
+                name,
+                version: "1.0.0",
+                summary: name,
+                requires_dist: [],
+              },
+              urls: [
+                {
+                  packagetype: "bdist_wheel",
+                  filename: `${name}-1.0.0-py3-none-any.whl`,
+                  url: tornadoWheel.replace("tornado", name),
+                  digests: { sha256: "bb".repeat(32) },
+                },
+              ],
+            }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            info: { name: "unknown", version: "1.0.0", requires_dist: [] },
+            urls: [],
+          }),
+      });
+    }) as any;
+
+    const payload = await collectPipPackagePayload("visdom");
+    expect(payload.template).toBe("pip_package");
+    expect(payload.resourcesBlock).toContain('resource "numpy"');
+    expect(payload.resourcesBlock).toContain('resource "tornado"');
+    expect(payload.serviceBlock).toContain("service do");
+    expect(payload.serviceBlock).toContain("visdom");
+    expect(payload.testDoBody).toContain("import visdom");
   });
 });
 
