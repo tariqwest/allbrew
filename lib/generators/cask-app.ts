@@ -1,9 +1,50 @@
 import { toCaskToken, rubyEscape } from "../utils.ts";
+import { readFile } from "node:fs/promises";
 import { downloadToTemp } from "../sha256.ts";
 import { listDmgAppNames, listZipEntries } from "../archive-inspector.ts";
 import type { CaskAppPayload } from "../template-payload.ts";
 import { writeRenderedCask } from "../template-renderer.ts";
 import { urlVersionLivecheckBlock } from "./livecheck.ts";
+
+
+/** Reject HTML/SPA shells mislabeled as .dmg/.pkg/.zip (vendor soft-404). */
+async function assertInstallerArtifact(
+  url: string,
+  localPath: string,
+  contentType: string,
+  size: number,
+): Promise<void> {
+  const ct = (contentType || "").toLowerCase();
+  const expectsInstaller = /\.(dmg|pkg|zip)(?:\?|#|$)/i.test(url);
+  if (!expectsInstaller && !ct.includes("diskimage") && !ct.includes("octet") && !ct.includes("zip") && !ct.includes("x-apple")) {
+    return;
+  }
+  if (ct.includes("text/html") || ct.includes("text/plain") || ct.includes("javascript")) {
+    throw new Error(
+      `Download for ${url} returned ${contentType || "unknown"} instead of a binary installer (SPA shell / soft-404). No installable macOS artifact available.`,
+    );
+  }
+  // Tiny bodies are almost never real DMGs/PKGs (UDIF headers alone are larger).
+  if (Number.isFinite(size) && size > 0 && size < 50_000) {
+    let head = "";
+    try {
+      const buf = await readFile(localPath);
+      head = buf.subarray(0, Math.min(64, buf.length)).toString("utf8").toLowerCase();
+    } catch {
+      /* ignore */
+    }
+    if (
+      head.includes("<!doctype") ||
+      head.includes("<html") ||
+      head.startsWith("{") ||
+      size < 10_000
+    ) {
+      throw new Error(
+        `Download for ${url} is only ${size} bytes and does not look like a disk image/archive (likely HTML shell). No installable macOS artifact available.`,
+      );
+    }
+  }
+}
 
 export async function collectCaskAppPayload(
   url: string,
@@ -20,6 +61,7 @@ export async function collectCaskAppPayload(
     contentDisposition = "",
     versionHeader = null,
     serverFilename = null,
+    size = 0,
   } = downloaded as {
     sha256: string;
     cleanup: () => Promise<void>;
@@ -28,8 +70,12 @@ export async function collectCaskAppPayload(
     contentDisposition?: string;
     versionHeader?: string | null;
     serverFilename?: string | null;
+    size?: number;
   };
   try {
+    // SPA soft-404s often return text/html 200 for *.dmg paths (e.g. sunsetting
+    // launchpad apps). Never write a cask that brew install will hdiutil-fail on.
+    await assertInstallerArtifact(url, path, contentType, size);
     if (!appName) {
       appName = await detectAppName(url, path, {
         contentType,

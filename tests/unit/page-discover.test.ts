@@ -775,3 +775,28 @@ describe("sparkle appcast enrichment", () => {
   });
 });
 
+
+
+describe("html-attr SPA soft-404 DMG (Kosmik class)", () => {
+  it("drops high-score html-attr .dmg that HEAD as text/html", async () => {
+    const page = "https://kosmik.app/downloads";
+    const dmg = "https://launchpad.kosmik.app/getKosmik3/Kosmik-Apple-Silicon.dmg";
+    const cand = scoreCandidateUrl(dmg, page, ["html-attr", "mac-hint"]);
+    expect(cand.kind).toBe("cask-dmg");
+    expect(cand.score).toBeGreaterThanOrEqual(100);
+    const kept = await filterUnreachableScriptArtifacts([cand], page, {
+      headOk: async () => false, // HEAD reports HTML shell
+    });
+    expect(kept.find((c) => c.url === dmg)).toBeUndefined();
+  });
+
+  it("keeps high-score html-attr .dmg when HEAD ok", async () => {
+    const page = "https://kosmik.app/downloads";
+    const dmg = "https://launchpad.kosmik.app/getKosmik3/Kosmik-Apple-Silicon.dmg";
+    const cand = scoreCandidateUrl(dmg, page, ["html-attr", "mac-hint"]);
+    const kept = await filterUnreachableScriptArtifacts([cand], page, {
+      headOk: async () => true,
+    });
+    expect(kept.some((c) => c.url === dmg)).toBe(true);
+  });
+});

@@ -607,8 +607,13 @@ export async function filterUnreachableScriptArtifacts(
     const fromBundle = (c.evidence || []).some((e) =>
       /script-bundle|api-or-bundle|extensionless-guess|client-latest-guess/i.test(e),
     );
-    // Always probe same-site high-score DMGs that only came from bundle guessing
-    if (!fromBundle) return false;
+    // Explicit html-attr .dmg/.pkg links can still be SPA soft-404s (text/html 200)
+    // e.g. launchpad.kosmik.app/getKosmik3/*.dmg after product sunset.
+    const fromHtmlAttr = (c.evidence || []).some((e) => /html-attr/i.test(e));
+    if (!fromBundle && !(fromHtmlAttr && c.score >= 100)) return false;
+    // Bundle phantoms: same-site only. High-score html-attr: probe regardless of site
+    // (CDN / launchpad hosts often differ from marketing page).
+    if (fromHtmlAttr && c.score >= 100) return true;
     try {
       return sameSite(c.url, pageUrl);
     } catch {
