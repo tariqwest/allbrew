@@ -132,10 +132,17 @@ function writeMeta(extra = {}) {
 writeMeta({ phase: "pool-acquired" });
 
 try {
-  writeMeta({ phase: "acquiring-prefix" });
-  session = await acquireHomebrewPrefixDurable(h);
-  lockAcquiredAt = Date.now();
-  writeMeta({ phase: "prefix-acquired", lockAcquiredAt, poolWaitMs: lockAcquiredAt - poolAcquiredAt });
+  const prefixEnabled = h.config.homebrewPrefix.enabled;
+  if (prefixEnabled) {
+    writeMeta({ phase: "acquiring-prefix" });
+    session = await acquireHomebrewPrefixDurable(h);
+    lockAcquiredAt = Date.now();
+    writeMeta({ phase: "prefix-acquired", lockAcquiredAt, poolWaitMs: lockAcquiredAt - poolAcquiredAt });
+  } else {
+    session = null;
+    lockAcquiredAt = Date.now();
+    writeMeta({ phase: "prefix-skipped-shared-mode", lockAcquiredAt, poolWaitMs: 0 });
+  }
   await ensureAllbrew(h, session, mountPoint);
   await ensureTapConfigured(h, session, mountPoint, tapPath);
 

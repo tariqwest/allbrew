@@ -1402,13 +1402,29 @@ async function handleGithubRepo(classification, opts) {
       case "npm": {
         const pkgJson = await getFileContent(owner, repo, "package.json");
         let packageName = repoInfo.name;
+        let pkgPrivate = false;
+        let isTauriApp = false;
         if (pkgJson) {
           try {
             const pkg = JSON.parse(pkgJson);
             packageName = pkg.name || packageName;
+            pkgPrivate = Boolean(pkg.private);
+            const depStr = JSON.stringify({
+              ...(pkg.dependencies || {}),
+              ...(pkg.devDependencies || {}),
+            });
+            isTauriApp = /@tauri-apps\/cli/.test(depStr) || /tauri/.test(depStr);
           } catch {
             /* use repo name */
           }
+        }
+        if (pkgPrivate || isTauriApp) {
+          console.log(
+            chalk.dim(
+              `  Detected npm package.json but private=${pkgPrivate} tauri=${isTauriApp} — skipping npm registry, checking source-build`,
+            ),
+          );
+          break;
         }
         return await generateWithConfirmation(
           "npm-package",
