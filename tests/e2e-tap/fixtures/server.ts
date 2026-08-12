@@ -440,6 +440,30 @@ async function handleRequest(req: Request, url: URL): Promise<Response> {
     return jsonResponse({ versions: [app.version] });
   }
 
+  // NuGet nuspec: /nuget/v3-flatcontainer/:pkg/:version/:pkg.nuspec
+  const nugetNuspecMatch = path.match(
+    /^\/nuget\/v3-flatcontainer\/([^/]+)\/([^/]+)\/([^/]+)\.nuspec$/,
+  );
+  if (nugetNuspecMatch && method === "GET") {
+    const pkgName = decodeURIComponent(nugetNuspecMatch[1]);
+    const version = decodeURIComponent(nugetNuspecMatch[2]);
+    const appKey = findAppByPackageName(pkgName);
+    if (!appKey) return jsonResponse({ message: "Not Found" }, 404);
+    const app = getApp(appKey);
+    const id = app.packageName || pkgName;
+    const body =
+      `<?xml version="1.0"?>\n` +
+      `<package>\n  <metadata>\n    <id>${id}</id>\n` +
+      `    <version>${app.version || version}</version>\n` +
+      `    <description>Fake NuGet package</description>\n` +
+      `    <packageTypes>\n      <packageType name="DotnetTool" />\n` +
+      `    </packageTypes>\n  </metadata>\n</package>\n`;
+    return new Response(body, {
+      status: 200,
+      headers: { "Content-Type": "application/xml" },
+    });
+  }
+
   // NuGet package: /nuget/api/v2/package/:pkg/:version
   const nugetPkgMatch = path.match(/^\/nuget\/api\/v2\/package\/([^/]+)\/([^/]+)$/);
   if (nugetPkgMatch && method === "GET") {

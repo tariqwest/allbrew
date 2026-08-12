@@ -6,22 +6,61 @@ mock.module("../../../lib/sha256.ts", () => ({
   downloadAndHash: mock().mockResolvedValue({ sha256: "mocked_sha256_hash" }),
 }));
 
+const TOOL_NUSPEC = `<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>dotnet-serve</id>
+    <version>2.0.0</version>
+    <packageTypes>
+      <packageType name="DotnetTool" />
+    </packageTypes>
+  </metadata>
+</package>`;
+
+const LIBRARY_NUSPEC = `<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>DepotDownloader</id>
+    <version>2.7.5</version>
+    <title>Depot Downloader API</title>
+    <description>Steam Downloading API</description>
+  </metadata>
+</package>`;
+
+function mockNugetFetch(
+  packageIdLower: string,
+  versions: string[],
+  nuspecXml: string = TOOL_NUSPEC,
+) {
+  global.fetch = mock((url: string) => {
+    const u = String(url);
+    if (u.includes("nuget.org") && u.includes(packageIdLower) && u.endsWith("/index.json")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ versions }),
+      });
+    }
+    if (
+      u.includes("nuget.org") &&
+      u.includes(packageIdLower) &&
+      u.endsWith(".nuspec")
+    ) {
+      return Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve(nuspecXml),
+      });
+    }
+    return Promise.resolve({
+      ok: false,
+      status: 404,
+    });
+  }) as any;
+}
+
 describe("collectDotnetPackagePayload", () => {
   beforeEach(() => {
     mock.restore();
-
-    global.fetch = mock((url: string) => {
-      if (url.includes("nuget.org") && url.includes("dotnet-serve")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ versions: ["1.0.0", "1.1.0", "2.0.0"] }),
-        });
-      }
-      return Promise.resolve({
-        ok: false,
-        status: 404,
-      });
-    }) as any;
+    mockNugetFetch("dotnet-serve", ["1.0.0", "1.1.0", "2.0.0"]);
   });
 
   it("returns payload with correct template identifier", async () => {
@@ -96,21 +135,48 @@ describe("collectDotnetPackagePayload", () => {
       collectDotnetPackagePayload("nonexistent-pkg-xyz"),
     ).rejects.toThrow("NuGet lookup failed");
   });
+
+  it("throws when package is not a DotnetTool (library nuspec)", async () => {
+    mockNugetFetch("depotdownloader", ["2.7.5"], LIBRARY_NUSPEC);
+    await expect(collectDotnetPackagePayload("DepotDownloader")).rejects.toThrow(
+      /not a \.NET global tool|missing packageType DotnetTool/,
+    );
+  });
+
+  it("throws when nuspec lookup fails", async () => {
+    global.fetch = mock((url: string) => {
+      const u = String(url);
+      if (u.endsWith("/index.json") && u.includes("dotnet-serve")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ versions: ["2.0.0"] }),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    }) as any;
+    await expect(collectDotnetPackagePayload("dotnet-serve")).rejects.toThrow(
+      "NuGet nuspec lookup failed",
+    );
+  });
 });
 
 describe("collectDotnetPackagePayload — CSharpRepl", () => {
   beforeEach(() => {
     mock.restore();
-
-    global.fetch = mock((url: string) => {
-      if (url.includes("nuget.org") && url.includes("csharprepl")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ versions: ["0.5.0", "0.6.0", "0.7.0"] }),
-        });
-      }
-      return Promise.resolve({ ok: false, status: 404 });
-    }) as any;
+    mockNugetFetch(
+      "csharprepl",
+      ["0.5.0", "0.6.0", "0.7.0"],
+      `<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>CSharpRepl</id>
+    <version>0.7.0</version>
+    <packageTypes>
+      <packageType name="DotnetTool" />
+    </packageTypes>
+  </metadata>
+</package>`,
+    );
   });
 
   it("returns payload with correct template identifier", async () => {
