@@ -32,6 +32,25 @@ describe("detectInstallScriptFlags", () => {
     expect(flags.args).toContain("--yes");
     expect(flags.args).not.toContain("-y");
   });
+
+  it("does not treat apt-get -y as a CLI flag (agent-deck install.sh)", () => {
+    const flags = detectInstallScriptFlags(`
+# Options:
+#   --non-interactive   Skip all prompts
+#   --skip-tmux-config  Skip tmux configuration prompt
+case $1 in
+  --non-interactive) SKIP=true; shift ;;
+  --skip-tmux-config) SKIP_TMUX=true; shift ;;
+  *) echo "Unknown option: $1"; exit 1 ;;
+esac
+sudo apt-get install -y tmux
+dnf install -y jq
+`);
+    expect(flags.args).toContain("--non-interactive");
+    expect(flags.args).toContain("--skip-tmux-config");
+    expect(flags.args).not.toContain("-y");
+    expect(flags.args).not.toContain("--yes");
+  });
 });
 
 describe("collectInstallScriptPayload", () => {

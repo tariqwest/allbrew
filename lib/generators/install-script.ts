@@ -41,6 +41,10 @@ export function detectInstallScriptFlags(scriptText: string): {
   }
 
   // Longest / most specific flags first to avoid partial matches.
+  // Match only documented CLI options (usage/help/case/getopts) — never bare
+  // substring checks. `text.includes("-y")` false-positives on
+  // `apt-get install -y` / `dnf install -y` (agent-deck install.sh) and would
+  // pass an unknown `-y` that makes the installer exit 1.
   const flagCandidates = [
     "--non-interactive",
     "--skip-tmux-config",
@@ -48,20 +52,48 @@ export function detectInstallScriptFlags(scriptText: string): {
     "-y",
   ];
   for (const flag of flagCandidates) {
-    // Require the flag to appear as a documented option, not only in prose.
     const escaped = flag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(
-      `(?:^|[\\s"'|])${escaped}(?:\\s|$|["'])|case\\s+.*${escaped}|getopts.*${escaped.replace(/^--?/, "")}`,
-      "im",
-    );
-    if (re.test(text) || text.includes(flag)) {
-      if (!args.includes(flag)) args.push(flag);
+    const isShort =
+      flag.length === 2 && flag.startsWith("-") && !flag.startsWith("--");
+    const shortLetter = isShort ? flag.slice(1) : null;
+    // Long flags: usage/help or case arms are enough.
+    // Short flags (-y): NEVER match on bare whitespace surround — that hits
+    // `apt-get install -y` / `dnf install -y`. Require case arm, getopts, or
+    // an explicit CLI-option pairing with a long flag (e.g. `-y, --yes`).
+    const documented = isShort
+      ? new RegExp(
+          [
+            // case arm: -y) or -y|--yes) or --yes|-y)
+            `(?:^|[\\s|])${escaped}(?:\\)|\\|)`,
+            `(?:\\|)${escaped}\\)`,
+            // paired with long form in help: -y, --yes / --yes, -y / [-y]
+            `${escaped}\\s*,\\s*--[a-z]`,
+            `--[a-z][\\w-]*\\s*,\\s*${escaped}`,
+            `\\[${escaped}\\]`,
+            // getopts optstring containing the letter
+            shortLetter ? `getopts\\s+["'][^"']*${shortLetter}` : null,
+          ]
+            .filter(Boolean)
+            .join("|"),
+          "im",
+        )
+      : new RegExp(
+          [
+            // usage / help: "  --non-interactive  desc" or "[--yes]"
+            `(?:^|[\\s\\[|,"'])${escaped}(?:[\\s\\]|,"']|$)`,
+            // case arm: --non-interactive)
+            `${escaped}\\)`,
+          ].join("|"),
+          "im",
+        );
+    if (documented.test(text) && !args.includes(flag)) {
+      args.push(flag);
     }
   }
 
-  // agent-deck and similar: explicit non-interactive mode
-  if (/non.interactive/i.test(text) && !args.includes("--non-interactive")) {
-    if (/--non-interactive/.test(text)) args.unshift("--non-interactive");
+  // agent-deck and similar: explicit non-interactive mode from help text
+  if (/--non-interactive/.test(text) && !args.includes("--non-interactive")) {
+    args.unshift("--non-interactive");
   }
 
   // Prefer --yes over -y when both detected
