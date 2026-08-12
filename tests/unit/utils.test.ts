@@ -10,6 +10,7 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  isCliPlatformZipRelease,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
@@ -428,6 +429,51 @@ describe("isAppAsset", () => {
 
   it("rejects non-archive files", () => {
     expect(isAppAsset("README.md")).toBe(false);
+  });
+});
+
+describe("isCliPlatformZipRelease", () => {
+  it("detects multi-platform CLI zips like swift-outdated (macos+linux, no DMG/.app)", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "swift-outdated-0.15.3-macos.zip" },
+        { name: "swift-outdated-0.15.3-linux.zip" },
+      ]),
+    ).toBe(true);
+    expect(
+      isCliPlatformZipRelease([
+        "tool-1.0.0-macos.zip",
+        "tool-1.0.0-linux.tar.gz",
+      ]),
+    ).toBe(true);
+  });
+
+  it("rejects real desktop app releases (DMG or .app zip)", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "Foo-macos.zip" },
+        { name: "Foo-linux.zip" },
+        { name: "Foo.dmg" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCliPlatformZipRelease([
+        { name: "MyApp.app.zip" },
+        { name: "MyApp-linux.zip" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("rejects macos-only or arch-tagged CLI zips without linux sibling", () => {
+    expect(
+      isCliPlatformZipRelease([{ name: "Foo-macos.zip" }]),
+    ).toBe(false);
+    expect(
+      isCliPlatformZipRelease([
+        { name: "tool-darwin-arm64.zip" },
+        { name: "tool-linux-amd64.zip" },
+      ]),
+    ).toBe(false);
   });
 });
 
