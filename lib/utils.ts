@@ -742,6 +742,7 @@ const BARE_BINARY_SKIP_SUFFIXES = [
   ".sha512sum",
   ".sha384",
   ".sig",
+  ".minisig",
   ".asc",
   ".pem",
   ".sbom",
