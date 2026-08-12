@@ -30,9 +30,18 @@ export async function collectSourceBuildPayload(
   let version: string;
   if (release) {
     version = extractVersionFromTag(release.tagName);
-    sourceUrl =
-      release.tarballUrl ||
-      `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
+    // Prefer the public codeload/archive URL over api.github.com/.../tarball/...
+    // The API tarball often requires auth and can hash differently than what
+    // unauthenticated `brew install` downloads → SHA256 mismatch / silent fail.
+    const archiveUrl = release.tagName
+      ? `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`
+      : null;
+    const apiTarball =
+      release.tarballUrl &&
+      /api\.github\.com\/repos\/.+\/tarball\//i.test(String(release.tarballUrl))
+        ? null
+        : release.tarballUrl;
+    sourceUrl = archiveUrl || apiTarball || release.tarballUrl || null;
   } else {
     version = "HEAD";
   }

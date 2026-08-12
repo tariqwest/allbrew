@@ -2151,7 +2151,18 @@ async function brewAutoInstall(result: any, opts: any) {
       );
     }
   } catch (err: any) {
+    const stderr = String(err?.stderr || "").trim();
+    const stdout = String(err?.stdout || "").trim();
+    const tail = [stderr, stdout]
+      .filter(Boolean)
+      .join("\n")
+      .split("\n")
+      .slice(-40)
+      .join("\n");
     installSpinner.fail(`brew install failed: ${err.message}`);
+    if (tail) {
+      console.log(chalk.red(tail));
+    }
     console.log(
       chalk.dim(`  Retry manually: ${installLabel}`),
     );
