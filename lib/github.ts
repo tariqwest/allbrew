@@ -262,6 +262,12 @@ export function releaseMatchesProductName(
  * Prefer the newest non-draft release that has macOS-usable binary assets.
  * When `productName` is set, only product-matching releases are considered
  * (monorepo --name cua-driver must not pick lume-v* latest).
+ *
+ * Preference order (first match wins within each tier, newest-first list):
+ * 1. stable (non-prerelease), non-nightly tag
+ * 2. stable, any tag
+ * 3. prerelease, non-nightly tag (e.g. cua-driver-rs-v0.19.3 marked prerelease)
+ * 4. any usable (includes nightly-*)
  */
 export function pickReleaseWithBinaryAssets(
   releases: ReturnType<typeof mapRelease>[],
@@ -273,11 +279,13 @@ export function pickReleaseWithBinaryAssets(
   },
 ): ReturnType<typeof mapRelease> | null {
   const usable = (releases || []).filter((r) => r && !r.draft);
-  const stable = usable.filter((r) => !r.prerelease);
   const product = opts.productName
     ? normalizeProductToken(opts.productName)
     : "";
   const requireArm = opts.requireMacosArmOrUniversal !== false;
+
+  const isNightlyTag = (tag: string): boolean =>
+    /nightly/i.test(String(tag || ""));
 
   const hasUsableMacosBin = (rel: ReturnType<typeof mapRelease>): boolean => {
     if (product && !releaseMatchesProductName(rel, product)) return false;
@@ -307,7 +315,14 @@ export function pickReleaseWithBinaryAssets(
     });
   };
 
-  for (const pool of [stable, usable]) {
+  const pools = [
+    usable.filter((r) => !r.prerelease && !isNightlyTag(r.tagName || "")),
+    usable.filter((r) => !r.prerelease),
+    usable.filter((r) => r.prerelease && !isNightlyTag(r.tagName || "")),
+    usable,
+  ];
+
+  for (const pool of pools) {
     for (const rel of pool) {
       if (hasUsableMacosBin(rel)) return rel;
     }
