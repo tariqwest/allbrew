@@ -43,7 +43,8 @@ describe("collectSetappCliPayload", () => {
     const ruby = renderFormula(payload);
     expect(ruby).toContain("def ensure_setapp!");
     expect(ruby).toContain("return if setapp_installed?");
-    expect(ruby).toContain('Cask::CaskLoader.load("setapp")');
+    expect(ruby).toContain('system HOMEBREW_BREW_FILE, "install", "--cask", "setapp"');
+    expect(ruby).not.toContain('Cask::CaskLoader.load("setapp")');
     expect(ruby).toContain("/Applications/Setapp.app");
     expect(ruby).toContain('bin.install "setapp-cli"');
     expect(ruby).not.toContain('depends_on cask: "setapp"');

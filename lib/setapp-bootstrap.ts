@@ -1,4 +1,4 @@
-import { access } from "node:fs/promises";
+import { access, mkdir, symlink, lstat, readlink } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { homedir, userInfo } from "node:os";
 import { execFile } from "node:child_process";
@@ -90,20 +90,98 @@ async function loadTapConfig(): Promise<{ githubUser?: string; tapName?: string 
   }
 }
 
+async function ensureTapIsGitRepo(tapPath: string): Promise<void> {
+  await mkdir(join(tapPath, "Formula"), { recursive: true });
+  await mkdir(join(tapPath, "Casks"), { recursive: true });
+  try {
+    await execFileAsync("git", ["-C", tapPath, "rev-parse", "--git-dir"]);
+  } catch {
+    await execFileAsync("git", ["init", tapPath]);
+    await execFileAsync("git", ["-C", tapPath, "config", "user.email", "allbrew@local"]);
+    await execFileAsync("git", ["-C", tapPath, "config", "user.name", "allbrew"]);
+  }
+  // Ensure at least one commit so `brew tap <slug> <path>` can clone.
+  try {
+    await execFileAsync("git", ["-C", tapPath, "rev-parse", "HEAD"]);
+  } catch {
+    try {
+      await execFileAsync("git", ["-C", tapPath, "add", "-A"]);
+      await execFileAsync("git", [
+        "-C",
+        tapPath,
+        "commit",
+        "--allow-empty",
+        "-m",
+        "chore(allbrew): init setapp tap",
+      ]);
+    } catch {
+      // non-fatal
+    }
+  }
+}
+
+async function brewRepositoryRoot(): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync("brew", ["--repository"]);
+    const root = (stdout || "").trim();
+    return root || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Register the allbrew local tap with Homebrew so formulae written into
  * tapPath (e.g. setapp-cli) are resolvable by short name for depends_on.
- * Idempotent when already tapped.
+ * Prefer a Library/Taps symlink (no clone), fall back to `brew tap`.
  */
 export async function ensureLocalTapRegistered(tapPath: string): Promise<string> {
   const config = await loadTapConfig();
   const slug = deriveTapSlug(tapPath, config);
+  const [user, repo] = slug.split("/");
+  await ensureTapIsGitRepo(tapPath);
+
+  // Symlink into Homebrew's Taps tree — more reliable than brew tap clone of a
+  // working tree that already lives at tapPath (batch VMs create this dir first).
+  try {
+    const brewRoot = await brewRepositoryRoot();
+    if (brewRoot && user && repo) {
+      const tapsDir = join(brewRoot, "Library", "Taps", user);
+      const dest = join(tapsDir, `homebrew-${repo}`);
+      await mkdir(tapsDir, { recursive: true });
+      let needLink = true;
+      try {
+        const st = await lstat(dest);
+        if (st.isSymbolicLink()) {
+          const target = await readlink(dest);
+          if (target === tapPath || join(tapsDir, target) === tapPath) {
+            needLink = false;
+          }
+        } else if (st.isDirectory()) {
+          // Already a real checkout — leave it; short-name resolution still works.
+          needLink = false;
+        }
+      } catch {
+        needLink = true;
+      }
+      if (needLink) {
+        try {
+          await symlink(tapPath, dest);
+        } catch {
+          // race / EEXIST — ignore
+        }
+      }
+    }
+  } catch {
+    // symlink path is best-effort
+  }
+
   try {
     await execFileAsync("brew", ["tap", slug, tapPath]);
   } catch (err: any) {
     const msg: string = `${err?.stderr || ""} ${err?.message || ""}`;
     if (!/already tapped|already exists|Tap is already/i.test(msg)) {
-      // Non-fatal: install may still work via path / short name if linked
+      // Non-fatal when symlink already made the tap visible
       console.warn(
         `brew tap ${slug} ${tapPath} did not complete: ${(err?.message || msg).trim()}`,
       );
@@ -113,8 +191,12 @@ export async function ensureLocalTapRegistered(tapPath: string): Promise<string>
 }
 
 async function generateSetappCliIfNeeded(tapPath: string): Promise<void> {
-  if (await hasSetappCliFormula(tapPath)) return;
-  const spinner = ora("Generating setapp-cli formula...").start();
+  // Always (re)generate so template fixes (e.g. ensure_setapp! brew install
+  // --cask) replace stale Formula/setapp-cli.rb left by earlier runs.
+  const existed = await hasSetappCliFormula(tapPath);
+  const spinner = ora(
+    existed ? "Refreshing setapp-cli formula..." : "Generating setapp-cli formula...",
+  ).start();
   try {
     const repoInfo = await getRepoInfo(SETAPP_CLI_OWNER, SETAPP_CLI_REPO);
     const release = await getLatestRelease(SETAPP_CLI_OWNER, SETAPP_CLI_REPO);
@@ -125,7 +207,9 @@ async function generateSetappCliIfNeeded(tapPath: string): Promise<void> {
       tapPath,
       name: SETAPP_CLI_FORMULA,
     });
-    spinner.succeed("setapp-cli formula generated");
+    spinner.succeed(
+      existed ? "setapp-cli formula refreshed" : "setapp-cli formula generated",
+    );
   } catch (err: any) {
     spinner.warn(`setapp-cli formula generation failed: ${err.message}`);
   }
@@ -140,11 +224,8 @@ async function installSetappCli(tapPath: string, tapSlug: string): Promise<void>
     HOMEBREW_NO_AUTO_UPDATE: "1",
   };
   const candidates: string[][] = [
-    // Preferred: fully-qualified formula from the registered local tap
     ["install", "--formula", `${tapSlug}/${SETAPP_CLI_FORMULA}`],
-    // Short name once the local tap is loaded
     ["install", "--formula", SETAPP_CLI_FORMULA],
-    // Last resort: path install (requires HOMEBREW_DEVELOPER + real tap dir)
     ["install", "--formula", setappCliFormulaPath(tapPath)],
   ];
   let lastErr: any = null;
@@ -189,15 +270,16 @@ async function installSetappApp(): Promise<void> {
 
 /**
  * Ensure setapp-cli formula exists in the allbrew tap, the tap is registered
- * with Homebrew, setapp-cli is installed, and Setapp.app is present.
+ * with Homebrew, Setapp.app is present, and setapp-cli is installed.
  *
- * Batch/non-interactive paths used to only write Formula/setapp-cli.rb and
- * skip install — that left `depends_on formula: "setapp-cli"` unresolvable
- * (`No available formula with the name "setapp-cli"`). Always register + install.
+ * Install Setapp *before* setapp-cli so formula ensure_setapp! is a no-op when
+ * possible (also fixed to use `brew install --cask setapp` instead of the
+ * broken Cask::CaskLoader#install API).
  */
 export async function ensureSetappPrerequisites(tapPath: string) {
   await generateSetappCliIfNeeded(tapPath);
   const tapSlug = await ensureLocalTapRegistered(tapPath);
-  await installSetappCli(tapPath, tapSlug);
+  // Setapp first so setapp-cli formula's ensure_setapp! short-circuits.
   await installSetappApp();
+  await installSetappCli(tapPath, tapSlug);
 }
