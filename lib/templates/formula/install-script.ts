@@ -33,9 +33,12 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
       return
     end
 
+    # Volta installer writes to $HOME/.volta (VOLTA_HOME) when HOME is sandboxed.
+    ENV["VOLTA_HOME"] = (buildpath/".volta").to_s
     candidates = [
       buildpath/"bin",
       buildpath/".local/bin",
+      buildpath/".volta/bin",
       buildpath/"usr/local/bin",
       Pathname.new(ENV.fetch("PREFIX"))/"bin",
     ].uniq
@@ -52,8 +55,13 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
       break
     end
     unless installed
-      bins = Dir[buildpath/"**/*"].select do |f|
+      bins = Dir.glob(buildpath/"**/*", File::FNM_DOTMATCH).select do |f|
         File.file?(f) && File.executable?(f) && !File.basename(f).start_with?(".")
+      end
+      # Also check hidden volta layout explicitly (dotmatch should cover, but ensure)
+      if bins.empty?
+        volta_bins = Dir[buildpath/".volta/bin/*"].select { |f| File.file?(f) && File.executable?(f) }
+        bins = volta_bins unless volta_bins.empty?
       end
       odie "install script produced no executable binaries under buildpath" if bins.empty?
       bin.install bins
