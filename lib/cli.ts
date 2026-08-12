@@ -24,6 +24,7 @@ import {
   detectBuildSystemFromFiles,
   detectServiceConfig,
   detectServiceConfigFromFiles,
+  detectMacosAppStoreOnlyInstallScript,
 } from "./analyzer.ts";
 import { inspectArchive } from "./archive-inspector.ts";
 import {
@@ -1542,6 +1543,114 @@ async function handleGithubRepo(classification, opts) {
 }
 
 async function handleBashScript(url, opts) {
+  // Vendor multi-OS installers sometimes only `open` the Mac App Store on Darwin
+  // (e.g. tailscale.com/install.sh → PACKAGETYPE=appstore). That path cannot
+  // populate PREFIX/bin for an install-script formula. Prefer official Homebrew
+  // packages (design: Homebrew as source of truth), then MAS.
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "allbrew/1.0" },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (res.ok) {
+      const scriptText = await res.text();
+      const masOnly = detectMacosAppStoreOnlyInstallScript(scriptText);
+      if (masOnly) {
+        try {
+          const { matchOfficialCaskByHomepage } = await import(
+            "./generators/homebrew-cask.ts"
+          );
+          const matched = await matchOfficialCaskByHomepage(url, opts.name);
+          if (matched?.token) {
+            console.log(
+              chalk.yellow(
+                `  Install script only opens Mac App Store on macOS (${masOnly.evidence}); adopting official cask ${matched.token}`,
+              ),
+            );
+            return await handleHomebrewCask(
+              {
+                type: "homebrew-cask",
+                name: matched.token,
+                url: `https://formulae.brew.sh/cask/${matched.token}`,
+              },
+              {
+                ...opts,
+                name: matched.token,
+                sourceUrl: url,
+                discoverMethod: "install-script-mas-only-homebrew-cask",
+              },
+            );
+          }
+        } catch {
+          /* optional homepage cask match */
+        }
+
+        const nameHint = toFormulaName(
+          opts.name ||
+            (() => {
+              try {
+                return new URL(url).hostname
+                  .toLowerCase()
+                  .replace(/^www\./, "")
+                  .split(".")[0];
+              } catch {
+                return "";
+              }
+            })(),
+        );
+        if (nameHint) {
+          try {
+            const apiRes = await fetch(
+              `https://formulae.brew.sh/api/formula/${encodeURIComponent(nameHint)}.json`,
+              {
+                headers: { "User-Agent": "allbrew/1.0" },
+                signal: AbortSignal.timeout(15_000),
+              },
+            );
+            if (apiRes.ok) {
+              console.log(
+                chalk.yellow(
+                  `  Install script only opens Mac App Store on macOS (${masOnly.evidence}); adopting homebrew/core formula ${nameHint}`,
+                ),
+              );
+              return await handleHomebrewFormula(
+                {
+                  type: "homebrew-formula",
+                  name: nameHint,
+                  url: `https://formulae.brew.sh/formula/${nameHint}`,
+                },
+                {
+                  ...opts,
+                  name: nameHint,
+                  sourceUrl: url,
+                  discoverMethod: "install-script-mas-only-homebrew-formula",
+                },
+              );
+            }
+          } catch {
+            /* optional core formula match */
+          }
+        }
+
+        if (masOnly.appId) {
+          const masUrl = `https://apps.apple.com/app/id${masOnly.appId}`;
+          console.log(
+            chalk.yellow(
+              `  Install script only opens Mac App Store on macOS (${masOnly.evidence}); generating MAS cask for id${masOnly.appId}`,
+            ),
+          );
+          return await handleMacAppStore(masUrl, {
+            ...opts,
+            sourceUrl: url,
+            discoverMethod: "install-script-mas-only",
+          });
+        }
+      }
+    }
+  } catch {
+    /* network / parse errors — fall through to install-script */
+  }
+
   return await generateWithConfirmation("install-script", { url }, opts);
 }
 

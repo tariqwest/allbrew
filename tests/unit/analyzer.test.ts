@@ -6,6 +6,7 @@ import {
   detectServiceConfigFromFiles,
   detectBuildSystemFromFiles,
   detectBuildSystemFromArchive,
+  detectMacosAppStoreOnlyInstallScript,
 } from "../../lib/analyzer.ts";
 
 // ─── A5: Analyzer unit suite ─────────────────────────────────────────────
@@ -919,5 +920,45 @@ describe("detectBuildSystemFromArchive", () => {
 
   it("returns null when no recognizable files are found", () => {
     expect(detectBuildSystemFromArchive(["foo-1.0/LICENSE"])).toBeNull();
+  });
+});
+
+
+describe("detectMacosAppStoreOnlyInstallScript", () => {
+  it("detects PACKAGETYPE=appstore + open apps.apple.com (tailscale-style)", () => {
+    const script = `
+OS=""
+case "$(uname)" in
+Darwin)
+  OS="macos"
+  PACKAGETYPE="appstore"
+  ;;
+esac
+case "$PACKAGETYPE" in
+appstore)
+  open "https://apps.apple.com/us/app/tailscale/id1475387142"
+  ;;
+esac
+`;
+    const hit = detectMacosAppStoreOnlyInstallScript(script);
+    expect(hit).not.toBeNull();
+    expect(hit!.evidence).toBe("packagetype-appstore");
+    expect(hit!.appId).toBe("1475387142");
+    expect(hit!.appStoreUrl).toContain("apps.apple.com");
+  });
+
+  it("returns null for PREFIX/BIN_DIR installers like starship", () => {
+    const script = `
+BIN_DIR=/usr/local/bin
+if [ -z "\${BIN_DIR-}" ]; then BIN_DIR=/usr/local/bin; fi
+curl -fsSL https://example.com/starship.tar.gz | tar xz -C "\${BIN_DIR}"
+unpack "\${archive}" "\${BIN_DIR}" "\${sudo}"
+`;
+    expect(detectMacosAppStoreOnlyInstallScript(script)).toBeNull();
+  });
+
+  it("returns null for empty/unrelated scripts", () => {
+    expect(detectMacosAppStoreOnlyInstallScript("")).toBeNull();
+    expect(detectMacosAppStoreOnlyInstallScript("echo hello")).toBeNull();
   });
 });

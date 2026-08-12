@@ -274,6 +274,76 @@ export function detectScriptInstall(readmeText): InstallMethodHint | null {
   return null;
 }
 
+export type MacosAppStoreOnlyHint = {
+  appStoreUrl: string | null;
+  appId: string | null;
+  evidence: string;
+};
+
+/**
+ * Detect vendor install scripts whose macOS/Darwin path only opens the Mac App
+ * Store (PACKAGETYPE=appstore or `open https://apps.apple.com/...`) and does not
+ * install binaries into PREFIX/BIN_DIR. Those scripts cannot produce a Cellar
+ * formula via install-script; callers should prefer official cask/formula or MAS.
+ */
+export function detectMacosAppStoreOnlyInstallScript(
+  scriptText: string,
+): MacosAppStoreOnlyHint | null {
+  if (!scriptText) return null;
+  const text = String(scriptText);
+
+  const hasAppstorePackagetype = /PACKAGETYPE=["']appstore["']/i.test(text);
+  const appstoreCase = text.match(
+    /appstore\)\s*[\s\S]{0,500}?open\s+["'](https?:\/\/apps\.apple\.com[^"']+)["']/i,
+  );
+  const darwinOpen = text.match(
+    /\bDarwin\b[\s\S]{0,1200}?open\s+["'](https?:\/\/apps\.apple\.com[^"']+)["']/i,
+  );
+
+  if (!hasAppstorePackagetype && !appstoreCase && !darwinOpen) {
+    return null;
+  }
+
+  // Scripts that actually install CLI bins into BIN_DIR/PREFIX on all platforms
+  // (e.g. starship) are not App Store-only even if they mention apps.apple.com.
+  const honorsBinDir =
+    /\b(?:BIN_DIR|PREFIX|DESTDIR)\b/.test(text) &&
+    /(?:install|unpack|curl|wget).{0,80}(?:BIN_DIR|PREFIX|DESTDIR)/is.test(text);
+  if (honorsBinDir && !hasAppstorePackagetype && !appstoreCase) {
+    return null;
+  }
+
+  const appStoreUrl =
+    (appstoreCase && appstoreCase[1]) ||
+    (darwinOpen && darwinOpen[1]) ||
+    text.match(/https?:\/\/apps\.apple\.com\/[^\s"'\\]+/i)?.[0] ||
+    null;
+
+  let appId: string | null = null;
+  if (appStoreUrl) {
+    const m = appStoreUrl.match(/\/id(\d+)/i) || appStoreUrl.match(/id(\d{6,})/i);
+    if (m) appId = m[1];
+  }
+  if (!appId) {
+    const m = text.match(/apps\.apple\.com\/[^"'\\\s]*id(\d{6,})/i);
+    if (m) appId = m[1];
+  }
+
+  if (!hasAppstorePackagetype && !appstoreCase && !appStoreUrl) {
+    return null;
+  }
+
+  return {
+    appStoreUrl,
+    appId,
+    evidence: hasAppstorePackagetype
+      ? "packagetype-appstore"
+      : appstoreCase
+        ? "appstore-case-open"
+        : "darwin-open-mas",
+  };
+}
+
 const BADGE_OR_STATIC_HOST_RE =
   /(?:^|\.)(?:shields\.io|badge(?:s)?\.[a-z0-9.-]+|img\.shields\.io)$/i;
 
