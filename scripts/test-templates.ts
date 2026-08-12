@@ -264,7 +264,7 @@ function buildCargoPackageCase(): Case {
     urlLines: '  url "https://example.com/foo-1.0.tar.gz"\n  sha256 "cc"\n',
     livecheckBlock: livecheck,
     cargoInstallArgs: "*std_cargo_args",
-    cargoInstallArgsUnlocked: "*std_cargo_args.reject { |arg| arg == "--locked" }",
+    cargoInstallArgsUnlocked: '*std_cargo_args.reject { |arg| arg == "--locked" }',
     installPreamble:
       '    system "git", "submodule", "update", "--init", "--recursive" if build.head?\n',
     allbrewDependency: "",

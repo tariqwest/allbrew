@@ -75,7 +75,7 @@ describe("collectCargoPackagePayload", () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
     expect(payload.cargoInstallArgs).toBe("*std_cargo_args");
     expect(payload.cargoInstallArgsUnlocked).toBe(
-      "*std_cargo_args.reject { |arg| arg == "--locked" }",
+      '*std_cargo_args.reject { |arg| arg == "--locked" }',
     );
   });
 
@@ -84,7 +84,7 @@ describe("collectCargoPackagePayload", () => {
       "../../../lib/generators/cargo-package.ts"
     );
     expect(cargoStdInstallArgs(null, { locked: false })).toBe(
-      "*std_cargo_args.reject { |arg| arg == "--locked" }",
+      '*std_cargo_args.reject { |arg| arg == "--locked" }',
     );
     expect(cargoStdInstallArgs("crates/x", { locked: false })).toBe(
       '*std_cargo_args(path: "crates/x").reject { |arg| arg == "--locked" }',
