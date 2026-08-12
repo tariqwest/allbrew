@@ -120,13 +120,28 @@ function mapRelease(data: any) {
   };
 }
 
+/**
+ * GitHub's /releases/latest only returns the newest *non-prerelease* release.
+ * Repos that ship only prereleases (e.g. portdeck) 404 that endpoint even when
+ * list_releases has usable assets. Fall back to the newest non-draft prerelease.
+ */
 export async function getLatestRelease(owner, repo) {
   try {
     const { data } = await getOctokit().rest.repos.getLatestRelease({ owner, repo });
     return mapRelease(data);
   } catch (err) {
-    if (err.status === 404) return null;
-    throw err;
+    if (err.status !== 404) throw err;
+  }
+
+  // No stable "latest" — prefer newest non-draft release (prerelease ok).
+  try {
+    const releases = await listReleases(owner, repo, { perPage: 20 });
+    const usable = (releases || []).filter((r) => r && !r.draft);
+    if (usable.length === 0) return null;
+    // listReleases is newest-first from GitHub.
+    return usable[0];
+  } catch {
+    return null;
   }
 }
 
