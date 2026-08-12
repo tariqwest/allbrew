@@ -144,8 +144,12 @@ export function cargoStdInstallArgs(
     if (!pathOk) return "*std_cargo_args";
     return `*std_cargo_args(path: ${rubyString(p)})`;
   }
-  if (!pathOk) return "*std_cargo_args(locked: false)";
-  return `*std_cargo_args(locked: false, path: ${rubyString(p)})`;
+  // Prefer .reject over locked: false — older Homebrew std_cargo_args lacks the
+  // keyword and raises ArgumentError: unknown keyword: :locked.
+  if (!pathOk) {
+    return '*std_cargo_args.reject { |arg| arg == "--locked" }';
+  }
+  return `*std_cargo_args(path: ${rubyString(p)}).reject { |arg| arg == "--locked" }`;
 }
 
 export type CratesIoCrateMeta = {

@@ -4,11 +4,8 @@ export default function renderCargoPackage(p: CargoPackagePayload): string {
   const unlocked =
     p.cargoInstallArgsUnlocked ||
     (p.cargoInstallArgs.includes("path:")
-      ? p.cargoInstallArgs.replace(
-          "*std_cargo_args(",
-          "*std_cargo_args(locked: false, ",
-        )
-      : "*std_cargo_args(locked: false)");
+      ? `${p.cargoInstallArgs}.reject { |arg| arg == "--locked" }`
+      : '*std_cargo_args.reject { |arg| arg == "--locked" }');
   return `class ${p.className} < Formula
   desc "${p.desc}"
   homepage "${p.homepage}"
