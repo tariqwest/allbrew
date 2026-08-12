@@ -227,24 +227,17 @@ function getInstallBlock(
           `        venv.pip_install r\n` +
           `      end\n` +
           `    end\n` +
-          `    system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."\n` +
-          `    Dir[libexec/"bin/*"].each do |exe|\n` +
-          `      bn = File.basename(exe)\n` +
-          `      next if bn.match?(/\\A(?:python|pip|wheel|𝜋thon)/i)\n` +
-          `      bin.install_symlink exe\n` +
-          `    end\n`
+          // virtualenv_create uses --without-pip; resources install via
+          // `python -m pip --python=venv`. Use venv.pip_install_and_link for
+          // the main package (libexec/bin/pip may not exist).
+          `    venv.pip_install_and_link buildpath\n`
         );
       }
       // No requirements discovered — install with deps (needs network; may fail
       // under brew sandbox). Prefer tag+requirements when possible.
       return (
         `    venv = virtualenv_create(libexec, "python3.13")\n` +
-        `    system libexec/"bin/pip", "install", "-v", "--ignore-installed", "."\n` +
-        `    Dir[libexec/"bin/*"].each do |exe|\n` +
-        `      bn = File.basename(exe)\n` +
-        `      next if bn.match?(/\\A(?:python|pip|wheel|𝜋thon)/i)\n` +
-        `      bin.install_symlink exe\n` +
-        `    end\n`
+        `    venv.pip_install_and_link buildpath\n`
       );
     default:
       return `    system "make", "PREFIX=#{prefix}", "install"\n`;
