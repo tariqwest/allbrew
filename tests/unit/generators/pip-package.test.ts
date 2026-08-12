@@ -509,13 +509,9 @@ describe("caliscope GUI / delocate knobs", () => {
 
     const payload = await collectPipPackagePayload("caliscope");
     expect(payload.wrapGuiCliCall).toContain('wrap_gui_cli_bin "caliscope", "caliscope"');
-    expect(payload.testDoBody).toContain("importlib.metadata");
-    expect(payload.testDoBody).toContain("caliscope");
-    // Must emit Ruby-escaped \\" so Formulary can parse the formula (bare "
-    // inside shell_output("...") is a syntax error).
-    expect(payload.testDoBody).toContain('print(v(\\"caliscope\\"))');
-    expect(payload.testDoBody).not.toContain('print(v("caliscope"))');
-    expect(payload.testDoBody).not.toContain("#{bin}/caliscope --version");
+    // GUI wrap → formula test uses bin --version (wrapper answers headlessly).
+    expect(payload.testDoBody).toContain("#{bin}/caliscope --version");
+    expect(payload.testDoBody).not.toContain("importlib.metadata");
   });
 });
 
