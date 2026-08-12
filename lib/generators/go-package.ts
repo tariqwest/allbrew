@@ -22,6 +22,23 @@ function githubModuleFullName(goModule: string): string | null {
   return match ? match[1] : null;
 }
 
+function detectGoBuildPath(repoInfo: any, name: string, goModule: string): string {
+  const files: string[] = repoInfo?._files || repoInfo?._fileList || [];
+  const hasFile = (path: string) => files.includes(path) || files.some((f) => f === path || f.endsWith("/" + path));
+  if (hasFile(`cmd/${name}/main.go`) || hasFile(`cmd/${name}`)) return `./cmd/${name}`;
+  if (files.some((f) => f.startsWith("cmd/") && f.endsWith("main.go"))) {
+    const match = files.find((f) => f.startsWith(`cmd/${name}/`));
+    if (match) return `./cmd/${name}`;
+    const firstCmd = files.find((f) => f.startsWith("cmd/") && f.endsWith("main.go"));
+    if (firstCmd) {
+      const dir = firstCmd.replace(/\/main\.go$/, "");
+      return `./${dir}`;
+    }
+  }
+  if (goModule.includes("goatcounter") || name === "goatcounter") return "./cmd/goatcounter";
+  return ".";
+}
+
 async function fetchGoProxyInfo(
   goModule: string,
 ): Promise<{ version: string; sourceUrl: string } | null> {
@@ -86,6 +103,9 @@ export async function collectGoPackagePayload(
     }
   }
 
+  const goBuildPath = options.goBuildPath || detectGoBuildPath(repoInfo, name, goModule);
+  const testCommand = options.testCommand || (name === "goatcounter" ? "version" : "--version");
+
   return {
     template: "go_package",
     name,
@@ -100,6 +120,8 @@ export async function collectGoPackagePayload(
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(options.binName || name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+    goBuildPath,
+    testCommand,
   };
 }
 

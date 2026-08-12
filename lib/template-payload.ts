@@ -58,6 +58,8 @@ export type GoPackagePayload = FormulaCommonFields & {
   licenseLine: string;
   urlLines: string;
   livecheckBlock: string;
+  goBuildPath: string;
+  testCommand: string;
 };
 
 export type SourceBuildPayload = FormulaCommonFields & {

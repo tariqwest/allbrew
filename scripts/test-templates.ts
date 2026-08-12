@@ -308,6 +308,8 @@ function buildGoPackageCase(): Case {
     allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
+    goBuildPath: ".",
+    testCommand: "--version",
   };
   const expected =
     `class Foo < Formula\n` +
