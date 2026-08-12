@@ -253,12 +253,11 @@ function getInstallBlock(system: string, pythonFormula: string | null) {
       // python@3.12 → python3.12 for virtualenv_create
       const formula = pythonFormula || "python@3.13";
       const pyBin = formula.replace(/^python@/, "python");
-      // Prefer venv.pip_install over raw system(libexec/"bin/pip"):
-      // virtualenv_create uses --without-pip then bootstraps; Homebrew's
-      // helper is the supported path. --no-build-isolation avoids network
-      // fetches of setuptools during brew builds when the venv already has it.
+      // Homebrew's Virtualenv#pip_install takes a single target (Array/Resource/
+      // path) — not *args. Use system(libexec/"bin/pip", ...) for flags like
+      // --no-deps / --no-build-isolation. virtualenv_create bootstraps pip.
       return (
-        `    venv = virtualenv_create(libexec, "${pyBin}")\n` +
+        `    virtualenv_create(libexec, "${pyBin}")\n` +
         `    pyvenv_cfg = libexec/"pyvenv.cfg"\n` +
         `    if pyvenv_cfg.exist?\n` +
         `      lines = pyvenv_cfg.read.lines\n` +
@@ -274,9 +273,9 @@ function getInstallBlock(system: string, pythonFormula: string | null) {
         `      lines << "include-system-site-packages = false\\n" unless replaced\n` +
         `      pyvenv_cfg.atomic_write(lines.join)\n` +
         `    end\n` +
-        `    # Ensure build backend is present for --no-build-isolation.\n` +
-        `    venv.pip_install "setuptools", "wheel"\n` +
-        `    venv.pip_install "--no-deps", "--no-build-isolation", buildpath\n` +
+        `    # Build backend for --no-build-isolation (no network fetch needed).\n` +
+        `    system libexec/"bin/pip", "install", "-v", "--upgrade", "pip", "setuptools", "wheel"\n` +
+        `    system libexec/"bin/pip", "install", "-v", "--no-deps", "--no-build-isolation", "--ignore-installed", buildpath\n` +
         `    bin.install_symlink Dir["#{libexec}/bin/*"]\n`
       );
     }
