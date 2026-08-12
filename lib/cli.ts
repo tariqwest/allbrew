@@ -2322,6 +2322,17 @@ async function brewAutoInstall(result: any, opts: any) {
     const tail = combined.split("\n").slice(-60).join("\n");
     installSpinner.fail(`brew install failed: ${err.message}`);
     if (tail.trim()) console.log(chalk.dim(tail));
+    // Dump Homebrew formula build logs (pip failures live here, not in brew stderr).
+    try {
+      const logDir = `${process.env.HOME || ""}/Library/Logs/Homebrew/${result.name}`;
+      const { stdout: logList } = await execFileAsync("bash", [
+        "-c",
+        `ls -la ${JSON.stringify(logDir)} 2>/dev/null; for f in ${JSON.stringify(logDir)}/*; do [ -f "$f" ] || continue; echo "===== $f ====="; tail -n 80 "$f"; done`,
+      ], { maxBuffer: 8 * 1024 * 1024 });
+      if (logList?.trim()) console.log(chalk.dim(String(logList)));
+    } catch {
+      /* no logs */
+    }
     console.log(chalk.dim(`  Retry manually: ${installLabel}`));
     process.exitCode = 1;
   }
