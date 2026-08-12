@@ -450,6 +450,20 @@ describe("isAppAsset", () => {
     expect(isAppAsset("toolong_x86_64.zip")).toBe(false);
   });
 
+  it("matches arch-tagged macos installer/setup zips (Nicotine+ style)", () => {
+    expect(isAppAsset("macos-arm64-installer.zip")).toBe(true);
+    expect(isAppAsset("macos-x86_64-installer.zip")).toBe(true);
+    expect(isAppAsset("Foo-macos-arm64-setup.zip")).toBe(true);
+    // installer without mac token is not enough
+    expect(isAppAsset("windows-x86_64-installer.zip")).toBe(false);
+  });
+
+  it("rejects distro/package bare zips that are not macOS apps", () => {
+    expect(isAppAsset("debian-package.zip")).toBe(false);
+    expect(isAppAsset("package.zip")).toBe(false);
+    expect(isAppAsset("ubuntu-package.zip")).toBe(false);
+  });
+
   it("rejects non-mac .zip files", () => {
     expect(isAppAsset("foo-linux-x64.zip")).toBe(false);
   });

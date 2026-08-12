@@ -718,8 +718,9 @@ export function isAppAsset(assetName) {
   if (lower.includes(".app")) return true;
 
   // Non-mac desktop/OS tags never count as macOS app assets
+  // (include distro package names that look like bare product zips, e.g. debian-package.zip)
   if (
-    /(?:^|[^a-z])(?:linux|windows|win32|android|freebsd|openbsd)(?:[^a-z]|$)/i.test(
+    /(?:^|[^a-z])(?:linux|windows|win32|android|freebsd|openbsd|debian|ubuntu|fedora|centos|rhel|gentoo|archlinux|appimage)(?:[^a-z]|$)/i.test(
       lower,
     )
   ) {
@@ -732,17 +733,23 @@ export function isAppAsset(assetName) {
   // Arch-tagged darwin/macos/osx zips are almost always CLI binaries
   // (e.g. gogs_*_darwin_amd64.zip, television-macos-aarch64.zip).
   // Desktop app zips usually omit cpu arch or use "universal" with .app,
-  // or use short "mac"+arch (Electron).
+  // or use short "mac"+arch (Electron). Exception: explicit installer/setup
+  // names like macos-arm64-installer.zip (Nicotine+) wrap a .app/.dmg.
   const hasCpuArch =
     /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(
       lower,
     );
+  const isInstallerOrSetup =
+    /(?:^|[^a-z])(?:installer|setup)(?:[^a-z]|$)/i.test(lower);
 
   if (hasMacToken) {
     if (hasCpuArch) {
       const usesDarwinMacosOsx =
         /(?:^|[^a-z])(?:darwin|macos|osx)(?:[^a-z]|$)/i.test(lower);
-      if (usesDarwinMacosOsx) return false;
+      if (usesDarwinMacosOsx) {
+        // macos-arm64-installer.zip / macos-x86_64-installer.zip → desktop app
+        return isInstallerOrSetup;
+      }
       // short platform token "mac" + cpu arch → desktop app zip
       return /(?:^|[^a-z])mac(?:[^a-z]|$)/i.test(lower);
     }
@@ -766,7 +773,7 @@ export function isAppAsset(assetName) {
 function isBareAppZipName(lowerName: string): boolean {
   if (!lowerName.endsWith(".zip")) return false;
   if (
-    /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions)(?:[^a-z]|$)/i.test(
+    /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions|package|packages)(?:[^a-z]|$)/i.test(
       lowerName,
     )
   ) {
@@ -786,7 +793,7 @@ function isBareAppZipName(lowerName: string): boolean {
 function isVersionedProductZipName(lowerName: string): boolean {
   if (!lowerName.endsWith(".zip")) return false;
   if (
-    /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions)(?:[^a-z]|$)/i.test(lowerName)
+    /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions|package|packages)(?:[^a-z]|$)/i.test(lowerName)
   ) {
     return false;
   }
