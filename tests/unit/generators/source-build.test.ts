@@ -193,6 +193,30 @@ describe("collectSourceBuildPayload — slides", () => {
   });
 });
 
+describe("selectHomebrewPythonFormula / requires-python", () => {
+  it("maps >=3.11,<3.13 to python@3.12 (open-notebook)", async () => {
+    const {
+      selectHomebrewPythonFormula,
+      parseRequiresPythonFromPyproject,
+      versionSatisfiesRequiresPython,
+    } = await import("../../../lib/generators/source-build.ts");
+    expect(parseRequiresPythonFromPyproject('requires-python = ">=3.11,<3.13"\n')).toBe(
+      ">=3.11,<3.13",
+    );
+    expect(selectHomebrewPythonFormula(">=3.11,<3.13")).toBe("python@3.12");
+    expect(versionSatisfiesRequiresPython("3.13", ">=3.11,<3.13")).toBe(false);
+    expect(versionSatisfiesRequiresPython("3.12", ">=3.11,<3.13")).toBe(true);
+  });
+
+  it("defaults to python@3.13 when unconstrained", async () => {
+    const { selectHomebrewPythonFormula } = await import(
+      "../../../lib/generators/source-build.ts"
+    );
+    expect(selectHomebrewPythonFormula(null)).toBe("python@3.13");
+    expect(selectHomebrewPythonFormula("")).toBe("python@3.13");
+  });
+});
+
 describe("collectSourceBuildPayload — open-notebook (Python web app, no PyPI, source-build)", () => {
   beforeEach(() => {
     mock.restore();
@@ -212,6 +236,18 @@ describe("collectSourceBuildPayload — open-notebook (Python web app, no PyPI, 
     tagName: "v1.10.0",
     tarballUrl: "https://github.com/lfnovo/open-notebook/archive/refs/tags/v1.10.0.tar.gz",
   };
+
+  it("honours requires-python upper bound with python@3.12", async () => {
+    const payload = await collectSourceBuildPayload(
+      openNotebookRepoInfo,
+      release,
+      { system: "python" },
+      { requiresPython: ">=3.11,<3.13" },
+    );
+    expect(payload.dependenciesLines).toContain('depends_on "python@3.12"');
+    expect(payload.installBody).toContain('virtualenv_create(libexec, "python3.12")');
+    expect(payload.installBody).not.toContain("python3.13");
+  });
 
   it("returns correct template identifier", async () => {
     const payload = await collectSourceBuildPayload(
