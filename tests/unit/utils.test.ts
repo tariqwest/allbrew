@@ -426,6 +426,22 @@ describe("isAppAsset", () => {
     expect(isAppAsset("my-extension-2.0.0.zip")).toBe(false);
   });
 
+  it("rejects embedded web UI / frontend / docs / static asset zips (not .app bundles)", () => {
+    // TimothyYe/godns ships godns-web-v*.zip as static files for the web panel,
+    // alongside real darwin_* binary tarballs — must not prefer cask-app-release.
+    expect(isAppAsset("godns-web-v3.4.3.zip")).toBe(false);
+    expect(isAppAsset("godns-web-3.4.3.zip")).toBe(false);
+    expect(isAppAsset("frontend-1.0.0.zip")).toBe(false);
+    expect(isAppAsset("docs-2.0.0.zip")).toBe(false);
+    expect(isAppAsset("web-assets-1.2.3.zip")).toBe(false);
+    expect(isAppAsset("static-1.0.0.zip")).toBe(false);
+  });
+
+  it("still matches real versioned product app zips without non-app tokens", () => {
+    expect(isAppAsset("NetBar-1.2.1.zip")).toBe(true);
+    expect(isAppAsset("Foo-1.2.3.zip")).toBe(true);
+  });
+
   it("rejects non-archive files", () => {
     expect(isAppAsset("README.md")).toBe(false);
   });

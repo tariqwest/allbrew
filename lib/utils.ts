@@ -650,12 +650,21 @@ export function matchAssetToArch(assetName) {
   return null;
 }
 
+/** Zip name tokens that are packaging/docs/UI assets, not macOS .app bundles.
+ *  e.g. godns-web-v3.4.3.zip (embedded web panel static files for a Go CLI). */
+const NON_APP_ZIP_TOKEN_RE =
+  /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions|web|frontend|docs?|documentation|static|assets?)(?:[^a-z]|$)/i;
+
 export function isAppAsset(assetName) {
   const lower = assetName.toLowerCase();
   if (lower.endsWith(".dmg")) return true;
   if (!lower.endsWith(".zip")) return false;
   // Explicit app-bundle archives
   if (lower.includes(".app")) return true;
+
+  // Embedded web UI / docs / frontend / static archives are never macOS apps
+  // (godns-web-v3.4.3.zip would otherwise match isVersionedProductZipName).
+  if (NON_APP_ZIP_TOKEN_RE.test(lower)) return false;
 
   // Non-mac desktop/OS tags never count as macOS app assets
   if (
@@ -700,11 +709,7 @@ export function isAppAsset(assetName) {
 
 function isBareAppZipName(lowerName: string): boolean {
   if (!lowerName.endsWith(".zip")) return false;
-  if (
-    /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions)(?:[^a-z]|$)/i.test(
-      lowerName,
-    )
-  ) {
+  if (NON_APP_ZIP_TOKEN_RE.test(lowerName)) {
     return false;
   }
   const base = lowerName.slice(0, -".zip".length);
@@ -720,9 +725,7 @@ function isBareAppZipName(lowerName: string): boolean {
 /** Foo-1.2.3.zip / Foo_1.2.3.zip product release names (no platform/arch tags). */
 function isVersionedProductZipName(lowerName: string): boolean {
   if (!lowerName.endsWith(".zip")) return false;
-  if (
-    /(?:^|[^a-z])(?:src|source|sources|checksums?|extension|extensions)(?:[^a-z]|$)/i.test(lowerName)
-  ) {
+  if (NON_APP_ZIP_TOKEN_RE.test(lowerName)) {
     return false;
   }
   const base = lowerName.slice(0, -".zip".length);
