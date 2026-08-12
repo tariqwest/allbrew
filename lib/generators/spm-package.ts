@@ -12,25 +12,33 @@ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { SpmPackagePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
-/** Extract executable product names from Package.swift source text. */
+/**
+ * Extract installable binary names from Package.swift.
+ *
+ * Prefer `.executable(name:)` product names — those are the artifacts written
+ * to `.build/release/`. Only fall back to `.executableTarget(name:)` when no
+ * products are declared (SPM auto-names the product after the target). Unioning
+ * both causes brew install failures when product ≠ target (e.g. product
+ * `swiftpolyglot` + target `SwiftPolyglot` → only `swiftpolyglot` is built).
+ */
 export function parseSpmExecutableProducts(packageSwiftText: string): string[] {
   if (!packageSwiftText) return [];
-  const found: string[] = [];
-  const seen = new Set<string>();
-  const patterns = [
-    /\.executable\s*\(\s*name:\s*"([^"]+)"/g,
-    /\.executableTarget\s*\(\s*name:\s*"([^"]+)"/g,
-  ];
-  for (const re of patterns) {
+  const collect = (re: RegExp): string[] => {
+    const found: string[] = [];
+    const seen = new Set<string>();
     let match;
-    while ((match = re.exec(packageSwiftText)) !== null) {
+    const pattern = new RegExp(re.source, re.flags.includes("g") ? re.flags : `${re.flags}g`);
+    while ((match = pattern.exec(packageSwiftText)) !== null) {
       const name = match[1];
       if (!name || seen.has(name)) continue;
       seen.add(name);
       found.push(name);
     }
-  }
-  return found;
+    return found;
+  };
+  const products = collect(/\.executable\s*\(\s*name:\s*"([^"]+)"/g);
+  if (products.length > 0) return products;
+  return collect(/\.executableTarget\s*\(\s*name:\s*"([^"]+)"/g);
 }
 
 /** True when Package.swift only exposes libraries (no CLI install target). */

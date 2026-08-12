@@ -213,6 +213,55 @@ let package = Package(
     );
     expect(payload.serviceBlock).toBe("");
   });
+
+  it("prefers product name over differently-named executableTarget (SwiftPolyglot)", async () => {
+    const swiftPolyglot = `
+// swift-tools-version: 6.0
+let package = Package(
+    name: "SwiftPolyglot",
+    products: [
+        .executable(name: "swiftpolyglot", targets: ["SwiftPolyglot"]),
+    ],
+    targets: [
+        .executableTarget(
+            name: "SwiftPolyglot",
+            dependencies: ["SwiftPolyglotCore"]
+        ),
+        .target(name: "SwiftPolyglotCore"),
+    ]
+)
+`;
+    const bins = parseSpmExecutableProducts(swiftPolyglot);
+    expect(bins).toEqual(["swiftpolyglot"]);
+    expect(bins).not.toContain("SwiftPolyglot");
+
+    const payload = await collectSpmPackagePayload(
+      {
+        name: "SwiftPolyglot",
+        fullName: "appdecostudio/SwiftPolyglot",
+        description: null,
+        homepage: "",
+        htmlUrl: "https://github.com/appdecostudio/SwiftPolyglot",
+        license: "MIT",
+        defaultBranch: "main",
+      },
+      { tagName: "v2.0.2" },
+      { packageSwiftText: swiftPolyglot, name: "swiftpolyglot" },
+    );
+    expect(payload.binInstallPaths).toBe('".build/release/swiftpolyglot"');
+    expect(payload.binInstallPaths).not.toContain("SwiftPolyglot");
+    expect(payload.testBinName).toBe("swiftpolyglot");
+  });
+
+  it("falls back to executableTarget when no products declared", () => {
+    const targetOnly = `
+let package = Package(
+  name: "OnlyTarget",
+  targets: [ .executableTarget(name: "only-target") ]
+)
+`;
+    expect(parseSpmExecutableProducts(targetOnly)).toEqual(["only-target"]);
+  });
 });
 
 describe("collectSpmPackagePayload — utiluti", () => {
