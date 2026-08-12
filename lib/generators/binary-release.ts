@@ -24,6 +24,40 @@ const execFileAsync = promisify(execFile);
 type ArchHash = { url: string; sha256: string; name: string };
 
 /**
+ * Thrown when a release asset that looked like a CLI binary archive actually
+ * contains a macOS .app bundle (e.g. go2tv_*_macOS_arm64.zip → go2tv.app).
+ * Callers should re-route to cask-app-release.
+ */
+export class MacAppArchiveError extends Error {
+  appName: string;
+  assetName: string;
+
+  constructor(appName: string, assetName: string) {
+    super(
+      `Release archive ${assetName} contains macOS app bundle ${appName}; use cask-app-release`,
+    );
+    this.name = "MacAppArchiveError";
+    this.appName = appName;
+    this.assetName = assetName;
+  }
+}
+
+/** Return top-level .app bundle name if archive members are a macOS app zip. */
+export function findMacAppInArchiveMembers(members: string[]): string | null {
+  for (const raw of members) {
+    const m = raw.replace(/\\/g, "/").replace(/^\.\//, "");
+    if (!m) continue;
+    // Directory entry: go2tv.app/ or nested path/Foo.app/
+    const asDir = m.match(/(?:^|\/)([^/]+\.app)\/?$/i);
+    if (asDir) return asDir[1];
+    // Nested file under bundle: go2tv.app/Contents/MacOS/go2tv
+    const nested = m.match(/(?:^|\/)([^/]+\.app)\//i);
+    if (nested) return nested[1];
+  }
+  return null;
+}
+
+/**
  * Homebrew stages a bare binary URL as a file named after the asset basename.
  * Archives unpack and typically expose a binary named like the formula.
  * Prefer options.binName, else a common prefix from bare asset names, else formula name.
@@ -65,11 +99,19 @@ export function pickArchiveEntrypoint(
     .map((m) => m.replace(/\\/g, "/").replace(/^\.\//, ""))
     .filter((m) => m && !m.endsWith("/"));
 
+  // Never treat documentation/license as a CLI entrypoint (go2tv zips ship
+  // LICENSE next to go2tv.app — previously became bin.install_symlink LICENSE).
+  const DOC_NAME_RE =
+    /^(license|licence|readme|changelog|changes|authors|contributing|copying|notice|install|todo)(\.[a-z0-9]+)?$/i;
+
   const candidates = files.filter((m) => {
     const base = m.split("/").pop() || "";
     if (!base || base.startsWith(".")) return false;
+    if (DOC_NAME_RE.test(base)) return false;
     if (/\.(txt|md|json|sha256|sig|asc|1|html|sample|dylib|so|a|ps1|psm1|bat|sh)$/i.test(base)) return false;
     if (m.includes("/node_modules/") || m.includes("/vendor/")) return false;
+    // Skip files living inside a .app bundle — those are cask territory.
+    if (/\.app\//i.test(m)) return false;
     // Prefer bin/ layout; also allow root-level binaries and files one directory
     // deep (common for release archives with a top-level wrapper directory like
     // `project-arch/binary`).
@@ -102,11 +144,8 @@ export function pickArchiveEntrypoint(
     // Deprioritize helper hosts / path tools.
     if (/host|rg$|zsh|node|python/i.test(base)) s -= 20;
     if (base.length === 1) s -= 5; // e.g. "i"
-    // Boost binary-like files (no extension or known non-doc) over
-    // documentation/license files (common in release archives).
-    const DOC_PATTERNS = /^(license|licence|readme|changelog|changes|authors|contributing|copying|notice|authors|install|todo)\b/i;
-    if (DOC_PATTERNS.test(base)) s -= 10;
-    else if (!base.includes(".")) s += 5;
+    // Boost extensionless binary-like files.
+    if (!base.includes(".")) s += 5;
     return s;
   };
 
@@ -239,6 +278,12 @@ export async function collectBinaryReleasePayload(
         hashes[arch] = { url: asset.url, sha256: dl.sha256, name: asset.name };
         try {
           const members = await listArchiveMembersFromPath(dl.path);
+          // Arch-tagged macOS zips (go2tv_*_macOS_arm64.zip) look like CLI
+          // binaries by filename but often contain a desktop .app — re-route.
+          const appInArchive = findMacAppInArchiveMembers(members);
+          if (appInArchive) {
+            throw new MacAppArchiveError(appInArchive, asset.name);
+          }
           const picked = pickArchiveEntrypoint(members, name, options);
           if (picked) {
             let src = picked.sourcePath;
@@ -259,7 +304,10 @@ export async function collectBinaryReleasePayload(
             archiveEntrypoint = src;
             archiveBinName = picked.binName;
           }
-        } catch {
+        } catch (err) {
+          if (err instanceof MacAppArchiveError || (err as any)?.name === "MacAppArchiveError") {
+            throw err;
+          }
           // Fall back to formula-name install if listing fails.
         }
       } finally {

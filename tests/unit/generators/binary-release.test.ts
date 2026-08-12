@@ -271,6 +271,25 @@ describe("pickArchiveEntrypoint / nested package archives", () => {
     expect(picked!.binName).toBe("open-interpreter");
   });
 
+  it("does not pick LICENSE as entrypoint next to a macOS .app (go2tv)", async () => {
+    const { findMacAppInArchiveMembers, MacAppArchiveError } = await import(
+      "../../../lib/generators/binary-release.ts"
+    );
+    const members = [
+      "go2tv.app/",
+      "go2tv.app/Contents/",
+      "go2tv.app/Contents/MacOS/go2tv",
+      "go2tv.app/Contents/Info.plist",
+      "LICENSE",
+      "README.md",
+    ];
+    expect(findMacAppInArchiveMembers(members)).toBe("go2tv.app");
+    expect(pickArchiveEntrypoint(members, "go2tv")).toBeNull();
+    expect(() => {
+      throw new MacAppArchiveError("go2tv.app", "go2tv_v2.5.0_macOS_arm64.zip");
+    }).toThrow(/cask-app-release/);
+  });
+
   it("buildBinaryReleaseInstallBody uses libexec + symlink for nested entrypoint", () => {
     const body = buildBinaryReleaseInstallBody(
       "open-interpreter",

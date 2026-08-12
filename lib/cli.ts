@@ -1859,13 +1859,64 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
   let result;
   switch (generatorName) {
     case "binary-release": {
-      const { generateBinaryRelease } =
+      const { generateBinaryRelease, MacAppArchiveError } =
         await import("./generators/binary-release.ts");
-      result = await generateBinaryRelease(
-        params.repoInfo,
-        params.release,
-        mergedOpts,
-      );
+      try {
+        result = await generateBinaryRelease(
+          params.repoInfo,
+          params.release,
+          mergedOpts,
+        );
+      } catch (err: any) {
+        // Filename heuristics treat arch-tagged macOS zips as CLI binaries
+        // (go2tv_*_macOS_arm64.zip), but the archive may be a .app cask.
+        const isMacApp =
+          err instanceof MacAppArchiveError ||
+          err?.name === "MacAppArchiveError";
+        if (!isMacApp || !params.release) throw err;
+        spinner.text =
+          "Release archive contains a macOS .app; generating cask instead...";
+        console.log(
+          chalk.yellow(
+            `  Detected ${err.appName || "macOS .app"} inside binary-looking archive; using cask-app-release`,
+          ),
+        );
+        // Re-apply cask name collision handling (formula path was used earlier).
+        {
+          const preferred = toCaskToken(mergedOpts.name || params.repoInfo?.name || "app");
+          const owner = params.repoInfo?.fullName?.split?.("/")?.[0];
+          const altSources = [
+            params.repoInfo?.fullName
+              ? String(params.repoInfo.fullName).replace("/", "-")
+              : null,
+            owner && params.repoInfo?.name
+              ? `${params.repoInfo.name}-${owner}`
+              : null,
+            owner ? `${preferred}-${owner}` : null,
+            mergedOpts.appName,
+            params.slug,
+            params.repoInfo?.name,
+          ];
+          const resolved = resolveNonCollidingCaskName(preferred, altSources);
+          if (resolved.renamedFrom && resolved.name !== preferred) {
+            console.log(
+              chalk.yellow(
+                `  Cask name "${preferred}" collides with homebrew/cask; using "${resolved.name}" instead`,
+              ),
+            );
+            mergedOpts.name = resolved.name;
+          } else {
+            mergedOpts.name = preferred;
+          }
+        }
+        const { generateCaskAppRelease } =
+          await import("./generators/cask-app-release.ts");
+        result = await generateCaskAppRelease(
+          params.repoInfo,
+          params.release,
+          mergedOpts,
+        );
+      }
       break;
     }
     case "source-build": {
