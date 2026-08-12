@@ -2300,11 +2300,13 @@ async function brewAutoInstall(result: any, opts: any) {
   }
   const installSpinner = ora(`Running ${installLabel}...`).start();
   try {
-    await execFileAsync(
+    const { stdout, stderr } = await execFileAsync(
       "brew",
-      ["install", ...headFlag, installFlag, result.filePath],
-      { env: installEnv, maxBuffer: 20 * 1024 * 1024 },
+      ["install", "-v", ...headFlag, installFlag, result.filePath],
+      { env: installEnv, maxBuffer: 32 * 1024 * 1024 },
     );
+    if (stdout) console.log(chalk.dim(String(stdout).split("\n").slice(-20).join("\n")));
+    if (stderr) console.log(chalk.dim(String(stderr).split("\n").slice(-10).join("\n")));
     installSpinner.succeed(`Installed: ${chalk.green(result.name)}`);
 
     if (!isCask && opts.serviceConfig && opts.service !== false) {
@@ -2313,17 +2315,14 @@ async function brewAutoInstall(result: any, opts: any) {
       );
     }
   } catch (err: any) {
-    const stderrTail = String(err?.stderr || err?.stdout || "")
-      .split("\n")
-      .slice(-40)
+    const combined = [err?.stdout, err?.stderr, err?.message]
+      .filter(Boolean)
+      .map(String)
       .join("\n");
+    const tail = combined.split("\n").slice(-60).join("\n");
     installSpinner.fail(`brew install failed: ${err.message}`);
-    if (stderrTail.trim()) {
-      console.log(chalk.dim(stderrTail));
-    }
-    console.log(
-      chalk.dim(`  Retry manually: ${installLabel}`),
-    );
+    if (tail.trim()) console.log(chalk.dim(tail));
+    console.log(chalk.dim(`  Retry manually: ${installLabel}`));
     process.exitCode = 1;
   }
 
