@@ -193,16 +193,17 @@ export async function collectPipPackagePayload(
   const wrapGuiCli =
     options.wrapGuiCli === true || KNOWN_GUI_CLI_WRAP[pkgKey] === true;
 
-  // Prefer non-GUI checks: module.__version__ → importlib.metadata → bin --version.
-  // After wrap_gui_cli_bin, bin --version is safe for KNOWN_GUI_CLI_WRAP packages.
-  // Ruby double-quoted shell_output needs \\" so the emitted .rb keeps \" inside
-  // the single-quoted python -c payload (bare " breaks Formulary parse).
+  // Prefer non-GUI checks:
+  // 1) module.__version__ import
+  // 2) wrap_gui_cli_bin → bin --version (wrapper answers without Qt)
+  // 3) importlib.metadata (Ruby shell_output needs \\" so emitted .rb keeps \")
+  // 4) bare bin --version
   const testDoBody = importMod
     ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'import ${importMod}; print(${importMod}.__version__)'")`
-    : metaDist
-      ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'from importlib.metadata import version as v; print(v(\\"${rubyEscape(metaDist)}\\"))'")`
-      : wrapGuiCli
-        ? `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`
+    : wrapGuiCli
+      ? `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`
+      : metaDist
+        ? `    assert_match version.to_s, shell_output("#{libexec}/bin/python -c 'from importlib.metadata import version as v; print(v(\\"${rubyEscape(metaDist)}\\"))'")`
         : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBinName)} --version")`;
 
   const wrapGuiCliCall = wrapGuiCli
