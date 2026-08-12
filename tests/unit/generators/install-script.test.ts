@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import { collectInstallScriptPayload } from "../../../lib/generators/install-script.ts";
 
 mock.module("../../../lib/sha256.ts", () => ({
@@ -7,9 +7,21 @@ mock.module("../../../lib/sha256.ts", () => ({
     .mockResolvedValue({ sha256: "script_sha256_mock_value_64chars_pad_abcdef0123456789abcdef" }),
 }));
 
+const originalFetch = globalThis.fetch;
+
+/** Keep unit tests offline: bin-name script fetch fails → fall back to formula name. */
+function stubFetchOffline() {
+  globalThis.fetch = mock().mockRejectedValue(new Error("offline unit test")) as typeof fetch;
+}
+
 describe("collectInstallScriptPayload", () => {
   beforeEach(() => {
     mock.restore();
+    stubFetchOffline();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it("returns payload with correct template identifier", async () => {
@@ -117,6 +129,11 @@ describe("collectInstallScriptPayload", () => {
 describe("collectInstallScriptPayload — Qoder", () => {
   beforeEach(() => {
     mock.restore();
+    stubFetchOffline();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it("returns correct template identifier", async () => {
@@ -170,6 +187,11 @@ describe("collectInstallScriptPayload — Qoder", () => {
 describe("collectInstallScriptPayload — Cua Driver", () => {
   beforeEach(() => {
     mock.restore();
+    stubFetchOffline();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it("returns correct template identifier", async () => {
@@ -228,6 +250,11 @@ describe("collectInstallScriptPayload — Cua Driver", () => {
 describe("collectInstallScriptPayload — version attribute", () => {
   beforeEach(() => {
     mock.restore();
+    stubFetchOffline();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it("includes a non-empty version for static install URLs", async () => {
@@ -251,6 +278,55 @@ describe("collectInstallScriptPayload — version attribute", () => {
       "https://example.com/releases/v1.2.3/install.sh",
     );
     expect(payload.version).toBe("1.2.3");
+  });
+});
+
+describe("collectInstallScriptPayload — BINARY_NAME / CLI_NAME parsing", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it("parses BINARY_NAME default from ante-style install script", async () => {
+    globalThis.fetch = mock().mockResolvedValue({
+      text: async () =>
+        '#!/bin/bash\nBINARY_NAME="${BINARY_NAME:-ante}"\nINSTALL_DIR="${ANTE_INSTALL_DIR:-$HOME/.${BINARY_NAME}/bin}"\n',
+      ok: true,
+    } as Response);
+    const payload = await collectInstallScriptPayload(
+      "https://ante.run/install.sh",
+      { name: "ante-install-sh" },
+    );
+    expect(payload.name).toBe("ante-install-sh");
+    expect(payload.testBinName).toBe("ante");
+  });
+
+  it("parses CLI_NAME from warp-style install script", async () => {
+    globalThis.fetch = mock().mockResolvedValue({
+      text: async () =>
+        '#!/bin/bash\nCLI_NAME=warp\nWARP_TUI_BIN_DIR="${WARP_TUI_BIN_DIR:-$HOME/.local/bin}"\n',
+      ok: true,
+    } as Response);
+    const payload = await collectInstallScriptPayload(
+      "https://app.warp.dev/download/agent-cli",
+      { name: "warp-agent-cli" },
+    );
+    expect(payload.testBinName).toBe("warp");
+  });
+
+  it("respects explicit binName over script parsing", async () => {
+    globalThis.fetch = mock().mockResolvedValue({
+      text: async () => 'BINARY_NAME="${BINARY_NAME:-ante}"\n',
+      ok: true,
+    } as Response);
+    const payload = await collectInstallScriptPayload(
+      "https://ante.run/install.sh",
+      { name: "ante-install-sh", binName: "custom-bin" },
+    );
+    expect(payload.testBinName).toBe("custom-bin");
   });
 });
 

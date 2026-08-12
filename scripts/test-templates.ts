@@ -490,30 +490,57 @@ function buildInstallScriptCase(): Case {
     `    ENV["PREFIX"] = prefix.to_s\n` +
     `    ENV["DESTDIR"] = prefix.to_s\n` +
     `    # Many vendor installers honor PREFIX/DESTDIR; others ignore them and write under $HOME\n` +
-    `    # (commonly ~/.local/bin). Sandbox HOME so those paths stay inside the buildpath.\n` +
+    `    # (commonly ~/.local/bin or ~/.<tool>/bin). Sandbox HOME so those paths stay inside the buildpath.\n` +
     `    ENV["HOME"] = buildpath.to_s\n` +
-    `    # Common generic override accepted by some installers.\n` +
+    `    # Common generic overrides accepted by some installers.\n` +
     `    ENV["BIN_DIR"] = (buildpath/"bin").to_s\n` +
+    `    ENV["INSTALL_DIR"] = (buildpath/"bin").to_s\n` +
+    `    # Ante (ante.run) honors ANTE_INSTALL_DIR (defaults to $HOME/.ante/bin).\n` +
+    `    ENV["ANTE_INSTALL_DIR"] = (buildpath/"bin").to_s\n` +
+    `    # Warp Agent CLI honors WARP_TUI_* (defaults to $HOME/.warp and $HOME/.local/bin);\n` +
+    `    # point them inside buildpath so the versioned layout is discoverable.\n` +
+    `    ENV["WARP_TUI_INSTALL_DIR"] = (buildpath/"warp-tui").to_s\n` +
+    `    ENV["WARP_TUI_BIN_DIR"] = (buildpath/"bin").to_s\n` +
     `    system "bash", cached_download.to_s\n` +
+    `\n` +
+    `    # Warp Agent CLI uses a versioned layout: $WARP_TUI_INSTALL_DIR/warp-tui/versions/<version>/warp-tui-stable\n` +
+    `    # with a symlink $WARP_TUI_BIN_DIR/warp -> .../current/warp-tui-stable. The symlink target\n` +
+    `    # is under buildpath and would be broken after install, so install the real binary directly.\n` +
+    `    warp_bin = Dir[buildpath/"warp-tui"/"versions"/"*"/"warp-tui-*"].select { |f| File.file?(f) && File.executable?(f) }.first\n` +
+    `    if warp_bin\n` +
+    `      bin.install warp_bin => "warp"\n` +
+    `      # Also ensure the versioned layout's resources are available if needed (optional)\n` +
+    `      # The installer already staged everything under warp-tui/ — Homebrew only needs the binary.\n` +
+    `      return\n` +
+    `    end\n` +
     `\n` +
     `    candidates = [\n` +
     `      buildpath/"bin",\n` +
     `      buildpath/".local/bin",\n` +
     `      buildpath/"usr/local/bin",\n` +
     `      Pathname.new(ENV.fetch("PREFIX"))/"bin",\n` +
-    `    ].uniq\n` +
+    `    ]\n` +
+    `    # $HOME/.<tool>/bin layouts (e.g. ante → ~/.ante/bin when product INSTALL_DIR unset)\n` +
+    `    Dir.glob(File.join(buildpath, ".*", "bin")).each { |d| candidates << Pathname.new(d) }\n` +
+    `    candidates.uniq!\n` +
     `    installed = false\n` +
     `    candidates.each do |dir|\n` +
     `      next unless dir.directory?\n` +
     `      bins = Dir[dir/"*"].select { |f| File.file?(f) && File.executable?(f) }\n` +
     `      next if bins.empty?\n` +
+    `      # If the only bin is a broken symlink (warp -> warp-tui/...), resolve to the real binary.\n` +
+    `      # Homebrew's bin.install would copy the symlink as-is, leaving a broken link.\n` +
+    `      # For warp, the real binary is already handled above; for others, install as-is.\n` +
     `      bin.install bins\n` +
     `      installed = true\n` +
     `      break\n` +
     `    end\n` +
     `    unless installed\n` +
-    `      bins = Dir[buildpath/"**/*"].select do |f|\n` +
-    `        File.file?(f) && File.executable?(f) && !File.basename(f).start_with?(".")\n` +
+    `      # FNM_DOTMATCH so files under ~/.<tool>/… are found (Dir.glob skips dotdirs by default).\n` +
+    `      bins = Dir.glob(File.join(buildpath, "**", "*"), File::FNM_DOTMATCH).select do |f|\n` +
+    `        base = File.basename(f)\n` +
+    `        next false if base == "." || base == ".."\n` +
+    `        File.file?(f) && File.executable?(f) && !base.start_with?(".")\n` +
     `      end\n` +
     `      odie "install script produced no executable binaries under buildpath" if bins.empty?\n` +
     `      bin.install bins\n` +

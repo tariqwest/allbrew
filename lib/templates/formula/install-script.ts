@@ -12,10 +12,13 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
     ENV["PREFIX"] = prefix.to_s
     ENV["DESTDIR"] = prefix.to_s
     # Many vendor installers honor PREFIX/DESTDIR; others ignore them and write under $HOME
-    # (commonly ~/.local/bin). Sandbox HOME so those paths stay inside the buildpath.
+    # (commonly ~/.local/bin or ~/.<tool>/bin). Sandbox HOME so those paths stay inside the buildpath.
     ENV["HOME"] = buildpath.to_s
-    # Common generic override accepted by some installers.
+    # Common generic overrides accepted by some installers.
     ENV["BIN_DIR"] = (buildpath/"bin").to_s
+    ENV["INSTALL_DIR"] = (buildpath/"bin").to_s
+    # Ante (ante.run) honors ANTE_INSTALL_DIR (defaults to $HOME/.ante/bin).
+    ENV["ANTE_INSTALL_DIR"] = (buildpath/"bin").to_s
     # Warp Agent CLI honors WARP_TUI_* (defaults to $HOME/.warp and $HOME/.local/bin);
     # point them inside buildpath so the versioned layout is discoverable.
     ENV["WARP_TUI_INSTALL_DIR"] = (buildpath/"warp-tui").to_s
@@ -38,7 +41,10 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
       buildpath/".local/bin",
       buildpath/"usr/local/bin",
       Pathname.new(ENV.fetch("PREFIX"))/"bin",
-    ].uniq
+    ]
+    # $HOME/.<tool>/bin layouts (e.g. ante → ~/.ante/bin when product INSTALL_DIR unset)
+    Dir.glob(File.join(buildpath, ".*", "bin")).each { |d| candidates << Pathname.new(d) }
+    candidates.uniq!
     installed = false
     candidates.each do |dir|
       next unless dir.directory?
@@ -52,8 +58,11 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
       break
     end
     unless installed
-      bins = Dir[buildpath/"**/*"].select do |f|
-        File.file?(f) && File.executable?(f) && !File.basename(f).start_with?(".")
+      # FNM_DOTMATCH so files under ~/.<tool>/… are found (Dir.glob skips dotdirs by default).
+      bins = Dir.glob(File.join(buildpath, "**", "*"), File::FNM_DOTMATCH).select do |f|
+        base = File.basename(f)
+        next false if base == "." || base == ".."
+        File.file?(f) && File.executable?(f) && !base.start_with?(".")
       end
       odie "install script produced no executable binaries under buildpath" if bins.empty?
       bin.install bins
