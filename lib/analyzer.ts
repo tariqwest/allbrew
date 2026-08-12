@@ -78,6 +78,9 @@ const BUILD_PATTERNS = [
 
 const SERVICE_HINT_RE =
   /\b(?:brew\s+services|launchctl|launchd|launch\s*agent|launch\s*daemon|systemd|(?:as\s+a\s+)?daemon|background\s+process|run\s+in\s+the\s+background|start\s+on\s+login|supervised\s+service)\b/i;
+/** systemd unit / upstart / procd / "managed daemon" — stronger than bare SERVICE_HINT_RE. */
+const MANAGED_INIT_SYSTEM_RE =
+  /\b(?:systemctl\s+(?:start|enable|restart|status)|(?:as\s+a\s+)?managed\s+daemon|\.service\b|\/(?:etc|lib|usr\/lib)\/systemd|upstart|procd|\/etc\/init\/)\b/i;
 const SERVICE_COMMAND_RE =
   /(?:^|[\n`])\s*(?:\$\s*)?([a-zA-Z0-9._/-]+(?:\s+(?:serve|server|start|daemon|agent|run|--daemon|--service)\b[^\n`]*)?)/gm;
 const LOCAL_ENDPOINT_RE =
@@ -343,18 +346,35 @@ export function detectServiceConfig(readmeText, packageName = "") {
   }
 
   const preferred = preferPackageCommand(commands, packageName) || commands[0];
-  if (!preferred) return null;
+  if (preferred) {
+    return {
+      command: preferred,
+      keepAlive: true,
+      // Optional `pkg serve`/`server` stays low so non-interactive runs skip it;
+      // brew services / launchctl paths above remain high/medium.
+      confidence: isOptionalDevServeCommand(preferred, packageName)
+        ? "low"
+        : "medium",
+      reason: "README contains service/daemon wording",
+    };
+  }
 
-  return {
-    command: preferred,
-    keepAlive: true,
-    // Optional `pkg serve`/`server` stays low so non-interactive runs skip it;
-    // brew services / launchctl paths above remain high/medium.
-    confidence: isOptionalDevServeCommand(preferred, packageName)
-      ? "low"
-      : "medium",
-    reason: "README contains service/daemon wording",
-  };
+  // Strong init-system / managed-daemon docs (systemd unit, upstart, procd) with a
+  // known package → bare binary as the service entrypoint. Generic "background
+  // process" prose alone stays null (see unit tests). Covers DDNS/daemon CLIs
+  // like godns that document `configs/systemd/*.service` without a multi-token
+  // `pkg serve` command line.
+  if (packageName && MANAGED_INIT_SYSTEM_RE.test(readmeText)) {
+    return {
+      command: packageName,
+      keepAlive: true,
+      confidence: "medium",
+      reason:
+        "README documents systemd/upstart/managed daemon for the package binary",
+    };
+  }
+
+  return null;
 }
 
 /**
@@ -1001,8 +1021,10 @@ function escapeRegExp(value) {
 export function detectServiceConfigFromFiles(fileNames, packageName = "") {
   if (!fileNames?.length) return null;
 
+  const pkg = String(packageName || "").toLowerCase();
+
   const hasLaunchdPlist = fileNames.some((f) => {
-    const lower = f.toLowerCase();
+    const lower = String(f).toLowerCase();
     return (
       lower.endsWith(".plist") &&
       (lower.includes("launchagent") ||
@@ -1013,8 +1035,37 @@ export function detectServiceConfigFromFiles(fileNames, packageName = "") {
     );
   });
 
-  if (!hasLaunchdPlist) return null;
-  return { command: packageName, keepAlive: true, confidence: "medium" };
+  // systemd unit files shipped in-repo (e.g. configs/systemd/godns.service)
+  const hasSystemdUnit = fileNames.some((f) => {
+    const lower = String(f).toLowerCase();
+    if (!lower.endsWith(".service")) return false;
+    if (lower.includes("systemd") || lower.includes("/etc/init")) return true;
+    if (pkg && (lower.includes(`/${pkg}.service`) || lower.endsWith(`${pkg}.service`)))
+      return true;
+    return false;
+  });
+
+  // upstart / procd confs named after the package
+  const hasInitConf = fileNames.some((f) => {
+    const lower = String(f).toLowerCase();
+    if (lower.includes("upstart") || lower.includes("procd")) return true;
+    if (pkg && (lower.endsWith(`/${pkg}.conf`) || lower.endsWith(`${pkg}.conf`))) {
+      return lower.includes("upstart") || lower.includes("init");
+    }
+    return false;
+  });
+
+  if (!hasLaunchdPlist && !hasSystemdUnit && !hasInitConf) return null;
+  return {
+    command: packageName,
+    keepAlive: true,
+    confidence: "medium",
+    reason: hasLaunchdPlist
+      ? "repo contains launchd plist"
+      : hasSystemdUnit
+        ? "repo contains systemd unit"
+        : "repo contains upstart/procd init config",
+  };
 }
 
 export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null {

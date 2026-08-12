@@ -567,6 +567,34 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
     expect(detectServiceConfig(readme, "foo")).toBeNull();
   });
 
+  it("detects managed daemon / systemd unit docs as medium-confidence bare binary (godns)", () => {
+    const readme = [
+      "# GoDNS",
+      "",
+      "### As a managed daemon (with systemd)",
+      "",
+      "1. Install `systemd` first",
+      "2. Copy `./configs/systemd/godns.service` to `/lib/systemd/system`",
+      "3. Start the service:",
+      "",
+      "```bash",
+      "sudo systemctl start godns",
+      "```",
+      "",
+      "### As a manual daemon",
+      "",
+      "```bash",
+      "nohup ./godns &",
+      "```",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "godns");
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("godns");
+    expect(result!.keepAlive).toBe(true);
+    expect(result!.confidence).toBe("medium");
+    expect(result!.reason).toMatch(/systemd|managed daemon/i);
+  });
+
   it("does not treat README 'Run:' headings as a service command", () => {
     const readme = [
       "We use prompts to provide the service.",
@@ -734,7 +762,10 @@ describe("detectServiceConfigFromFiles", () => {
       ["src/main.go", "com.foo.launchagent.plist"],
       "foo",
     );
-    expect(result).toEqual({ command: "foo", keepAlive: true, confidence: "medium" });
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("foo");
+    expect(result!.keepAlive).toBe(true);
+    expect(result!.confidence).toBe("medium");
   });
 
   it("detects LaunchAgents path plist", () => {
@@ -746,7 +777,18 @@ describe("detectServiceConfigFromFiles", () => {
     expect(result!.confidence).toBe("medium");
   });
 
-  it("returns null when no plist files are present", () => {
+  it("detects systemd unit paths (e.g. configs/systemd/godns.service)", () => {
+    const result = detectServiceConfigFromFiles(
+      ["configs/systemd/godns.service", "cmd/godns/main.go", "go.mod"],
+      "godns",
+    );
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("godns");
+    expect(result!.confidence).toBe("medium");
+    expect(String(result!.reason || "")).toMatch(/systemd/i);
+  });
+
+  it("returns null when no plist/systemd files are present", () => {
     expect(detectServiceConfigFromFiles(["main.go", "README.md"], "foo")).toBeNull();
   });
 

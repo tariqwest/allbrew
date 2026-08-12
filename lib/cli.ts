@@ -968,9 +968,15 @@ async function handleGithubRepo(classification, opts) {
           opts,
         );
       } else {
+        const serviceConfig = await resolveGithubServiceConfig(
+          owner,
+          repo,
+          opts.package || opts.name || repoInfo.name || repo,
+          opts,
+        );
         return await generateWithConfirmation(
           "binary-release",
-          { repoInfo, release },
+          { repoInfo, release, serviceConfig },
           opts,
         );
       }
@@ -991,9 +997,18 @@ async function handleGithubRepo(classification, opts) {
       console.log(
         `  Detected ${chalk.cyan("binary")} assets: ${binAssets.map((a) => a.name).join(", ")}`,
       );
+      // Binary early-return skips the full README install-method path — still
+      // resolve service/daemon hints so long-lived CLIs (e.g. godns) get a
+      // `service do` block in non-interactive runs.
+      const serviceConfig = await resolveGithubServiceConfig(
+        owner,
+        repo,
+        opts.package || opts.name || repoInfo.name || repo,
+        opts,
+      );
       return await generateWithConfirmation(
         "binary-release",
-        { repoInfo, release },
+        { repoInfo, release, serviceConfig },
         opts,
       );
     }
@@ -2149,6 +2164,85 @@ function isFormulaGenerator(generatorName: string) {
 
 function isInteractiveTty() {
   return Boolean(process.stdin.isTTY && process.stdout.isTTY);
+}
+
+/**
+ * Lightweight service detection for binary-release early paths that skip the
+ * full README install-method analysis. Best-effort: failures return null.
+ */
+async function resolveGithubServiceConfig(
+  owner: string,
+  repo: string,
+  packageName: string,
+  opts: any = {},
+) {
+  let serviceConfig: any = null;
+  try {
+    const readme = await getReadme(owner, repo);
+    if (readme) {
+      serviceConfig = detectServiceConfig(readme, packageName);
+    }
+  } catch (err: any) {
+    if (opts.verbose) {
+      console.log(
+        chalk.dim(
+          `  Service README scan failed: ${err?.message || err}; continuing...`,
+        ),
+      );
+    }
+  }
+
+  if (!serviceConfig) {
+    try {
+      const files = await getRepoContents(owner, repo);
+      const names = files.map((f: any) => f.name);
+      // Peek common unit-file dirs when present at repo root
+      for (const dir of ["configs", "config", "deploy", "contrib", "packaging"]) {
+        if (names.includes(dir)) {
+          try {
+            const nested = await getRepoContents(owner, repo, dir);
+            for (const f of nested) {
+              names.push(`${dir}/${f.name}`);
+              if (f.type === "dir" && /systemd|upstart|init|procd|launchd/i.test(f.name)) {
+                try {
+                  const deeper = await getRepoContents(
+                    owner,
+                    repo,
+                    `${dir}/${f.name}`,
+                  );
+                  for (const d of deeper) {
+                    names.push(`${dir}/${f.name}/${d.name}`);
+                  }
+                } catch {
+                  /* ignore */
+                }
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      serviceConfig = detectServiceConfigFromFiles(names, packageName);
+    } catch (err: any) {
+      if (opts.verbose) {
+        console.log(
+          chalk.dim(
+            `  Service file scan failed: ${err?.message || err}; continuing...`,
+          ),
+        );
+      }
+    }
+  }
+
+  if (serviceConfig) {
+    console.log(
+      `  Detected service/launchagent hint${
+        serviceConfig.confidence ? ` (${serviceConfig.confidence} confidence)` : ""
+      }`,
+    );
+  }
+  return serviceConfig;
 }
 
 async function collectServiceOptions(params: any, opts: any, formulaName: any) {
