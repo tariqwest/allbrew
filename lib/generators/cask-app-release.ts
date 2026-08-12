@@ -61,12 +61,14 @@ export async function collectCaskAppReleasePayload(
 
   let appName = options.appName;
   let nestedContainer: string | null = null;
+  let bareAppBundle = false;
 
   const { sha256, cleanup, path } = await downloadToTemp(bestAsset.url, bestAsset.name);
   try {
     const detected = await detectAppAndNestedFromAsset(bestAsset, path);
     if (!appName) appName = detected.appName;
     nestedContainer = detected.nestedContainer;
+    bareAppBundle = Boolean(detected.bareAppBundle);
   } finally {
     await cleanup();
   }
@@ -95,6 +97,8 @@ export async function collectCaskAppReleasePayload(
   const urlTemplate = templateReleaseUrl(bestAsset.url, version, release.tagName);
 
   // Nested DMG basenames often embed the version (nicotine+-3.3.10.dmg).
+  // Bare Wails-style zips ship Contents/ at archive root (no outer Foo.app/);
+  // wrap into the derived .app via preflight so `app "Foo.app"` resolves.
   let containerBlock = "";
   if (nestedContainer) {
     const nestedTemplated = templateReleaseUrl(
@@ -103,6 +107,14 @@ export async function collectCaskAppReleasePayload(
       release.tagName,
     );
     containerBlock = `  container nested: "${rubyEscape(nestedTemplated)}"\n`;
+  } else if (bareAppBundle) {
+    // Ruby #{staged_path} must survive TS template literals.
+    const staged = "#{staged_path}";
+    containerBlock =
+      `  preflight do\n` +
+      `    FileUtils.mkdir_p "${staged}/${rubyEscape(appName)}"\n` +
+      `    FileUtils.mv "${staged}/Contents", "${staged}/${rubyEscape(appName)}/Contents"\n` +
+      `  end\n\n`;
   }
 
   const zapPaths = [
@@ -149,29 +161,64 @@ export async function generateCaskAppRelease(
   return writeRenderedCask(payload, options.tapPath);
 }
 
+export type DetectedAppFromAsset = {
+  appName: string | null;
+  nestedContainer: string | null;
+  /** Zip ships macOS app Contents/ at archive root without an outer Foo.app/ dir. */
+  bareAppBundle?: boolean;
+};
+
 /** @deprecated Prefer detectAppAndNestedFromAsset; kept for unit tests. */
 export async function detectAppNameFromAsset(asset: any, localPath?: string) {
   const r = await detectAppAndNestedFromAsset(asset, localPath);
   return r.appName;
 }
 
+/**
+ * Derive Foo.app from asset names like Foo.app.zip / Foo.app.tar.gz (Wails etc.).
+ */
+export function appNameFromAppZipFilename(assetName: string): string | null {
+  const m = String(assetName || "").match(/^(.+\.app)\.(?:zip|tar\.gz|tgz|tar\.bz2|tar\.xz|tar)$/i);
+  return m ? m[1] : null;
+}
+
+/**
+ * True when the archive is a flattened macOS .app (Contents/ at root, no .app/ parent).
+ * Common for Wails releases shipped as Name.app.zip.
+ */
+export function isBareAppBundleLayout(entries: string[]): boolean {
+  const normalized = entries
+    .map((e) => e.trim().replace(/^\.\//, ""))
+    .filter(Boolean);
+  if (normalized.some((e) => /\.app(\/|$)/i.test(e))) return false;
+  return normalized.some(
+    (e) =>
+      /^Contents\/Info\.plist$/i.test(e) ||
+      /^Contents\/MacOS\//i.test(e),
+  );
+}
+
 export async function detectAppAndNestedFromAsset(
   asset: any,
   localPath?: string,
-): Promise<{ appName: string | null; nestedContainer: string | null }> {
+): Promise<DetectedAppFromAsset> {
   const lower = asset.name.toLowerCase();
 
   if (lower.endsWith(".dmg")) {
     try {
       if (localPath) {
         const apps = await listDmgAppNames(localPath);
-        if (apps.length > 0) return { appName: apps[0], nestedContainer: null };
+        if (apps.length > 0) {
+          return { appName: apps[0], nestedContainer: null, bareAppBundle: false };
+        }
       } else {
         const { downloadToTemp } = await import("../sha256.ts");
         const { path, cleanup } = await downloadToTemp(asset.url, asset.name);
         try {
           const apps = await listDmgAppNames(path);
-          if (apps.length > 0) return { appName: apps[0], nestedContainer: null };
+          if (apps.length > 0) {
+            return { appName: apps[0], nestedContainer: null, bareAppBundle: false };
+          }
         } finally {
           await cleanup();
         }
@@ -185,7 +232,7 @@ export async function detectAppAndNestedFromAsset(
       .replace(/[-_](?:aarch64|arm64|x64|amd64|universal)$/i, "")
       .replace(/-[\d.]+$/, "")
       .replace(/_[\d.]+$/, "");
-    return { appName: base + ".app", nestedContainer: null };
+    return { appName: base + ".app", nestedContainer: null, bareAppBundle: false };
   }
 
   if (
@@ -219,10 +266,24 @@ export async function detectAppAndNestedFromAsset(
         return dmg ? dmg.trim().replace(/^\.\//, "").split("/").pop()! : null;
       };
 
-      const inspectPath = async (p: string) => {
+      const inspectPath = async (p: string): Promise<DetectedAppFromAsset> => {
         const entries = await listEntries(p);
         const name = findApp(entries);
-        if (name) return { appName: name, nestedContainer: null as string | null };
+        if (name) {
+          return { appName: name, nestedContainer: null, bareAppBundle: false };
+        }
+
+        // Flattened .app: Contents/ at zip root (SydneyQt.app.zip, many Wails builds).
+        if (isBareAppBundleLayout(entries)) {
+          const fromName = appNameFromAppZipFilename(asset.name);
+          if (fromName) {
+            return {
+              appName: fromName,
+              nestedContainer: null,
+              bareAppBundle: true,
+            };
+          }
+        }
 
         const nestedDmg = findNestedDmg(entries);
         if (nestedDmg && lower.endsWith(".zip")) {
@@ -238,13 +299,17 @@ export async function detectAppAndNestedFromAsset(
             const dmgPath = join(dir, nestedDmg);
             const apps = await listDmgAppNames(dmgPath);
             if (apps.length > 0) {
-              return { appName: apps[0], nestedContainer: nestedDmg };
+              return {
+                appName: apps[0],
+                nestedContainer: nestedDmg,
+                bareAppBundle: false,
+              };
             }
           } finally {
             await rm(dir, { recursive: true, force: true });
           }
         }
-        return { appName: null as string | null, nestedContainer: null as string | null };
+        return { appName: null, nestedContainer: null, bareAppBundle: false };
       };
 
       if (localPath) {
@@ -263,5 +328,5 @@ export async function detectAppAndNestedFromAsset(
     }
   }
 
-  return { appName: null, nestedContainer: null };
+  return { appName: null, nestedContainer: null, bareAppBundle: false };
 }

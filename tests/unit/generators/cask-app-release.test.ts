@@ -1,5 +1,10 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectCaskAppReleasePayload } from "../../../lib/generators/cask-app-release.ts";
+import {
+  collectCaskAppReleasePayload,
+  appNameFromAppZipFilename,
+  isBareAppBundleLayout,
+  detectAppAndNestedFromAsset,
+} from "../../../lib/generators/cask-app-release.ts";
 import mcpsmFixture from "../../fixtures/github/mcpsm.json";
 
 mock.module("../../../lib/sha256.ts", () => ({
@@ -1177,5 +1182,110 @@ describe("collectCaskAppReleasePayload — ComicTagger (bare tag, version in ass
     );
     expect(payload.url).not.toContain("ComicTagger-v#{version}");
     expect(payload.appName).toBe("ComicTagger.app");
+  });
+});
+
+describe("bare app-bundle zip layout (Wails SydneyQt.app.zip)", () => {
+  it("appNameFromAppZipFilename extracts outer .app from asset name", () => {
+    expect(appNameFromAppZipFilename("SydneyQt.app.zip")).toBe("SydneyQt.app");
+    expect(appNameFromAppZipFilename("Foo.Bar.app.zip")).toBe("Foo.Bar.app");
+    expect(appNameFromAppZipFilename("plain.zip")).toBeNull();
+    expect(appNameFromAppZipFilename("MyApp.dmg")).toBeNull();
+  });
+
+  it("isBareAppBundleLayout detects Contents/ at archive root", () => {
+    expect(
+      isBareAppBundleLayout([
+        "Contents/",
+        "Contents/MacOS/SydneyQt",
+        "Contents/Info.plist",
+        "Contents/Resources/iconfile.icns",
+      ]),
+    ).toBe(true);
+    expect(
+      isBareAppBundleLayout(["SydneyQt.app/", "SydneyQt.app/Contents/Info.plist"]),
+    ).toBe(false);
+    expect(isBareAppBundleLayout(["bin/sydneyqt", "README.md"])).toBe(false);
+  });
+
+  it("detectAppAndNestedFromAsset returns bareAppBundle for flattened layout", async () => {
+    mock.restore();
+    mockArchiveInspector({
+      zip: [
+        "Contents/",
+        "Contents/MacOS/SydneyQt",
+        "Contents/Info.plist",
+        "Contents/Resources/iconfile.icns",
+      ],
+    });
+    const detected = await detectAppAndNestedFromAsset(
+      {
+        name: "SydneyQt.app.zip",
+        url: "https://github.com/juzeon/SydneyQt/releases/download/v2.5.5/SydneyQt.app.zip",
+      },
+      "/tmp/mock.zip",
+    );
+    expect(detected.appName).toBe("SydneyQt.app");
+    expect(detected.bareAppBundle).toBe(true);
+    expect(detected.nestedContainer).toBeNull();
+  });
+
+  it("collectCaskAppReleasePayload emits preflight wrap for bare layout", async () => {
+    mock.restore();
+    mock.module("../../../lib/sha256.ts", () => ({
+      hashUrl: mock().mockResolvedValue("cask_sha256_mock"),
+      downloadAndHash: mock().mockResolvedValue({
+        sha256: "ghcask_sha256_64chars_pad_abcdef0123456789abcdef0123456789ab",
+      }),
+      downloadToTemp: mock().mockResolvedValue({
+        path: "/tmp/mock.zip",
+        sha256: "ghcask_sha256_64chars_pad_abcdef0123456789abcdef0123456789ab",
+        cleanup: mock(),
+      }),
+    }));
+    mockArchiveInspector({
+      zip: [
+        "Contents/",
+        "Contents/MacOS/SydneyQt",
+        "Contents/Info.plist",
+        "Contents/Resources/iconfile.icns",
+      ],
+    });
+
+    const repoInfo = {
+      name: "SydneyQt",
+      fullName: "juzeon/SydneyQt",
+      description:
+        "A cross-platform desktop client for the jailbroken New Bing AI Copilot",
+      homepage: "https://github.com/juzeon/SydneyQt",
+      htmlUrl: "https://github.com/juzeon/SydneyQt",
+      license: "Unlicense",
+    };
+    const release = {
+      tagName: "v2.5.5",
+      assets: [
+        {
+          name: "SydneyQt.app.zip",
+          url: "https://github.com/juzeon/SydneyQt/releases/download/v2.5.5/SydneyQt.app.zip",
+        },
+        {
+          name: "SydneyQt-linux-amd64",
+          url: "https://github.com/juzeon/SydneyQt/releases/download/v2.5.5/SydneyQt-linux-amd64",
+        },
+      ],
+    };
+
+    const payload = await collectCaskAppReleasePayload(repoInfo, release, {
+      name: "sydneyqt",
+    });
+    expect(payload.template).toBe("cask_app_release");
+    expect(payload.appName).toBe("SydneyQt.app");
+    expect(payload.displayName).toBe("SydneyQt");
+    expect(payload.containerBlock).toContain("preflight do");
+    expect(payload.containerBlock).toContain("#{staged_path}");
+    expect(payload.containerBlock).toContain("SydneyQt.app");
+    expect(payload.containerBlock).toContain("Contents");
+    expect(payload.containerBlock).not.toContain("container nested:");
+    expect(payload.url).toContain("SydneyQt.app.zip");
   });
 });
