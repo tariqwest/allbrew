@@ -5,6 +5,7 @@ import {
   discoverPageDownloads,
   discoverMasFallbackCandidates,
   productNameHintsFromUrl,
+  looksLikeParkingOrForSalePage,
   extractArtifactUrlsFromJson,
   extractCandidatesFromHtml,
   mergeCandidates,
@@ -732,6 +733,56 @@ describe("MAS iTunes fallback (auth-walled marketing pages)", () => {
     });
     expect(result.chosen?.kind).toBe("mac-app-store");
     expect(result.chosen?.url).toContain("id6739781207");
+  });
+
+  it("drops prefix-only MAS hits when seller is not same-site as marketing page", async () => {
+    // canto.app parking must not invent Canto Connect (seller canto.com)
+    const cands = await discoverMasFallbackCandidates("https://canto.app/", {
+      nameHint: "canto",
+      itunesSearch: async () => [
+        {
+          kind: "mac-software",
+          trackId: 1277143192,
+          trackName: "Canto Connect",
+          sellerUrl: "http://www.canto.com",
+        },
+      ],
+    });
+    expect(cands.length).toBe(0);
+  });
+
+  it("skips MAS fallback on Spaceship domain-for-sale parking HTML", async () => {
+    const parkingHtml = `
+      <html><head>
+        <meta name="description" content="Canto.app is for sale on Spaceship.">
+        <meta property="og:title" content="Buy Canto.app | Spaceship">
+        <meta property="og:site_name" content="Spaceship">
+        <link rel="stylesheet" href="https://forsale.spaceship-cdn.com/static/latest/5.latest/main.css">
+        <title>Canto.app for sale | Spaceship.com</title>
+      </head>
+      <body><p class="domain__info-reason">Domain for sale</p>
+      <h1>Canto.app</h1></body></html>
+    `;
+    expect(looksLikeParkingOrForSalePage(parkingHtml, "https://canto.app/")).toBe(true);
+    let itunesCalls = 0;
+    const result = await discoverPageDownloads("https://canto.app/", {
+      mode: "static",
+      htmlFixture: { body: parkingHtml, finalUrl: "https://canto.app/" },
+      itunesSearch: async () => {
+        itunesCalls += 1;
+        return [
+          {
+            kind: "mac-software",
+            trackId: 1277143192,
+            trackName: "Canto Connect",
+            sellerUrl: "http://www.canto.com",
+          },
+        ];
+      },
+    });
+    expect(itunesCalls).toBe(0);
+    expect(result.chosen).toBeNull();
+    expect(result.reason).toMatch(/parking|for-sale/i);
   });
 });
 

@@ -945,6 +945,57 @@ function looksLikeEmptyShell(html: string): boolean {
   return stripped.length < 80 || /id=["'](?:root|app|__next|__nuxt)["']/i.test(html);
 }
 
+/**
+ * Domain marketplace / registrar parking pages are not software products.
+ * Detect Spaceship/Sedo/GoDaddy/etc. for-sale shells so we do not invent a
+ * Mac App Store match from a bare hostname label (e.g. canto.app → Canto Connect).
+ */
+export function looksLikeParkingOrForSalePage(
+  html: string,
+  pageUrl?: string,
+): boolean {
+  if (!html) return false;
+
+  // Marketplace / parking CDN and host fingerprints
+  if (
+    /forsale\.spaceship-cdn\.com/i.test(html) ||
+    /sedoparking\.com|parkingcrew\.net|hugedomains\.com/i.test(html) ||
+    /cdn\.parkingcrew\.net|images\.godaddy\.com\/abs\/bg\/parking/i.test(html)
+  ) {
+    return true;
+  }
+
+  // Title / Open Graph / body copy used by domain marketplaces
+  if (
+    /domain\s+for\s+sale/i.test(html) ||
+    /this\s+domain\s+is\s+(?:for\s+sale|parked)/i.test(html) ||
+    /for\s+sale\s+on\s+spaceship/i.test(html) ||
+    /buy\s+[\w.-]+\s*\|\s*spaceship/i.test(html) ||
+    /og:title[^>]+content=["'][^"']*\bfor\s+sale\b/i.test(html) ||
+    (/property=["']og:site_name["'][^>]*content=["']Spaceship["']/i.test(html) &&
+      /\bfor\s+sale\b/i.test(html)) ||
+    (/content=["']Spaceship["'][^>]*property=["']og:site_name["']/i.test(html) &&
+      /\bfor\s+sale\b/i.test(html))
+  ) {
+    return true;
+  }
+
+  if (pageUrl) {
+    try {
+      const h = new URL(pageUrl).hostname.toLowerCase();
+      if (
+        /(?:^|\.)(?:sedoparking|parkingcrew|hugedomains|afternic)\./i.test(h)
+      ) {
+        return true;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return false;
+}
+
 export type DiscoverOptions = {
   mode?: DiscoverMode;
   verbose?: boolean;
@@ -1049,6 +1100,35 @@ export async function discoverMasFallbackCandidates(
         continue;
       }
 
+      // Prefix-only hits need same-site seller homepage. Bare label prefix
+      // (canto → "Canto Connect" on canto.com while marketing is canto.app)
+      // is too weak and invents casks for parking domains.
+      let sellerSameSite = false;
+      let sellerHostRelated = false;
+      try {
+        const seller = String(r.sellerUrl || "");
+        const pageHost = new URL(pageUrl).hostname.replace(/^www\./, "");
+        if (seller) {
+          sellerSameSite = sameSite(seller, pageUrl);
+          const sellerHost = new URL(seller).hostname.replace(/^www\./, "");
+          const pageLabel = pageHost.split(".")[0] || "";
+          const sellerLabel = sellerHost.split(".")[0] || "";
+          if (
+            pageLabel.length >= 4 &&
+            (sellerLabel === pageLabel ||
+              sellerHost === pageHost ||
+              sellerHost.endsWith(`.${pageHost}`))
+          ) {
+            sellerHostRelated = true;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      if (!exact && !sellerSameSite) {
+        continue;
+      }
+
       let score = exact ? 96 : 82;
       const evidence = [
         "mas-itunes-search-fallback",
@@ -1056,23 +1136,9 @@ export async function discoverMasFallbackCandidates(
         `term:${term}`,
       ];
 
-      // Bonus when seller homepage hostname relates to the input host
-      try {
-        const seller = String(r.sellerUrl || "");
-        const pageHost = new URL(pageUrl).hostname.replace(/^www\./, "");
-        if (seller) {
-          const sellerHost = new URL(seller).hostname.replace(/^www\./, "");
-          const pageLabel = pageHost.split(".")[0];
-          if (
-            sellerHost.includes(pageLabel) ||
-            pageHost.includes(sellerHost.split(".")[0] || "")
-          ) {
-            score += 4;
-            evidence.push("mas-seller-host-related");
-          }
-        }
-      } catch {
-        /* ignore */
+      if (sellerSameSite || sellerHostRelated) {
+        score += 4;
+        evidence.push("mas-seller-host-related");
       }
 
       seenIds.add(trackId);
@@ -1822,21 +1888,28 @@ export async function discoverPageDownloads(
 
   // Tier A.10: Mac App Store iTunes search by product name when the page
   // yields nothing installable (SPA shell, soft-404, empty download section).
+  // Never run this on domain marketplace / parking pages — hostname labels
+  // alone invent unrelated MAS apps (canto.app parking → Canto Connect).
+  const parkingPage = looksLikeParkingOrForSalePage(body, finalPageUrl || pageUrl);
+  if (parkingPage) {
+    log("Parking/for-sale domain detected — skipping MAS iTunes fallback");
+  }
   {
     const topNow = pickAutoCandidate(candidates);
     const needMas =
-      !topNow ||
-      topNow.kind === "unknown" ||
-      (topNow.score < 70 &&
-        !candidates.some(
-          (c) =>
-            c.kind === "cask-dmg" ||
-            c.kind === "archive" ||
-            c.kind === "bash-script" ||
-            c.kind === "mac-app-store" ||
-            c.kind === "setapp-app" ||
-            c.kind === "github-repo",
-        ));
+      !parkingPage &&
+      (!topNow ||
+        topNow.kind === "unknown" ||
+        (topNow.score < 70 &&
+          !candidates.some(
+            (c) =>
+              c.kind === "cask-dmg" ||
+              c.kind === "archive" ||
+              c.kind === "bash-script" ||
+              c.kind === "mac-app-store" ||
+              c.kind === "setapp-app" ||
+              c.kind === "github-repo",
+          )));
     if (needMas) {
       try {
         const mas = await discoverMasFallbackCandidates(pageUrl, opts);
@@ -1856,12 +1929,14 @@ export async function discoverPageDownloads(
     finalPageUrl,
     method: candidates.length ? method : "none",
     candidates: candidates.slice(0, 25),
-    chosen,
-    reason: chosen
+    chosen: parkingPage && chosen?.kind === "mac-app-store" ? null : chosen,
+    reason: chosen && !(parkingPage && chosen.kind === "mac-app-store")
       ? undefined
-      : candidates.length
-        ? "ambiguous or low-confidence candidates"
-        : "no candidates",
+      : parkingPage
+        ? "parking/for-sale domain (no installable software)"
+        : candidates.length
+          ? "ambiguous or low-confidence candidates"
+          : "no candidates",
   };
 }
 
