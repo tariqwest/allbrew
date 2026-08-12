@@ -508,8 +508,9 @@ function detectLocalWebService(readmeText, packageName) {
     command,
     keepAlive: true,
     // High only when the binary itself is the long-running process (e.g. maildev).
-    // Optional `pkg serve` is low so non-interactive installs skip the service block.
-    confidence: barePackageCommand ? "high" : optionalServe ? "low" : "medium",
+    // Optional `pkg serve` / bare `*-serve` CLIs are low so non-interactive
+    // installs skip the service block (ad-hoc file servers, not brew-services).
+    confidence: optionalServe ? "low" : barePackageCommand ? "high" : "medium",
     reason:
       "README shows a local web/API endpoint started by the package command",
     endpoints: endpoints.map((endpoint) => cleanEndpoint(endpoint[0])),
@@ -520,7 +521,9 @@ function detectLocalWebService(readmeText, packageName) {
  * Optional short-lived/dev bridges that should stay low-confidence so
  * non-interactive installs skip a service block.
  *
- * `pkg serve` is commonly an MCP/stdio or one-off bridge (e.g. gitnexus).
+ * `pkg serve` is commonly an MCP/stdio or one-shot bridge (e.g. gitnexus).
+ * Bare binaries named `*-serve` / `*.serve` (dotnet-serve, http-serve, …) are
+ * ad-hoc CWD/file HTTP CLIs, not supervised daemons.
  * `pkg server` / `daemon` / `gateway` are treated as real supervised entrypoints
  * (e.g. omnigent server + local web UI) unless they are clearly one-shot.
  */
@@ -530,6 +533,19 @@ function isOptionalDevServeCommand(command, packageName) {
   // Explicit background/daemon flags mean a long-running process even on "serve".
   if (/(?:^|\s)(?:--daemon|--service|--background)(?:\s|$)/i.test(trimmed)) {
     return false;
+  }
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  const executable = parts[0]?.split("/").pop() || "";
+  // Bare `foo-serve` / `foo.serve` is an ad-hoc file server CLI, not launchd.
+  if (parts.length === 1 && /[-.]serve$/i.test(executable)) {
+    return true;
+  }
+  // `dotnet-serve --port 8080` style flags-only argv is still ad-hoc serve.
+  if (
+    /[-.]serve$/i.test(executable) &&
+    parts.slice(1).every((t) => t.startsWith("-") || /^=?\d+$/.test(t))
+  ) {
+    return true;
   }
   const re = new RegExp(
     `^${escapeRegExp(packageName)}\\s+serve(?:\\s|$)`,
@@ -681,15 +697,21 @@ function pickBestServiceCommand(commands) {
 function scoreServiceCommand(command) {
   const c = String(command || "").trim().toLowerCase();
   if (!c) return -100;
+  // Match whole argv tokens only — `\bserve\b` falsely hits inside `dotnet-serve`
+  // because hyphens are non-word chars, which made bare `*-serve` outrank real
+  // subcommands and over-fire high-confidence brew services.
+  const tokens = c.split(/\s+/).filter(Boolean);
   let score = 0;
-  if (/\bgateway\b/.test(c)) score += 50;
-  if (/\b(?:serve|server|daemon|agent)\b/.test(c)) score += 30;
-  if (/\bstart\b/.test(c)) score += 20;
-  if (/\b(?:--daemon|--service|--background)\b/.test(c)) score += 25;
-  if (/\bwebui\b/.test(c) || /\bweb\s*ui\b/.test(c)) score -= 40;
-  if (/\bopen\b/.test(c) && /\bbrowser\b/.test(c)) score -= 30;
+  if (tokens.some((t) => t === "gateway")) score += 50;
+  if (tokens.some((t) => /^(?:serve|server|daemon|agent)$/.test(t))) score += 30;
+  if (tokens.some((t) => t === "start")) score += 20;
+  if (tokens.some((t) => /^(?:--daemon|--service|--background)$/.test(t))) {
+    score += 25;
+  }
+  if (tokens.some((t) => t === "webui") || /\bweb\s*ui\b/.test(c)) score -= 40;
+  if (tokens.includes("open") && tokens.includes("browser")) score -= 30;
   // Prefer fewer tokens when scores tie elsewhere (handled by sort stability via index)
-  score -= Math.min(c.split(/\s+/).length, 8);
+  score -= Math.min(tokens.length, 8);
   return score;
 }
 

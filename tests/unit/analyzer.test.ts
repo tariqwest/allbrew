@@ -634,6 +634,64 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
     expect(result!.confidence).toBe("high");
   });
 
+  it("marks bare *-serve ad-hoc file server CLI as low confidence (dotnet-serve)", () => {
+    // Hyphenated *-serve package names embed the word "serve"; scoring must not
+    // treat that as a service subcommand, and bare/ad-hoc file servers must not
+    // become brew services (non-interactive skips low confidence).
+    const readme = [
+      "dotnet-serve",
+      "============",
+      "",
+      "A simple command-line HTTP server.",
+      "It launches a server in the current working directory.",
+      "",
+      "```",
+      "dotnet tool install --global dotnet-serve",
+      "```",
+      "",
+      "```",
+      "dotnet serve -o",
+      "```",
+      "",
+      "With a specific port:",
+      "",
+      "```",
+      "dotnet serve --port 8080",
+      "```",
+      "",
+      "`dotnet-serve --reverse-proxy /api/{**all}=http://localhost:5000` will proxy",
+      "requests matching `/api/*` to `http://localhost:5000/api/*`.",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "dotnet-serve");
+    expect(result).not.toBeNull();
+    expect(result!.confidence).toBe("low");
+    // Command must be a real package argv (bare or flags), not prose.
+    expect(result!.command).toMatch(/^dotnet-serve\b/);
+  });
+
+  it("does not score embedded -serve in package name as a serve subcommand", () => {
+    // Regression: \bserve\b matches inside "foo-serve" because hyphen is non-word.
+    // Prefer a real gateway subcommand over bare package name.
+    const readme = [
+      "## Run",
+      "",
+      "```bash",
+      "foo-serve gateway",
+      "```",
+      "",
+      "Also:",
+      "",
+      "```bash",
+      "foo-serve",
+      "```",
+      "",
+      "API at http://localhost:9000",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "foo-serve");
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("foo-serve gateway");
+  });
+
   it("prefers gateway over interactive webui when both are documented", () => {
     const readme = [
       "# nanobot",
