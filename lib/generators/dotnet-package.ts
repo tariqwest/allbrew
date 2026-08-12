@@ -11,6 +11,10 @@ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { DotnetPackagePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
+/** Matches `<packageType name="DotnetTool" />` (and attribute-order variants). */
+const DOTNET_TOOL_PACKAGE_TYPE_RE =
+  /<packageType\b[^>]*\bname\s*=\s*["']DotnetTool["'][^>]*\/?>/i;
+
 export async function collectDotnetPackagePayload(
   packageName: string,
   repoInfo: any = null,
@@ -64,7 +68,8 @@ export async function generateDotnetPackage(
 
 async function fetchNugetData(packageName: string) {
   const base = process.env.NUGET_FLAT_URL || process.env.NUGET_URL || "https://api.nuget.org";
-  const url = `${base}/v3-flatcontainer/${encodeURIComponent(packageName.toLowerCase())}/index.json`;
+  const id = packageName.toLowerCase();
+  const url = `${base}/v3-flatcontainer/${encodeURIComponent(id)}/index.json`;
   const response = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" },
   });
@@ -76,7 +81,45 @@ async function fetchNugetData(packageName: string) {
   if (!versions || versions.length === 0) {
     throw new Error(`No versions found for ${packageName} on NuGet`);
   }
-  return { version: versions[versions.length - 1] };
+  const version = versions[versions.length - 1];
+  await assertDotnetToolPackage(packageName, version, base);
+  return { version };
+}
+
+/**
+ * Homebrew formulas use `dotnet tool install`, which only works for packages
+ * that declare packageType DotnetTool. Libraries (lib/ only) fail at brew
+ * install time with a confusing error — reject them at generate time instead.
+ */
+async function assertDotnetToolPackage(
+  packageName: string,
+  version: string,
+  base: string,
+) {
+  const id = packageName.toLowerCase();
+  const nuspecUrl =
+    `${base}/v3-flatcontainer/${encodeURIComponent(id)}/` +
+    `${encodeURIComponent(version)}/${encodeURIComponent(id)}.nuspec`;
+  const response = await fetch(nuspecUrl, {
+    headers: {
+      Accept: "application/xml, text/xml, */*",
+      "User-Agent": "allbrew/1.0",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(
+      `NuGet nuspec lookup failed for ${packageName}@${version}: ${response.status}`,
+    );
+  }
+  const text = await response.text();
+  if (!DOTNET_TOOL_PACKAGE_TYPE_RE.test(text)) {
+    throw new Error(
+      `NuGet package ${packageName}@${version} is not a .NET global tool ` +
+        `(missing packageType DotnetTool). allbrew only supports DotnetTool ` +
+        `packages from nuget.org; libraries and other package types cannot be ` +
+        `installed via \`dotnet tool install\`.`,
+    );
+  }
 }
 
 function nugetLivecheckBlock(packageName: string) {
