@@ -80,38 +80,45 @@ ${p.resourcesBlock}  def install
   def rewrite_delocate_dylib_ids
     return unless OS.mac?
 
+    # Use ruby-macho (same stack as keg_relocate). install_name_tool is often
+    # blocked or flaky inside the formula install sandbox; pure-Ruby rewrite is not.
+    require "macho"
+
     rewritten = 0
     scanned = 0
+    dlc = 0
     # Pathname#find descends into dotdirs; Dir.glob("**/*") does not, and
     # delocate/opencv wheels put bundled libs under site-packages/*/.dylibs/.
     libexec.find do |path|
       next unless path.extname == ".dylib" && path.file?
 
       scanned += 1
-      dylib = path.to_s
+      begin
+        file = MachO.open(path.to_s)
+      rescue MachO::NotAMachOError, MachO::MachOError
+        next
+      end
 
-      # otool -D prints: path\\ninstall_name
-      lines = Utils.popen_read("/usr/bin/otool", "-D", dylib).lines.map(&:strip).reject(&:empty?)
-      id = lines.find { |l| l.start_with?("/DLC/") } || lines[1]
-      next if id.nil? || id.empty? || !id.start_with?("/DLC/")
+      id = file.dylib_id
+      next if id.nil? || !id.start_with?("/DLC/")
 
+      dlc += 1
       new_id = "@rpath/#{File.basename(id)}"
       next if new_id == id
 
-      # pip may extract as mode 0444; install_name_tool needs write.
-      path.chmod(path.stat.mode | 0200)
-      # Strip signature so install_name_tool can rewrite LC_ID_DYLIB; ignore failure.
-      quiet_system "/usr/bin/codesign", "--remove-signature", dylib
-      unless system "/usr/bin/install_name_tool", "-id", new_id, dylib
-        odie "install_name_tool -id #{new_id} failed for #{dylib} (was #{id})"
+      begin
+        path.chmod(path.stat.mode | 0200)
+        file.change_dylib_id(new_id)
+        file.write!
+        rewritten += 1
+      rescue => e
+        opoo "delocate dylib rewrite failed for #{path}: #{e}"
       end
-      # Ad-hoc re-sign is best-effort: brew's own fix_dynamic_linkage will
-      # codesign_patched_binary when it mutates files; the install sandbox can
-      # also reject codesign. Do not odie — invalid signature is recoverable.
-      quiet_system "/usr/bin/codesign", "--force", "--sign", "-", dylib
-      rewritten += 1
     end
-    ohai "Rewrote #{rewritten} delocate /DLC/ dylib IDs to @rpath (scanned #{scanned})" if scanned > 0
+    ohai "Rewrote #{rewritten}/#{dlc} delocate /DLC/ dylib IDs to @rpath (scanned #{scanned})" if scanned > 0
+    return if dlc.zero? || rewritten.positive?
+
+    odie "Failed to rewrite any of #{dlc} /DLC/ dylib IDs (Homebrew linkage would fail)"
   end
 
 ${p.serviceBlock}  test do

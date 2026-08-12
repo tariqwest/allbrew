@@ -430,34 +430,39 @@ function buildPipPackageCase(): Case {
     `  # via the wheel's existing @loader_path references.\n` +
     `  def rewrite_delocate_dylib_ids\n` +
     `    return unless OS.mac?\n\n` +
+    `    # Use ruby-macho (same stack as keg_relocate). install_name_tool is often\n` +
+    `    # blocked or flaky inside the formula install sandbox; pure-Ruby rewrite is not.\n` +
+    `    require "macho"\n\n` +
     `    rewritten = 0\n` +
     `    scanned = 0\n` +
+    `    dlc = 0\n` +
     `    # Pathname#find descends into dotdirs; Dir.glob("**/*") does not, and\n` +
     `    # delocate/opencv wheels put bundled libs under site-packages/*/.dylibs/.\n` +
     `    libexec.find do |path|\n` +
     `      next unless path.extname == ".dylib" && path.file?\n\n` +
     `      scanned += 1\n` +
-    `      dylib = path.to_s\n\n` +
-    `      # otool -D prints: path\\ninstall_name\n` +
-    `      lines = Utils.popen_read("/usr/bin/otool", "-D", dylib).lines.map(&:strip).reject(&:empty?)\n` +
-    `      id = lines.find { |l| l.start_with?("/DLC/") } || lines[1]\n` +
-    `      next if id.nil? || id.empty? || !id.start_with?("/DLC/")\n\n` +
+    `      begin\n` +
+    `        file = MachO.open(path.to_s)\n` +
+    `      rescue MachO::NotAMachOError, MachO::MachOError\n` +
+    `        next\n` +
+    `      end\n\n` +
+    `      id = file.dylib_id\n` +
+    `      next if id.nil? || !id.start_with?("/DLC/")\n\n` +
+    `      dlc += 1\n` +
     `      new_id = "@rpath/#{File.basename(id)}"\n` +
     `      next if new_id == id\n\n` +
-    `      # pip may extract as mode 0444; install_name_tool needs write.\n` +
-    `      path.chmod(path.stat.mode | 0200)\n` +
-    `      # Strip signature so install_name_tool can rewrite LC_ID_DYLIB; ignore failure.\n` +
-    `      quiet_system "/usr/bin/codesign", "--remove-signature", dylib\n` +
-    `      unless system "/usr/bin/install_name_tool", "-id", new_id, dylib\n` +
-    `        odie "install_name_tool -id #{new_id} failed for #{dylib} (was #{id})"\n` +
+    `      begin\n` +
+    `        path.chmod(path.stat.mode | 0200)\n` +
+    `        file.change_dylib_id(new_id)\n` +
+    `        file.write!\n` +
+    `        rewritten += 1\n` +
+    `      rescue => e\n` +
+    `        opoo "delocate dylib rewrite failed for #{path}: #{e}"\n` +
     `      end\n` +
-    `      # Ad-hoc re-sign is best-effort: brew's own fix_dynamic_linkage will\n` +
-    `      # codesign_patched_binary when it mutates files; the install sandbox can\n` +
-    `      # also reject codesign. Do not odie — invalid signature is recoverable.\n` +
-    `      quiet_system "/usr/bin/codesign", "--force", "--sign", "-", dylib\n` +
-    `      rewritten += 1\n` +
     `    end\n` +
-    `    ohai "Rewrote #{rewritten} delocate /DLC/ dylib IDs to @rpath (scanned #{scanned})" if scanned > 0\n` +
+    `    ohai "Rewrote #{rewritten}/#{dlc} delocate /DLC/ dylib IDs to @rpath (scanned #{scanned})" if scanned > 0\n` +
+    `    return if dlc.zero? || rewritten.positive?\n\n` +
+    `    odie "Failed to rewrite any of #{dlc} /DLC/ dylib IDs (Homebrew linkage would fail)"\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
