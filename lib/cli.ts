@@ -2082,7 +2082,8 @@ async function brewAutoInstall(result: any, opts: any) {
     updateSpinner.warn(`brew update failed: ${err.message}`);
   }
 
-  // Step 2: brew install
+  // Step 2: brew install (reinstall when already present so formula content
+  // changes at the same version — e.g. python@3.13 → python@3.12 pin — take effect)
   const installEnv = {
     ...process.env,
     HOMEBREW_DEVELOPER: "1",
@@ -2090,11 +2091,23 @@ async function brewAutoInstall(result: any, opts: any) {
   };
   const installSpinner = ora(`Running ${installLabel}...`).start();
   try {
-    await execFileAsync(
+    // Uninstall any prior same-token install so depends_on / venv python changes apply.
+    try {
+      await execFileAsync(
+        "brew",
+        ["uninstall", "--force", installFlag, result.name],
+        { env: installEnv },
+      );
+    } catch {
+      // not installed — fine
+    }
+    const { stdout, stderr } = await execFileAsync(
       "brew",
       ["install", ...headFlag, installFlag, result.filePath],
       { env: installEnv },
     );
+    if (stdout) console.log(chalk.dim(String(stdout).slice(0, 2000)));
+    if (stderr) console.log(chalk.dim(String(stderr).slice(0, 1000)));
     installSpinner.succeed(`Installed: ${chalk.green(result.name)}`);
 
     if (!isCask && opts.serviceConfig && opts.service !== false) {
@@ -2104,6 +2117,8 @@ async function brewAutoInstall(result: any, opts: any) {
     }
   } catch (err: any) {
     installSpinner.fail(`brew install failed: ${err.message}`);
+    if (err?.stdout) console.log(chalk.dim(String(err.stdout).slice(0, 2000)));
+    if (err?.stderr) console.log(chalk.dim(String(err.stderr).slice(0, 2000)));
     console.log(
       chalk.dim(`  Retry manually: ${installLabel}`),
     );
