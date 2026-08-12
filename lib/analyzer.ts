@@ -491,6 +491,27 @@ function detectLocalWebService(readmeText, packageName) {
     near ||
     whole;
 
+  // One-shot management CLIs (`pkg servers add …`, `pkg login …`) are never
+  // brew-services entrypoints. When a local web/API endpoint is documented and
+  // every package invocation is management-only (e.g. mcphub hub on :3000 with
+  // a dual-purpose CLI), the bare binary is the long-running process.
+  if (
+    command &&
+    packageName &&
+    isOneShotCliManagement(command, packageName)
+  ) {
+    command = null;
+  }
+  if (!command && packageName) {
+    const invocations = collectPackageInvocations(readmeText, packageName);
+    if (
+      invocations.length > 0 &&
+      invocations.every((c) => isOneShotCliManagement(c, packageName))
+    ) {
+      command = packageName;
+    }
+  }
+
   // Do not invent `packageName` alone from a localhost URL — that over-fires on
   // CLI tools with optional `serve` docs. Require a real runnable command.
   if (!command) return null;
@@ -669,28 +690,107 @@ function preferPackageCommand(commands, packageName) {
 /** Prefer supervised daemon entrypoints over interactive webui launchers. */
 function pickBestServiceCommand(commands) {
   if (!commands?.length) return null;
-  const scored = commands.map((command, index) => ({
+  const plausible = commands.filter(
+    (command) => !isOneShotCliManagement(command),
+  );
+  const pool = plausible.length > 0 ? plausible : commands;
+  const scored = pool.map((command, index) => ({
     command,
     index,
     score: scoreServiceCommand(command),
   }));
   scored.sort((a, b) => b.score - a.score || a.index - b.index);
-  return scored[0]?.command || null;
+  // Reject one-shot management even if it was the only candidate.
+  const best = scored[0];
+  if (!best) return null;
+  if (isOneShotCliManagement(best.command)) return null;
+  // Negative scores with no service-verb subcommand are not brew-services entrypoints.
+  if (best.score < 0 && !isServiceLikeCommand(best.command)) return null;
+  return best.command || null;
 }
 
+/**
+ * Score supervised entrypoints. Service verbs only count as the primary
+ * subcommand (token 1) so argv like `mcp-server-fetch` never boost a one-shot
+ * `pkg servers add …` management CLI into a brew services run line.
+ */
 function scoreServiceCommand(command) {
   const c = String(command || "").trim().toLowerCase();
   if (!c) return -100;
+  const tokens = c.split(/\s+/).filter(Boolean);
+  const sub = tokens[1] || "";
   let score = 0;
-  if (/\bgateway\b/.test(c)) score += 50;
-  if (/\b(?:serve|server|daemon|agent)\b/.test(c)) score += 30;
-  if (/\bstart\b/.test(c)) score += 20;
-  if (/\b(?:--daemon|--service|--background)\b/.test(c)) score += 25;
-  if (/\bwebui\b/.test(c) || /\bweb\s*ui\b/.test(c)) score -= 40;
+  if (/^gateway$/.test(sub)) score += 50;
+  if (/^(?:serve|server|daemon|agent)$/.test(sub)) score += 30;
+  if (/^start$/.test(sub)) score += 20;
+  if (tokens.some((t) => /^(?:--daemon|--service|--background)$/.test(t))) {
+    score += 25;
+  }
+  if (/^webui$/.test(sub) || /\bweb\s*ui\b/.test(c)) score -= 40;
   if (/\bopen\b/.test(c) && /\bbrowser\b/.test(c)) score -= 30;
+  if (isOneShotCliManagement(c)) score -= 100;
+  // Bare binary is a strong long-running candidate (maildev, mcphub).
+  if (tokens.length === 1) score += 15;
   // Prefer fewer tokens when scores tie elsewhere (handled by sort stability via index)
-  score -= Math.min(c.split(/\s+/).length, 8);
+  score -= Math.min(tokens.length, 8);
   return score;
+}
+
+/**
+ * One-shot management / CRUD / auth CLIs that must never become `service do` run
+ * argv. Dual-purpose hubs (e.g. mcphub) document `pkg servers add …` near
+ * localhost URLs; those are admin tools, not the supervised daemon.
+ *
+ * Singular `server` / `serve` / `daemon` / `gateway` / `agent` / `start` remain
+ * valid service entrypoints.
+ */
+function isOneShotCliManagement(command, packageName = "") {
+  if (!command) return false;
+  const parts = String(command).trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return false;
+  if (packageName) {
+    const exe = parts[0].split("/").pop();
+    if (exe !== packageName) {
+      // Still evaluate non-package lines for scoring filters.
+    }
+  }
+  const sub = parts[1];
+  // Resource-noun CLIs (plural) and auth/config/CRUD verbs.
+  if (
+    /^(?:login|logout|auth|config|configure|init|setup|list|ls|get|show|describe|inspect|add|remove|rm|delete|create|update|set|unset|call|invoke|install|uninstall|discover|search|find|export|import|keys|tools|servers|groups|users|help|version|completion|completions)$/i.test(
+      sub,
+    )
+  ) {
+    return true;
+  }
+  // Nested management: `pkg foo list|add|get|…`
+  if (
+    parts.length >= 3 &&
+    /^(?:list|ls|get|add|remove|rm|delete|create|update|set|call|show)$/i.test(
+      parts[2],
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Collect cleaned package-binary invocations from README lines. */
+function collectPackageInvocations(readmeText, packageName) {
+  if (!packageName || !readmeText) return [];
+  const out = [];
+  const seen = new Set();
+  for (const rawLine of String(readmeText).split(/\r?\n/)) {
+    const line = cleanCommand(rawLine);
+    if (!line || !isRunnableCommand(line)) continue;
+    const parts = line.split(/\s+/).filter(Boolean);
+    const exe = parts[0]?.split("/").pop();
+    if (exe !== packageName) continue;
+    if (seen.has(line)) continue;
+    seen.add(line);
+    out.push(line);
+  }
+  return out;
 }
 
 function pickPreferredNpmPackage(readmeText, preferredPackageName = "") {
@@ -860,12 +960,15 @@ function isRunnableCommand(command) {
   if (/(?:^|\s)(--help|-h|--version|-V)(?:\s|$)/.test(command)) return false;
   // Reject prose sentences mistaken for commands (capitalized English openers).
   if (
-    /^(?:The|This|These|Those|A|An|When|Where|What|How|If|For|With|After|Before|Once|Then|Also|Note|Please|Run|Start|Stop|Install|Usage|Usage:|Run:|Start:|Local)\b/.test(
+    /^(?:The|This|These|Those|A|An|When|Where|What|How|If|For|With|After|Before|Once|Then|Also|Note|Please|Run|Start|Stop|Install|Usage|Usage:|Run:|Start:|Local|Open|Close|See|Visit|Click|View|Read|Check|Try)\b/.test(
       command,
     )
   ) {
     return false;
   }
+  // One-shot management CLIs are runnable for install docs but not services;
+  // callers that need service argv should filter via isOneShotCliManagement.
+  // Keep them runnable here so package-invocation collection still sees them.
 // Bare English verbs used as markdown headings ("Run:", "Start") are not argv.
   if (/^(?:run|start|stop|serve|server|daemon|agent)$/i.test(command.trim())) {
     return false;

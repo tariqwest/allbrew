@@ -726,6 +726,54 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
     ].join("\n");
     expect(detectServiceConfig(readme, "reveal-md")).toBeNull();
   });
+
+  it("uses bare binary for hub servers whose README only documents management CLIs (mcphub)", () => {
+    // Regression: argv like `mcp-server-fetch` used to boost
+    // `mcphub servers add …` via /\bserver\b/ matching inside the package name,
+    // producing a one-shot CLI as the brew services run command.
+    const readme = [
+      "# MCPHub: The Unified Hub for MCP Servers",
+      "",
+      "Centralized management dashboard for MCP servers.",
+      "",
+      "### Access Dashboard",
+      "",
+      "Open `http://localhost:3000` and log in with username `admin`.",
+      "",
+      "### Connect AI Clients",
+      "",
+      "```",
+      "http://localhost:3000/mcp           # All servers",
+      "http://localhost:3000/mcp/{group}   # Specific group",
+      "```",
+      "",
+      "### Manage From the Terminal",
+      "",
+      "```bash",
+      "mcphub login --url http://localhost:3000 --username admin",
+      "mcphub servers list",
+      "mcphub servers add fetch --type stdio --command uvx --arg mcp-server-fetch",
+      "mcphub tools list",
+      "mcphub call fetch_url url=https://example.com --json",
+      "mcphub keys create --name ci --access-type all",
+      "```",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "mcphub");
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("mcphub");
+    expect(result!.keepAlive).toBe(true);
+    expect(result!.confidence).toBe("high");
+    expect(result!.command).not.toMatch(/servers add/);
+    expect(result!.command).not.toMatch(/mcp-server-fetch/);
+  });
+
+  it("does not treat Open prose near localhost as a service command", () => {
+    const readme = [
+      "Open http://localhost:3000 in a browser to access the dashboard.",
+    ].join("\n");
+    expect(detectServiceConfig(readme, "")).toBeNull();
+    expect(detectServiceConfig(readme, "mcphub")).toBeNull();
+  });
 });
 
 describe("detectServiceConfigFromFiles", () => {
