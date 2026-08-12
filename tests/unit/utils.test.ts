@@ -18,6 +18,7 @@ import {
   setHomebrewCaskPrefixForTests,
   setHomebrewCachePrefixForTests,
   setHomebrewCaskTokenOverrideForTests,
+  setHomebrewCoreFormulaOverrideForTests,
   isHomebrewCoreFormulaName,
   isHomebrewCaskToken,
 } from "../../lib/utils.ts";
@@ -118,6 +119,35 @@ describe("resolveNonCollidingFormulaName", () => {
     const result = resolveNonCollidingFormulaName("nanobot", ["nanobot-ai"]);
     expect(result.name).toBe("nanobot-tap");
     expect(result.renamedFrom).toBe("nanobot");
+  });
+
+  it("detects core formulas via API cache when Formula tree is missing", () => {
+    setHomebrewCorePrefixForTests(null);
+    const cacheRoot = mkdtempSync(join(tmpdir(), "allbrew-brew-cache-core-"));
+    mkdirSync(join(cacheRoot, "api", "formula"), { recursive: true });
+    writeFileSync(
+      join(cacheRoot, "api", "formula", "gotify.json"),
+      JSON.stringify({ name: "gotify" }),
+    );
+    setHomebrewCachePrefixForTests(cacheRoot);
+    try {
+      expect(isHomebrewCoreFormulaName("gotify")).toBe(true);
+      expect(isHomebrewCoreFormulaName("unique-cli-xyz")).toBe(false);
+    } finally {
+      setHomebrewCachePrefixForTests(undefined);
+      rmSync(cacheRoot, { recursive: true, force: true });
+      setHomebrewCorePrefixForTests(coreRoot);
+    }
+  });
+
+  it("respects core formula test override without disk or brew", () => {
+    setHomebrewCoreFormulaOverrideForTests(new Set(["nanobot"]));
+    try {
+      expect(isHomebrewCoreFormulaName("nanobot")).toBe(true);
+      expect(isHomebrewCoreFormulaName("unique-cli")).toBe(false);
+    } finally {
+      setHomebrewCoreFormulaOverrideForTests(undefined);
+    }
   });
 });
 
@@ -415,6 +445,9 @@ describe("isAppAsset", () => {
     expect(isAppAsset("Foo-darwin-arm64.zip")).toBe(false);
     expect(isAppAsset("gogs_0.14.3_darwin_amd64.zip")).toBe(false);
     expect(isAppAsset("tool-macos-x64.zip")).toBe(false);
+    // CLI multi-platform zips with cpu arch but no mac token
+    expect(isAppAsset("television-aarch64.zip")).toBe(false);
+    expect(isAppAsset("toolong_x86_64.zip")).toBe(false);
   });
 
   it("rejects non-mac .zip files", () => {

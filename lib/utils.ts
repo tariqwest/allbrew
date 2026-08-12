@@ -31,6 +31,8 @@ let cachedHomebrewCaskPrefix: string | null | undefined;
 let cachedHomebrewCachePrefix: string | null | undefined;
 /** Test override for isHomebrewCaskToken: Set of tokens treated as official casks. */
 let homebrewCaskTokenTestOverride: Set<string> | null | undefined;
+/** Test override for isHomebrewCoreFormulaName: Set of tokens treated as core formulae. */
+let homebrewCoreFormulaTestOverride: Set<string> | null | undefined;
 
 /** Resolve homebrew/core checkout path (or null when brew/core is unavailable). */
 export function getHomebrewCorePrefix(): string | null {
@@ -102,6 +104,16 @@ export function setHomebrewCaskTokenOverrideForTests(
   homebrewCaskTokenTestOverride = tokens;
 }
 
+/**
+ * Test-only: force isHomebrewCoreFormulaName answers without invoking brew.
+ * Pass a Set of colliding tokens, null for "none collide", undefined to clear.
+ */
+export function setHomebrewCoreFormulaOverrideForTests(
+  tokens: Set<string> | null | undefined,
+) {
+  homebrewCoreFormulaTestOverride = tokens;
+}
+
 function homebrewCaskRubyPaths(caskRoot: string, token: string): string[] {
   const letter = token[0];
   return [
@@ -110,15 +122,63 @@ function homebrewCaskRubyPaths(caskRoot: string, token: string): string[] {
   ];
 }
 
+function homebrewCoreRubyPaths(coreRoot: string, token: string): string[] {
+  const letter = token[0];
+  return [
+    join(coreRoot, "Formula", letter, `${token}.rb`),
+    join(coreRoot, "Formula", `${token}.rb`),
+  ];
+}
+
 /** True when homebrew/core already ships a formula with this token. */
 export function isHomebrewCoreFormulaName(name: string): boolean {
   const token = toFormulaName(name || "");
   if (!token) return false;
-  const core = getHomebrewCorePrefix();
-  if (!core) return false;
+  if (homebrewCoreFormulaTestOverride !== undefined) {
+    if (homebrewCoreFormulaTestOverride === null) return false;
+    return homebrewCoreFormulaTestOverride.has(token);
+  }
   const letter = token[0];
   if (!/[a-z0-9]/.test(letter)) return false;
-  return existsSync(join(core, "Formula", letter, `${token}.rb`));
+
+  // Full homebrew/core checkout: disk Formula tree is authoritative (fast path).
+  const core = getHomebrewCorePrefix();
+  if (core) {
+    return homebrewCoreRubyPaths(core, token).some((p) => existsSync(p));
+  }
+
+  // API-only / shallow Homebrew (batch VMs often have no core checkout):
+  // use the brew API cache JSON, same pattern as isHomebrewCaskToken.
+  const cacheRoot = getHomebrewCachePrefix();
+  if (cacheRoot && existsSync(join(cacheRoot, "api", "formula", `${token}.json`))) {
+    return true;
+  }
+
+  // Cold cache: ask brew once (bounded timeout so unit tests never hang).
+  try {
+    const out = execFileSync(
+      "brew",
+      ["info", "--json=v2", "--formula", token],
+      {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 8_000,
+      },
+    );
+    const parsed = JSON.parse(out);
+    const formulae = Array.isArray(parsed?.formulae) ? parsed.formulae : [];
+    return formulae.some(
+      (f: any) =>
+        (f?.name === token ||
+          f?.full_name === token ||
+          f?.full_name === `homebrew/core/${token}`) &&
+        (String(f?.tap || "").includes("homebrew/core") ||
+          f?.full_name === token ||
+          !f?.tap),
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** True when homebrew/cask already ships a cask with this token. */
@@ -670,8 +730,9 @@ export function isAppAsset(assetName) {
     lower,
   );
   // Arch-tagged darwin/macos/osx zips are almost always CLI binaries
-  // (e.g. gogs_*_darwin_amd64.zip). Desktop app zips usually omit cpu arch
-  // or use "universal" with .app, or use short "mac"+arch (Electron).
+  // (e.g. gogs_*_darwin_amd64.zip, television-macos-aarch64.zip).
+  // Desktop app zips usually omit cpu arch or use "universal" with .app,
+  // or use short "mac"+arch (Electron).
   const hasCpuArch =
     /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(
       lower,
@@ -687,6 +748,10 @@ export function isAppAsset(assetName) {
     }
     return true;
   }
+
+  // CLI-style multi-platform zips without an explicit mac token but with cpu
+  // arch (e.g. foo-aarch64.zip, toolong_x86_64.zip) are never macOS .app bundles.
+  if (hasCpuArch) return false;
 
   // No mac token: versioned product zips without cpu arch (e.g. NetBar-1.2.1.zip)
   // are commonly single-platform macOS .app distributions. cask-app-release still
