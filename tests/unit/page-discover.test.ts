@@ -561,6 +561,44 @@ describe("client/latest native installer probes (Zoom-class vendors)", () => {
     expect(pickAutoCandidate(ranked)?.url).toContain("id6471464415");
   });
 
+  it("prefers Mac App Store mt=12 over iOS twin on marketing page (bear-class)", () => {
+    const page = "https://bear.app/";
+    // HTML order often puts iOS download first; both previously tied at score 125.
+    const ios = scoreCandidateUrl(
+      "https://apps.apple.com/it/app/bear-markdown-notes/id1016366447?l=en",
+      page,
+      ["html-attr"],
+    );
+    const mac = scoreCandidateUrl(
+      "https://apps.apple.com/it/app/bear-markdown-notes/id1091189122?l=en&mt=12",
+      page,
+      ["html-attr"],
+    );
+    expect(mac.evidence).toContain("mas-mac-platform");
+    expect(mac.score).toBeGreaterThan(ios.score);
+    // iOS-first HTML order must not win after sort
+    const ranked = [ios, mac].sort((a, b) => b.score - a.score);
+    const chosen = pickAutoCandidate(ranked);
+    expect(chosen?.url).toContain("id1091189122");
+    expect(chosen?.url).toMatch(/mt=12/);
+  });
+
+  it("penalizes explicit iOS App Store platform markers", () => {
+    const page = "https://example.app/";
+    const iosMt8 = scoreCandidateUrl(
+      "https://apps.apple.com/us/app/foo/id123?mt=8",
+      page,
+      ["html-attr"],
+    );
+    const mac = scoreCandidateUrl(
+      "https://apps.apple.com/us/app/foo/id456?mt=12",
+      page,
+      ["html-attr"],
+    );
+    expect(iosMt8.evidence).toContain("mas-ios-platform-penalty");
+    expect(mac.score).toBeGreaterThan(iosMt8.score);
+  });
+
   it("enrichClientLatestArtifacts promotes HEAD-ok /client/latest pkg over MAS", async () => {
     const page = "https://zoom.us/";
     const mas = scoreCandidateUrl(

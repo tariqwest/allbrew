@@ -125,6 +125,58 @@ describe("collectCaskAppMasPayload", () => {
       collectCaskAppMasPayload("https://apps.apple.com/us/app/bear/id1091189122"),
     ).rejects.toThrow("iTunes Lookup API failed");
   });
+
+  it("throws when App Store ID is iOS software not mac-software (bear iOS twin)", async () => {
+    global.fetch = mock(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            results: [
+              {
+                trackName: "Bear - Markdown Notes",
+                bundleId: "net.shinyfrog.bear-iOS",
+                version: "2.9.3",
+                description: "iOS notes app",
+                sellerUrl: "https://bear.app",
+                kind: "software",
+              },
+            ],
+          }),
+      }),
+    ) as any;
+    await expect(
+      collectCaskAppMasPayload(
+        "https://apps.apple.com/it/app/bear-markdown-notes/id1016366447?l=en",
+      ),
+    ).rejects.toThrow(/not Mac software/);
+  });
+
+  it("accepts explicit mac-software kind", async () => {
+    global.fetch = mock(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            results: [
+              {
+                trackName: "Bear: Markdown Notes",
+                bundleId: "net.shinyfrog.bear",
+                version: "2.9.3",
+                description: "Mac notes app",
+                sellerUrl: "https://bear.app",
+                kind: "mac-software",
+              },
+            ],
+          }),
+      }),
+    ) as any;
+    const payload = await collectCaskAppMasPayload(
+      "https://apps.apple.com/us/app/bear/id1091189122?mt=12",
+    );
+    expect(payload.appId).toBe("1091189122");
+    expect(payload.zapBlock).toContain("net.shinyfrog.bear");
+  });
 });
 
 describe("collectCaskAppMasPayload — Magnet", () => {

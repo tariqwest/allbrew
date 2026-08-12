@@ -317,6 +317,21 @@ export function scoreCandidateUrl(
         if (/\/id\d+/i.test(url)) {
           score += 20;
           ev.push("mas-app-id");
+          // Prefer Mac App Store platform over iOS twin links on marketing pages
+          // (e.g. bear.app links both id1016366447 iOS and id1091189122?mt=12 Mac).
+          // Without this, equal scores pick HTML-order first, often the iPhone app.
+          // Keep boost modest (+8 → ~133) so native ZIP/DMG floors (135/140) still win.
+          if (/[?&]mt=12\b/i.test(url) || /\/mac\//i.test(url)) {
+            score += 8;
+            ev.push("mas-mac-platform");
+          } else if (
+            /[?&]mt=8\b/i.test(url) ||
+            /\/ios\//i.test(url) ||
+            /iphone|ipad|ipod/i.test(url)
+          ) {
+            score -= 40;
+            ev.push("mas-ios-platform-penalty");
+          }
         } else {
           score -= 100;
           ev.push("mas-no-app-id-penalty");

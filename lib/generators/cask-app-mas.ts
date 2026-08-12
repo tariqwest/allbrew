@@ -76,5 +76,15 @@ async function fetchAppMetadata(appId: string) {
     throw new Error(`No app found with ID ${appId}`);
   }
 
-  return data.results[0];
+  const result = data.results[0];
+  // Reject iPhone/iPad software so we never emit a Mac cask for an iOS App Store ID
+  // (kind "software" = iOS; "mac-software" = Mac App Store).
+  const kind = String(result.kind || "");
+  if (kind && kind !== "mac-software") {
+    throw new Error(
+      `App Store ID ${appId} is not Mac software (kind=${kind}); refuse iOS App Store links for cask-app-mas`,
+    );
+  }
+
+  return result;
 }
