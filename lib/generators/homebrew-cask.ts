@@ -333,11 +333,44 @@ async function fetchText(url: string): Promise<string> {
   return response.text();
 }
 
-export async function generateHomebrewCask(name: string, options: any = {}) {
-  const token = toCaskToken(name);
+/**
+ * Resolve a user/batch name to a live homebrew/cask token.
+ * Tries the raw token first, then edition-stripped candidates
+ * (raycast-beta → raycast, cleanshot-x → cleanshot).
+ */
+export async function resolveHomebrewCaskToken(
+  name: string,
+): Promise<{ token: string; info: HomebrewCaskApiInfo }> {
+  const candidates = expandPreferredCaskTokens(name);
+  if (candidates.length === 0) {
+    const bare = toCaskToken(name);
+    if (bare) candidates.push(bare);
+  }
 
-  const apiUrl = `${HOMEBREW_API_BASE}/cask/${encodeURIComponent(token)}.json`;
-  const info = (await fetchJson(apiUrl)) as HomebrewCaskApiInfo;
+  let lastErr: Error | null = null;
+  for (const token of candidates) {
+    try {
+      const apiUrl = `${HOMEBREW_API_BASE}/cask/${encodeURIComponent(token)}.json`;
+      const info = (await fetchJson(apiUrl)) as HomebrewCaskApiInfo;
+      if (!info?.token && !info?.ruby_source_path) {
+        lastErr = new Error(`Empty Homebrew Cask API response for ${token}`);
+        continue;
+      }
+      return { token: info.token || token, info };
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err));
+      // Try next candidate on 404; rethrow other failures.
+      if (!/HTTP 404\b/.test(lastErr.message)) throw lastErr;
+    }
+  }
+  throw (
+    lastErr ||
+    new Error(`No homebrew/cask token found for ${JSON.stringify(name)}`)
+  );
+}
+
+export async function generateHomebrewCask(name: string, options: any = {}) {
+  const { token, info } = await resolveHomebrewCaskToken(name);
 
   const sourcePath = info.ruby_source_path;
   const sourceHead = info.tap_git_head;
