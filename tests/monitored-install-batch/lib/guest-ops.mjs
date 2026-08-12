@@ -76,6 +76,9 @@ export TMPDIR="\${TMPDIR:-/tmp}"
 export HOMEBREW_NO_AUTO_UPDATE=1
 export HOMEBREW_NO_ENV_HINTS=1
 export HOMEBREW_NO_INSTALL_CLEANUP=1
+# Homebrew 6+ refuses formulae from untrusted third-party taps. Batch worker
+# taps (th-allbrew/allbrew) are private disposable; skip the trust gate.
+export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
 export CI=1
 export ALLBREW_NONINTERACTIVE=1
 export E2E_HEAVY=1
@@ -248,16 +251,25 @@ export async function ensureTapConfigured(h, session, mountPoint, tapPath) {
     `${brewEnvPreamble(mountPoint)}
 TAP=${JSON.stringify(tapPath)}
 mkdir -p "$TAP/Formula" "$TAP/Casks" "$HOME/.config/allbrew"
-if [ ! -d "$TAP/.git" ]; then
+# Repair missing or corrupt tap git (shared VMs often leave "bad object HEAD").
+if [ ! -d "$TAP/.git" ] || ! git -C "$TAP" rev-parse HEAD >/dev/null 2>&1; then
+  rm -rf "$TAP/.git"
   git -C "$TAP" init
   git -C "$TAP" config user.email "batch-worker@local"
   git -C "$TAP" config user.name "batch-worker"
-  echo "# batch worker tap" > "$TAP/README.md"
-  git -C "$TAP" add README.md
+  if [ ! -f "$TAP/README.md" ]; then echo "# batch worker tap" > "$TAP/README.md"; fi
+  git -C "$TAP" add -A
   git -C "$TAP" commit -m "init tap" || true
 fi
 AB=$(command -v allbrew || echo ${mountPoint}/bin/allbrew)
 $AB config set-tap "$TAP"
+# Register + trust the disposable user tap so brew install of generated
+# formulae is not blocked by Homebrew 6+ third-party trust gates.
+USER_NAME=$(basename "$(dirname "$TAP")")
+TAP_BASE=$(basename "$TAP")
+TAP_SLUG="\${USER_NAME}/\${TAP_BASE#homebrew-}"
+brew tap "$TAP_SLUG" "$TAP" 2>&1 || true
+brew trust --tap "$TAP_SLUG" 2>&1 || brew trust "$TAP_SLUG" 2>&1 || true
 $AB config show | sed -E 's/(token|TOKEN|githubToken).*/REDACTED:/i'
 `,
     "ensure-tap",

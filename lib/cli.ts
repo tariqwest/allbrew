@@ -2083,11 +2083,31 @@ async function brewAutoInstall(result: any, opts: any) {
   }
 
   // Step 2: brew install
+  // HOMEBREW_NO_REQUIRE_TAP_TRUST: generated packages live in the user's private
+  // tap. Homebrew 6+ refuses to load formulae/casks from untrusted third-party
+  // taps unless the tap is explicitly trusted or this env is set. Matches
+  // update-formulas livecheck + e2e-tap helpers.
   const installEnv = {
     ...process.env,
     HOMEBREW_DEVELOPER: "1",
     HOMEBREW_NO_AUTO_UPDATE: "1",
+    HOMEBREW_NO_REQUIRE_TAP_TRUST: "1",
   };
+  // Best-effort trust of this formula/cask so subsequent brew ops (services,
+  // reinstall) also work without the env override when the path is inside a tap.
+  try {
+    const trustFlag = isCask ? "--cask" : "--formula";
+    await execFileAsync("brew", ["trust", trustFlag, result.filePath], {
+      env: installEnv,
+    }).catch(() => {});
+    if (result.name) {
+      await execFileAsync("brew", ["trust", trustFlag, result.name], {
+        env: installEnv,
+      }).catch(() => {});
+    }
+  } catch {
+    // ignore — env override above is the guaranteed path
+  }
   const installSpinner = ora(`Running ${installLabel}...`).start();
   try {
     await execFileAsync(
