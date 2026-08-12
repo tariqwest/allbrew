@@ -75,6 +75,8 @@ export type SourceBuildPayload = FormulaCommonFields & {
   installBody: string;
   livecheckBlock: string;
   isPython?: boolean;
+  /** Optional resource stanzas for python deps (from requirements.txt). */
+  resourcesBlock?: string;
 };
 
 export type BinaryReleasePayload = FormulaCommonFields & {

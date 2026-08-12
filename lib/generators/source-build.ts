@@ -12,6 +12,11 @@ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import { githubLatestLivecheckBlock } from "./livecheck.ts";
 import type { SourceBuildPayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
+import { getFileContent } from "../github.ts";
+import {
+  buildResourcesBlock,
+  resolveRequirementLinesToResources,
+} from "./pip-package.ts";
 
 export async function collectSourceBuildPayload(
   repoInfo: any,
@@ -44,6 +49,27 @@ export async function collectSourceBuildPayload(
   }
 
   const system = buildSystem?.system || "make";
+  let resourcesBlock = "";
+  let hasPythonResources = false;
+
+  if (system === "python" && repoInfo?.fullName) {
+    const [owner, repo] = String(repoInfo.fullName).split("/");
+    if (owner && repo) {
+      const reqText = await loadPythonRequirements(owner, repo, release);
+      if (reqText) {
+        const lines = reqText.split(/\r?\n/);
+        try {
+          const resources = await resolveRequirementLinesToResources(lines);
+          if (resources.length > 0) {
+            resourcesBlock = buildResourcesBlock(resources);
+            hasPythonResources = true;
+          }
+        } catch {
+          // fall back to no resources
+        }
+      }
+    }
+  }
 
   return {
     template: "source_build",
@@ -56,13 +82,58 @@ export async function collectSourceBuildPayload(
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     urlLines,
     dependenciesLines: buildDependenciesLines(system),
-    installBody: buildInstallBody(system),
+    installBody: buildInstallBody(system, { hasPythonResources }),
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(options.binName || name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
     isPython: system === "python",
+    resourcesBlock,
   };
+}
+
+/** Prefer packaged requirements paths; fall back to root requirements.txt. */
+async function loadPythonRequirements(
+  owner: string,
+  repo: string,
+  release: any,
+): Promise<string | null> {
+  const candidates = [
+    "contrib/requirements/requirements.txt",
+    "requirements.txt",
+    "requirements/requirements.txt",
+  ];
+  // Prefer release-tag content when available (Octokit getContent supports ref).
+  const ref = release?.tagName || undefined;
+  for (const path of candidates) {
+    try {
+      const text = ref
+        ? await getFileContentAtRef(owner, repo, path, ref)
+        : await getFileContent(owner, repo, path);
+      if (text && text.trim()) return text;
+    } catch {
+      // try next
+    }
+  }
+  return null;
+}
+
+async function getFileContentAtRef(
+  owner: string,
+  repo: string,
+  path: string,
+  ref: string,
+): Promise<string | null> {
+  try {
+    if (ref) {
+      const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(ref)}/${path}`;
+      const res = await fetch(rawUrl);
+      if (res.ok) return await res.text();
+    }
+    return await getFileContent(owner, repo, path);
+  } catch {
+    return await getFileContent(owner, repo, path);
+  }
 }
 
 function buildDependenciesLines(system: string) {
@@ -71,8 +142,11 @@ function buildDependenciesLines(system: string) {
   return deps.map((dep) => `  depends_on ${dep}\n`).join("") + "\n";
 }
 
-function buildInstallBody(system: string) {
-  return getInstallBlock(system);
+function buildInstallBody(
+  system: string,
+  opts: { hasPythonResources?: boolean } = {},
+) {
+  return getInstallBlock(system, opts);
 }
 
 function getDependencies(system: string): string[] {
@@ -94,9 +168,7 @@ function getDependencies(system: string): string[] {
     case "go":
       return ['"go" => :build'];
     case "python":
-      // Many pure-Python apps pull a native helper (electrum_ecc → libsecp256k1,
-      // cryptography, etc.). Autotools toolchain lets those sdist builds succeed;
-      // runtime deps are installed via pip (see getInstallBlock — no --no-deps).
+      // electrum_ecc etc. may compile bundled libsecp256k1 from sdist resources.
       return [
         '"autoconf" => :build',
         '"automake" => :build',
@@ -109,7 +181,10 @@ function getDependencies(system: string): string[] {
   }
 }
 
-function getInstallBlock(system: string) {
+function getInstallBlock(
+  system: string,
+  opts: { hasPythonResources?: boolean } = {},
+) {
   switch (system) {
     case "cmake":
       return (
@@ -131,11 +206,23 @@ function getInstallBlock(system: string) {
     case "go":
       return `    system "go", "build", *std_go_args(ldflags: "-s -w")\n`;
     case "python":
-      // Install WITH deps. `--no-deps` left packages unusable (missing runtime
-      // imports) and is only appropriate when resource stanzas supply every dep
-      // (pip-package generator). source-build has no resource graph.
-      // Do NOT symlink the entire venv bin/ (python/pip/wheel) — that collides
-      // with homebrew's python@3.x kegs on `brew link`. Only package scripts.
+      if (opts.hasPythonResources) {
+        // Offline install: brew fetches resource URLs pre-sandbox; Virtualenv
+        // pip_install uses --no-deps. Main package then installs without
+        // contacting PyPI.
+        return (
+          `    venv = virtualenv_create(libexec, "python3.13")\n` +
+          `    resources.each { |r| venv.pip_install r }\n` +
+          `    system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."\n` +
+          `    Dir[libexec/"bin/*"].each do |exe|\n` +
+          `      bn = File.basename(exe)\n` +
+          `      next if bn.match?(/\\A(?:python|pip|wheel|𝜋thon)/i)\n` +
+          `      bin.install_symlink exe\n` +
+          `    end\n`
+        );
+      }
+      // No requirements discovered — install with deps (needs network; may fail
+      // under brew sandbox). Prefer tag+requirements when possible.
       return (
         `    venv = virtualenv_create(libexec, "python3.13")\n` +
         `    system libexec/"bin/pip", "install", "-v", "--ignore-installed", "."\n` +

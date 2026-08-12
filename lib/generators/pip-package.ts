@@ -192,7 +192,7 @@ export async function collectPipPackagePayload(
   };
 }
 
-function buildResourcesBlock(deps: ResolvedResource[]) {
+export function buildResourcesBlock(deps: ResolvedResource[]) {
   if (deps.length === 0) return "";
 
   let block = "";
@@ -203,6 +203,78 @@ function buildResourcesBlock(deps: ResolvedResource[]) {
     block += `  end\n\n`;
   }
   return block;
+}
+
+/**
+ * Resolve pip requirement lines (from requirements.txt / setup install_requires)
+ * into Homebrew resource stanzas data. Used by source-build python formulas so
+ * install can stay offline (sandbox) while still providing runtime deps.
+ */
+export async function resolveRequirementLinesToResources(
+  lines: string[],
+): Promise<Array<{ name: string; url: string; sha256: string; version?: string }>> {
+  const visited: VisitedExtras = new Map();
+  const out: ResolvedResource[] = [];
+  const have = new Set<string>();
+
+  for (const rawLine of lines || []) {
+    const cleaned = String(rawLine || "")
+      .replace(/#.*$/, "")
+      .trim();
+    if (!cleaned) continue;
+    // Skip pip options / VCS / local paths
+    if (
+      cleaned.startsWith("-") ||
+      cleaned.startsWith(".") ||
+      cleaned.includes("://") ||
+      cleaned.startsWith("git+")
+    ) {
+      continue;
+    }
+    let parsed: ReturnType<typeof parseRequiresDistEntry>;
+    try {
+      parsed = parseRequiresDistEntry(cleaned);
+    } catch {
+      continue;
+    }
+    if (!parsed?.name) continue;
+    const key = normalizePackageName(parsed.name);
+    if (have.has(key)) continue;
+
+    try {
+      const dist = await selectDistForDependency(
+        parsed.name,
+        parsed.constraint || parseVersionConstraint(""),
+      );
+      if (!dist?.url || !dist?.sha256) continue;
+      out.push({
+        name: parsed.name,
+        url: dist.url,
+        sha256: dist.sha256,
+        version: dist.version,
+      });
+      have.add(key);
+
+      const nested = await resolveTransitiveDeps(
+        parsed.name,
+        visited,
+        5,
+        0,
+        dist.version,
+        parsed.extras || [],
+      );
+      for (const n of nested) {
+        const nk = normalizePackageName(n.name);
+        if (have.has(nk)) continue;
+        out.push(n);
+        have.add(nk);
+      }
+    } catch {
+      // skip unresolvable deps; main install may still work if optional
+    }
+  }
+
+  return dedupeResources(out);
 }
 
 export async function generatePipPackage(
