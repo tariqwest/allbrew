@@ -7,17 +7,35 @@ import {
   downloadAndHash,
   hashUrl,
   downloadToTemp,
+  parseContentEncodingCodecs,
 } from "../../lib/sha256.ts";
 
 // ─── A6: sha256 unit tests ───────────────────────────────────────────────
 // Tests fetch timeout behavior, 2GB size cap enforcement, and temp-file
 // cleanup on success and failure. Uses mock fetch (no real downloads).
 
-function mockResponse(body: string | Buffer, opts?: { status?: number; statusText?: string }) {
+function mockHeaders(init: Record<string, string> = {}) {
+  const map = new Map(
+    Object.entries(init).map(([k, v]) => [k.toLowerCase(), v]),
+  );
+  return {
+    get: (name: string) => map.get(name.toLowerCase()) ?? null,
+  };
+}
+
+function mockResponse(
+  body: string | Buffer,
+  opts?: {
+    status?: number;
+    statusText?: string;
+    headers?: Record<string, string>;
+  },
+) {
   return {
     ok: (opts?.status ?? 200) < 400,
     status: opts?.status ?? 200,
     statusText: opts?.statusText ?? "OK",
+    headers: mockHeaders(opts?.headers),
     body: new ReadableStream({
       start(controller) {
         controller.enqueue(typeof body === "string" ? new TextEncoder().encode(body) : body);
@@ -27,11 +45,15 @@ function mockResponse(body: string | Buffer, opts?: { status?: number; statusTex
   } as any;
 }
 
-function mockStreamingResponse(chunks: Buffer[], opts?: { status?: number }) {
+function mockStreamingResponse(
+  chunks: Buffer[],
+  opts?: { status?: number; headers?: Record<string, string> },
+) {
   return {
     ok: (opts?.status ?? 200) < 400,
     status: opts?.status ?? 200,
     statusText: "OK",
+    headers: mockHeaders(opts?.headers),
     body: new ReadableStream({
       start(controller) {
         for (const chunk of chunks) controller.enqueue(chunk);
@@ -161,6 +183,59 @@ describe("hashUrl", () => {
 
     const hash = await hashUrl("http://example.com/file");
     expect(hash).toBe(expected);
+  });
+});
+
+describe("parseContentEncodingCodecs", () => {
+  it("returns empty for missing or identity", () => {
+    expect(parseContentEncodingCodecs(null)).toEqual([]);
+    expect(parseContentEncodingCodecs(undefined)).toEqual([]);
+    expect(parseContentEncodingCodecs("identity")).toEqual([]);
+    expect(parseContentEncodingCodecs("")).toEqual([]);
+  });
+
+  it("extracts br/gzip/deflate/zstd tokens", () => {
+    expect(parseContentEncodingCodecs("br")).toEqual(["br"]);
+    expect(parseContentEncodingCodecs("gzip, br")).toEqual(["gzip", "br"]);
+    expect(parseContentEncodingCodecs("GZIP")).toEqual(["gzip"]);
+    expect(parseContentEncodingCodecs("deflate")).toEqual(["deflate"]);
+    expect(parseContentEncodingCodecs("zstd")).toEqual(["zstd"]);
+  });
+});
+
+describe("downloadAndHash content-encoding guard", () => {
+  it("does not invoke curl wire check when Content-Encoding is absent", async () => {
+    process.env.ALLBREW_SKIP_CURL_WIRE_CHECK = "1";
+    try {
+      const data = "plain body";
+      const expected = createHash("sha256").update(data).digest("hex");
+      global.fetch = mock(() => Promise.resolve(mockResponse(data))) as any;
+      const result = await downloadAndHash("http://example.com/file.dmg");
+      expect(result.sha256).toBe(expected);
+      expect(result.contentEncoding).toBeNull();
+    } finally {
+      delete process.env.ALLBREW_SKIP_CURL_WIRE_CHECK;
+    }
+  });
+
+  it("surfaces contentEncoding from response headers", async () => {
+    process.env.ALLBREW_SKIP_CURL_WIRE_CHECK = "1";
+    try {
+      global.fetch = mock(() =>
+        Promise.resolve(
+          mockResponse("decoded-dmg-bytes", {
+            headers: { "content-encoding": "br" },
+          }),
+        ),
+      ) as any;
+      const result = await downloadAndHash("http://example.com/Echo.dmg");
+      expect(result.contentEncoding).toBe("br");
+      expect(result.sha256).toBe(
+        createHash("sha256").update("decoded-dmg-bytes").digest("hex"),
+      );
+    } finally {
+      delete process.env.ALLBREW_SKIP_CURL_WIRE_CHECK;
+    }
   });
 });
 
