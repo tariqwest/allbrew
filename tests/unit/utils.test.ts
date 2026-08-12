@@ -9,6 +9,9 @@ import {
   guessLicenseIdentifier,
   matchAssetToArch,
   isAppAsset,
+  isStrongMacAppAsset,
+  isWindowsDesktopInstallerAsset,
+  filterAppAssetsForMacRouting,
   isBinaryAsset,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
@@ -428,6 +431,61 @@ describe("isAppAsset", () => {
 
   it("rejects non-archive files", () => {
     expect(isAppAsset("README.md")).toBe(false);
+  });
+
+  it("matches bare product zips (weak heuristic; may be Windows packaging)", () => {
+    expect(isAppAsset("VividNode.zip")).toBe(true);
+    expect(isAppAsset("Clipped.zip")).toBe(true);
+  });
+});
+
+describe("isStrongMacAppAsset / Windows packaging filter", () => {
+  it("treats DMG / .app.zip / mac-token zips as strong", () => {
+    expect(isStrongMacAppAsset("Foo.dmg")).toBe(true);
+    expect(isStrongMacAppAsset("MyApp.app.zip")).toBe(true);
+    expect(isStrongMacAppAsset("Foo-macos.zip")).toBe(true);
+  });
+
+  it("does not treat bare product zips as strong mac assets", () => {
+    expect(isStrongMacAppAsset("VividNode.zip")).toBe(false);
+    expect(isStrongMacAppAsset("Clipped.zip")).toBe(false);
+    expect(isStrongMacAppAsset("NetBar-1.2.1.zip")).toBe(false);
+  });
+
+  it("detects Windows desktop installers", () => {
+    expect(isWindowsDesktopInstallerAsset("VividNodeSetup.exe")).toBe(true);
+    expect(isWindowsDesktopInstallerAsset("App.msi")).toBe(true);
+    expect(isWindowsDesktopInstallerAsset("VividNode.zip")).toBe(false);
+  });
+
+  it("skips weak zip + Windows installer routing (pyqt-openai / VividNode)", () => {
+    const assets = [
+      { name: "VividNode.zip" },
+      { name: "VividNodeSetup.exe" },
+    ];
+    const appAssets = assets.filter((a) => isAppAsset(a.name));
+    const routed = filterAppAssetsForMacRouting(appAssets, assets);
+    expect(routed.skippedWindowsPackaging).toBe(true);
+    expect(routed.appAssets).toEqual([]);
+  });
+
+  it("keeps strong mac assets even when Windows installers exist", () => {
+    const assets = [
+      { name: "App-macos.dmg" },
+      { name: "AppSetup.exe" },
+    ];
+    const appAssets = assets.filter((a) => isAppAsset(a.name));
+    const routed = filterAppAssetsForMacRouting(appAssets, assets);
+    expect(routed.skippedWindowsPackaging).toBe(false);
+    expect(routed.appAssets.map((a) => a.name)).toContain("App-macos.dmg");
+  });
+
+  it("keeps weak bare zip when no Windows installer (mac-only product zip)", () => {
+    const assets = [{ name: "Clipped.zip" }];
+    const appAssets = assets.filter((a) => isAppAsset(a.name));
+    const routed = filterAppAssetsForMacRouting(appAssets, assets);
+    expect(routed.skippedWindowsPackaging).toBe(false);
+    expect(routed.appAssets.map((a) => a.name)).toEqual(["Clipped.zip"]);
   });
 });
 

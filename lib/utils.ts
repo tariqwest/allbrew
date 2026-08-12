@@ -698,6 +698,50 @@ export function isAppAsset(assetName) {
   return false;
 }
 
+/**
+ * Strong macOS app-asset signals (DMG/PKG/.app.zip/mac* token).
+ * Weak isAppAsset hits (bare/versioned product zips without platform tags) are
+ * excluded — those often package Windows builds (e.g. VividNode.zip + Setup.exe).
+ */
+export function isStrongMacAppAsset(assetName: string): boolean {
+  const lower = String(assetName || "").toLowerCase();
+  if (lower.endsWith(".dmg") || lower.endsWith(".pkg")) return true;
+  if (!lower.endsWith(".zip")) return false;
+  if (lower.includes(".app")) return true;
+  if (!isAppAsset(assetName)) return false;
+  return /(?:^|[^a-z])(?:mac|macos|osx|darwin)(?:[^a-z]|$)/i.test(lower);
+}
+
+/** Windows desktop installers / portable packages on GitHub Releases. */
+export function isWindowsDesktopInstallerAsset(assetName: string): boolean {
+  return /\.(exe|msi|msix)$/i.test(String(assetName || ""));
+}
+
+/**
+ * When a release only has weak isAppAsset zips (no DMG/mac token) AND also ships
+ * Windows installers, treat those zips as non-mac for routing so we fall through
+ * to README/repo package managers instead of downloading a Windows zip for cask.
+ */
+export function filterAppAssetsForMacRouting<T extends { name: string }>(
+  appAssets: T[],
+  allAssets: T[],
+): { appAssets: T[]; skippedWindowsPackaging: boolean } {
+  if (appAssets.length === 0) {
+    return { appAssets, skippedWindowsPackaging: false };
+  }
+  const strong = appAssets.filter((a) => isStrongMacAppAsset(a.name));
+  if (strong.length > 0) {
+    return { appAssets, skippedWindowsPackaging: false };
+  }
+  const hasWindows = allAssets.some((a) =>
+    isWindowsDesktopInstallerAsset(a.name),
+  );
+  if (!hasWindows) {
+    return { appAssets, skippedWindowsPackaging: false };
+  }
+  return { appAssets: [], skippedWindowsPackaging: true };
+}
+
 function isBareAppZipName(lowerName: string): boolean {
   if (!lowerName.endsWith(".zip")) return false;
   if (

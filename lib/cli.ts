@@ -31,6 +31,7 @@ import {
   isAppAsset,
   isBinaryAsset,
   chooseReleaseArtifactKind,
+  filterAppAssetsForMacRouting,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
   toFormulaName,
@@ -44,6 +45,12 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+
+/** cask-app-release peeks inside weak zip heuristics; no .app → fall through. */
+function isNoAppBundleCaskError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return /No \.app bundle found/i.test(msg);
+}
 
 export async function run(url, opts: any = {}) {
   if (opts.token) initOctokit(opts.token);
@@ -900,7 +907,18 @@ async function handleGithubRepo(classification, opts) {
       `Latest release: ${chalk.bold(release.tagName)} (${release.assets.length} assets)`,
     );
 
-    const appAssets = release.assets.filter((a) => isAppAsset(a.name));
+    let appAssets = release.assets.filter((a) => isAppAsset(a.name));
+    // Weak bare/versioned product zips + Windows installer siblings
+    // (e.g. VividNode.zip + VividNodeSetup.exe) are not macOS casks.
+    const macAppRoute = filterAppAssetsForMacRouting(appAssets, release.assets);
+    if (macAppRoute.skippedWindowsPackaging) {
+      console.log(
+        chalk.dim(
+          `  Release has Windows installer(s) alongside untagged product zip(s) (${appAssets.map((a) => a.name).join(", ")}); not treating as macOS app assets — checking README/repo...`,
+        ),
+      );
+      appAssets = macAppRoute.appAssets;
+    }
     // Platform-tagged binaries. Homebrew on macOS needs at least one macOS
     // asset; Linux-only releases (e.g. ugm, gpg-tui) must fall through to README
     // install methods (go, cargo, source-build) instead of binary-release.
@@ -962,11 +980,23 @@ async function handleGithubRepo(classification, opts) {
       }
 
       if (choice === "cask") {
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release },
+            opts,
+          );
+        } catch (err) {
+          if (isNoAppBundleCaskError(err)) {
+            console.log(
+              chalk.yellow(
+                `  ${err?.message || err}; falling through to README/repo analysis...`,
+              ),
+            );
+          } else {
+            throw err;
+          }
+        }
       } else {
         return await generateWithConfirmation(
           "binary-release",
@@ -980,11 +1010,23 @@ async function handleGithubRepo(classification, opts) {
       console.log(
         `  Detected ${chalk.cyan("macOS app")} assets: ${appAssets.map((a) => a.name).join(", ")}`,
       );
-      return await generateWithConfirmation(
-        "cask-app-release",
-        { repoInfo, release },
-        opts,
-      );
+      try {
+        return await generateWithConfirmation(
+          "cask-app-release",
+          { repoInfo, release },
+          opts,
+        );
+      } catch (err) {
+        if (isNoAppBundleCaskError(err)) {
+          console.log(
+            chalk.yellow(
+              `  ${err?.message || err}; falling through to README/repo analysis...`,
+            ),
+          );
+        } else {
+          throw err;
+        }
+      }
     }
 
     if (binAssets.length > 0) {
@@ -1034,11 +1076,23 @@ async function handleGithubRepo(classification, opts) {
         console.log(
           `  Found macOS app assets on older release ${chalk.bold(olderWithApp.tagName)}: ${names.join(", ")}`,
         );
-        return await generateWithConfirmation(
-          "cask-app-release",
-          { repoInfo, release: olderWithApp },
-          opts,
-        );
+        try {
+          return await generateWithConfirmation(
+            "cask-app-release",
+            { repoInfo, release: olderWithApp },
+            opts,
+          );
+        } catch (caskErr) {
+          if (isNoAppBundleCaskError(caskErr)) {
+            console.log(
+              chalk.yellow(
+                `  ${caskErr?.message || caskErr}; continuing with README/repo analysis...`,
+              ),
+            );
+          } else {
+            throw caskErr;
+          }
+        }
       }
     } catch (err) {
       if (opts.verbose) {
