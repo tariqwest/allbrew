@@ -70,20 +70,18 @@ describe("collectCargoPackagePayload", () => {
   it("defaults cargoInstallArgs to *std_cargo_args", async () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
     expect(payload.cargoInstallArgs).toBe("*std_cargo_args");
-    expect(payload.cargoInstallArgsUnlocked).toBe(
-      "*std_cargo_args(locked: false)",
-    );
+    expect(payload.cargoInstallArgsUnlocked).toContain('reject { |arg| arg == "--locked" }');
   });
 
-  it("cargoStdInstallArgs supports locked:false", async () => {
+  it("cargoStdInstallArgs supports unlocked reject path", async () => {
     const { cargoStdInstallArgs } = await import(
       "../../../lib/generators/cargo-package.ts"
     );
-    expect(cargoStdInstallArgs(null, { locked: false })).toBe(
-      "*std_cargo_args(locked: false)",
+    expect(cargoStdInstallArgs(null, { locked: false })).toContain(
+      'reject { |arg| arg == "--locked" }',
     );
-    expect(cargoStdInstallArgs("crates/x", { locked: false })).toBe(
-      '*std_cargo_args(locked: false, path: "crates/x")',
+    expect(cargoStdInstallArgs("crates/x", { locked: false })).toContain(
+      'path: "crates/x"',
     );
   });
 
@@ -92,10 +90,10 @@ describe("collectCargoPackagePayload", () => {
       cargoPath: "crates/all-in-one",
     });
     expect(payload.cargoInstallArgs).toContain('path: "crates/all-in-one"');
-    expect(payload.cargoInstallArgsUnlocked).toContain("locked: false");
     expect(payload.cargoInstallArgsUnlocked).toContain(
       'path: "crates/all-in-one"',
     );
+    expect(payload.cargoInstallArgsUnlocked).toContain("--locked");
   });
 
   it("includes head reference to default branch", async () => {

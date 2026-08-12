@@ -1589,12 +1589,12 @@ async function handleNpmPackage(classification, opts) {
     throw new Error("npm package name required (use --package or an npmjs URL)");
   }
 
-  // Registry packages (verdaccio, etc.) often document a long-running server in
-  // the npm README without a GitHub path — mirror GitHub README service detection.
+  // Registry packages (verdaccio, etc.): npm readme may be empty while the
+  // GitHub README documents the daemon — resolveNpmPackageServiceConfig falls back.
   let serviceConfig = opts.serviceConfig || null;
   if (!serviceConfig && opts.service !== false) {
     try {
-      const { detectServiceConfig } = await import("./analyzer.ts");
+      const { resolveNpmPackageServiceConfig } = await import("./analyzer.ts");
       const registryBase =
         process.env.NPM_REGISTRY_URL || "https://registry.npmjs.org";
       const encoded = packageName.startsWith("@")
@@ -1606,18 +1606,22 @@ async function handleNpmPackage(classification, opts) {
       });
       if (res.ok) {
         const pkgData = await res.json();
-        const readme = String(pkgData?.readme || pkgData?.description || "");
-        if (readme) {
-          serviceConfig = detectServiceConfig(readme, packageName);
-          if (serviceConfig) {
-            console.log(
-              `  Detected service/launchagent hint from npm README${
-                serviceConfig.confidence
-                  ? ` (${serviceConfig.confidence} confidence)`
-                  : ""
-              }`,
-            );
-          }
+        serviceConfig = await resolveNpmPackageServiceConfig(
+          packageName,
+          pkgData,
+        );
+        if (serviceConfig) {
+          const via =
+            serviceConfig.source === "github-readme"
+              ? "GitHub README"
+              : "npm README";
+          console.log(
+            `  Detected service/launchagent hint from ${via}${
+              serviceConfig.confidence
+                ? ` (${serviceConfig.confidence} confidence)`
+                : ""
+            }`,
+          );
         }
       }
     } catch {

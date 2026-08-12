@@ -1017,6 +1017,100 @@ export function detectServiceConfigFromFiles(fileNames, packageName = "") {
   return { command: packageName, keepAlive: true, confidence: "medium" };
 }
 
+/**
+ * Parse owner/repo from an npm `repository` field (string or { type, url }).
+ */
+export function githubCoordsFromNpmRepository(
+  repository: unknown,
+): { owner: string; repo: string } | null {
+  let url = "";
+  if (typeof repository === "string") {
+    url = repository;
+  } else if (repository && typeof repository === "object") {
+    const rec = repository as { url?: unknown };
+    url = String(rec.url || "");
+  }
+  if (!url) return null;
+
+  let cleaned = url.trim().replace(/^git\+/i, "");
+  cleaned = cleaned.replace(/^git:\/\//i, "https://");
+  cleaned = cleaned.replace(/^git@github\.com:/i, "https://github.com/");
+
+  const match = cleaned.match(
+    /(?:^|\/\/)github\.com[/:]([^/]+)\/([^/#?]+)/i,
+  );
+  if (!match) return null;
+
+  const owner = match[1];
+  const repo = match[2].replace(/\.git$/i, "").replace(/\/+$/, "");
+  if (!owner || !repo) return null;
+  return { owner, repo };
+}
+
+/** Fetch a public GitHub README without Octokit (HEAD → master → main). */
+export async function fetchGithubRepoReadmeText(
+  owner: string,
+  repo: string,
+): Promise<string | null> {
+  if (!owner || !repo) return null;
+  for (const ref of ["HEAD", "master", "main"]) {
+    try {
+      const res = await fetch(
+        `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${ref}/README.md`,
+        {
+          headers: { "User-Agent": "allbrew/1.0", Accept: "text/plain" },
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (text && text.trim().length > 0) return text;
+    } catch {
+      /* try next ref */
+    }
+  }
+  return null;
+}
+
+/**
+ * Service detection for npm registry packages.
+ * Prefer registry readme; fall back to GitHub repository README when empty
+ * (verdaccio class: registry readme empty, GitHub docs full service story).
+ */
+export async function resolveNpmPackageServiceConfig(
+  packageName: string,
+  pkgData: {
+    readme?: unknown;
+    description?: unknown;
+    repository?: unknown;
+  } | null | undefined,
+): Promise<
+  | (ReturnType<typeof detectServiceConfig> & {
+      source?: "npm-readme" | "github-readme";
+    })
+  | null
+> {
+  if (!packageName || !pkgData) return null;
+
+  const registryText = String(pkgData.readme || pkgData.description || "");
+  if (registryText.trim()) {
+    const fromRegistry = detectServiceConfig(registryText, packageName);
+    if (fromRegistry) {
+      return { ...fromRegistry, source: "npm-readme" };
+    }
+  }
+
+  const coords = githubCoordsFromNpmRepository(pkgData.repository);
+  if (!coords) return null;
+
+  const ghReadme = await fetchGithubRepoReadmeText(coords.owner, coords.repo);
+  if (!ghReadme) return null;
+
+  const fromGithub = detectServiceConfig(ghReadme, packageName);
+  if (!fromGithub) return null;
+  return { ...fromGithub, source: "github-readme" };
+}
+
 export function detectBuildSystemFromFiles(fileNames): InstallMethodHint | null {
   const names = new Set(fileNames.map((f) => f.toLowerCase()));
 

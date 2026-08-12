@@ -41,6 +41,8 @@ export function detectInstallScriptFlags(scriptText: string): {
   }
 
   // Longest / most specific flags first to avoid partial matches.
+  // Match only documented CLI options — never bare substring checks.
+  // `text.includes("-y")` false-positives on `apt-get install -y` (agent-deck).
   const flagCandidates = [
     "--non-interactive",
     "--skip-tmux-config",
@@ -48,20 +50,38 @@ export function detectInstallScriptFlags(scriptText: string): {
     "-y",
   ];
   for (const flag of flagCandidates) {
-    // Require the flag to appear as a documented option, not only in prose.
     const escaped = flag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(
-      `(?:^|[\\s"'|])${escaped}(?:\\s|$|["'])|case\\s+.*${escaped}|getopts.*${escaped.replace(/^--?/, "")}`,
-      "im",
-    );
-    if (re.test(text) || text.includes(flag)) {
-      if (!args.includes(flag)) args.push(flag);
+    const isShort =
+      flag.length === 2 && flag.startsWith("-") && !flag.startsWith("--");
+    const shortLetter = isShort ? flag.slice(1) : null;
+    const documented = isShort
+      ? new RegExp(
+          [
+            `(?:^|[\\s|])${escaped}(?:\\)|\\|)`,
+            `(?:\\|)${escaped}\\)`,
+            `${escaped}\\s*,\\s*--[a-z]`,
+            `--[a-z][\\w-]*\\s*,\\s*${escaped}`,
+            `\\[${escaped}\\]`,
+            shortLetter ? `getopts\\s+["'][^"']*${shortLetter}` : null,
+          ]
+            .filter(Boolean)
+            .join("|"),
+          "im",
+        )
+      : new RegExp(
+          [
+            `(?:^|[\\s\\[|,"'])${escaped}(?:[\\s\\]|,"']|$)`,
+            `${escaped}\\)`,
+          ].join("|"),
+          "im",
+        );
+    if (documented.test(text) && !args.includes(flag)) {
+      args.push(flag);
     }
   }
 
-  // agent-deck and similar: explicit non-interactive mode
-  if (/non.interactive/i.test(text) && !args.includes("--non-interactive")) {
-    if (/--non-interactive/.test(text)) args.unshift("--non-interactive");
+  if (/--non-interactive/.test(text) && !args.includes("--non-interactive")) {
+    args.unshift("--non-interactive");
   }
 
   // Prefer --yes over -y when both detected
@@ -72,10 +92,37 @@ export function detectInstallScriptFlags(scriptText: string): {
   return { args, env, ensureBinDir };
 }
 
-function installScriptRubyFragments(flags: ReturnType<typeof detectInstallScriptFlags>): {
+/**
+ * Choose shell for `system "...", cached_download`.
+ * Starship refuses non-POSIX bash and documents `#!/usr/bin/env sh`.
+ */
+export function detectInstallScriptShell(scriptText: string): "sh" | "bash" {
+  const text = String(scriptText || "");
+  const firstLine = (text.split(/\r?\n/, 1)[0] || "").trim();
+  if (/^#!/.test(firstLine)) {
+    if (/\bbash\b/.test(firstLine)) return "bash";
+    if (/\b(zsh|fish|ksh)\b/.test(firstLine)) return "sh";
+    if (/\bsh\b/.test(firstLine)) return "sh";
+  }
+  if (
+    /POSIXLY_CORRECT/.test(text) &&
+    (/non-POSIX/.test(text) ||
+      /Please use [`']sh[`']/.test(text) ||
+      /use `sh` instead/i.test(text))
+  ) {
+    return "sh";
+  }
+  return "bash";
+}
+
+function installScriptRubyFragments(
+  flags: ReturnType<typeof detectInstallScriptFlags>,
+  shell: "sh" | "bash",
+): {
   installEnvLines: string;
   installArgsRuby: string;
   ensureBinDir: boolean;
+  scriptShell: "sh" | "bash";
 } {
   const envLines = Object.entries(flags.env)
     .map(([k, v]) => `    ENV[${rubyString(k)}] = ${rubyString(v)}\n`)
@@ -85,6 +132,7 @@ function installScriptRubyFragments(flags: ReturnType<typeof detectInstallScript
     installEnvLines: envLines,
     installArgsRuby: argsRuby,
     ensureBinDir: flags.ensureBinDir,
+    scriptShell: shell,
   };
 }
 
@@ -162,7 +210,13 @@ export async function collectInstallScriptPayload(
       if (!flags.args.includes(a)) flags.args.push(a);
     }
   }
-  const rubyBits = installScriptRubyFragments(flags);
+  const shell: "sh" | "bash" =
+    options.scriptShell === "sh" || options.scriptShell === "bash"
+      ? options.scriptShell
+      : scriptText
+        ? detectInstallScriptShell(scriptText)
+        : "bash";
+  const rubyBits = installScriptRubyFragments(flags, shell);
 
   return {
     template: "install_script",
@@ -182,6 +236,7 @@ export async function collectInstallScriptPayload(
     installEnvLines: rubyBits.installEnvLines,
     installArgsRuby: rubyBits.installArgsRuby,
     ensureBinDir: rubyBits.ensureBinDir,
+    scriptShell: rubyBits.scriptShell,
   };
 }
 

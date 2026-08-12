@@ -88,8 +88,9 @@ export function cargoStdInstallArgs(
     if (!pathOk) return "*std_cargo_args";
     return `*std_cargo_args(path: ${rubyString(p)})`;
   }
-  if (!pathOk) return "*std_cargo_args(locked: false)";
-  return `*std_cargo_args(locked: false, path: ${rubyString(p)})`;
+  // Unlocked path: strip --locked from std_cargo_args (portable across Homebrew).
+  if (!pathOk) return '*std_cargo_args.reject { |arg| arg == "--locked" }';
+  return `*std_cargo_args(path: ${rubyString(p)}).reject { |arg| arg == "--locked" }`;
 }
 
 export type CratesIoCrateMeta = {

@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -148,10 +148,21 @@ export function isHomebrewCoreFormulaName(name: string): boolean {
   }
 
   // 2) Always also consult API cache — stale/incomplete Formula trees miss
-  //    newer core tokens (batch VMs and developer machines after brew update).
+  //    newer core tokens. Reject third-party tap stubs if present in JSON.
   const cacheRoot = getHomebrewCachePrefix();
-  if (cacheRoot && existsSync(join(cacheRoot, "api", "formula", `${token}.json`))) {
-    return true;
+  if (cacheRoot) {
+    const apiPath = join(cacheRoot, "api", "formula", `${token}.json`);
+    if (existsSync(apiPath)) {
+      try {
+        const meta = JSON.parse(readFileSync(apiPath, "utf-8"));
+        const tap = String(meta?.tap || "");
+        if (!tap || tap.includes("homebrew/core")) {
+          return true;
+        }
+      } catch {
+        return true;
+      }
+    }
   }
 
   // 3) Cold cache / no checkout: ask brew (bounded timeout so unit tests never hang).
@@ -167,15 +178,20 @@ export function isHomebrewCoreFormulaName(name: string): boolean {
     );
     const parsed = JSON.parse(out);
     const formulae = Array.isArray(parsed?.formulae) ? parsed.formulae : [];
-    return formulae.some(
-      (f: any) =>
-        (f?.name === token ||
-          f?.full_name === token ||
-          f?.full_name === `homebrew/core/${token}`) &&
-        (String(f?.tap || "").includes("homebrew/core") ||
-          f?.full_name === token ||
-          !f?.tap),
-    );
+    // Require homebrew/core — do not treat residual third-party taps as core
+    // (e.g. leftover nanobot-ai from a prior allbrew install).
+    return formulae.some((f: any) => {
+      const nameMatch =
+        f?.name === token ||
+        f?.full_name === token ||
+        f?.full_name === `homebrew/core/${token}`;
+      if (!nameMatch) return false;
+      const tap = String(f?.tap || "");
+      if (tap.includes("homebrew/core")) return true;
+      if (f?.full_name === `homebrew/core/${token}`) return true;
+      if (!tap && (f?.full_name === token || f?.name === token)) return true;
+      return false;
+    });
   } catch {
     return false;
   }

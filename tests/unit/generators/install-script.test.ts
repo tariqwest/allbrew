@@ -27,10 +27,37 @@ describe("detectInstallScriptFlags", () => {
     expect(flags.args).toContain("--non-interactive");
   });
 
-  it("prefers --yes over -y", () => {
-    const flags = detectInstallScriptFlags("opts: --yes -y\n");
+  it("prefers --yes over -y when both are documented CLI options", () => {
+    const flags = detectInstallScriptFlags(
+      "Usage: install.sh [--yes|-y]\n  -y, --yes\n",
+    );
     expect(flags.args).toContain("--yes");
     expect(flags.args).not.toContain("-y");
+  });
+
+  it("does not treat apt-get install -y as a CLI -y flag", () => {
+    const flags = detectInstallScriptFlags(
+      "apt-get install -y curl\ndnf install -y git\n",
+    );
+    expect(flags.args).not.toContain("-y");
+  });
+});
+
+describe("detectInstallScriptShell", () => {
+  it("prefers sh for env sh shebang and POSIXLY_CORRECT guards", async () => {
+    const { detectInstallScriptShell } = await import(
+      "../../../lib/generators/install-script.ts"
+    );
+    expect(
+      detectInstallScriptShell("#!/usr/bin/env sh\necho hi\n"),
+    ).toBe("sh");
+    // No shebang but starship-style POSIX guard → sh
+    expect(
+      detectInstallScriptShell(
+        "if [ -n \"$BASH_VERSION\" ] && [ -z \"$POSIXLY_CORRECT\" ]; then\n  echo 'Please use `sh` instead'\n  exit 1\nfi\n",
+      ),
+    ).toBe("sh");
+    expect(detectInstallScriptShell("#!/usr/bin/env bash\n")).toBe("bash");
   });
 });
 

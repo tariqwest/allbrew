@@ -26,9 +26,15 @@ export const UNDECLARED_RUNTIME_DEPS: Record<string, string[]> = {
   // surface only after console_scripts import; keep high-value complements here.
   elia: ["textual", "textual-plotext", "pyperclip"],
   chainlit: ["uvicorn", "literalai", "fastapi", "starlette", "watchfiles"],
-  // literalai publishes requires_dist: null for many versions; setup.py still
-  // declares chevron/httpx/pydantic (chainlit hard-pins literalai==0.1.201).
-  literalai: ["chevron", "httpx", "packaging", "pydantic"],
+  // literalai publishes requires_dist: null; setup.py still declares deps
+  // (chainlit hard-pins literalai==0.1.201). Without traceloop-sdk, import fails.
+  literalai: [
+    "chevron",
+    "httpx",
+    "packaging",
+    "pydantic",
+    "traceloop-sdk",
+  ],
   mlflow: ["pyyaml", "click", "cloudpickle", "entrypoints", "gitpython", "sqlalchemy"],
 };
 
@@ -38,6 +44,8 @@ export const KNOWN_BIN_NAMES: Record<string, string> = {
   graphifyy: "graphify",
   "nanobot-ai": "nanobot",
   "pyqt-openai": "pyqt-openai",
+  // console_scripts entry is `tl` (Textualize terminal log viewer)
+  toolong: "tl",
 };
 
 /**

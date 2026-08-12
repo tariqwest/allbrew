@@ -120,7 +120,8 @@ describe("renderFormula", () => {
       urlLines: '  url "https://example.com/foo-1.0.tar.gz"\n  sha256 "cc"\n',
       livecheckBlock: livecheck,
       cargoInstallArgs: "*std_cargo_args",
-      cargoInstallArgsUnlocked: "*std_cargo_args(locked: false)",
+      cargoInstallArgsUnlocked:
+        '*std_cargo_args.reject { |arg| arg == "--locked" }',
       allbrewDependency: "",
       testBinName: "foo",
       serviceBlock: "",
@@ -142,7 +143,7 @@ describe("renderFormula", () => {
       `    system "cargo", "install", *std_cargo_args\n` +
       `  rescue\n` +
       `    ohai "cargo install --locked failed; retrying without --locked"\n` +
-      `    system "cargo", "install", *std_cargo_args(locked: false)\n` +
+      `    system "cargo", "install", *std_cargo_args.reject { |arg| arg == "--locked" }\n` +
       `  end\n\n` +
       `  test do\n` +
       `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +

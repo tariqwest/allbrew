@@ -106,6 +106,8 @@ export type InstallScriptPayload = FormulaCommonFields & {
   installArgsRuby: string;
   /** Whether to `mkdir -p` BIN_DIR before running the script. */
   ensureBinDir: boolean;
+  /** Shell for `system "…", cached_download` (`sh` for POSIX-only scripts like starship). */
+  scriptShell?: "sh" | "bash";
 };
 
 export type ArchiveBuildPayload = FormulaCommonFields & {
