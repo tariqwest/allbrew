@@ -548,9 +548,9 @@ describe("collectSourceBuildPayload — trae-agent (Python CLI, no PyPI, no rele
       { system: "python" },
       { binName: "trae-cli" },
     );
-    expect(payload.installBody).toContain("pip");
-    expect(payload.installBody).toContain("--ignore-installed");
+    expect(payload.installBody).toContain("venv.pip_install buildpath");
     expect(payload.installBody).not.toContain("--no-deps");
+    expect(payload.installBody).not.toContain('libexec/"bin/pip"');
     expect(payload.testBinName).toBe("trae-cli");
   });
 });
