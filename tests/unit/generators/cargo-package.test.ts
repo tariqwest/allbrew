@@ -70,6 +70,21 @@ describe("collectCargoPackagePayload", () => {
   it("defaults cargoInstallArgs to *std_cargo_args", async () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
     expect(payload.cargoInstallArgs).toBe("*std_cargo_args");
+    expect(payload.cargoInstallArgsUnlocked).toBe(
+      "*std_cargo_args(locked: false)",
+    );
+  });
+
+  it("cargoStdInstallArgs supports locked:false", async () => {
+    const { cargoStdInstallArgs } = await import(
+      "../../../lib/generators/cargo-package.ts"
+    );
+    expect(cargoStdInstallArgs(null, { locked: false })).toBe(
+      "*std_cargo_args(locked: false)",
+    );
+    expect(cargoStdInstallArgs("crates/x", { locked: false })).toBe(
+      '*std_cargo_args(locked: false, path: "crates/x")',
+    );
   });
 
   it("renders std_cargo_args path for workspace member installs", async () => {
@@ -77,6 +92,10 @@ describe("collectCargoPackagePayload", () => {
       cargoPath: "crates/all-in-one",
     });
     expect(payload.cargoInstallArgs).toContain('path: "crates/all-in-one"');
+    expect(payload.cargoInstallArgsUnlocked).toContain("locked: false");
+    expect(payload.cargoInstallArgsUnlocked).toContain(
+      'path: "crates/all-in-one"',
+    );
   });
 
   it("includes head reference to default branch", async () => {

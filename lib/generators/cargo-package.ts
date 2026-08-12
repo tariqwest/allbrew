@@ -75,14 +75,21 @@ export function isCargoWorkspaceRoot(
 }
 
 /** Ruby fragment for `system "cargo", "install", …`. */
-export function cargoStdInstallArgs(installPath?: string | null): string {
+export function cargoStdInstallArgs(
+  installPath?: string | null,
+  opts: { locked?: boolean } = {},
+): string {
+  const locked = opts.locked !== false;
   const p = (installPath || "").trim().replace(/^\.\//, "");
-  if (!p || p === ".") return "*std_cargo_args";
-  // Keep path as a simple relative string; reject traversal.
-  if (p.includes("..") || p.startsWith("/") || /["'\\]/.test(p)) {
-    return "*std_cargo_args";
+  const pathOk =
+    p && p !== "." && !p.includes("..") && !p.startsWith("/") && !/["'\\]/.test(p);
+
+  if (locked) {
+    if (!pathOk) return "*std_cargo_args";
+    return `*std_cargo_args(path: ${rubyString(p)})`;
   }
-  return `*std_cargo_args(path: ${rubyString(p)})`;
+  if (!pathOk) return "*std_cargo_args(locked: false)";
+  return `*std_cargo_args(locked: false, path: ${rubyString(p)})`;
 }
 
 export type CratesIoCrateMeta = {
@@ -311,6 +318,7 @@ export async function collectCargoPackagePayload(
     urlLines,
     livecheckBlock,
     cargoInstallArgs: cargoStdInstallArgs(installPath),
+    cargoInstallArgsUnlocked: cargoStdInstallArgs(installPath, { locked: false }),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(options.binName || binFromCrate || name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
