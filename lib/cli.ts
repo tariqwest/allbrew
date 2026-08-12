@@ -934,9 +934,23 @@ async function handleGithubRepo(classification, opts) {
         ),
       );
     }
-    const appAssets = cliPlatformZips
+    // Bare product / portable_* zips match isAppAsset but ship root-level CLI
+    // binaries (license-plist.zip). Prefer binary-release without a cask peek
+    // when every "app" asset is an untagged CLI zip (no real .app/.dmg).
+    const rawAppAssets = cliPlatformZips
       ? []
       : release.assets.filter((a) => isAppAsset(a.name));
+    const untaggedCliOnlyAppAssets =
+      rawAppAssets.length > 0 &&
+      rawAppAssets.every((a) => isUntaggedCliZipName(a.name));
+    if (untaggedCliOnlyAppAssets) {
+      console.log(
+        chalk.dim(
+          `  Release app-looking assets are untagged CLI zips (${rawAppAssets.map((a) => a.name).join(", ")}); treating as binary-release`,
+        ),
+      );
+    }
+    const appAssets = untaggedCliOnlyAppAssets ? [] : rawAppAssets;
     // Platform-tagged binaries. Homebrew on macOS needs at least one macOS
     // asset; Linux-only releases (e.g. ugm, gpg-tui) must fall through to README
     // install methods (go, cargo, source-build) instead of binary-release.
@@ -1043,12 +1057,20 @@ async function handleGithubRepo(classification, opts) {
         // CLI binary archives often use bare product zips / *-macos.zip without
         // a .app inside (e.g. license-plist.zip, swift-outdated). Do not abort —
         // prefer binary-release for untagged CLI zips, else README/SPM.
+        // Also fall through on transient download errors during cask peek when
+        // untagged CLI zips are present (socket closed mid-fetch).
         const msg = err?.message || String(err);
-        if (/No \.app bundle found/i.test(msg)) {
+        const untaggedCli = release.assets.filter((a) =>
+          isUntaggedCliZipName(a.name),
+        );
+        const noApp = /No \.app bundle found/i.test(msg);
+        const peekFail =
+          untaggedCli.length > 0 &&
+          (/socket connection was closed/i.test(msg) ||
+            /fetch failed/i.test(msg) ||
+            /ECONNRESET|ETIMEDOUT|ENOTFOUND/i.test(msg));
+        if (noApp || peekFail) {
           console.log(chalk.yellow(`  ${msg}`));
-          const untaggedCli = release.assets.filter((a) =>
-            isUntaggedCliZipName(a.name),
-          );
           if (untaggedCli.length > 0) {
             console.log(
               chalk.dim(
@@ -1090,6 +1112,30 @@ async function handleGithubRepo(classification, opts) {
         { repoInfo, release },
         opts,
       );
+    }
+
+    // Untagged bare/portable CLI product zips (license-plist.zip) — no arch tags,
+    // so binAssets is empty, but binary-release can bottle them as universal.
+    const untaggedCliAssets = release.assets.filter((a) =>
+      isUntaggedCliZipName(a.name),
+    );
+    if (untaggedCliAssets.length > 0) {
+      console.log(
+        `  Detected ${chalk.cyan("untagged CLI zip")} assets: ${untaggedCliAssets.map((a) => a.name).join(", ")}`,
+      );
+      try {
+        return await generateWithConfirmation(
+          "binary-release",
+          { repoInfo, release },
+          { ...opts, allowUntaggedCliZips: true },
+        );
+      } catch (binErr: any) {
+        console.log(
+          chalk.dim(
+            `  Untagged CLI binary-release failed (${binErr?.message || binErr}); falling back to README / repository analysis...`,
+          ),
+        );
+      }
     }
 
     if (linuxOnlyBinAssets) {
