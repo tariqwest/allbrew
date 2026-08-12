@@ -95,6 +95,7 @@ describe("getLatestRelease prerelease fallback", () => {
     const release = await getLatestRelease("owner", "portdeck");
     expect(release?.tagName).toBe("v0.2.0-beta.1");
     expect(release?.prerelease).toBe(true);
+    expect(release?.usedPrereleaseFallback).toBe(true);
   });
 
   it("returns null when latest 404 and only drafts exist", async () => {

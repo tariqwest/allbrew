@@ -46,8 +46,14 @@ export const GEM_NATIVE_DEPENDS: Record<string, string[]> = {
  * Gems known to ship no executables (library-only). Used when RubyGems metadata
  * does not list executables and the gem name should not be treated as a bin.
  */
+/**
+ * Known library-only gems (empty executables). Prefer API executables:[] when
+ * available; this set is the fallback when metadata omits the field.
+ * Default for unknown gems with null executables is CLI (assume bin == gem name).
+ */
 export const GEM_LIBRARY_ONLY = new Set([
   "adamantite",
+  "geminabox",
   "activesupport",
   "activerecord",
   "actionpack",
@@ -100,6 +106,11 @@ export async function collectGemPackagePayload(
     options.executables ??
     gemData.executables ??
     null;
+  // Assume CLI unless proven empty:
+  // - options.library, or
+  // - API returns executables: [], or
+  // - API omits executables AND gem is in GEM_LIBRARY_ONLY.
+  // Null executables on unknown gems → CLI (bin named like the gem).
   const isLibrary =
     options.library === true ||
     (Array.isArray(executables) && executables.length === 0) ||

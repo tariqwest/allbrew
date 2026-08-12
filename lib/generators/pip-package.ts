@@ -24,9 +24,12 @@ export const UNDECLARED_RUNTIME_DEPS: Record<string, string[]> = {
   "shell-gpt": ["click"],
   // chainlit / elia / mlflow-class packages often omit tight runtime pins that
   // surface only after console_scripts import; keep high-value complements here.
-  elia: ["textual"],
-  chainlit: ["uvicorn"],
-  mlflow: ["pyyaml"],
+  elia: ["textual", "textual-plotext", "pyperclip"],
+  chainlit: ["uvicorn", "literalai", "fastapi", "starlette", "watchfiles"],
+  // literalai publishes requires_dist: null for many versions; setup.py still
+  // declares chevron/httpx/pydantic (chainlit hard-pins literalai==0.1.201).
+  literalai: ["chevron", "httpx", "packaging", "pydantic"],
+  mlflow: ["pyyaml", "click", "cloudpickle", "entrypoints", "gitpython", "sqlalchemy"],
 };
 
 /** Console-script names that differ from the PyPI/distribution name. */
@@ -910,7 +913,10 @@ async function resolveTransitiveDeps(
     } else {
       pypiData = await fetchPypiData(packageName);
     }
-    const requires = pypiData.info.requires_dist || [];
+    const requires = await resolveRequiresDistList(
+      packageName,
+      pypiData,
+    );
 
     for (const req of requires) {
       const parsed = parseRequiresDistEntry(req);
@@ -965,6 +971,81 @@ async function resolveTransitiveDeps(
   }
 
   return resources;
+}
+
+/**
+ * Prefer PyPI requires_dist; when empty/null (literalai class), fall back to
+ * UNDECLARED_RUNTIME_DEPS then wheel METADATA Requires-Dist lines.
+ */
+export async function resolveRequiresDistList(
+  packageName: string,
+  pypiData: PypiPackageJson,
+): Promise<string[]> {
+  const fromApi = (pypiData.info.requires_dist || []).filter(Boolean);
+  if (fromApi.length > 0) return fromApi;
+
+  const key = normalizePackageName(packageName);
+  const undeclared = UNDECLARED_RUNTIME_DEPS[key] || [];
+  if (undeclared.length > 0) {
+    return undeclared.map(String);
+  }
+
+  // Last resort: read Requires-Dist from a compatible wheel's METADATA.
+  try {
+    const dist = selectBestDistribution(pypiData.urls || [], {
+      preferWheel: true,
+      version: pypiData.info.version,
+    });
+    if (dist?.kind === "wheel" && dist.url) {
+      const fromWheel = await extractRequiresDistFromWheel(dist.url);
+      if (fromWheel.length > 0) return fromWheel;
+    }
+  } catch {
+    /* optional */
+  }
+  return [];
+}
+
+/** Parse Requires-Dist from a .whl METADATA file (PEP 566). */
+export async function extractRequiresDistFromWheel(
+  wheelUrl: string,
+): Promise<string[]> {
+  const { downloadToTemp } = await import("../sha256.ts");
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const execFileAsync = promisify(execFile);
+  const dl = await downloadToTemp(wheelUrl);
+  try {
+    // List METADATA path inside the wheel zip.
+    let listing = "";
+    try {
+      const { stdout } = await execFileAsync("zipinfo", ["-1", dl.path]);
+      listing = stdout;
+    } catch {
+      const { stdout } = await execFileAsync("unzip", ["-l", dl.path]);
+      listing = stdout;
+    }
+    const metaPath = listing
+      .split("\n")
+      .map((l) => l.trim())
+      .find((l) => /\/METADATA$/.test(l) && l.includes(".dist-info/"));
+    if (!metaPath) return [];
+
+    const { stdout } = await execFileAsync(
+      "unzip",
+      ["-p", dl.path, metaPath],
+      { maxBuffer: 8 * 1024 * 1024 },
+    );
+    const text = String(stdout);
+    const out: string[] = [];
+    for (const line of text.split(/\r?\n/)) {
+      const m = line.match(/^Requires-Dist:\s*(.+)$/i);
+      if (m?.[1]) out.push(m[1].trim());
+    }
+    return out;
+  } finally {
+    await dl.cleanup();
+  }
 }
 
 async function resolveUndeclaredDeps(

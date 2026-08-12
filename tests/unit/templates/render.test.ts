@@ -96,6 +96,8 @@ describe("renderFormula", () => {
     expect(ruby).toContain("include-system-site-packages = false");
     expect(ruby).toContain("pip_install_dist");
     expect(ruby).toContain("pip_install_main");
+    expect(ruby).toContain("formula_bin");
+    expect(ruby).toContain("install_symlink formula_bin");
     expect(ruby).toContain(".whl");
     expect(ruby).toContain('assert_match version.to_s, shell_output("#{bin}/foo --version")');
   });

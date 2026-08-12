@@ -474,9 +474,20 @@ async function handleGithubRepoManual(url, opts) {
     try {
       release = await getLatestRelease(owner, repo);
       if (release) {
+        const preNote =
+          release.usedPrereleaseFallback || release.prerelease
+            ? chalk.yellow(" [prerelease]")
+            : "";
         releaseSpinner.succeed(
-          `Latest release: ${chalk.bold(release.tagName)} (${release.assets.length} assets)`,
+          `Latest release: ${chalk.bold(release.tagName)} (${release.assets.length} assets)${preNote}`,
         );
+        if (release.usedPrereleaseFallback) {
+          console.log(
+            chalk.yellow(
+              `  Note: no stable GitHub /releases/latest — using prerelease ${release.tagName}`,
+            ),
+          );
+        }
       } else {
         releaseSpinner.info("No releases found");
       }
@@ -896,9 +907,20 @@ async function handleGithubRepo(classification, opts) {
   }
 
   if (release) {
+    const preNote =
+      release.usedPrereleaseFallback || release.prerelease
+        ? chalk.yellow(" [prerelease]")
+        : "";
     releaseSpinner.succeed(
-      `Latest release: ${chalk.bold(release.tagName)} (${release.assets.length} assets)`,
+      `Latest release: ${chalk.bold(release.tagName)} (${release.assets.length} assets)${preNote}`,
     );
+    if (release.usedPrereleaseFallback) {
+      console.log(
+        chalk.yellow(
+          `  Note: no stable GitHub /releases/latest — using prerelease ${release.tagName}`,
+        ),
+      );
+    }
 
     const appAssets = release.assets.filter((a) => isAppAsset(a.name));
     // Platform-tagged binaries. Homebrew on macOS needs at least one macOS

@@ -16,6 +16,7 @@ import {
 import { downloadToTemp } from "../sha256.ts";
 import { githubLatestLivecheckBlock } from "./livecheck.ts";
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
+import { prereleaseFormulaComment } from "../github.ts";
 import type { BinaryReleasePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
@@ -327,7 +328,9 @@ export async function collectBinaryReleasePayload(
     version: rubyEscape(version),
     binName: rubyEscape(binName),
     installBody: buildBinaryReleaseInstallBody(binName, assetNames, archiveEntrypoint),
-    licenseLine: license ? `  license ${rubyString(license)}\n` : "",
+    licenseLine:
+      prereleaseFormulaComment(release) +
+      (license ? `  license ${rubyString(license)}\n` : ""),
     platformBlocks: buildPlatformBlocks(hashes, urlTemplate),
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName, ":stable"),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),

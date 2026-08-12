@@ -398,6 +398,11 @@ function buildPipPackageCase(): Case {
     `    end\n` +
     `    resources.each { |r| pip_install_dist(venv, r) }\n` +
     `    pip_install_main(venv)\n` +
+    `    # Resources installed first can leave the primary console_script out of the\n` +
+    `    # pip_install_and_link delta (mlflow class). Force-link the formula bin if\n` +
+    `    # present under libexec/bin but missing from bin.\n` +
+    `    formula_bin = libexec/"bin"/"foo"\n` +
+    `    bin.install_symlink formula_bin if formula_bin.exist? && !(bin/"foo").exist?\n` +
     `  end\n\n` +
     `  def pip_install_dist(venv, dist)\n` +
     `    url = dist.url.to_s\n` +

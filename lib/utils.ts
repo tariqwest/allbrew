@@ -141,20 +141,20 @@ export function isHomebrewCoreFormulaName(name: string): boolean {
   const letter = token[0];
   if (!/[a-z0-9]/.test(letter)) return false;
 
-  // Full homebrew/core checkout: disk Formula tree is authoritative (fast path).
+  // 1) Disk Formula tree hit (fast path when full core checkout exists).
   const core = getHomebrewCorePrefix();
-  if (core) {
-    return homebrewCoreRubyPaths(core, token).some((p) => existsSync(p));
+  if (core && homebrewCoreRubyPaths(core, token).some((p) => existsSync(p))) {
+    return true;
   }
 
-  // API-only / shallow Homebrew (batch VMs often have no core checkout):
-  // use the brew API cache JSON, same pattern as isHomebrewCaskToken.
+  // 2) Always also consult API cache — stale/incomplete Formula trees miss
+  //    newer core tokens (batch VMs and developer machines after brew update).
   const cacheRoot = getHomebrewCachePrefix();
   if (cacheRoot && existsSync(join(cacheRoot, "api", "formula", `${token}.json`))) {
     return true;
   }
 
-  // Cold cache: ask brew once (bounded timeout so unit tests never hang).
+  // 3) Cold cache / no checkout: ask brew (bounded timeout so unit tests never hang).
   try {
     const out = execFileSync(
       "brew",

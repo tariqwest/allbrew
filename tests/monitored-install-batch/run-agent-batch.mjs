@@ -316,12 +316,25 @@ function markDone(name, status, extra = {}) {
   const canonical = normalizeStatus(status);
   const legacyStatus = String(status);
   const items = loadQueue();
+  const key = String(name);
+  let matched = 0;
   for (const i of items) {
-    if (i.agentName === name || String(i.idx) === String(name)) {
+    // Match agentName, numeric idx, or slug (batch-ops --requeue documents slug).
+    if (
+      i.agentName === key ||
+      String(i.idx) === key ||
+      i.slug === key ||
+      i.name === key
+    ) {
       i.status = canonical;
       if (legacyStatus !== canonical) i.legacyStatus = legacyStatus;
       i.finishedAt = new Date().toISOString();
+      if (canonical === "pending") {
+        i.requeuedAt = new Date().toISOString();
+        i.requeuedFrom = i.legacyStatus || i.status;
+      }
       Object.assign(i, extra);
+      matched += 1;
     }
   }
   saveQueue(items);
@@ -330,12 +343,21 @@ function markDone(name, status, extra = {}) {
     JSON.stringify({
       agentName: name,
       status: canonical,
+      matched,
       legacyStatus: legacyStatus !== canonical ? legacyStatus : undefined,
       finishedAt: new Date().toISOString(),
       ...extra,
     }) + "\n",
   );
-  console.log(JSON.stringify({ ok: true, name, status: canonical, legacyStatus: legacyStatus !== canonical ? legacyStatus : undefined }));
+  console.log(
+    JSON.stringify({
+      ok: matched > 0,
+      name,
+      status: canonical,
+      matched,
+      legacyStatus: legacyStatus !== canonical ? legacyStatus : undefined,
+    }),
+  );
 }
 
 function status() {

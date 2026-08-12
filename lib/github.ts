@@ -139,10 +139,32 @@ export async function getLatestRelease(owner, repo) {
     const usable = (releases || []).filter((r) => r && !r.draft);
     if (usable.length === 0) return null;
     // listReleases is newest-first from GitHub.
-    return usable[0];
+    const picked = usable[0];
+    return {
+      ...picked,
+      /** True when we fell back because /releases/latest 404'd. */
+      usedPrereleaseFallback: true,
+    };
   } catch {
     return null;
   }
+}
+
+/** Ruby comment lines when a formula/cask was generated from a prerelease-only repo. */
+export function prereleaseFormulaComment(release: {
+  tagName?: string;
+  prerelease?: boolean;
+  usedPrereleaseFallback?: boolean;
+} | null | undefined): string {
+  if (!release) return "";
+  if (!release.usedPrereleaseFallback && !release.prerelease) return "";
+  const tag = release.tagName || "unknown";
+  return (
+    `  # allbrew: using prerelease tag ${tag}` +
+    (release.usedPrereleaseFallback
+      ? " (no stable GitHub /releases/latest)\n"
+      : "\n")
+  );
 }
 
 /**

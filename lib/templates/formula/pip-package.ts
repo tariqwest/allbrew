@@ -37,6 +37,11 @@ ${p.resourcesBlock}  def install
     end
     resources.each { |r| pip_install_dist(venv, r) }
     pip_install_main(venv)
+    # Resources installed first can leave the primary console_script out of the
+    # pip_install_and_link delta (mlflow class). Force-link the formula bin if
+    # present under libexec/bin but missing from bin.
+    formula_bin = libexec/"bin"/"${p.testBinName}"
+    bin.install_symlink formula_bin if formula_bin.exist? && !(bin/"${p.testBinName}").exist?
   end
 
   def pip_install_dist(venv, dist)
