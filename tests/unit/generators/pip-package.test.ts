@@ -2,6 +2,7 @@ import { describe, it, expect, mock, beforeEach } from "bun:test";
 import {
   collectPipPackagePayload,
   selectBestDistribution,
+  pickBestPythonForPackage,
   parseRequiresDistEntry,
   isRequirementApplicable,
   versionSatisfies,
@@ -533,6 +534,79 @@ describe("selectBestDistribution", () => {
 
   it("returns null when urls empty", () => {
     expect(selectBestDistribution([])).toBeNull();
+  });
+
+  it("never falls back to an incompatible platform wheel when no sdist", () => {
+    const onlyX64 = {
+      packagetype: "bdist_wheel",
+      filename: "aimrocks-0.5.2-cp310-cp310-macosx_10_14_x86_64.whl",
+      url: "https://files.pythonhosted.org/packages/xx/aimrocks-0.5.2-cp310-cp310-macosx_10_14_x86_64.whl",
+      digests: { sha256: "11".repeat(32) },
+    };
+    // No sdist, only x86_64 cp310 wheel — must not pick it on arm64/cp313.
+    expect(
+      selectBestDistribution([onlyX64], { macArch: "arm64" }),
+    ).toBeNull();
+  });
+
+  it("selects cp312 arm64 wheel when formula python is 3.12", () => {
+    const cp312Arm = {
+      packagetype: "bdist_wheel",
+      filename: "aim-3.29.1-cp312-cp312-macosx_11_0_arm64.whl",
+      url: "https://files.pythonhosted.org/packages/xx/aim-3.29.1-cp312-cp312-macosx_11_0_arm64.whl",
+      digests: { sha256: "22".repeat(32) },
+    };
+    const sdist = {
+      packagetype: "sdist",
+      filename: "aim-3.29.1.tar.gz",
+      url: "https://files.pythonhosted.org/packages/xx/aim-3.29.1.tar.gz",
+      digests: { sha256: "33".repeat(32) },
+    };
+    const dist313 = selectBestDistribution([sdist, cp312Arm], {
+      macArch: "arm64",
+      python: { major: 3, minor: 13 },
+    });
+    expect(dist313?.kind).toBe("sdist");
+    const dist312 = selectBestDistribution([sdist, cp312Arm], {
+      macArch: "arm64",
+      python: { major: 3, minor: 12 },
+    });
+    expect(dist312?.kind).toBe("wheel");
+    expect(dist312?.filename).toContain("cp312");
+  });
+});
+
+describe("pickBestPythonForPackage", () => {
+  it("pins to 3.12 when only cp312 host wheels exist (aim-like)", () => {
+    const urls = [
+      {
+        packagetype: "bdist_wheel",
+        filename: "pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl",
+        url: "https://example.com/pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl",
+        digests: { sha256: "aa".repeat(32) },
+      },
+      {
+        packagetype: "sdist",
+        filename: "pkg-1.0.0.tar.gz",
+        url: "https://example.com/pkg-1.0.0.tar.gz",
+        digests: { sha256: "bb".repeat(32) },
+      },
+    ];
+    const py = pickBestPythonForPackage(urls as any, "arm64");
+    expect(py).toEqual({ major: 3, minor: 12 });
+  });
+
+  it("keeps 3.13 when a pure py3 wheel exists", () => {
+    const urls = [
+      {
+        packagetype: "bdist_wheel",
+        filename: "pkg-1.0.0-py3-none-any.whl",
+        url: "https://example.com/pkg-1.0.0-py3-none-any.whl",
+        digests: { sha256: "cc".repeat(32) },
+      },
+    ];
+    const py = pickBestPythonForPackage(urls as any, "arm64");
+    expect(py).toEqual({ major: 3, minor: 13 });
   });
 });
 
