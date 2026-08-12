@@ -62,7 +62,7 @@ export async function collectSourceBuildPayload(
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     urlLines,
     dependenciesLines: buildDependenciesLines(system),
-    installBody: buildInstallBody(system, testBinName),
+    installBody: buildInstallBody(system, testBinName, options.pipExtras),
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(testBinName),
@@ -77,8 +77,8 @@ function buildDependenciesLines(system: string) {
   return deps.map((dep) => `  depends_on ${dep}\n`).join("") + "\n";
 }
 
-function buildInstallBody(system: string, binName?: string) {
-  return getInstallBlock(system, binName);
+function buildInstallBody(system: string, binName?: string, pipExtras?: string) {
+  return getInstallBlock(system, binName, pipExtras);
 }
 
 function getDependencies(system: string): string[] {
@@ -106,7 +106,7 @@ function getDependencies(system: string): string[] {
   }
 }
 
-function getInstallBlock(system: string, binName?: string) {
+function getInstallBlock(system: string, binName?: string, pipExtras?: string) {
   switch (system) {
     case "cmake":
       return (
@@ -131,10 +131,20 @@ function getInstallBlock(system: string, binName?: string) {
       // Prefer stdlib venv (includes pip) over virtualenv_create (--without-pip +
       // Homebrew pip_install forces --no-deps). Only symlink the package console
       // script so we do not collide with python@*/bin/python3.x.
+      // pipExtras: optional-dependency groups (e.g. "evaluation") for packages
+      // that import optional deps at module load (trae-agent → docker).
       const script = rubyEscape(binName || "python");
+      const extras = String(pipExtras || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const pipTarget =
+        extras.length > 0
+          ? `"#{buildpath}[${extras.join(",")}]"`
+          : "buildpath";
       return (
         `    system "python3.12", "-m", "venv", libexec\n` +
-        `    system libexec/"bin/pip", "install", "-v", buildpath\n` +
+        `    system libexec/"bin/pip", "install", "-v", ${pipTarget}\n` +
         `    bin.install_symlink libexec/"bin/${script}"\n`
       );
     }

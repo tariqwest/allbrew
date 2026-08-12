@@ -63,13 +63,30 @@ async function generatePythonSourceBuildFallback(args: {
   );
   let binName: string | undefined = opts.binName;
   let fallbackRelease = release;
+  let pipExtras: string | undefined = opts.pipExtras;
   try {
     const pyproject = await getFileContent(owner, repo, "pyproject.toml");
-    if (pyproject && !binName) {
-      const m = pyproject.match(
-        /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
-      );
-      if (m) binName = m[1].trim();
+    if (pyproject) {
+      if (!binName) {
+        const m = pyproject.match(
+          /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
+        );
+        if (m) binName = m[1].trim();
+      }
+      // Install optional-dependency groups so eager optional imports work
+      // (trae-agent imports docker from the evaluation extra at module load).
+      if (!pipExtras) {
+        const groups: string[] = [];
+        const table = pyproject.match(
+          /\[project\.optional-dependencies\]([\s\S]*?)(?:\n\[|\s*$)/,
+        );
+        if (table) {
+          for (const gm of table[1].matchAll(/^([a-zA-Z0-9_-]+)\s*=/gm)) {
+            if (!groups.includes(gm[1])) groups.push(gm[1]);
+          }
+        }
+        if (groups.length) pipExtras = groups.join(",");
+      }
     }
     // Prefer a commit-pinned tarball (stable sha256) over floating branch archives
     // or HEAD-only. Uses the default branch tip via the GitHub tarball API URL
@@ -102,7 +119,7 @@ async function generatePythonSourceBuildFallback(args: {
     /* best-effort metadata */
   }
 
-  const buildOpts = { ...opts, binName };
+  const buildOpts = { ...opts, binName, pipExtras };
   try {
     return await generateWithConfirmation(
       "source-build",
