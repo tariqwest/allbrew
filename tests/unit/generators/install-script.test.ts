@@ -32,6 +32,21 @@ describe("detectInstallScriptFlags", () => {
     expect(flags.args).toContain("--yes");
     expect(flags.args).not.toContain("-y");
   });
+
+  it("drops --yes when it enables deno shell-setup rather than noninteractive install", () => {
+    const flags = detectInstallScriptFlags(`
+deno_install="\${DENO_INSTALL:-\$HOME/.deno}"
+should_run_shell_setup=false
+--yes)
+should_run_shell_setup=true
+;;
+run_shell_setup() {
+  \$exe run -A jsr:@deno/installer-shell-setup/bundled
+}
+`);
+    expect(flags.args).not.toContain("--yes");
+    expect(flags.args).not.toContain("-y");
+  });
 });
 
 describe("collectInstallScriptPayload", () => {

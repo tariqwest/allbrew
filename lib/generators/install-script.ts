@@ -69,6 +69,22 @@ export function detectInstallScriptFlags(scriptText: string): {
     args.splice(args.indexOf("-y"), 1);
   }
 
+  // Deno install.sh (and similar): --yes/-y enable post-install *shell setup*
+  // (interactive PATH wiring), not non-interactive install. Passing them under
+  // brew makes the formula hang or fail after the binary is already staged.
+  // Drop those flags when the script ties them to shell-setup, or uses DENO_INSTALL.
+  const yesEnablesShellSetup =
+    /should_run_shell_setup/i.test(text) ||
+    (/\bDENO_INSTALL\b/.test(text) &&
+      /(?:-y|--yes)/.test(text) &&
+      /shell.?setup|installer-shell-setup/i.test(text));
+  if (yesEnablesShellSetup) {
+    for (const flag of ["--yes", "-y"]) {
+      const i = args.indexOf(flag);
+      if (i >= 0) args.splice(i, 1);
+    }
+  }
+
   return { args, env, ensureBinDir };
 }
 
