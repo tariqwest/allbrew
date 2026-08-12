@@ -217,7 +217,7 @@ try {
       session,
       strictVerifyCmd({ pkg, mountPoint }),
       `verify-${pkg}`,
-      { timeout: 180000 },
+      { timeout: Number(process.env.TH_BATCH_VERIFY_TIMEOUT_MS || 300000) },
     );
     writeFileSync(hostLog + ".verify.txt", v.stdout || "");
     writeMeta({ phase: "verified", verifyOkRaw: (v.stdout || "").slice(0, 400) });
