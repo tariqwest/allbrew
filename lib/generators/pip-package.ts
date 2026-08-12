@@ -12,8 +12,34 @@ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { PipPackagePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
-/** Python version used by the pip formula template (`depends_on "python@3.13"`). */
+/** Default Python version for pip formulas (`depends_on "python@3.13"`). */
 export const PIP_FORMULA_PYTHON = { major: 3, minor: 13 } as const;
+
+export type FormulaPython = { major: number; minor: number };
+
+/**
+ * Prefer newest Homebrew-supported CPython that has a host-compatible wheel
+ * for the root package. Native packages (aim, aimrocks, …) often lag 3.13.
+ * Order: default 3.13 → 3.12 → 3.11 → 3.10.
+ */
+export const PIP_FORMULA_PYTHON_CANDIDATES: FormulaPython[] = [
+  { major: 3, minor: 13 },
+  { major: 3, minor: 12 },
+  { major: 3, minor: 11 },
+  { major: 3, minor: 10 },
+];
+
+export function formulaPythonLabel(py: FormulaPython): string {
+  return `${py.major}.${py.minor}`;
+}
+
+export function formulaPythonDependsOn(py: FormulaPython): string {
+  return `python@${py.major}.${py.minor}`;
+}
+
+export function formulaPythonVenvBinary(py: FormulaPython): string {
+  return `python${py.major}.${py.minor}`;
+}
 
 /**
  * Runtime deps that packages import but omit from requires_dist.
@@ -38,6 +64,9 @@ export const KNOWN_BIN_NAMES: Record<string, string> = {
   graphifyy: "graphify",
   "nanobot-ai": "nanobot",
   "pyqt-openai": "pyqt-openai",
+  // pyNastran console_scripts are bdf/f06/format_converter/pyNastranGUI — not pynastran.
+  // Prefer headless CLI bdf over Qt GUI for --version / brew test / VM verify.
+  pynastran: "bdf",
 };
 
 /**
@@ -63,6 +92,21 @@ export const KNOWN_PYTHON_IMPORT_VERSION_TEST: Record<string, string> = {
   elia: "elia_chat",
   chainlit: "chainlit",
   mlflow: "mlflow",
+  // Multi-CLI suite; import is reliable headless version check.
+  pynastran: "pyNastran",
+};
+
+/**
+ * Force formula CPython when pure py3 wheels install on 3.13 but runtime fails
+ * (stdlib removals, unmaintained deps) OR transitive native deps lack 3.13
+ * wheels under package constraints (e.g. pyNastran requires numpy<2 which has
+ * no cp313 wheel).
+ */
+export const KNOWN_FORMULA_PYTHON: Record<string, FormulaPython> = {
+  // baca: vendors KindleUnpack which `import imghdr` (removed in Python 3.13).
+  baca: { major: 3, minor: 12 },
+  // pyNastran pins numpy<2; numpy 1.x has no cp313 wheels → empty/broken install on 3.13.
+  pynastran: { major: 3, minor: 12 },
 };
 
 type PypiUrl = {
@@ -83,6 +127,8 @@ type PypiPackageJson = {
     project_url?: string | null;
     license?: string | null;
     requires_dist?: string[] | null;
+    requires_python?: string | null;
+    classifiers?: string[] | null;
   };
   urls?: PypiUrl[];
   releases?: Record<string, PypiUrl[]>;
@@ -114,9 +160,29 @@ export async function collectPipPackagePayload(
   options: any = {},
 ): Promise<PipPackagePayload> {
   const pypiData = await fetchPypiData(packageName);
+  const macArch = hostMacArch();
+  const pkgKeyEarly = normalizePackageName(packageName);
+  // Prefer host+CPython wheel when default 3.13 has none; KNOWN_FORMULA_PYTHON
+  // overrides pure-wheel packages that break at runtime / lack transitive wheels.
+  const python: FormulaPython =
+    options.pythonVersion &&
+    typeof options.pythonVersion.major === "number" &&
+    typeof options.pythonVersion.minor === "number"
+      ? {
+          major: options.pythonVersion.major,
+          minor: options.pythonVersion.minor,
+        }
+      : KNOWN_FORMULA_PYTHON[pkgKeyEarly] ??
+        pickBestPythonForPackage(
+          pypiData.urls || [],
+          macArch,
+          pypiData.info.requires_python,
+        );
   const dist = selectBestDistribution(pypiData.urls || [], {
     preferWheel: options.preferWheel !== false,
     version: pypiData.info.version,
+    macArch,
+    python,
   });
 
   if (!dist)
@@ -126,7 +192,7 @@ export async function collectPipPackagePayload(
 
   // Walk requires_dist from the same release we install (not always latest).
   const rootVersion = dist.version || pypiData.info.version;
-  const pkgKey = normalizePackageName(packageName);
+  const pkgKey = pkgKeyEarly;
   const rootExtras: string[] = Array.isArray(options.extras)
     ? options.extras
     : KNOWN_ROOT_EXTRAS[pkgKey] || [];
@@ -137,8 +203,9 @@ export async function collectPipPackagePayload(
     0,
     rootVersion,
     rootExtras,
+    python,
   );
-  const undeclared = await resolveUndeclaredDeps(packageName, deps);
+  const undeclared = await resolveUndeclaredDeps(packageName, deps, python);
   const allDeps = dedupeResources([...deps, ...undeclared]);
 
   const name = options.name || toFormulaName(packageName);
@@ -183,6 +250,8 @@ export async function collectPipPackagePayload(
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(testBinName),
     testDoBody,
+    pythonDependsOn: formulaPythonDependsOn(python),
+    pythonVenvBinary: formulaPythonVenvBinary(python),
     // Service argv should target the console-script bin, which may differ from
     // the formula token when homebrew/core forces a rename (nanobot-ai → bin nanobot).
     serviceBlock: buildServiceBlock(
@@ -587,7 +656,7 @@ function parseWheelTags(filename: string): {
 
 function pythonTagCompatible(
   tag: string,
-  py = PIP_FORMULA_PYTHON,
+  py: FormulaPython = PIP_FORMULA_PYTHON,
 ): { ok: boolean; pure: boolean; score: number } {
   const t = tag.toLowerCase();
   if (t === "py2.py3" || t === "py3" || /^py3(\.\d+)?$/.test(t)) {
@@ -605,7 +674,7 @@ function pythonTagCompatible(
   return { ok: false, pure: false, score: 0 };
 }
 
-function abiTagCompatible(tag: string, py = PIP_FORMULA_PYTHON): boolean {
+function abiTagCompatible(tag: string, py: FormulaPython = PIP_FORMULA_PYTHON): boolean {
   const t = tag.toLowerCase();
   if (t === "none") return true;
   if (t === "abi3") return true;
@@ -647,7 +716,11 @@ function isPurePythonWheel(filename: string): boolean {
   return /[.-]py3[^-]*-none-any\.whl$/i.test(filename);
 }
 
-function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
+function scoreWheel(
+  url: PypiUrl,
+  macArch: "arm64" | "x86_64" | null,
+  py: FormulaPython = PIP_FORMULA_PYTHON,
+): number {
   if (url.yanked) return -1;
   if (url.packagetype && url.packagetype !== "bdist_wheel") return -1;
   const filename = url.filename || url.url?.split("/").pop() || "";
@@ -663,7 +736,7 @@ function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
 
   if (isPurePythonWheel(filename)) {
     const hasPy3 = tags.pythonTags.some((t) => {
-      const r = pythonTagCompatible(t);
+      const r = pythonTagCompatible(t, py);
       return r.ok && r.pure;
     });
     if (!hasPy3) return -1;
@@ -673,7 +746,7 @@ function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
 
   let bestPy = { ok: false, pure: false, score: 0 };
   for (const pt of tags.pythonTags) {
-    const r = pythonTagCompatible(pt);
+    const r = pythonTagCompatible(pt, py);
     if (r.ok && r.score >= bestPy.score) bestPy = r;
   }
   const hasAbi3 = tags.abiTags.some((t) => t.toLowerCase() === "abi3");
@@ -683,7 +756,7 @@ function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
       if (!m) continue;
       const major = Number(m[1]);
       const minor = Number(m[2]);
-      if (major === PIP_FORMULA_PYTHON.major && minor <= PIP_FORMULA_PYTHON.minor) {
+      if (major === py.major && minor <= py.minor) {
         bestPy = { ok: true, pure: false, score: 85 };
         break;
       }
@@ -693,7 +766,7 @@ function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
 
   const abiOk = tags.abiTags.some(
     (t) =>
-      abiTagCompatible(t) ||
+      abiTagCompatible(t, py) ||
       t.toLowerCase() === "none" ||
       (hasAbi3 && t.toLowerCase() === "abi3"),
   );
@@ -709,9 +782,11 @@ function scoreWheel(url: PypiUrl, macArch: "arm64" | "x86_64" | null): number {
   return bestPy.score + bestPlat.score;
 }
 
+
 /**
- * Prefer a pure-python wheel, then a host-compatible platform wheel.
- * Fall back to sdist when no usable wheel exists.
+ * Prefer a pure-python wheel, then a host-compatible platform wheel for `python`.
+ * Fall back to sdist when no usable wheel exists. Never emit an incompatible
+ * platform wheel (previous candidates[0] fallback broke aimrocks/etc.).
  */
 export function selectBestDistribution(
   urls: PypiUrl[],
@@ -719,10 +794,12 @@ export function selectBestDistribution(
     preferWheel?: boolean;
     macArch?: "arm64" | "x86_64" | null;
     version?: string;
+    python?: FormulaPython;
   } = {},
 ): SelectedDist | null {
   const preferWheel = options.preferWheel !== false;
   const macArch = options.macArch === undefined ? hostMacArch() : options.macArch;
+  const python = options.python ?? PIP_FORMULA_PYTHON;
   const candidates = (urls || []).filter(
     (u) => u && !u.yanked && u.url && u.digests?.sha256,
   );
@@ -736,7 +813,7 @@ export function selectBestDistribution(
       ) {
         continue;
       }
-      const score = scoreWheel(u, macArch);
+      const score = scoreWheel(u, macArch, python);
       // score < 0 means incompatible platform/abi — never install a bad wheel.
       if (score < 0) continue;
       if (!best || score > best.score) best = { score, url: u };
@@ -756,17 +833,45 @@ export function selectBestDistribution(
     null;
   if (sdist) return toSelectedDist(sdist, "sdist", options.version);
 
-  // Last resort: only accept a wheel if it scores as compatible (never a random manylinux-only wheel).
-  for (const u of candidates) {
-    const isWheel =
-      u.packagetype === "bdist_wheel" ||
-      String(u.filename || "").endsWith(".whl");
-    if (!isWheel) continue;
-    if (scoreWheel(u, macArch) < 0) continue;
-    const selected = toSelectedDist(u, "wheel", options.version);
-    if (selected) return selected;
-  }
+  // No compatible wheel and no sdist — do not return a random incompatible wheel.
   return null;
+}
+
+/**
+ * Choose formula CPython: newest candidate that has a host-compatible *wheel*
+ * for the root package. Prefer wheels over sdist so native packages install
+ * without a from-source build. If no candidate has a wheel, keep the default.
+ */
+export function pickBestPythonForPackage(
+  urls: PypiUrl[],
+  macArch: "arm64" | "x86_64" | null = hostMacArch(),
+  requiresPython?: string | null,
+): FormulaPython {
+  const reqConstraint = requiresPython
+    ? parseVersionConstraint(requiresPython)
+    : null;
+  for (const py of PIP_FORMULA_PYTHON_CANDIDATES) {
+    if (
+      reqConstraint?.clauses.length &&
+      !versionSatisfies(`${py.major}.${py.minor}.0`, reqConstraint)
+    ) {
+      continue;
+    }
+    const wheel = selectBestDistribution(urls, {
+      preferWheel: true,
+      macArch,
+      python: py,
+    });
+    if (wheel?.kind === "wheel") return py;
+  }
+  if (reqConstraint?.clauses.length) {
+    for (const py of PIP_FORMULA_PYTHON_CANDIDATES) {
+      if (versionSatisfies(`${py.major}.${py.minor}.0`, reqConstraint)) {
+        return py;
+      }
+    }
+  }
+  return PIP_FORMULA_PYTHON;
 }
 
 /**
@@ -816,12 +921,16 @@ function exactPinVersion(constraint: VersionConstraint): string | null {
 async function selectDistForDependency(
   depName: string,
   constraint: VersionConstraint,
+  python: FormulaPython = PIP_FORMULA_PYTHON,
 ): Promise<SelectedDist | null> {
   const pin = exactPinVersion(constraint);
   if (pin) {
     try {
       const pinned = await fetchPypiData(depName, pin);
-      const dist = selectBestDistribution(pinned.urls || [], { version: pin });
+      const dist = selectBestDistribution(pinned.urls || [], {
+        version: pin,
+        python,
+      });
       if (dist) return { ...dist, version: pin };
     } catch {
       // fall through
@@ -833,6 +942,7 @@ async function selectDistForDependency(
   if (latestVersion && versionSatisfies(latestVersion, constraint)) {
     const dist = selectBestDistribution(latest.urls || [], {
       version: latestVersion,
+      python,
     });
     if (dist) return { ...dist, version: latestVersion };
   }
@@ -844,15 +954,21 @@ async function selectDistForDependency(
   );
   if (!chosen) return null;
   if (chosen === latestVersion) {
-    return selectBestDistribution(latest.urls || [], { version: chosen });
+    return selectBestDistribution(latest.urls || [], {
+      version: chosen,
+      python,
+    });
   }
 
   try {
     const pinned = await fetchPypiData(depName, chosen);
-    return selectBestDistribution(pinned.urls || [], { version: chosen });
+    return selectBestDistribution(pinned.urls || [], {
+      version: chosen,
+      python,
+    });
   } catch {
     const files = latest.releases?.[chosen] || [];
-    return selectBestDistribution(files, { version: chosen });
+    return selectBestDistribution(files, { version: chosen, python });
   }
 }
 
@@ -878,6 +994,7 @@ async function resolveTransitiveDeps(
   packageVersion?: string,
   /** Extras requested via Foo[a,b] when this package was depended on. */
   activeExtras: string[] = [],
+  python: FormulaPython = PIP_FORMULA_PYTHON,
 ): Promise<ResolvedResource[]> {
   const key = normalizePackageName(packageName);
   if (depth >= maxDepth) return [];
@@ -924,6 +1041,7 @@ async function resolveTransitiveDeps(
       if (
         !isRequirementApplicable(parsed.marker, {
           activeExtras: extrasForMarkers,
+          pythonVersion: formulaPythonLabel(python),
         })
       ) {
         continue;
@@ -940,6 +1058,7 @@ async function resolveTransitiveDeps(
         const dist = await selectDistForDependency(
           parsed.name,
           parsed.constraint,
+          python,
         );
         // Install the wheel once; extras only affect transitive requirements.
         if (dist && !depSeen) {
@@ -960,6 +1079,7 @@ async function resolveTransitiveDeps(
           depth + 1,
           dist?.version,
           depExtras,
+          python,
         );
         resources.push(...transitive);
       } catch {
@@ -1051,6 +1171,7 @@ export async function extractRequiresDistFromWheel(
 async function resolveUndeclaredDeps(
   packageName: string,
   already: ResolvedResource[],
+  python: FormulaPython = PIP_FORMULA_PYTHON,
 ): Promise<ResolvedResource[]> {
   const extras =
     UNDECLARED_RUNTIME_DEPS[normalizePackageName(packageName)] || [];
@@ -1070,6 +1191,7 @@ async function resolveUndeclaredDeps(
       const data = await fetchPypiData(depName);
       const dist = selectBestDistribution(data.urls || [], {
         version: data.info.version,
+        python,
       });
       if (!dist) continue;
       out.push({
@@ -1087,6 +1209,7 @@ async function resolveUndeclaredDeps(
         0,
         dist.version || data.info.version,
         [],
+        python,
       );
       for (const n of nested) {
         const nk = normalizePackageName(n.name);
