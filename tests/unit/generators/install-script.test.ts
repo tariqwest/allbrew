@@ -1,10 +1,30 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectInstallScriptPayload } from "../../../lib/generators/install-script.ts";
+import {
+  collectInstallScriptPayload,
+  detectBinNameFromInstallScript,
+} from "../../../lib/generators/install-script.ts";
+
+const qoderScript = `#!/usr/bin/env bash
+local bin_name="qodercli"
+[[ ! -f "$extract_dir/$bin_name" ]] && fatal_error "Binary $bin_name not found"
+`;
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("mocked_sha256"),
-  downloadAndHash: mock()
-    .mockResolvedValue({ sha256: "script_sha256_mock_value_64chars_pad_abcdef0123456789abcdef" }),
+  downloadAndHash: mock().mockImplementation(async (url: string) => {
+    const isQoder = String(url).includes("qoder.com");
+    return {
+      sha256: "script_sha256_mock_value_64chars_pad_abcdef0123456789abcdef",
+      buffer: Buffer.from(
+        isQoder ? qoderScript : "#!/usr/bin/env bash\necho hi\n",
+      ),
+      finalUrl: isQoder
+        ? "https://download.qoder.com/qodercli/install.sh"
+        : url,
+    };
+  }),
+  fetchFollowingRedirects: mock(),
+  normalizeFetchUrl: (u: string) => u,
 }));
 
 describe("collectInstallScriptPayload", () => {
@@ -114,6 +134,20 @@ describe("collectInstallScriptPayload", () => {
   });
 });
 
+describe("detectBinNameFromInstallScript", () => {
+  it("parses bin_name from qoder-style scripts", () => {
+    expect(detectBinNameFromInstallScript(qoderScript)).toBe("qodercli");
+  });
+
+  it("parses CLI_NAME from warp-style scripts", () => {
+    expect(detectBinNameFromInstallScript('CLI_NAME=warp\n')).toBe("warp");
+  });
+
+  it("returns null when no pattern matches", () => {
+    expect(detectBinNameFromInstallScript("echo hello")).toBeNull();
+  });
+});
+
 describe("collectInstallScriptPayload — Qoder", () => {
   beforeEach(() => {
     mock.restore();
@@ -133,6 +167,15 @@ describe("collectInstallScriptPayload — Qoder", () => {
     expect(payload.scriptFilename).toBe("install");
     expect(payload.name).toBe("install");
     expect(payload.className).toBe("Install");
+  });
+
+  it("detects bin_name=qodercli from script body", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://qoder.com/install",
+      { name: "qoder" },
+    );
+    expect(payload.name).toBe("qoder");
+    expect(payload.testBinName).toBe("qodercli");
   });
 
   it("includes SHA256 from download", async () => {

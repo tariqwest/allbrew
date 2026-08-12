@@ -15,25 +15,31 @@ const MAX_REDIRECTS = 20;
  * like `HTTPS://...`. Bun's fetch throws UnsupportedRedirectProtocol when
  * auto-following those. Resolve redirects manually and normalize the scheme.
  */
-function normalizeFetchUrl(urlString: string, base?: string): string {
+export function normalizeFetchUrl(urlString: string, base?: string): string {
   const url = base ? new URL(urlString, base) : new URL(urlString);
   url.protocol = url.protocol.toLowerCase();
   return url.href;
 }
 
-async function fetchFollowingRedirects(
+/**
+ * Follow HTTP redirects manually, normalizing Location schemes.
+ * Returns the final non-redirect response and the final absolute URL.
+ */
+export async function fetchFollowingRedirects(
   url: string,
   init: {
     headers?: HeadersInit;
     signal?: AbortSignal;
-  },
-): Promise<Response> {
+    method?: string;
+  } = {},
+): Promise<{ response: Response; finalUrl: string }> {
   let current = normalizeFetchUrl(url);
 
   for (let i = 0; i < MAX_REDIRECTS; i++) {
     assertSafeFetchUrl(current);
 
     const response = await fetch(current, {
+      method: init.method || "GET",
       redirect: "manual",
       headers: init.headers,
       signal: init.signal,
@@ -56,7 +62,7 @@ async function fetchFollowingRedirects(
       continue;
     }
 
-    return response;
+    return { response, finalUrl: current };
   }
 
   throw new Error(`Too many redirects (max ${MAX_REDIRECTS}) for ${url}`);
@@ -67,7 +73,7 @@ export async function downloadAndHash(
   destPath: string | null = null,
   timeoutMs: number = DEFAULT_DOWNLOAD_TIMEOUT_MS,
 ) {
-  const response = await fetchFollowingRedirects(url, {
+  const { response, finalUrl } = await fetchFollowingRedirects(url, {
     headers: { "User-Agent": "allbrew/1.0" },
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -125,13 +131,16 @@ export async function downloadAndHash(
     }
   }
 
-  const contentType = (response.headers.get("content-type") || "").toLowerCase();
-  const contentDisposition = response.headers.get("content-disposition") || "";
+  const headers = response.headers;
+  const headerGet = (name: string) =>
+    headers && typeof headers.get === "function" ? headers.get(name) : null;
+  const contentType = (headerGet("content-type") || "").toLowerCase();
+  const contentDisposition = headerGet("content-disposition") || "";
   // Vendor version headers (e.g. Halo `x-halo-version: 0.6.0`)
   const versionHeader =
-    response.headers.get("x-halo-version") ||
-    response.headers.get("x-version") ||
-    response.headers.get("x-app-version") ||
+    headerGet("x-halo-version") ||
+    headerGet("x-version") ||
+    headerGet("x-app-version") ||
     "";
 
   return {
@@ -141,7 +150,7 @@ export async function downloadAndHash(
     contentType,
     contentDisposition,
     versionHeader: versionHeader || null,
-    finalUrl: response.url || url,
+    finalUrl: finalUrl || response.url || url,
   };
 }
 

@@ -33,6 +33,14 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
       return
     end
 
+    # Qoder CLI: versioned binary under ~/.qoder/bin/qodercli/qodercli-<ver> with
+    # ~/.local/bin/qodercli absolute symlink (breaks after cellar move if copied as-is).
+    qoder_bin = Dir[buildpath/".qoder"/"bin"/"qodercli"/"qodercli-*"].select { |f| File.file?(f) && File.executable?(f) }.max_by { |f| File.mtime(f) }
+    if qoder_bin
+      bin.install qoder_bin => "qodercli"
+      return
+    end
+
     candidates = [
       buildpath/"bin",
       buildpath/".local/bin",
@@ -44,19 +52,45 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
       next unless dir.directory?
       bins = Dir[dir/"*"].select { |f| File.file?(f) && File.executable?(f) }
       next if bins.empty?
-      # If the only bin is a broken symlink (warp -> warp-tui/...), resolve to the real binary.
-      # Homebrew's bin.install would copy the symlink as-is, leaving a broken link.
-      # For warp, the real binary is already handled above; for others, install as-is.
-      bin.install bins
+      # Absolute symlinks into buildpath (e.g. .local/bin/qodercli → .qoder/bin/...)
+      # must be resolved; bin.install of the symlink would break after cellar move.
+      bins.each do |f|
+        if File.symlink?(f)
+          begin
+            real = Pathname.new(f).realpath
+            if real.to_s.start_with?(buildpath.to_s) && real.file?
+              bin.install real => File.basename(f)
+              next
+            end
+          rescue
+            # fall through to install the path as-is
+          end
+        end
+        bin.install f
+      end
       installed = true
       break
     end
     unless installed
-      bins = Dir[buildpath/"**/*"].select do |f|
-        File.file?(f) && File.executable?(f) && !File.basename(f).start_with?(".")
+      bins = Dir[buildpath/"**/*", File::FNM_DOTMATCH].select do |f|
+        base = File.basename(f)
+        next false if base == "." || base == ".."
+        File.file?(f) && File.executable?(f) && !base.start_with?(".")
       end
       odie "install script produced no executable binaries under buildpath" if bins.empty?
-      bin.install bins
+      bins.each do |f|
+        if File.symlink?(f)
+          begin
+            real = Pathname.new(f).realpath
+            if real.to_s.start_with?(buildpath.to_s) && real.file?
+              bin.install real => File.basename(f)
+              next
+            end
+          rescue
+          end
+        end
+        bin.install f
+      end
     end
   end
 

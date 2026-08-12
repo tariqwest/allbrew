@@ -257,4 +257,64 @@ describe("B3: classifyWithHead (content-type sniffing)", () => {
       global.fetch = originalFetch;
     }
   });
+
+  it("follows uppercase HTTPS Location and classifies final .sh as bash-script", async () => {
+    // Mirrors qoder.com/install → HTTPS://download.qoder.com/.../install.sh
+    const originalFetch = global.fetch;
+    global.fetch = ((input: RequestInfo | URL) => {
+      const href = String(input);
+      if (href === "https://qoder.com/install" || href.includes("qoder.com/install")) {
+        return Promise.resolve({
+          ok: false,
+          status: 302,
+          statusText: "Found",
+          headers: {
+            get: (name: string) =>
+              name.toLowerCase() === "location"
+                ? "HTTPS://download.qoder.com:443/qodercli/install.sh"
+                : null,
+          },
+          arrayBuffer: async () => new ArrayBuffer(0),
+          text: async () => "",
+        } as any);
+      }
+      if (href.startsWith("https://download.qoder.com")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: new Headers({ "content-type": "application/octet-stream" }),
+          arrayBuffer: async () => new ArrayBuffer(0),
+          text: async () => "#!/usr/bin/env bash\n",
+        } as any);
+      }
+      return Promise.reject(new Error(`unexpected fetch ${href}`));
+    }) as any;
+
+    try {
+      const result = await classifyWithHead("https://qoder.com/install");
+      expect(result.type).toBe("bash-script");
+      expect(result.url).toBe("https://qoder.com/install");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("classifies shebang body served as octet-stream as bash-script", async () => {
+    const originalFetch = global.fetch;
+    global.fetch = (() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/octet-stream" }),
+        text: async () => "#!/usr/bin/env bash\nset -e\n",
+        arrayBuffer: async () => new ArrayBuffer(0),
+      })) as any;
+
+    try {
+      const result = await classifyWithHead("https://example.com/get");
+      expect(result.type).toBe("bash-script");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });

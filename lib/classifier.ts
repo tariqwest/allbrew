@@ -1,4 +1,8 @@
 import { assertSafeFetchUrl } from "./utils.ts";
+import {
+  fetchFollowingRedirects,
+  normalizeFetchUrl,
+} from "./sha256.ts";
 
 const GITHUB_REPO_RE = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/?$/;
 const GITHUB_REPO_TREE_RE = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/(tree|blob)\//;
@@ -26,6 +30,45 @@ const ARCHIVE_EXTENSIONS = [
   '.tar.gz', '.tgz', '.tar.bz2', '.tar.xz',
   '.zip', '.gz', '.bz2', '.xz',
 ];
+
+/** Re-classify using path of a post-redirect URL while keeping the original URL. */
+function classifyAtUrl(originalUrl: string, resolvedUrl: string) {
+  const resolved = classify(resolvedUrl);
+  if (resolved.type === "unknown") return null;
+  return { ...resolved, url: originalUrl, resolvedUrl };
+}
+
+function classifyFromHeaders(
+  originalUrl: string,
+  ct: string,
+  disp: string,
+): { type: string; url: string } | null {
+  if (ct.includes("application/x-apple-diskimage") || disp.includes(".dmg")) {
+    return { type: "cask-dmg", url: originalUrl };
+  }
+  if (
+    ct.includes("application/zip") ||
+    ct.includes("application/gzip") ||
+    ct.includes("application/x-tar") ||
+    ct.includes("application/x-bzip2") ||
+    ct.includes("application/x-xz")
+  ) {
+    return { type: "archive", url: originalUrl };
+  }
+  if (ct.includes("text/x-shellscript") || ct.includes("application/x-sh")) {
+    return { type: "bash-script", url: originalUrl };
+  }
+  return null;
+}
+
+function looksLikeShebang(snippet: string): boolean {
+  const head = snippet.replace(/^\uFEFF/, "").slice(0, 64);
+  return (
+    head.startsWith("#!/") ||
+    head.startsWith("#! /") ||
+    /^#!\s*\/(?:usr\/)?bin\/(?:env\s+)?(?:ba)?sh\b/m.test(head)
+  );
+}
 
 export function classify(url) {
   const parsed = new URL(url);
@@ -124,52 +167,69 @@ export async function classifyWithHead(url) {
   assertSafeFetchUrl(url);
 
   try {
-    const response = await fetch(url, {
-      method: 'HEAD',
-      redirect: 'follow',
-      headers: { 'User-Agent': 'allbrew/1.0' },
+    // Manual redirects + scheme normalize (qoder.com → HTTPS://download.../install.sh).
+    // Bun's redirect:'follow' throws UnsupportedRedirectProtocol on uppercase schemes.
+    const { response, finalUrl } = await fetchFollowingRedirects(url, {
+      method: "HEAD",
+      headers: { "User-Agent": "allbrew/1.0" },
       signal: AbortSignal.timeout(30_000),
     });
 
-    const ct = (response.headers.get('content-type') || '').toLowerCase();
-    const disp = (response.headers.get('content-disposition') || '').toLowerCase();
-
-    if (ct.includes('application/x-apple-diskimage') || disp.includes('.dmg')) {
-      return { type: 'cask-dmg', url };
+    // Path of the post-redirect URL often carries the real type (.sh / .dmg).
+    if (finalUrl && normalizeFetchUrl(finalUrl) !== normalizeFetchUrl(url)) {
+      const byPath = classifyAtUrl(url, finalUrl);
+      if (byPath) return byPath;
     }
 
-    if (ct.includes('application/zip') || ct.includes('application/gzip') ||
-        ct.includes('application/x-tar') || ct.includes('application/x-bzip2') ||
-        ct.includes('application/x-xz')) {
-      return { type: 'archive', url };
-    }
-
-    if (ct.includes('text/x-shellscript') || ct.includes('application/x-sh')) {
-      return { type: 'bash-script', url };
-    }
+    const ct = (response.headers.get("content-type") || "").toLowerCase();
+    const disp = (response.headers.get("content-disposition") || "").toLowerCase();
+    const fromHead = classifyFromHeaders(url, ct, disp);
+    if (fromHead) return fromHead;
 
     // Some endpoints (e.g. https://app.warp.dev/download/agent-cli) return
-    // text/html for HEAD but text/x-shellscript for GET. Fall back to a
-    // ranged GET when HEAD was html/unknown.
-    if (!ct || ct.includes('text/html') || ct.includes('text/plain')) {
+    // text/html for HEAD but text/x-shellscript for GET. Also qoder.com serves
+    // install.sh as application/octet-stream — sniff shebang via ranged GET.
+    const needsBodySniff =
+      !ct ||
+      ct.includes("text/html") ||
+      ct.includes("text/plain") ||
+      ct.includes("application/octet-stream") ||
+      ct.includes("application/octetstream");
+
+    if (needsBodySniff) {
       try {
-        const getRes = await fetch(url, {
-          method: 'GET',
-          headers: { 'User-Agent': 'allbrew/1.0', Range: 'bytes=0-1024' },
-          redirect: 'follow',
-          signal: AbortSignal.timeout(30_000),
-        });
-        const gct = (getRes.headers.get('content-type') || '').toLowerCase();
-        if (gct.includes('text/x-shellscript') || gct.includes('application/x-sh')) {
-          return { type: 'bash-script', url };
+        const { response: getRes, finalUrl: getFinal } =
+          await fetchFollowingRedirects(url, {
+            method: "GET",
+            headers: {
+              "User-Agent": "allbrew/1.0",
+              Range: "bytes=0-1024",
+            },
+            signal: AbortSignal.timeout(30_000),
+          });
+
+        if (getFinal && normalizeFetchUrl(getFinal) !== normalizeFetchUrl(url)) {
+          const byPath = classifyAtUrl(url, getFinal);
+          if (byPath) return byPath;
         }
-        if (gct.includes('application/x-apple-diskimage') || disp.includes('.dmg')) {
-          return { type: 'cask-dmg', url };
-        }
-        if (gct.includes('application/zip') || gct.includes('application/gzip') ||
-            gct.includes('application/x-tar') || gct.includes('application/x-bzip2') ||
-            gct.includes('application/x-xz')) {
-          return { type: 'archive', url };
+
+        const gct = (getRes.headers.get("content-type") || "").toLowerCase();
+        const gdisp = (
+          getRes.headers.get("content-disposition") ||
+          disp ||
+          ""
+        ).toLowerCase();
+        const fromGet = classifyFromHeaders(url, gct, gdisp);
+        if (fromGet) return fromGet;
+
+        // Shebang sniff for mislabeled shell installers (octet-stream install.sh).
+        try {
+          const snippet = await getRes.text();
+          if (looksLikeShebang(snippet)) {
+            return { type: "bash-script", url };
+          }
+        } catch {
+          /* ignore body read errors */
         }
       } catch {
         // fall through
@@ -179,5 +239,5 @@ export async function classifyWithHead(url) {
     // fall through
   }
 
-  return { type: 'unknown', url };
+  return { type: "unknown", url };
 }

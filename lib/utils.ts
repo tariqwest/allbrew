@@ -462,6 +462,10 @@ function pathLooksInstallArtifact(url: string): boolean {
   );
 }
 
+function pathLooksShellScript(url: string): boolean {
+  return /\.(?:sh|bash)(?:\?|#|$)/i.test(url);
+}
+
 function contentTypeLooksBinaryArtifact(contentType: string): boolean {
   const ct = (contentType || "").toLowerCase();
   return (
@@ -507,9 +511,12 @@ export async function fetchTextLimited(
         if (!location) {
           throw new Error(`Redirect without Location from ${current}`);
         }
+        // new URL() lowercases scheme — required for uppercase HTTPS:// CDNs (qoder).
         current = new URL(location, current).href;
         // Redirect target is already a known installer — stop without GET body.
-        if (pathLooksInstallArtifact(current)) {
+        // Shell scripts are not "binary" here: keep following so callers can
+        // classify .sh / shebang (install.sh often served as octet-stream).
+        if (pathLooksInstallArtifact(current) && !pathLooksShellScript(current)) {
           return {
             url: current,
             contentType: "application/octet-stream",
@@ -526,9 +533,11 @@ export async function fetchTextLimited(
 
       const contentType = (response.headers.get("content-type") || "").toLowerCase();
       const contentLength = Number(response.headers.get("content-length") || 0);
+      // Prefer path: mislabeled application/octet-stream install.sh must load as text.
       const isBinary =
         pathLooksInstallArtifact(current) ||
-        contentTypeLooksBinaryArtifact(contentType);
+        (contentTypeLooksBinaryArtifact(contentType) &&
+          !pathLooksShellScript(current));
 
       if (isBinary) {
         try {

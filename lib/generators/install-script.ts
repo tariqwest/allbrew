@@ -51,11 +51,29 @@ export async function resolveInstallScriptVersion(
   return "0.0.1";
 }
 
+/** Best-effort parse of CLI binary name from vendor install scripts. */
+export function detectBinNameFromInstallScript(
+  scriptText: string | null | undefined,
+): string | null {
+  if (!scriptText) return null;
+  const patterns = [
+    /\bbin_name\s*=\s*["']([A-Za-z0-9._-]+)["']/,
+    /\bCLI_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/,
+    /\bBINARY_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/,
+    /\bAPP_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/,
+  ];
+  for (const re of patterns) {
+    const m = scriptText.match(re);
+    if (m?.[1] && m[1].length < 64) return m[1];
+  }
+  return null;
+}
+
 export async function collectInstallScriptPayload(
   url: string,
   options: any = {},
 ): Promise<InstallScriptPayload> {
-  const { sha256 } = await downloadAndHash(url);
+  const { sha256, buffer } = await downloadAndHash(url);
 
   const filename = url.split("/").pop().split("?")[0] || "install.sh";
   const baseName = filename.replace(/\.(sh|bash)$/i, "");
@@ -66,12 +84,17 @@ export async function collectInstallScriptPayload(
   const license = guessLicenseIdentifier(options.license || repoInfo?.license || null);
   const version = await resolveInstallScriptVersion(url, options);
   let binName = options.binName || name;
-  if (!options.binName && /agent-cli/i.test(url) && /warp/i.test(name)) {
+  if (!options.binName) {
     try {
-      const scriptText = await (await fetch(url, { signal: AbortSignal.timeout(15_000) })).text();
-      const m = scriptText.match(/CLI_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/);
-      if (m?.[1]) binName = m[1];
-    } catch { /* fallback to name */ }
+      const scriptText =
+        buffer && buffer.length < 2_000_000
+          ? buffer.toString("utf8")
+          : null;
+      const detected = detectBinNameFromInstallScript(scriptText);
+      if (detected) binName = detected;
+    } catch {
+      /* fallback to name */
+    }
   }
 
   return {

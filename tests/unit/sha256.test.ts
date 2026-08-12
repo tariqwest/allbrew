@@ -18,6 +18,7 @@ function mockResponse(body: string | Buffer, opts?: { status?: number; statusTex
     ok: (opts?.status ?? 200) < 400,
     status: opts?.status ?? 200,
     statusText: opts?.statusText ?? "OK",
+    headers: new Headers({ "content-type": "application/octet-stream" }),
     body: new ReadableStream({
       start(controller) {
         controller.enqueue(typeof body === "string" ? new TextEncoder().encode(body) : body);
@@ -32,6 +33,7 @@ function mockStreamingResponse(chunks: Buffer[], opts?: { status?: number }) {
     ok: (opts?.status ?? 200) < 400,
     status: opts?.status ?? 200,
     statusText: "OK",
+    headers: new Headers({ "content-type": "application/octet-stream" }),
     body: new ReadableStream({
       start(controller) {
         for (const chunk of chunks) controller.enqueue(chunk);

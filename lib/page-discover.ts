@@ -1599,6 +1599,7 @@ export async function discoverPageDownloads(
   let finalPageUrl = pageUrl;
   let body = "";
   let contentType = "";
+  let pageBinaryArtifact = false;
 
   if (opts.htmlFixture) {
     body = opts.htmlFixture.body;
@@ -1610,6 +1611,7 @@ export async function discoverPageDownloads(
       body = fetched.body;
       finalPageUrl = fetched.url;
       contentType = fetched.contentType;
+      pageBinaryArtifact = Boolean(fetched.binaryArtifact);
     } catch (err: any) {
       const fetchReason = `fetch failed: ${err?.message || err}`;
       log(fetchReason);
@@ -1645,6 +1647,76 @@ export async function discoverPageDownloads(
         reason: fetchReason,
       };
     }
+  }
+
+  // Page URL redirected straight to an install artifact (e.g. qoder.com/install →
+  // download.qoder.com/.../install.sh). Promote final URL before HTML/WebView paths.
+  if (
+    pageBinaryArtifact ||
+    /\.(?:sh|bash)(?:\?|#|$)/i.test(finalPageUrl) ||
+    /\.(?:dmg|pkg|zip|tar\.gz|tgz)(?:\?|#|$)/i.test(finalPageUrl)
+  ) {
+    if (finalPageUrl !== pageUrl || pageBinaryArtifact) {
+      const direct = scoreCandidateUrl(finalPageUrl, pageUrl, [
+        "page-redirect-artifact",
+        pageBinaryArtifact ? "binary-artifact" : "path-artifact",
+      ]);
+      if (/\.(?:sh|bash)(?:\?|#|$)/i.test(finalPageUrl)) {
+        direct.kind = "bash-script";
+        direct.score = Math.max(direct.score, 110);
+        direct.evidence.push("redirect-shell-script");
+      } else if (/\.(?:dmg|pkg)(?:\?|#|$)/i.test(finalPageUrl)) {
+        direct.kind = "cask-dmg";
+        direct.score = Math.max(direct.score, 120);
+      }
+      // Prefer original stable URL for bash installers advertised as curl|bash
+      // (livecheck + formula url stay on https://qoder.com/install).
+      if (direct.kind === "bash-script" && !/\.(?:sh|bash)(?:\?|#|$)/i.test(pageUrl)) {
+        direct.url = pageUrl;
+        direct.evidence.push("keep-source-url");
+      }
+      log(
+        `page redirected to install artifact: ${finalPageUrl} → ${direct.kind} (score ${direct.score})`,
+      );
+      const chosen = pickAutoCandidate([direct]);
+      return {
+        pageUrl,
+        finalPageUrl,
+        method: "static",
+        candidates: [direct],
+        chosen,
+        reason: chosen
+          ? `page redirected to ${direct.kind} artifact`
+          : "page redirected to artifact but no auto pick",
+      };
+    }
+  }
+
+  // Shebang body without .sh path (extensionless curl|bash endpoints).
+  if (
+    body &&
+    !/<html[\s>]/i.test(body) &&
+    (/^#!\s*\/(?:usr\/)?bin\/(?:env\s+)?(?:ba)?sh\b/m.test(body.slice(0, 80)) ||
+      body.startsWith("#!/"))
+  ) {
+    const direct = scoreCandidateUrl(pageUrl, pageUrl, [
+      "page-shebang-body",
+      "bash-script-sniff",
+    ]);
+    direct.kind = "bash-script";
+    direct.score = Math.max(direct.score, 110);
+    log(`page body is shell script (shebang); treating as bash-script`);
+    const chosen = pickAutoCandidate([direct]);
+    return {
+      pageUrl,
+      finalPageUrl,
+      method: "static",
+      candidates: [direct],
+      chosen,
+      reason: chosen
+        ? "page body shebang → bash-script"
+        : "shebang body but no auto pick",
+    };
   }
 
   const isHtml =
