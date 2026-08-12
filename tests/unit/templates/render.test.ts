@@ -96,6 +96,8 @@ describe("renderFormula", () => {
     expect(ruby).toContain("include-system-site-packages = false");
     expect(ruby).toContain("pip_install_dist");
     expect(ruby).toContain("pip_install_main");
+    expect(ruby).toContain("rewrite_delocate_dylib_ids");
+    expect(ruby).toContain('/DLC/');
     expect(ruby).toContain(".whl");
     expect(ruby).toContain('assert_match version.to_s, shell_output("#{bin}/foo --version")');
   });
