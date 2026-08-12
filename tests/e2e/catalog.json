@@ -5116,5 +5116,21 @@
     "skip": true,
     "notes": "Xcode app lab with library-only Package.swift and empty release assets; expect generate fail / reject (not installable via Homebrew formula). CLI is separate afm repo.",
     "expectGenerateFail": true
+  },
+  {
+    "name": "ante",
+    "url": "https://github.com/AntigmaLabs/ante",
+    "generator": "binary-release",
+    "allbrewArgs": [
+      "--name",
+      "ante"
+    ],
+    "expectedBin": "ante",
+    "verifyCommand": [
+      "ante",
+      "--help"
+    ],
+    "skip": true,
+    "notes": "Rust ~15MB single binary agent harness (TUI/headless/server/gateway); Apache-2.0; v0.preview.76; 4 prebuilt tar.gz (darwin arm64/x86_64, linux musl arm64/x86_64); also install-script https://ante.run/install.sh; test utm_source strip -> canonical https://github.com/AntigmaLabs/ante"
   }
 ]

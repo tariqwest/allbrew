@@ -322,7 +322,7 @@
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (all generators) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # pip / uv / pipx | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://pypi.org/project/marimo/ --manual      # → pip-package | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install marimo && marimo edit | | | | | | | | | | | | | | | | | | | | | | | |
@@ -377,13 +377,13 @@
 | brew install agent-deck && agent-deck --version | | | | | | | | | | | | | | | | | | | | | | | |
 | # future generators (manual today) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://www.nuget.org/packages/Rnwood.Smtp4dev/ # dotnet-tool (planned) | | | | | | | | | | | | | | | | | | | | | | | |
-| ``` | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ``` | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | Record per pick: generator chosen, bin name vs package name drift, livecheck source, service | | | | | | | | | | | | | | | | | | | | | | | |
 | block (flower/wakapi/smtp4dev), and any native-build failures (tgt/TDLib, goatcounter/CGO, | | | | | | | | | | | | | | | | | | | | | | | |
 | Fyne/`fyne install`). | | | | | | | | | | | | | | | | | | | | | | | |
 | --- | | | | | | | | | | | | | | | | | | | | | | | |
 | ## How to drive a test (cask-app & script-install) | | | | | | | | | | | | | | | | | | | | | | | |
-| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ```bash | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
 | # Not-in-HB app (GitHub release DMG) | | | | | | | | | | | | | | | | | | | | | | | |
 | allbrew https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg --manual | | | | | | | | | | | | | | | | | | | | | | | |
 | brew install --cask seaquel && open -a Seaquel | | | | | | | | | | | | | | | | | | | | | | | |
@@ -441,6 +441,7 @@
 | screencharm | Swift | AppKit | screencharm.app | | | | | | | | | | | | | | yes | | .dmg | | | | Screen recorder with automated cursor zoom & pan; $79 |
 | recordly | Swift | SwiftUI | recordly.app | github.com/recordly/recordly | | | | | | | | | | | | | yes | | .dmg | | yes | | Open-source lightweight screen recorder |
 | cap-so | TypeScript/Rust | Tauri | cap.so | github.com/CapSoftware/Cap | cap (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | Open-source screen recording tool (Loom alternative); Free/$58 |
+| ante | Rust | | antigma.ai | github.com/AntigmaLabs/ante | | | | | | | | | | | | yes | | | | | yes (4) | yes | Self-contained Rust agent harness (Claude Code-like); Apache-2.0; v0.preview.76; 1114 stars; not in HB; binary-release (4 darwin/linux arm64/x86_64 musl) + install-script https://ante.run/install.sh; TUI/headless/server/gateway; ~15MB single binary; generator: binary-release |
 | openvox | Swift | AppKit | openvox.app | | | | | | | | | | | | | | yes | | .dmg | | | | Text-to-speech engine with 300+ voices & voice cloning; Free/$19.99 |
 | zyp | Swift | AppKit | getzyp.com | | khaweryounas/zyp/zyp (cask) | | | | | | | | | | | | yes | | .dmg | | | | SFTP/FTP/WebDAV/S3 file transfer client; versioned URL (1.1.1); notarized |
 | harbor-dm | Go/Swift | AppKit | | github.com/thsnkhn/harbor | thsnkhn/harbor/harbor (cask) | | | | | | | | | | | | yes | | .dmg | | yes | | Download manager for HTTP & BitTorrent; GPL-3.0 |
