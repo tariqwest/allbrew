@@ -1402,12 +1402,47 @@ async function handleGithubRepo(classification, opts) {
       case "npm": {
         const pkgJson = await getFileContent(owner, repo, "package.json");
         let packageName = repoInfo.name;
+        let rootPkg: any = null;
         if (pkgJson) {
           try {
-            const pkg = JSON.parse(pkgJson);
-            packageName = pkg.name || packageName;
+            rootPkg = JSON.parse(pkgJson);
+            packageName = rootPkg.name || packageName;
           } catch {
             /* use repo name */
+          }
+        }
+        const isRootVscodeExtension =
+          !!rootPkg && (!!rootPkg.publisher || !!rootPkg.engines?.vscode || !!rootPkg.contributes);
+        const workspaces: string[] = Array.isArray(rootPkg?.workspaces) ? rootPkg.workspaces : [];
+        const shouldProbeCli =
+          isRootVscodeExtension || workspaces.includes("cli") || workspaces.includes("./cli");
+        if (shouldProbeCli) {
+          for (const candidatePath of [
+            "cli/package.json",
+            "packages/cli/package.json",
+            "packages/dirac-cli/package.json",
+          ]) {
+            const cliJson = await getFileContent(owner, repo, candidatePath);
+            if (!cliJson) continue;
+            try {
+              const cliPkg = JSON.parse(cliJson);
+              if (!cliPkg?.name) continue;
+              const hasBin = !!cliPkg.bin;
+              const binKeys: string[] =
+                typeof cliPkg.bin === "string"
+                  ? [String(cliPkg.bin)]
+                  : cliPkg.bin
+                    ? Object.keys(cliPkg.bin)
+                    : [];
+              const binMatchesRepo =
+                binKeys.includes(repoInfo.name) || binKeys.includes(packageName);
+              if ((hasBin && (binMatchesRepo || cliPkg.name.endsWith("-cli"))) || isRootVscodeExtension) {
+                packageName = cliPkg.name;
+                break;
+              }
+            } catch {
+              /* ignore */
+            }
           }
         }
         return await generateWithConfirmation(
