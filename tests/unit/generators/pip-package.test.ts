@@ -9,6 +9,9 @@ import {
   compareVersions,
   normalizePackageName,
   KNOWN_BIN_NAMES,
+  pypiInfoMatchesGithub,
+  collectPypiProjectUrls,
+  resolvePypiGithubIdentity,
 } from "../../../lib/generators/pip-package.ts";
 import marimoFixture from "../../fixtures/pypi/marimo.json";
 import clickFixture from "../../fixtures/pypi/click.json";
@@ -967,6 +970,143 @@ describe("collectPipPackagePayload — dependency extras expansion", () => {
     expect(payload.resourcesBlock).toContain('resource "platformdirs"');
     // unrelated optional extra stays off
     expect(payload.resourcesBlock).not.toContain('resource "anthropic"');
+  });
+});
+
+describe("pypiInfoMatchesGithub — registry/GitHub identity", () => {
+  it("matches home_page pointing at the same owner/repo", () => {
+    expect(
+      pypiInfoMatchesGithub(
+        { home_page: "https://github.com/marimo-team/marimo" },
+        "marimo-team",
+        "marimo",
+      ),
+    ).toBe(true);
+  });
+
+  it("matches project_urls.Homepage for the same repo (case-insensitive)", () => {
+    expect(
+      pypiInfoMatchesGithub(
+        {
+          home_page: null,
+          project_urls: {
+            Homepage: "https://GitHub.com/Usnistgov/open-notebook/",
+          },
+        },
+        "usnistgov",
+        "open-notebook",
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects a same-named package that points at a different GitHub owner", () => {
+    // NIST open-notebook on PyPI must not be accepted for lfnovo/open-notebook
+    expect(
+      pypiInfoMatchesGithub(
+        {
+          home_page: null,
+          project_url: "https://pypi.org/project/open-notebook/",
+          project_urls: {
+            Documentation: "https://pages.nist.gov/open-notebook/",
+            Homepage: "https://github.com/usnistgov/open-notebook",
+          },
+        },
+        "lfnovo",
+        "open-notebook",
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects empty / missing project urls", () => {
+    expect(pypiInfoMatchesGithub({}, "lfnovo", "open-notebook")).toBe(false);
+    expect(pypiInfoMatchesGithub(null, "lfnovo", "open-notebook")).toBe(false);
+  });
+
+  it("collectPypiProjectUrls flattens home_page + project_urls", () => {
+    const urls = collectPypiProjectUrls({
+      home_page: "https://example.com",
+      project_urls: { Source: "https://github.com/a/b", Docs: null },
+    });
+    expect(urls).toContain("https://example.com");
+    expect(urls).toContain("https://github.com/a/b");
+    expect(urls).not.toContain(null as any);
+  });
+});
+
+describe("resolvePypiGithubIdentity", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
+  it("returns matches=true when PyPI homepage is the GitHub repo", async () => {
+    global.fetch = mock(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            info: {
+              name: "marimo",
+              version: "0.13.0",
+              home_page: "https://github.com/marimo-team/marimo",
+            },
+            urls: [],
+          }),
+      }),
+    ) as any;
+
+    const r = await resolvePypiGithubIdentity(
+      "marimo",
+      "marimo-team",
+      "marimo",
+    );
+    expect(r.matches).toBe(true);
+    expect(r.pypiData).not.toBeNull();
+  });
+
+  it("returns matches=false for open-notebook name collision (NIST vs lfnovo)", async () => {
+    global.fetch = mock(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            info: {
+              name: "open-notebook",
+              version: "0.2.0",
+              home_page: null,
+              project_url: "https://pypi.org/project/open-notebook/",
+              project_urls: {
+                Homepage: "https://github.com/usnistgov/open-notebook",
+                Documentation: "https://pages.nist.gov/open-notebook/",
+              },
+            },
+            urls: [],
+          }),
+      }),
+    ) as any;
+
+    const r = await resolvePypiGithubIdentity(
+      "open-notebook",
+      "lfnovo",
+      "open-notebook",
+    );
+    expect(r.matches).toBe(false);
+    expect(r.reason).toMatch(/do not match|usnistgov/i);
+    expect(r.pypiData?.info?.name).toBe("open-notebook");
+  });
+
+  it("returns matches=false on PyPI 404", async () => {
+    global.fetch = mock(() =>
+      Promise.resolve({ ok: false, status: 404 }),
+    ) as any;
+
+    const r = await resolvePypiGithubIdentity(
+      "definitely-not-a-real-pkg-xyz",
+      "some",
+      "repo",
+    );
+    expect(r.matches).toBe(false);
+    expect(r.pypiData).toBeNull();
+    expect(r.reason).toMatch(/not published|404/i);
   });
 });
 
