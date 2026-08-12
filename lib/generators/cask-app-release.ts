@@ -52,7 +52,17 @@ export async function collectCaskAppReleasePayload(
 ): Promise<CaskAppReleasePayload> {
   const version = extractVersionFromTag(release.tagName);
 
-  const appAssets = release.assets.filter((a: any) => isAppAsset(a.name));
+  // extraAppAssetNames: arch-tagged macOS zips that failed isAppAsset filename
+  // heuristics but were content-peeked and confirmed to contain a .app bundle
+  // (e.g. go2tv_v2.5.0_macOS_arm64.zip).
+  const extraNames = new Set(
+    (options.extraAppAssetNames || [])
+      .map((n: unknown) => String(n || ""))
+      .filter(Boolean),
+  );
+  const appAssets = release.assets.filter(
+    (a: any) => isAppAsset(a.name) || extraNames.has(a.name),
+  );
   if (appAssets.length === 0) {
     throw new Error("No .dmg or macOS .zip assets found in release");
   }

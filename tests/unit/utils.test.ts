@@ -448,6 +448,10 @@ describe("isAppAsset", () => {
     // CLI multi-platform zips with cpu arch but no mac token
     expect(isAppAsset("television-aarch64.zip")).toBe(false);
     expect(isAppAsset("toolong_x86_64.zip")).toBe(false);
+    // go2tv-style desktop app zips reuse CLI naming; content peek (cli.ts)
+    // reclassifies them — filename alone stays non-app.
+    expect(isAppAsset("go2tv_v2.5.0_macOS_arm64.zip")).toBe(false);
+    expect(isAppAsset("go2tv_v2.5.0_macOS_amd64.zip")).toBe(false);
   });
 
   it("rejects non-mac .zip files", () => {

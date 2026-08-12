@@ -157,6 +157,8 @@ describe("collectCaskAppReleasePayload", () => {
           },
         ],
       };
+      // macos-arm64-installer.zip fails isAppAsset (arch-tagged macos zip);
+      // production cli peeks content and passes extraAppAssetNames.
       const payload = await collectCaskAppReleasePayload(
         {
           name: "nicotine-plus",
@@ -166,6 +168,9 @@ describe("collectCaskAppReleasePayload", () => {
           htmlUrl: "https://github.com/nicotine-plus/nicotine-plus",
         },
         npRelease,
+        {
+          extraAppAssetNames: npRelease.assets.map((a) => a.name),
+        },
       );
       expect(payload.template).toBe("cask_app_release");
       expect(payload.appName).toBe("Nicotine+.app");
@@ -260,6 +265,59 @@ describe("collectCaskAppReleasePayload", () => {
     await expect(
       collectCaskAppReleasePayload(repoInfo, zipRelease),
     ).rejects.toThrow(/No \.app bundle found/);
+  });
+
+  it("accepts arch-tagged macOS zips via extraAppAssetNames (go2tv-style)", async () => {
+    mockArchiveInspector({
+      zip: [
+        "go2tv.app/",
+        "go2tv.app/Contents/Info.plist",
+        "go2tv.app/Contents/MacOS/go2tv",
+        "LICENSE",
+      ],
+    });
+    const go2tvRepo = {
+      name: "go2tv",
+      fullName: "alexballas/go2tv",
+      description: "Cast media files to Smart TVs and Chromecast devices.",
+      homepage: "https://github.com/alexballas/go2tv",
+      htmlUrl: "https://github.com/alexballas/go2tv",
+      license: "MIT",
+    };
+    const go2tvRelease = {
+      tagName: "v2.5.0",
+      assets: [
+        {
+          name: "go2tv_v2.5.0_macOS_arm64.zip",
+          url: "https://github.com/alexballas/go2tv/releases/download/v2.5.0/go2tv_v2.5.0_macOS_arm64.zip",
+        },
+        {
+          name: "go2tv_v2.5.0_macOS_amd64.zip",
+          url: "https://github.com/alexballas/go2tv/releases/download/v2.5.0/go2tv_v2.5.0_macOS_amd64.zip",
+        },
+        {
+          name: "go2tv_v2.5.0_linux_amd64.zip",
+          url: "https://github.com/alexballas/go2tv/releases/download/v2.5.0/go2tv_v2.5.0_linux_amd64.zip",
+        },
+      ],
+    };
+    // Without extraAppAssetNames these fail isAppAsset and throw.
+    await expect(
+      collectCaskAppReleasePayload(go2tvRepo, go2tvRelease),
+    ).rejects.toThrow(/No \.dmg or macOS \.zip assets/);
+
+    const payload = await collectCaskAppReleasePayload(go2tvRepo, go2tvRelease, {
+      extraAppAssetNames: [
+        "go2tv_v2.5.0_macOS_arm64.zip",
+        "go2tv_v2.5.0_macOS_amd64.zip",
+      ],
+      appName: "go2tv.app",
+    });
+    expect(payload.template).toBe("cask_app_release");
+    expect(payload.name).toBe("go2tv");
+    expect(payload.appName).toBe("go2tv.app");
+    expect(payload.url).toMatch(/macOS_(arm64|amd64)\.zip/);
+    expect(payload.version).toBe("2.5.0");
   });
 });
 

@@ -264,6 +264,19 @@ export async function collectBinaryReleasePayload(
         hashes[arch] = { url: asset.url, sha256: dl.sha256, name: asset.name };
         try {
           const members = await listArchiveMembersFromPath(dl.path);
+          // Arch-tagged macOS zips are often classified as CLI binaries by filename
+          // heuristics, but some (go2tv_v*_macOS_arm64.zip) ship a .app bundle.
+          // Refuse to emit a broken formula; callers should route to cask-app-release.
+          const appInArchive = members.find(
+            (m) => /\.app\/?$/i.test(m) || /\.app\//i.test(m),
+          );
+          if (appInArchive) {
+            const appMatch = String(appInArchive).match(/([^/]+\.app)/i);
+            const appLabel = appMatch?.[1] || appInArchive;
+            throw new Error(
+              `Archive ${asset.name} contains macOS app bundle ${appLabel}; use cask-app-release instead of binary-release`,
+            );
+          }
           const picked = pickArchiveEntrypoint(members, name, options);
           if (picked) {
             let src = picked.sourcePath;
@@ -284,7 +297,14 @@ export async function collectBinaryReleasePayload(
             archiveEntrypoint = src;
             archiveBinName = picked.binName;
           }
-        } catch {
+        } catch (err: any) {
+          // Re-throw intentional app-bundle refusals; swallow listing failures.
+          if (
+            err?.message &&
+            /contains macOS app bundle|use cask-app-release/i.test(err.message)
+          ) {
+            throw err;
+          }
           // Fall back to formula-name install if listing fails.
         }
       } finally {

@@ -118,6 +118,35 @@ const SECONDARY_APP_NAME_RE =
   /^(Updater|Metadata|Uninstaller?|Uninstall|Helper|Agent|Service|CLI|crashpad_handler|Sparkle|Autosave)(\.app)?$/i;
 
 /**
+ * Detect a macOS .app bundle from zip/tar member listings (no extract needed).
+ * Returns the bundle basename (e.g. "go2tv.app") or null.
+ * Handles top-level `Foo.app/` dirs and nested `Foo.app/Contents/...` paths.
+ */
+export function findAppBundleNameInMembers(members: string[]): string | null {
+  if (!Array.isArray(members) || members.length === 0) return null;
+  const normalized = members
+    .map((m) => String(m || "").replace(/\\/g, "/").replace(/^\.\//, "").trim())
+    .filter((m) => m && !m.includes("__MACOSX"));
+
+  // Prefer explicit .app directory entries
+  for (const m of normalized) {
+    if (/\.app\/?$/i.test(m)) {
+      const base = m.replace(/\/$/, "").split("/").pop();
+      if (base && !SECONDARY_APP_NAME_RE.test(base)) return base;
+    }
+  }
+
+  // Nested files under Foo.app/Contents/...
+  for (const m of normalized) {
+    const match = m.match(/(?:^|\/)([^/]+\.app)\//i);
+    if (match?.[1] && !SECONDARY_APP_NAME_RE.test(match[1])) {
+      return match[1];
+    }
+  }
+  return null;
+}
+
+/**
  * Choose the primary macOS app bundle among Info.plist paths.
  * Prefer shallow top-level bundles; skip Updater/Metadata/helper names.
  */

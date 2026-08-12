@@ -9,6 +9,7 @@ import {
   listDmgAppNames,
   listZipEntries,
   pickPrimaryAppBundleName,
+  findAppBundleNameInMembers,
 } from "../../lib/archive-inspector.ts";
 
 const execFileAsync = promisify(execFile);
@@ -93,6 +94,51 @@ describe("pickPrimaryAppBundleName", () => {
       "Foo.app/Contents/Info.plist",
     ];
     expect(pickPrimaryAppBundleName(paths)).toBe("Foo.app");
+  });
+});
+
+describe("findAppBundleNameInMembers", () => {
+  it("detects top-level .app dir entries (go2tv-style zip listing)", () => {
+    const members = [
+      "go2tv.app/",
+      "go2tv.app/Contents/",
+      "go2tv.app/Contents/MacOS/go2tv",
+      "go2tv.app/Contents/Info.plist",
+      "LICENSE",
+      "README.md",
+    ];
+    expect(findAppBundleNameInMembers(members)).toBe("go2tv.app");
+  });
+
+  it("detects nested .app/Contents paths without a bare .app/ entry", () => {
+    expect(
+      findAppBundleNameInMembers([
+        "go2tv.app/Contents/MacOS/go2tv",
+        "go2tv.app/Contents/Info.plist",
+        "LICENSE",
+      ]),
+    ).toBe("go2tv.app");
+  });
+
+  it("returns null for CLI binary archives", () => {
+    expect(
+      findAppBundleNameInMembers([
+        "gogs",
+        "LICENSE",
+        "README.md",
+        "templates/home.tmpl",
+      ]),
+    ).toBeNull();
+  });
+
+  it("skips secondary helper app names when a product app is present", () => {
+    expect(
+      findAppBundleNameInMembers([
+        "Updater.app/",
+        "go2tv.app/",
+        "go2tv.app/Contents/Info.plist",
+      ]),
+    ).toBe("go2tv.app");
   });
 });
 

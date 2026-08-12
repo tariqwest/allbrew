@@ -25,7 +25,12 @@ import {
   detectServiceConfig,
   detectServiceConfigFromFiles,
 } from "./analyzer.ts";
-import { inspectArchive } from "./archive-inspector.ts";
+import {
+  inspectArchive,
+  findAppBundleNameInMembers,
+  listZipEntries,
+  listArchiveEntries,
+} from "./archive-inspector.ts";
 import {
   matchAssetToArch,
   isAppAsset,
@@ -36,6 +41,7 @@ import {
   toFormulaName,
   toCaskToken,
 } from "./utils.ts";
+import { downloadToTemp } from "./sha256.ts";
 import { buildManifest } from "./build-manifest.ts";
 import { saveManifest } from "./manifest.ts";
 import type { GeneratorName } from "./manifest.ts";
@@ -1010,6 +1016,68 @@ async function handleGithubRepo(classification, opts) {
     }
 
     if (binAssets.length > 0) {
+      // Filename heuristics treat arch-tagged darwin/macos zips as CLI binaries
+      // (gogs_*_darwin_amd64.zip). Some desktop apps reuse that naming while
+      // shipping a real .app (go2tv_v*_macOS_arm64.zip). Peek one macOS zip
+      // before committing to binary-release.
+      const macZipBins = binAssets.filter((a) => {
+        const lower = String(a.name || "").toLowerCase();
+        if (!lower.endsWith(".zip") && !lower.endsWith(".tar.gz") && !lower.endsWith(".tgz")) {
+          return false;
+        }
+        const arch = matchAssetToArch(a.name);
+        return (
+          arch === "macosArm" ||
+          arch === "macosIntel" ||
+          arch === "macosUniversal"
+        );
+      });
+      if (appAssets.length === 0 && macZipBins.length > 0) {
+        const peekAsset =
+          macZipBins.find((a) => matchAssetToArch(a.name) === "macosArm") ||
+          macZipBins.find((a) => matchAssetToArch(a.name) === "macosUniversal") ||
+          macZipBins[0];
+        try {
+          const dl = await downloadToTemp(peekAsset.url, peekAsset.name);
+          try {
+            const lower = String(peekAsset.name || "").toLowerCase();
+            const members = lower.endsWith(".zip")
+              ? await listZipEntries(dl.path)
+              : await listArchiveEntries(dl.path);
+            const appName = findAppBundleNameInMembers(members);
+            if (appName) {
+              console.log(
+                `  Detected ${chalk.cyan("macOS app")} inside ${chalk.bold(peekAsset.name)}: ${appName}`,
+              );
+              console.log(
+                chalk.dim(
+                  `  (filename looked like a CLI zip; content peek found .app — generating cask)`,
+                ),
+              );
+              return await generateWithConfirmation(
+                "cask-app-release",
+                { repoInfo, release },
+                {
+                  ...opts,
+                  appName,
+                  extraAppAssetNames: macZipBins.map((a) => a.name),
+                },
+              );
+            }
+          } finally {
+            await dl.cleanup();
+          }
+        } catch (err: any) {
+          if (opts.verbose) {
+            console.log(
+              chalk.dim(
+                `  macOS zip content peek failed: ${err?.message || err}; continuing as binary-release`,
+              ),
+            );
+          }
+        }
+      }
+
       console.log(
         `  Detected ${chalk.cyan("binary")} assets: ${binAssets.map((a) => a.name).join(", ")}`,
       );
