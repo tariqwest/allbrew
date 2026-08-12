@@ -454,7 +454,7 @@ BIN_OK=0
 PREFIX=$(brew --prefix "$NAME" 2>/dev/null || true)
 if [ -n "$PREFIX" ] && [ -x "$PREFIX/libexec/bin/python" ]; then
   MOD=$(echo "$NAME" | tr '-' '_')
-  if perl -e "alarm 30; exec @ARGV" "$PREFIX/libexec/bin/python" -c "import ${MOD}; print(getattr(${MOD}, '__version__', 'ok'))" >/tmp/ab-bin-out 2>&1; then
+  if perl -e "alarm 30; exec @ARGV" "$PREFIX/libexec/bin/python" -c "import ${"$"}{MOD}; print(getattr(${"$"}{MOD}, '__version__', 'ok'))" >/tmp/ab-bin-out 2>&1; then
     echo BIN_OK; BIN_OK=1; echo IMPORT_OK; echo "IMPORT_MOD=$MOD"; head -5 /tmp/ab-bin-out
   else
     echo IMPORT_EARLY_FAIL; head -10 /tmp/ab-bin-out 2>/dev/null || true
