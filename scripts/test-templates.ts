@@ -263,7 +263,7 @@ function buildCargoPackageCase(): Case {
     licenseLine: '  license "MIT"\n',
     urlLines: '  url "https://example.com/foo-1.0.tar.gz"\n  sha256 "cc"\n',
     livecheckBlock: livecheck,
-    cargoInstallArgs: "*std_cargo_args",
+    cargoInstallArgs: '*std_cargo_args.reject { |arg| arg == "--locked" }',
     allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
@@ -279,7 +279,7 @@ function buildCargoPackageCase(): Case {
     livecheck +
     `  depends_on "rust" => :build\n\n` +
     `  def install\n` +
-    `    system "cargo", "install", *std_cargo_args\n` +
+    `    system "cargo", "install", *std_cargo_args.reject { |arg| arg == "--locked" }\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +

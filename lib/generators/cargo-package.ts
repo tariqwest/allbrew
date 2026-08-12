@@ -74,15 +74,24 @@ export function isCargoWorkspaceRoot(
   );
 }
 
-/** Ruby fragment for `system "cargo", "install", …`. */
+/**
+ * Ruby fragment for `system "cargo", "install", …`.
+ *
+ * Homebrew's `std_cargo_args` always injects `--locked`. That is correct for
+ * well-maintained crates, but many GitHub-sourced tools ship an outdated
+ * Cargo.lock that pins transitive crates broken on modern rustc (e.g. gobang
+ * → num-bigint 0.3.2 + `div_ceil` receiver change). Drop only `--locked` so
+ * cargo can re-resolve while still using jobs/root/path from std_cargo_args.
+ */
 export function cargoStdInstallArgs(installPath?: string | null): string {
   const p = (installPath || "").trim().replace(/^\.\//, "");
-  if (!p || p === ".") return "*std_cargo_args";
+  const rejectLocked = '.reject { |arg| arg == "--locked" }';
+  if (!p || p === ".") return `*std_cargo_args${rejectLocked}`;
   // Keep path as a simple relative string; reject traversal.
   if (p.includes("..") || p.startsWith("/") || /["'\\]/.test(p)) {
-    return "*std_cargo_args";
+    return `*std_cargo_args${rejectLocked}`;
   }
-  return `*std_cargo_args(path: ${rubyString(p)})`;
+  return `*std_cargo_args(path: ${rubyString(p)})${rejectLocked}`;
 }
 
 export type CratesIoCrateMeta = {

@@ -47,7 +47,7 @@ export type CargoPackagePayload = FormulaCommonFields & {
   licenseLine: string;
   urlLines: string;
   livecheckBlock: string;
-  /** Pre-rendered `*std_cargo_args` or `*std_cargo_args(path: "…")` fragment. */
+  /** Pre-rendered `*std_cargo_args…` fragment (may `.reject` `--locked`). */
   cargoInstallArgs: string;
 };
 

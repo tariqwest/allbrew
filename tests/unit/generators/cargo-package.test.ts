@@ -67,9 +67,11 @@ describe("collectCargoPackagePayload", () => {
     expect(payload.name).toBe("managarr-cli");
   });
 
-  it("defaults cargoInstallArgs to *std_cargo_args", async () => {
+  it("defaults cargoInstallArgs to *std_cargo_args without --locked", async () => {
     const payload = await collectCargoPackagePayload(repoInfo, release);
-    expect(payload.cargoInstallArgs).toBe("*std_cargo_args");
+    expect(payload.cargoInstallArgs).toBe(
+      '*std_cargo_args.reject { |arg| arg == "--locked" }',
+    );
   });
 
   it("renders std_cargo_args path for workspace member installs", async () => {
@@ -77,6 +79,7 @@ describe("collectCargoPackagePayload", () => {
       cargoPath: "crates/all-in-one",
     });
     expect(payload.cargoInstallArgs).toContain('path: "crates/all-in-one"');
+    expect(payload.cargoInstallArgs).toContain('.reject { |arg| arg == "--locked" }');
   });
 
   it("includes head reference to default branch", async () => {
@@ -291,8 +294,10 @@ describe("cargo toml helpers", () => {
       "crates/all-in-one",
     ]);
     expect(cargoStdInstallArgs("crates/all-in-one")).toBe(
-      '*std_cargo_args(path: "crates/all-in-one")',
+      '*std_cargo_args(path: "crates/all-in-one").reject { |arg| arg == "--locked" }',
     );
-    expect(cargoStdInstallArgs(".")).toBe("*std_cargo_args");
+    expect(cargoStdInstallArgs(".")).toBe(
+      '*std_cargo_args.reject { |arg| arg == "--locked" }',
+    );
   });
 });

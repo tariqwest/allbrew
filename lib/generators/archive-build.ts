@@ -126,7 +126,7 @@ function getInstallCommands(buildInfo: any) {
       }
 
     case "cargo":
-      return `    system "cargo", "install", *std_cargo_args\n`;
+      return `    system "cargo", "install", *std_cargo_args.reject { |arg| arg == "--locked" }\n`;
 
     case "go":
       return `    system "go", "build", *std_go_args(ldflags: "-s -w")\n`;
