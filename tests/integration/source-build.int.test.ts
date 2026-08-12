@@ -56,7 +56,7 @@ describe.concurrent("source-build integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class AuthsecBridge < Formula");
-    expect(ruby).toContain("include Language::Python::Virtualenv");
+    expect(ruby).toContain("preserve_rpath");
     expect(ruby).toContain('depends_on "python@3.12"');
     expect(ruby).not.toContain('=> :build');
     expect(ruby).toContain('virtualenv_create(libexec, "python3.12")');
@@ -190,7 +190,7 @@ describe.concurrent("source-build integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class OpenNotebook < Formula");
-    expect(ruby).toContain("include Language::Python::Virtualenv");
+    expect(ruby).toContain("preserve_rpath");
     expect(ruby).toContain('depends_on "python@3.12"');
     expect(ruby).toContain('head "https://github.com/lfnovo/open-notebook.git"');
   });
@@ -274,7 +274,7 @@ describe.concurrent("source-build integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class TraeAgent < Formula");
-    expect(ruby).toContain("include Language::Python::Virtualenv");
+    expect(ruby).toContain("preserve_rpath");
     expect(ruby).toContain('depends_on "python@3.12"');
     expect(ruby).toContain('head "https://github.com/bytedance/trae-agent.git"');
     expect(ruby).toContain('virtualenv_create(libexec, "python3.12")');

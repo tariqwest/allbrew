@@ -1,8 +1,12 @@
 import type { SourceBuildPayload } from "../../template-payload.ts";
 
 export default function renderSourceBuild(p: SourceBuildPayload): string {
-  const pythonInclude = p.isPython ? "\n  include Language::Python::Virtualenv\n" : "";
-  return `class ${p.className} < Formula${pythonInclude}
+  // stdlib venv install no longer needs Virtualenv module, but preserve_rpath is
+  // required for native wheels (jiter/pydantic-core) under libexec.
+  const pythonBits = p.isPython
+    ? "\n  # Native wheels (jiter, pydantic-core, …) ship @rpath dylib IDs; preserve them.\n  preserve_rpath\n"
+    : "";
+  return `class ${p.className} < Formula${pythonBits}
   desc "${p.desc}"
   homepage "${p.homepage}"
 ${p.licenseLine}${p.urlLines}  head "https://github.com/${p.fullName}.git", branch: "${p.defaultBranch}"
