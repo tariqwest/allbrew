@@ -251,6 +251,70 @@ describe("collectBinaryReleasePayload", () => {
     expect(payload.installBody).toContain('bin.install bin_path => "afm"');
     expect(payload.serviceBlock).toBe("");
   });
+
+  it("prefers primary formula asset over -cli companion when both share arch (gokapi)", async () => {
+    // Gokapi v2.2.4 ships gokapi-* server zips and gokapi-cli-* companion zips.
+    // Last-wins per-arch selection previously picked gokapi-cli (listed later).
+    const multiProductRelease = {
+      tagName: "v2.2.4",
+      assets: [
+        {
+          name: "gokapi-2.2.4_darwin-amd64.zip",
+          url: "https://github.com/Forceu/Gokapi/releases/download/v2.2.4/gokapi-2.2.4_darwin-amd64.zip",
+        },
+        {
+          name: "gokapi-2.2.4_darwin-arm64.zip",
+          url: "https://github.com/Forceu/Gokapi/releases/download/v2.2.4/gokapi-2.2.4_darwin-arm64.zip",
+        },
+        {
+          name: "gokapi-2.2.4_linux-amd64.zip",
+          url: "https://github.com/Forceu/Gokapi/releases/download/v2.2.4/gokapi-2.2.4_linux-amd64.zip",
+        },
+        {
+          name: "gokapi-2.2.4_linux-arm64.zip",
+          url: "https://github.com/Forceu/Gokapi/releases/download/v2.2.4/gokapi-2.2.4_linux-arm64.zip",
+        },
+        // Companion CLI listed AFTER primary — must not win.
+        {
+          name: "gokapi-cli-1.1.3_darwin-amd64.zip",
+          url: "https://github.com/Forceu/Gokapi/releases/download/v2.2.4/gokapi-cli-1.1.3_darwin-amd64.zip",
+        },
+        {
+          name: "gokapi-cli-1.1.3_darwin-arm64.zip",
+          url: "https://github.com/Forceu/Gokapi/releases/download/v2.2.4/gokapi-cli-1.1.3_darwin-arm64.zip",
+        },
+        {
+          name: "gokapi-cli-1.1.3_linux-amd64.zip",
+          url: "https://github.com/Forceu/Gokapi/releases/download/v2.2.4/gokapi-cli-1.1.3_linux-amd64.zip",
+        },
+        {
+          name: "gokapi-cli-1.1.3_linux-arm64.zip",
+          url: "https://github.com/Forceu/Gokapi/releases/download/v2.2.4/gokapi-cli-1.1.3_linux-arm64.zip",
+        },
+      ],
+    };
+    const gokapiRepo = {
+      name: "Gokapi",
+      fullName: "Forceu/Gokapi",
+      description:
+        "Lightweight selfhosted Firefox Send alternative without public upload. AWS S3 supported.",
+      homepage: "https://github.com/Forceu/Gokapi",
+      htmlUrl: "https://github.com/Forceu/Gokapi",
+      license: "AGPL-3.0",
+      defaultBranch: "master",
+    };
+    const payload = await collectBinaryReleasePayload(
+      gokapiRepo,
+      multiProductRelease,
+      { name: "gokapi" },
+    );
+    expect(payload.template).toBe("binary_release");
+    expect(payload.version).toBe("2.2.4");
+    expect(payload.platformBlocks).toContain("gokapi-#{version}_darwin-arm64.zip");
+    expect(payload.platformBlocks).toContain("gokapi-#{version}_darwin-amd64.zip");
+    expect(payload.platformBlocks).not.toContain("gokapi-cli");
+    expect(payload.platformBlocks).not.toContain("1.1.3");
+  });
 });
 
 
