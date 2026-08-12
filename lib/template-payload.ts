@@ -195,6 +195,12 @@ export type GemPackagePayload = FormulaCommonFields & {
   licenseLine: string;
   urlLines: string;
   livecheckBlock: string;
+  /**
+   * Pre-rendered install-method lines that symlink the gem executable to the
+   * hyphenated formula token when they differ (e.g. license_finder → license-finder).
+   * Empty string when primary bin already matches the formula name.
+   */
+  binAliasBlock: string;
 };
 
 export type MintPackagePayload = FormulaCommonFields & {

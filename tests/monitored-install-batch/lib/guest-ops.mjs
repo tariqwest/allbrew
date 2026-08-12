@@ -292,8 +292,10 @@ URL=${JSON.stringify(url)}
 NAME=${JSON.stringify(slug)}
 SRC=${JSON.stringify(src)}
 if [ ! -f "$SRC/bin/allbrew.ts" ]; then echo "SRC_MISSING $SRC" >&2; exit 2; fi
-# Prefer running the synced source directly (unreleased patch) over the bottled allbrew
-bun --cwd "$SRC" run bin/allbrew.ts "$URL" --name "$NAME" --verbose >"$LOG" 2>&1
+# Prefer running the synced source directly (unreleased patch) over the bottled allbrew.
+# Use "bun ./bin/allbrew.ts" (not "bun run bin/allbrew.ts"): modern Bun treats bare
+# "run <path>" as a package.json script name and prints help instead of executing the file.
+bun --cwd "$SRC" ./bin/allbrew.ts "$URL" --name "$NAME" --verbose >"$LOG" 2>&1
 EC=$?
 echo EXIT_CODE=$EC | tee -a "$LOG"
 exit 0
@@ -320,16 +322,25 @@ export async function syncAllbrewSrcToVM(h, hostSrcPath, vmDest) {
   const remoteUrlRes = await h.execHost(`git -C ${hostQ} remote get-url origin 2>/dev/null || echo https://github.com/tariqwest/allbrew.git`, { nothrow: true });
   const remoteUrl = (remoteUrlRes.stdout || "https://github.com/tariqwest/allbrew.git").trim();
 
+  // lumeSshExec runs as user "lume"; the workspace under /Users/th-allbrew is
+  // owned by the project user. Always re-exec the sync as the project user so
+  // git fetch can write .git/FETCH_HEAD (otherwise: Permission denied).
+  const projectUser = h.config?.projectUser || process.env.TH_PROJECT_USER || "th-allbrew";
   const script = [
     "#!/bin/bash",
     "set -euo pipefail",
+    `PROJECT_USER=${h.q(projectUser)}`,
+    `if [ "$(id -un)" != "$PROJECT_USER" ] && command -v sudo >/dev/null 2>&1; then`,
+    `  exec sudo -u "$PROJECT_USER" -H bash "$0" "$@"`,
+    `fi`,
     `SRC=${destQ}`,
     `BRANCH=${h.q(effectiveBranch)}`,
     `REMOTE=${h.q(remoteUrl)}`,
-    `echo "[sync-src] branch=$BRANCH remote=$REMOTE dest=$SRC"`,
+    `echo "[sync-src] user=$(id -un) branch=$BRANCH remote=$REMOTE dest=$SRC"`,
     `if [ -d "$SRC/.git" ]; then`,
     `  echo "[sync-src] existing git repo, fetching branch"`,
-    `  git -C "$SRC" remote set-url origin "$REMOTE" 2>/dev/null || git -C "$SRC" remote add origin "$REMOTE"`,
+    `  git -C "$SRC" config remote.origin.url "$REMOTE" 2>/dev/null || true
+    if ! git -C "$SRC" remote get-url origin >/dev/null 2>&1; then git -C "$SRC" remote add origin "$REMOTE" || true; fi`,
     `  git -C "$SRC" fetch origin "$BRANCH" --depth 1 2>&1 || git -C "$SRC" fetch origin --depth 1 2>&1`,
     `  git -C "$SRC" checkout -B "$BRANCH" "origin/$BRANCH" 2>&1 || git -C "$SRC" checkout "$BRANCH" 2>&1 || true`,
     `  git -C "$SRC" reset --hard "origin/$BRANCH" 2>&1 || true`,

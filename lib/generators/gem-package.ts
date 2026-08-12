@@ -39,11 +39,22 @@ export async function collectGemPackagePayload(
 
   const urlLines = `  url ${rubyString(downloadUrl)}\n  sha256 ${rubyString(sha256)}\n  version ${rubyString(version)}\n`;
 
+  // Gem executables usually match the gem name (underscores), not the
+  // hyphenated Homebrew formula token (e.g. license_finder vs license-finder).
+  const primaryBin = options.binName || gemName || name;
+  // When formula token ≠ gem bin (underscore/hyphen), also expose formula name
+  // so `brew install license-finder` ⇒ `license-finder --version` works for users
+  // and for batch strictVerify (command -v $formulaName).
+  const binAliasBlock =
+    primaryBin && name && primaryBin !== name
+      ? `    bin.install_symlink ${rubyString(primaryBin)} => ${rubyString(name)} if (bin/${rubyString(primaryBin)}).exist?\n`
+      : "";
+
   return {
     template: "gem_package",
     name,
     className,
-    desc: rubyEscape(desc),
+    desc: rubyEscape(collapseDescWhitespace(desc)),
     homepage: rubyEscape(homepage),
     gemName: rubyString(gemName),
     version: rubyEscape(version),
@@ -51,11 +62,17 @@ export async function collectGemPackagePayload(
     urlLines,
     livecheckBlock: rubyGemsLivecheckBlock(gemName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    // Gem executables usually match the gem name (underscores), not the
-    // hyphenated Homebrew formula token (e.g. license_finder vs license-finder).
-    testBinName: rubyEscape(options.binName || gemName || name),
+    testBinName: rubyEscape(primaryBin),
+    binAliasBlock,
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
+}
+
+/** Collapse RubyGems multi-line indented `info` into a single-line formula desc. */
+function collapseDescWhitespace(text: string): string {
+  return String(text || "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export async function generateGemPackage(
