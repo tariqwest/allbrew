@@ -134,10 +134,16 @@ function getInstallBlock(system: string) {
       // Install WITH deps. `--no-deps` left packages unusable (missing runtime
       // imports) and is only appropriate when resource stanzas supply every dep
       // (pip-package generator). source-build has no resource graph.
+      // Do NOT symlink the entire venv bin/ (python/pip/wheel) — that collides
+      // with homebrew's python@3.x kegs on `brew link`. Only package scripts.
       return (
         `    venv = virtualenv_create(libexec, "python3.13")\n` +
         `    system libexec/"bin/pip", "install", "-v", "--ignore-installed", "."\n` +
-        `    bin.install_symlink Dir["#{libexec}/bin/*"]\n`
+        `    Dir[libexec/"bin/*"].each do |exe|\n` +
+        `      bn = File.basename(exe)\n` +
+        `      next if bn.match?(/\\A(?:python|pip|wheel|𝜋thon)/i)\n` +
+        `      bin.install_symlink exe\n` +
+        `    end\n`
       );
     default:
       return `    system "make", "PREFIX=#{prefix}", "install"\n`;

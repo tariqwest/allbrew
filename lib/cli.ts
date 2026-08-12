@@ -2152,7 +2152,7 @@ async function brewAutoInstall(result: any, opts: any) {
     await execFileAsync(
       "brew",
       ["install", ...headFlag, installFlag, result.filePath],
-      { env: installEnv },
+      { env: installEnv, maxBuffer: 32 * 1024 * 1024, encoding: "utf8" },
     );
     installSpinner.succeed(`Installed: ${chalk.green(result.name)}`);
 
@@ -2163,9 +2163,13 @@ async function brewAutoInstall(result: any, opts: any) {
     }
   } catch (err: any) {
     installSpinner.fail(`brew install failed: ${err.message}`);
-    const stderr = String(err?.stderr || err?.stdout || "").trim();
-    if (stderr) {
-      const tail = stderr.split("\n").slice(-40).join("\n");
+    const combined = [err?.stdout, err?.stderr]
+      .map((x) => (x == null ? "" : String(x)))
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+    if (combined) {
+      const tail = combined.split("\n").slice(-80).join("\n");
       console.log(chalk.dim(tail));
     }
     console.log(

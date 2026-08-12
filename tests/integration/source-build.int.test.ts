@@ -65,6 +65,8 @@ describe.concurrent("source-build integration", () => {
     expect(ruby).toContain('virtualenv_create(libexec, "python3.13")');
     expect(ruby).toContain('system libexec/"bin/pip", "install", "-v", "--ignore-installed", "."');
     expect(ruby).not.toContain("--no-deps");
+    expect(ruby).toContain('Dir[libexec/"bin/*"].each do |exe|');
+    expect(ruby).not.toContain('bin.install_symlink Dir["#{libexec}/bin/*"]');
   });
 
   it("slides: payload fields are well-formed", async () => {
@@ -284,5 +286,6 @@ describe.concurrent("source-build integration", () => {
     expect(ruby).toContain('virtualenv_create(libexec, "python3.13")');
     expect(ruby).toContain('system libexec/"bin/pip", "install", "-v", "--ignore-installed", "."');
     expect(ruby).not.toContain("--no-deps");
+    expect(ruby).toContain('Dir[libexec/"bin/*"].each do |exe|');
   });
 });
