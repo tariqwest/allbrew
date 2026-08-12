@@ -173,6 +173,46 @@ export function pickReleaseWithAppAssets(
   return null;
 }
 
+/**
+ * Prefer the newest non-draft release that has usable macOS binary assets
+ * (arm64 and/or universal; Intel-only alone is not enough for Apple Silicon).
+ * Used when "latest" has zero/linux-only assets but an older tag still ships
+ * prebuilt CLI archives (e.g. lazyjj v0.6.1 empty → v0.5.0 darwin tarballs).
+ */
+export function pickReleaseWithBinaryAssets(
+  releases: ReturnType<typeof mapRelease>[],
+  opts: {
+    isBinaryAssetFn: (name: string) => boolean;
+    matchAssetToArchFn: (name: string) => string | null;
+  },
+): ReturnType<typeof mapRelease> | null {
+  const { isBinaryAssetFn, matchAssetToArchFn } = opts;
+  const hasUsableMacosBin = (rel: ReturnType<typeof mapRelease>) => {
+    const macBins = (rel.assets || []).filter((a) => {
+      if (!isBinaryAssetFn(a.name)) return false;
+      const arch = matchAssetToArchFn(a.name);
+      return (
+        arch === "macosArm" ||
+        arch === "macosIntel" ||
+        arch === "macosUniversal"
+      );
+    });
+    if (macBins.length === 0) return false;
+    return macBins.some((a) => {
+      const arch = matchAssetToArchFn(a.name);
+      return arch === "macosArm" || arch === "macosUniversal";
+    });
+  };
+  const usable = (releases || []).filter((r) => r && !r.draft);
+  const stable = usable.filter((r) => !r.prerelease);
+  for (const pool of [stable, usable]) {
+    for (const rel of pool) {
+      if (hasUsableMacosBin(rel)) return rel;
+    }
+  }
+  return null;
+}
+
 export async function getReadme(owner, repo) {
   try {
     const { data } = await getOctokit().rest.repos.getReadme({ owner, repo });

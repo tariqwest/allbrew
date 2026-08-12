@@ -14,6 +14,7 @@ import {
   getLatestRelease,
   listReleases,
   pickReleaseWithAppAssets,
+  pickReleaseWithBinaryAssets,
   getReadme,
   getRepoContents,
   getFileContent,
@@ -1018,8 +1019,10 @@ async function handleGithubRepo(classification, opts) {
       );
     }
 
-    // Latest often ships Linux/Windows only (e.g. manuskript 0.17.0) while an
-    // older tag still has osx.dmg — walk recent releases before README/source.
+    // Latest often ships Linux/Windows only (e.g. manuskript 0.17.0) or has an
+    // empty asset list (e.g. lazyjj v0.6.1) while an older tag still has
+    // osx.dmg / aarch64-apple-darwin binaries — walk recent releases before
+    // falling through to README cargo/source (which may be unbuildable).
     try {
       const recent = await listReleases(owner, repo, { perPage: 30 });
       const olderWithApp = pickReleaseWithAppAssets(recent, isAppAsset);
@@ -1037,6 +1040,35 @@ async function handleGithubRepo(classification, opts) {
         return await generateWithConfirmation(
           "cask-app-release",
           { repoInfo, release: olderWithApp },
+          opts,
+        );
+      }
+      const olderWithBin = pickReleaseWithBinaryAssets(recent, {
+        isBinaryAssetFn: isBinaryAsset,
+        matchAssetToArchFn: matchAssetToArch,
+      });
+      if (
+        olderWithBin &&
+        olderWithBin.tagName &&
+        olderWithBin.tagName !== release.tagName
+      ) {
+        const names = olderWithBin.assets
+          .filter((a) => {
+            if (!isBinaryAsset(a.name)) return false;
+            const arch = matchAssetToArch(a.name);
+            return (
+              arch === "macosArm" ||
+              arch === "macosIntel" ||
+              arch === "macosUniversal"
+            );
+          })
+          .map((a) => a.name);
+        console.log(
+          `  Found macOS binary assets on older release ${chalk.bold(olderWithBin.tagName)}: ${names.join(", ")}`,
+        );
+        return await generateWithConfirmation(
+          "binary-release",
+          { repoInfo, release: olderWithBin },
           opts,
         );
       }
@@ -1183,17 +1215,33 @@ async function handleGithubRepo(classification, opts) {
             },
             opts,
           );
-        case "cargo":
+        case "cargo": {
+          // Prefer crates.io when the crate is published: stable .crate artifact
+          // and registry deps (GitHub tags can pin deleted git deps, e.g. lazyjj
+          // v0.6.1 → Cretezy/ansi-to-tui 404). Fall back to GitHub release source.
+          const crateName = opts.crateName || method.package || repoInfo.name;
+          let cratesMeta = null;
+          try {
+            const { fetchCratesIoCrate } = await import(
+              "./generators/cargo-package.ts"
+            );
+            cratesMeta = await fetchCratesIoCrate(crateName);
+          } catch {
+            cratesMeta = null;
+          }
           return await generateWithConfirmation(
             "cargo-package",
             {
               repoInfo,
-              release,
-              crateName: opts.crateName || method.package,
+              release: cratesMeta ? null : release,
+              crateName,
+              cratesMeta,
+              fromCratesIo: Boolean(cratesMeta),
               serviceConfig: serviceConfigFromReadme,
             },
             opts,
           );
+        }
         case "go":
           return await generateWithConfirmation(
             "go-package",
@@ -1906,6 +1954,8 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
         ...mergedOpts,
         crateName: params.crateName || mergedOpts.crateName,
         cargoPath: params.cargoPath || mergedOpts.cargoPath,
+        cratesMeta: params.cratesMeta || mergedOpts.cratesMeta,
+        fromCratesIo: params.fromCratesIo ?? mergedOpts.fromCratesIo,
       });
       break;
     }

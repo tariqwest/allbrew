@@ -273,9 +273,15 @@ export async function collectCargoPackagePayload(
 
   let urlLines = "";
   if (release) {
+    // Prefer stable archive/refs/tags URLs over api.github.com tarball URLs
+    // (API tarballs can change compression / require auth; Homebrew style).
+    const ghName = fullName || repoInfo.fullName;
     const sourceUrl =
+      (release.tagName && ghName
+        ? `https://github.com/${ghName}/archive/refs/tags/${release.tagName}.tar.gz`
+        : null) ||
       release.tarballUrl ||
-      `https://github.com/${fullName || repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
+      `https://github.com/${ghName}/archive/refs/tags/${release.tagName}.tar.gz`;
     const sha256 = await hashUrl(sourceUrl);
     urlLines = `  url ${rubyString(sourceUrl)}\n  sha256 ${rubyString(sha256)}\n`;
   } else if (cratesMeta) {
