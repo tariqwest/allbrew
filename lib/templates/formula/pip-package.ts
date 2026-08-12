@@ -9,7 +9,7 @@ export default function renderPipPackage(p: PipPackagePayload): string {
   url "${p.url}"
   sha256 "${p.sha256}"
 ${p.licenseLine}
-${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "python@3.13"
+${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "${p.pythonDependsOn ?? "python@3.13"}"
 
   # Native wheels (jiter, pydantic-core, …) ship dylib IDs like
   # @rpath/foo.so. Homebrew's fix_dynamic_linkage expands those to long
@@ -17,7 +17,7 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
   preserve_rpath
 
 ${p.resourcesBlock}  def install
-    venv = virtualenv_create(libexec, "python3.13")
+    venv = virtualenv_create(libexec, "${p.pythonVenvBinary ?? "python3.13"}")
     # Homebrew python@3.13 venvs may inherit system site-packages. Isolate so
     # formula resources cannot resolve against /opt/homebrew/lib/python*.
     pyvenv_cfg = libexec/"pyvenv.cfg"

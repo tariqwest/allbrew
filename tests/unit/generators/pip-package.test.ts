@@ -970,3 +970,92 @@ describe("collectPipPackagePayload — dependency extras expansion", () => {
   });
 });
 
+
+describe("pynastran pins (python@3.12 + bin bdf + import)", () => {
+  it("KNOWN maps pynastran bin and formula python", async () => {
+    const { KNOWN_BIN_NAMES, KNOWN_FORMULA_PYTHON, KNOWN_PYTHON_IMPORT_VERSION_TEST } =
+      await import("../../../lib/generators/pip-package.ts");
+    expect(KNOWN_BIN_NAMES.pynastran).toBe("bdf");
+    expect(KNOWN_FORMULA_PYTHON.pynastran).toEqual({ major: 3, minor: 12 });
+    expect(KNOWN_PYTHON_IMPORT_VERSION_TEST.pynastran).toBe("pyNastran");
+  });
+
+  it("collectPipPackagePayload pins pynastran to python@3.12 and bin bdf", async () => {
+    const pynJson = {
+      info: {
+        name: "pyNastran",
+        version: "1.4.1",
+        summary: "Nastran BDF reader",
+        home_page: null,
+        project_url: "https://pypi.org/project/pyNastran/",
+        license: "BSD",
+        requires_python: ">=3.9",
+        requires_dist: ["numpy <2", "scipy <2", "matplotlib", "cpylog >=1.4.0", "docopt-ng >=0.9.0", "colorama"],
+      },
+      urls: [
+        {
+          packagetype: "bdist_wheel",
+          filename: "pyNastran-1.4.1-py3-none-any.whl",
+          url: "https://files.pythonhosted.org/packages/xx/pyNastran-1.4.1-py3-none-any.whl",
+          digests: { sha256: "aa".repeat(32) },
+          yanked: false,
+        },
+      ],
+      releases: {},
+    };
+    const depJson = (name: string, version: string, filename: string) => ({
+      info: { name, version, summary: name, requires_dist: [] },
+      urls: [
+        {
+          packagetype: filename.endsWith(".whl") ? "bdist_wheel" : "sdist",
+          filename,
+          url: `https://files.pythonhosted.org/packages/xx/${filename}`,
+          digests: { sha256: "bb".repeat(32) },
+          yanked: false,
+        },
+      ],
+      releases: {},
+    });
+
+    global.fetch = mock((url: string) => {
+      const u = String(url);
+      if (/\/pypi\/pyNastran(\/|$)/i.test(u) || /\/pypi\/pynastran(\/|$)/i.test(u)) {
+        return Promise.resolve({ ok: true, json: async () => pynJson });
+      }
+      if (/\/pypi\/numpy(\/|$)/i.test(u)) {
+        return Promise.resolve({
+          ok: true,
+          json: async () =>
+            depJson(
+              "numpy",
+              "1.26.4",
+              "numpy-1.26.4-cp312-cp312-macosx_11_0_arm64.whl",
+            ),
+        });
+      }
+      if (/\/pypi\/scipy(\/|$)/i.test(u)) {
+        return Promise.resolve({
+          ok: true,
+          json: async () =>
+            depJson(
+              "scipy",
+              "1.13.1",
+              "scipy-1.13.1-cp312-cp312-macosx_12_0_arm64.whl",
+            ),
+        });
+      }
+      const m = u.match(/\/pypi\/([^/]+)/);
+      const dep = m ? decodeURIComponent(m[1]) : "dep";
+      return Promise.resolve({
+        ok: true,
+        json: async () => depJson(dep, "1.0.0", `${dep}-1.0.0-py3-none-any.whl`),
+      });
+    }) as any;
+
+    const payload = await collectPipPackagePayload("pyNastran");
+    expect(payload.pythonDependsOn).toBe("python@3.12");
+    expect(payload.pythonVenvBinary).toBe("python3.12");
+    expect(payload.testBinName).toBe("bdf");
+    expect(payload.testDoBody).toContain("import pyNastran");
+  });
+});
