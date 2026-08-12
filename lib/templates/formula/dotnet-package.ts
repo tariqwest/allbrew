@@ -25,8 +25,19 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
            "--version", version.to_s,
            "--add-source", nupkg_dir
 
-    (bin/"${p.testBinName}").write_env_script libexec/"${p.testBinName}",
-                                              DOTNET_ROOT: Formula["dotnet"].opt_libexec
+    tool_bin = libexec/"${p.toolCommand}"
+    target_bin = bin/"${p.testBinName}"
+    if tool_bin.exist?
+      target_bin.write_env_script tool_bin, DOTNET_ROOT: Formula["dotnet"].opt_libexec
+    else
+      installed = Dir[libexec/"*"].find { |f| File.executable?(f) && !File.directory?(f) }
+      if installed
+        target_bin.write_env_script installed, DOTNET_ROOT: Formula["dotnet"].opt_libexec
+      else
+        (bin/"${p.testBinName}").write_env_script libexec/"${p.testBinName}",
+                                                  DOTNET_ROOT: Formula["dotnet"].opt_libexec
+      end
+    end
   end
 
 ${p.serviceBlock}  test do

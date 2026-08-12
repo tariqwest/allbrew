@@ -22,6 +22,8 @@ export async function collectDotnetPackagePayload(
   const downloadUrl = `${nugetBase}/api/v2/package/${encodeURIComponent(packageName)}/${version}`;
   const sha256 = await hashUrl(downloadUrl);
 
+  const toolCommand = await fetchDotnetToolCommand(packageName, version, downloadUrl);
+
   const name = options.name || toFormulaName(packageName);
   const className = toClassName(name);
   const desc =
@@ -36,6 +38,9 @@ export async function collectDotnetPackagePayload(
 
   const urlLines = `  url ${rubyString(downloadUrl)}\n  sha256 ${rubyString(sha256)}\n  version ${rubyString(version)}\n`;
 
+  const testBinName = options.binName || name;
+  const resolvedToolCommand = toolCommand || testBinName;
+
   return {
     template: "dotnet_package",
     name,
@@ -48,7 +53,8 @@ export async function collectDotnetPackagePayload(
     urlLines,
     livecheckBlock: nugetLivecheckBlock(packageName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    testBinName: rubyEscape(options.binName || name),
+    testBinName: rubyEscape(testBinName),
+    toolCommand: rubyEscape(resolvedToolCommand),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
   };
 }
@@ -77,6 +83,23 @@ async function fetchNugetData(packageName: string) {
     throw new Error(`No versions found for ${packageName} on NuGet`);
   }
   return { version: versions[versions.length - 1] };
+}
+
+async function fetchDotnetToolCommand(packageName: string, version: string, downloadUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(downloadUrl, { headers: { "User-Agent": "allbrew/1.0" } });
+    if (!res.ok) return null;
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    const text = new TextDecoder().decode(bytes);
+    const m = text.match(/DotnetToolSettings\.xml[\s\S]*?<Command\s+Name="([^"]+)"/);
+    if (m) return m[1];
+    const m2 = text.match(/<Command\s+Name="([^"]+)"/);
+    if (m2) return m2[1];
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 function nugetLivecheckBlock(packageName: string) {

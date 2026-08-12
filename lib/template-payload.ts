@@ -186,6 +186,7 @@ export type DotnetPackagePayload = FormulaCommonFields & {
   licenseLine: string;
   urlLines: string;
   livecheckBlock: string;
+  toolCommand: string;
 };
 
 export type GemPackagePayload = FormulaCommonFields & {
