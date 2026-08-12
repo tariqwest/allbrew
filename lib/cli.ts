@@ -1197,15 +1197,14 @@ async function handleGithubRepo(classification, opts) {
               `  PyPI identity mismatch for ${pipPkg}: ${identity.reason}; falling back to source-build (python)`,
             ),
           );
-          return await generateWithConfirmation(
-            "source-build",
-            {
-              repoInfo,
-              release,
-              buildSystem: { system: "python" },
-              serviceConfig: serviceConfigFromReadme,
-            },
+          return await generatePythonSourceBuildFallback(
+            owner,
+            repo,
+            repoInfo,
+            release,
+            serviceConfigFromReadme,
             opts,
+            identity.reason,
           );
         }
         case "cargo":
@@ -1465,15 +1464,14 @@ async function handleGithubRepo(classification, opts) {
             `  PyPI identity mismatch for ${pipPkg}: ${identity.reason}; falling back to source-build (python)`,
           ),
         );
-        return await generateWithConfirmation(
-          "source-build",
-          {
-            repoInfo,
-            release,
-            buildSystem: { system: "python" },
-            serviceConfig,
-          },
+        return await generatePythonSourceBuildFallback(
+          owner,
+          repo,
+          repoInfo,
+          release,
+          serviceConfig,
           opts,
+          identity.reason,
         );
       }
       case "cargo": {
@@ -2296,6 +2294,47 @@ async function resolvePipGithubOrFallback(
     packageName,
     reason: identity.reason,
   };
+}
+
+/** source-build (python) after a PyPI identity mismatch, honouring requires-python. */
+async function generatePythonSourceBuildFallback(
+  owner: string,
+  repo: string,
+  repoInfo: any,
+  release: any,
+  serviceConfig: any,
+  opts: any,
+  reason: string,
+) {
+  const {
+    parseRequiresPythonFromPyproject,
+    selectHomebrewPythonFormula,
+  } = await import("./generators/source-build.ts");
+  let requiresPython: string | null = null;
+  try {
+    const pyproject = await getFileContent(owner, repo, "pyproject.toml");
+    requiresPython = parseRequiresPythonFromPyproject(pyproject);
+  } catch {
+    /* optional */
+  }
+  const pythonFormula = selectHomebrewPythonFormula(requiresPython);
+  if (requiresPython) {
+    console.log(
+      chalk.dim(
+        `  requires-python=${requiresPython} → ${pythonFormula} (${reason.slice(0, 80)})`,
+      ),
+    );
+  }
+  return await generateWithConfirmation(
+    "source-build",
+    {
+      repoInfo,
+      release,
+      buildSystem: { system: "python", requiresPython },
+      serviceConfig,
+    },
+    { ...opts, requiresPython, pythonFormula },
+  );
 }
 
 async function resolveCargoGithubInstall(
