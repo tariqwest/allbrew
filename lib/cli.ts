@@ -2278,7 +2278,7 @@ async function resolveCargoGithubInstall(
 
   const members = parseCargoWorkspaceMembers(cargoToml);
   const preferred =
-    String(opts.crateName || opts.package || repoInfo?.name || repo || "")
+    String(opts.crateName || opts.package || opts.name || repoInfo?.name || repo || "")
       .toLowerCase()
       .replace(/_/g, "-");
 
@@ -2296,7 +2296,7 @@ async function resolveCargoGithubInstall(
     const norm = pkgName.toLowerCase().replace(/_/g, "-");
     if (norm === preferred || preferred.endsWith(norm) || norm.endsWith(preferred)) {
       return {
-        crateName: opts.crateName || opts.package || pkgName,
+        crateName: opts.crateName || opts.package || opts.name || pkgName,
         cargoPath: member.replace(/\/$/, ""),
       };
     }
@@ -2317,7 +2317,7 @@ async function resolveCargoGithubInstall(
 
   if (fallbackPath) {
     return {
-      crateName: opts.crateName || opts.package || fallbackName || crateName,
+      crateName: opts.crateName || opts.package || opts.name || fallbackName || crateName,
       cargoPath: fallbackPath,
     };
   }
@@ -2332,7 +2332,7 @@ async function resolveCargoGithubInstall(
     const pkgName = parseCargoPackageName(memberToml);
     if (pkgName) {
       return {
-        crateName: opts.crateName || opts.package || pkgName,
+        crateName: opts.crateName || opts.package || opts.name || pkgName,
         cargoPath: member.replace(/\/$/, ""),
       };
     }
