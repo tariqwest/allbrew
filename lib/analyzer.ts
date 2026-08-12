@@ -304,19 +304,27 @@ export function detectServiceConfig(readmeText, packageName = "") {
     /brew\s+services\s+start\s+([^\s;|&\n`]+)/i,
   );
   if (brewServices) {
-    return {
-      command: packageName || brewServices[1],
-      keepAlive: true,
-      confidence: "high",
-      reason: "README documents brew services",
-    };
+    return withSupervisedForeground(
+      {
+        command: packageName || brewServices[1],
+        keepAlive: true,
+        confidence: "high",
+        reason: "README documents brew services",
+      },
+      readmeText,
+      packageName,
+    );
   }
 
   const localWebService = detectLocalWebService(readmeText, packageName);
-  if (localWebService) return localWebService;
+  if (localWebService) {
+    return withSupervisedForeground(localWebService, readmeText, packageName);
+  }
 
   const portBoundService = detectPortBoundPackageService(readmeText, packageName);
-  if (portBoundService) return portBoundService;
+  if (portBoundService) {
+    return withSupervisedForeground(portBoundService, readmeText, packageName);
+  }
 
   if (!SERVICE_HINT_RE.test(readmeText)) return null;
 
@@ -324,12 +332,16 @@ export function detectServiceConfig(readmeText, packageName = "") {
     /launchctl\s+(?:load|bootstrap|start)\b[^\n`]*/i,
   );
   if (launchctl) {
-    return {
-      command: packageName,
-      keepAlive: true,
-      confidence: "medium",
-      reason: "README documents launchctl/launchd usage",
-    };
+    return withSupervisedForeground(
+      {
+        command: packageName,
+        keepAlive: true,
+        confidence: "medium",
+        reason: "README documents launchctl/launchd usage",
+      },
+      readmeText,
+      packageName,
+    );
   }
 
   const commands = [];
@@ -345,16 +357,74 @@ export function detectServiceConfig(readmeText, packageName = "") {
   const preferred = preferPackageCommand(commands, packageName) || commands[0];
   if (!preferred) return null;
 
-  return {
-    command: preferred,
-    keepAlive: true,
-    // Optional `pkg serve`/`server` stays low so non-interactive runs skip it;
-    // brew services / launchctl paths above remain high/medium.
-    confidence: isOptionalDevServeCommand(preferred, packageName)
-      ? "low"
-      : "medium",
-    reason: "README contains service/daemon wording",
-  };
+  return withSupervisedForeground(
+    {
+      command: preferred,
+      keepAlive: true,
+      // Optional `pkg serve`/`server` stays low so non-interactive runs skip it;
+      // brew services / launchctl paths above remain high/medium.
+      confidence: isOptionalDevServeCommand(preferred, packageName)
+        ? "low"
+        : "medium",
+      reason: "README contains service/daemon wording",
+    },
+    readmeText,
+    packageName,
+  );
+}
+
+/**
+ * Daemons that fork into the background by default need a foreground flag for
+ * launchd/`brew services` (keep_alive). When README documents `-f`/`--foreground`
+ * and background-daemon behaviour, append the short flag to a bare package command.
+ * Example: mailcatcher (SMTP+web) → `mailcatcher -f`.
+ */
+function withSupervisedForeground(config, readmeText, packageName) {
+  if (!config) return config;
+  const next = preferForegroundForDaemon(
+    config.command,
+    readmeText,
+    packageName,
+  );
+  if (!next || next === config.command) return config;
+  return { ...config, command: next };
+}
+
+function preferForegroundForDaemon(command, readmeText, packageName) {
+  if (!command || !packageName || !readmeText) return command;
+  const parts = String(command).split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return command;
+  const exec = parts[0].split("/").pop();
+  if (exec !== packageName) return command;
+  // Already supervised / non-daemonizing.
+  if (
+    parts.some((p) =>
+      /^(?:-f|--foreground|--no-daemon|--daemon=false)$/i.test(p),
+    )
+  ) {
+    return command;
+  }
+  // Only rewrite bare binary invocations (no subcommands like `serve`).
+  if (parts.length !== 1) return command;
+
+  const documentsForeground =
+    /(?:^|[\s`|,(-])-f(?:[\s`|,).]|$)/m.test(readmeText) ||
+    /\b--foreground\b/i.test(readmeText) ||
+    /-f,\s*--foreground\b/i.test(readmeText);
+  const daemonizesByDefault =
+    /\b(?:runs?\s+as\s+a\s+daemon|daemon(?:izes?)?\s+in\s+the\s+background|in\s+the\s+background,?\s+optionally\s+in\s+(?:the\s+)?foreground|backgrounds?\s+by\s+default)\b/i.test(
+      readmeText,
+    );
+  if (!documentsForeground || !daemonizesByDefault) return command;
+
+  // Prefer short `-f` when documented (Homebrew core mailcatcher style).
+  if (
+    /(?:^|[\s`|,(-])-f(?:[\s`|,).]|$)/m.test(readmeText) ||
+    /-f,\s*--foreground\b/i.test(readmeText)
+  ) {
+    return `${packageName} -f`;
+  }
+  return `${packageName} --foreground`;
 }
 
 /**
