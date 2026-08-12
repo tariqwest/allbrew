@@ -295,6 +295,11 @@ URL=${JSON.stringify(url)}
 NAME=${JSON.stringify(slug)}
 SRC=${JSON.stringify(src)}
 if [ ! -f "$SRC/bin/allbrew.ts" ]; then echo "SRC_MISSING $SRC" >&2; exit 2; fi
+# Homebrew 5+ ignores formulae from untrusted taps — trust worker/user taps first.
+brew trust --tap tariqwest/allbrew 2>&1 || true
+brew trust --tap th-allbrew/allbrew 2>&1 || true
+brew trust --formula "tariqwest/allbrew/$NAME" 2>&1 || true
+brew trust --formula "th-allbrew/allbrew/$NAME" 2>&1 || true
 # Prefer running the synced source directly (unreleased patch) over the bottled allbrew.
 # Use "bun ./bin/allbrew.ts" (not "bun run bin/allbrew.ts"): modern Bun treats bare
 # "run <path>" as a package.json script name and prints help instead of executing the file.

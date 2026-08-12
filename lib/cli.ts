@@ -2281,23 +2281,18 @@ async function brewAutoInstall(result: any, opts: any) {
   };
   // Homebrew 5+ requires tap trust before installing path formulae from custom taps.
   try {
-    if (result.filePath) {
-      await execFileAsync(
-        "brew",
-        ["trust", "--formula", result.filePath],
-        { env: installEnv },
-      );
-    }
-    if (opts.tapPath) {
-      // Best-effort whole-tap trust for the worker tap (name may be th-allbrew/allbrew).
-      const tapDir = String(opts.tapPath || "");
-      const base = tapDir.split("/").filter(Boolean).pop() || "";
-      if (base.startsWith("homebrew-")) {
-        const user = process.env.USER || "th-allbrew";
-        const tap = `${user}/${base.replace(/^homebrew-/, "")}`;
-        await execFileAsync("brew", ["trust", tap], { env: installEnv }).catch(
-          () => {},
-        );
+    const trustTargets = [
+      ["trust", "--formula", result.filePath],
+      ["trust", "--tap", "tariqwest/allbrew"],
+      ["trust", "--tap", "th-allbrew/allbrew"],
+      ["trust", "--formula", `tariqwest/allbrew/${result.name}`],
+      ["trust", "--formula", `th-allbrew/allbrew/${result.name}`],
+    ];
+    for (const args of trustTargets) {
+      try {
+        await execFileAsync("brew", args, { env: installEnv });
+      } catch {
+        /* best-effort */
       }
     }
   } catch {
