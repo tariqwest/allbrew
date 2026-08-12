@@ -178,6 +178,49 @@ describe("collectCaskAppReleasePayload", () => {
     }
   });
 
+  it("keeps nested wrapper path for .app (lucor/paw forceAppAssets)", async () => {
+    mockArchiveInspector({
+      zip: [
+        "paw-0.27.0-macos-arm64/",
+        "paw-0.27.0-macos-arm64/Paw.app/",
+        "paw-0.27.0-macos-arm64/Paw.app/Contents/MacOS/paw",
+        "paw-0.27.0-macos-arm64/THIRD_PARTY_LICENSES",
+      ],
+    });
+    const pawRelease = {
+      tagName: "v0.27.0",
+      assets: [
+        {
+          name: "paw-0.27.0-macos-arm64.zip",
+          url: "https://github.com/lucor/paw/releases/download/v0.27.0/paw-0.27.0-macos-arm64.zip",
+        },
+        {
+          name: "paw-0.27.0-macos-amd64.zip",
+          url: "https://github.com/lucor/paw/releases/download/v0.27.0/paw-0.27.0-macos-amd64.zip",
+        },
+      ],
+    };
+    const payload = await collectCaskAppReleasePayload(
+      {
+        name: "paw",
+        fullName: "lucor/paw",
+        description: "password manager",
+        homepage: "https://paw.pm",
+        htmlUrl: "https://github.com/lucor/paw",
+      },
+      pawRelease,
+      { forceAppAssets: true },
+    );
+    expect(payload.template).toBe("cask_app_release");
+    // Nested path kept + version templated so brew finds the app under the wrapper.
+    expect(payload.appName).toContain("Paw.app");
+    expect(payload.appName).toContain("#{version}");
+    expect(payload.appName).toMatch(/macos-arm64|macos-amd64/);
+    expect(payload.displayName).toBe("Paw");
+    expect(payload.url).toMatch(/\.zip/);
+    expect(payload.url).not.toMatch(/minisig/);
+  });
+
   it("uses repo description", async () => {
     const payload = await collectCaskAppReleasePayload(repoInfo, release);
     expect(payload.desc).toBe("Modern SQL client");

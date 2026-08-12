@@ -75,14 +75,23 @@ export async function collectCaskAppReleasePayload(
 
   const bestAsset = pickBestAppReleaseAsset(appAssets);
 
-  let appName = options.appName;
+  // Prefer archive-discovered path when nested (wrapper/Paw.app). Explicit
+  // options.appName still wins for root-level apps (override tests / MAS-style).
+  let appName: string | null = null;
   let nestedContainer: string | null = null;
 
   const { sha256, cleanup, path } = await downloadToTemp(bestAsset.url, bestAsset.name);
   try {
     const detected = await detectAppAndNestedFromAsset(bestAsset, path);
-    if (!appName) appName = detected.appName;
     nestedContainer = detected.nestedContainer;
+    const detectedPath = detected.appName || null;
+    if (detectedPath && detectedPath.includes("/")) {
+      // Nested wrapper path must win over a basename-only override (re-route
+      // from binary-release passes "Paw.app" without the versioned folder).
+      appName = detectedPath;
+    } else {
+      appName = options.appName || detectedPath || null;
+    }
   } finally {
     await cleanup();
   }
@@ -103,12 +112,20 @@ export async function collectCaskAppReleasePayload(
   const desc =
     options.desc || repoInfo.description || `Install ${repoInfo.name}`;
   const homepage = options.homepage || repoInfo.homepage || repoInfo.htmlUrl;
-  const displayName = appName.replace(/\.app$/i, "");
+  // displayName is the bundle leaf (Paw), not the wrapper path.
+  const displayName = appName
+    .replace(/\.app$/i, "")
+    .split("/")
+    .filter(Boolean)
+    .pop()!;
 
   // Use shared templateReleaseUrl so bare tags (tag == version) replace ALL
   // occurrences without inventing a spurious "v" prefix in the asset basename
   // (e.g. ComicTagger-1.5.5-osx-….app.zip must not become ComicTagger-v#{version}-…).
   const urlTemplate = templateReleaseUrl(bestAsset.url, version, release.tagName);
+  // Versioned wrapper dirs (paw-0.27.0-macos-arm64/Paw.app) need #{version}
+  // so livecheck upgrades keep the app path valid.
+  const appNameTemplated = templateReleaseUrl(appName, version, release.tagName);
 
   // Nested DMG basenames often embed the version (nicotine+-3.3.10.dmg).
   let containerBlock = "";
@@ -134,7 +151,7 @@ export async function collectCaskAppReleasePayload(
     sha256: rubyEscape(sha256),
     url: rubyEscape(urlTemplate),
     displayName: rubyEscape(displayName),
-    appName: rubyEscape(appName),
+    appName: rubyEscape(appNameTemplated),
     desc: rubyEscape(desc),
     homepage: rubyEscape(homepage),
     containerBlock,
@@ -218,14 +235,19 @@ export async function detectAppAndNestedFromAsset(
         return listArchiveEntries(p);
       };
       const findApp = (entries: string[]) => {
+        // Prefer the full relative path so nested layouts like
+        // `paw-0.27.0-macos-arm64/Paw.app/` become app "…/Paw.app" (Homebrew
+        // looks under the extract root; basename-only fails when wrapped).
         const appDir = entries.find((e) => /\.app\/?$/i.test(e.trim()));
         if (appDir) {
-          return appDir.trim().replace(/\/$/, "").split("/").pop();
+          return appDir.trim().replace(/\/$/, "").replace(/^\.\//, "");
         }
         // tar listings often only show nested files under .app/
         const nested = entries.find((e) => /\.app\//i.test(e));
         if (nested) {
-          const m = nested.match(/([^/]+\.app)\//i);
+          const m = nested
+            .replace(/^\.\//, "")
+            .match(/^(.*?[^/]+\.app)(?:\/|$)/i);
           if (m) return m[1];
         }
         return null;
