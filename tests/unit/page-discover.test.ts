@@ -716,6 +716,54 @@ describe("MAS iTunes fallback (auth-walled marketing pages)", () => {
     expect(cands[0].score).toBeGreaterThanOrEqual(90);
   });
 
+  it("rejects loose prefix MAS hits for short generic terms (hermesapp.io)", async () => {
+    // hermes (6) vs hermesthefuryofmegaera (22): extra "thefuryofmegaera", seller alawar unrelated → 0
+    const cands = await discoverMasFallbackCandidates("https://hermesapp.io", {
+      nameHint: "hermes",
+      itunesSearch: async () => [
+        {
+          kind: "mac-software",
+          trackId: 6450658263,
+          trackName: "Hermes: The Fury of Megaera",
+          sellerUrl: "https://company.alawar.com/en/",
+        },
+      ],
+    });
+    expect(cands.length).toBe(0);
+  });
+
+  it("discoverMasFallbackCandidates accepts prefix when seller host relates", async () => {
+    const cands = await discoverMasFallbackCandidates("https://hermesapp.io", {
+      nameHint: "hermes",
+      itunesSearch: async () => [
+        {
+          kind: "mac-software",
+          trackId: 111,
+          trackName: "Hermes Pro",
+          sellerUrl: "https://hermesapp.io/support",
+        },
+      ],
+    });
+    expect(cands.length).toBe(1);
+    expect(cands[0].url).toContain("id111");
+    expect(cands[0].evidence).toContain("mas-seller-host-related");
+  });
+
+  it("discoverMasFallbackCandidates accepts marketing suffix Pro/App", async () => {
+    const cands = await discoverMasFallbackCandidates("https://example.app/", {
+      nameHint: "widget",
+      itunesSearch: async () => [
+        {
+          kind: "mac-software",
+          trackId: 222,
+          trackName: "Widget Pro",
+        },
+      ],
+    });
+    expect(cands.length).toBe(1);
+    expect(cands[0].url).toContain("id222");
+  });
+
   it("discoverPageDownloads recovers MAS when page fetch would be empty via fixture+search", async () => {
     // Empty HTML shell + no static links → A.10 MAS fallback
     const result = await discoverPageDownloads("https://pieoneer.app/", {
