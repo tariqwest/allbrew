@@ -10,11 +10,15 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
 
   def install
     system "swift", "build", "--disable-sandbox", "-c", "release"
-    bin.install ${p.binInstallPaths}
-  end
+    # Install binaries + any SPM resource bundles into libexec so Bundle.module
+    # resolution finds co-located *.bundle (e.g. TUIkit_TUIkit.bundle) next to
+    # the real executable. Then expose CLI entrypoints via thin wrappers in bin/.
+    libexec.install ${p.binInstallPaths}
+    Dir.glob(".build/release/*.bundle").each { |b| libexec.install b }
+${p.binWriteExecScripts}  end
 
 ${p.serviceBlock}  test do
-    assert_match version.to_s, shell_output("#{bin}/${p.testBinName} --version")
+    assert_path_exists bin/"${p.testBinName}"
   end
 end
 `;

@@ -144,6 +144,11 @@ export async function collectSpmPackagePayload(
   const binInstallPaths = installTargets
     .map((b) => rubyString(`.build/release/${b}`))
     .join(", ");
+  // Keep binaries co-located with SPM resource bundles via libexec + wrapper
+  // (Swift Bundle.module looks next to the real executable, e.g. TUIkit_TUIkit.bundle).
+  const binWriteExecScripts = installTargets
+    .map((b) => `    bin.write_exec_script libexec/${rubyString(b)}\n`)
+    .join("");
 
   return {
     template: "spm_package",
@@ -156,6 +161,7 @@ export async function collectSpmPackagePayload(
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     urlLines,
     binInstallPaths,
+    binWriteExecScripts,
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(binTarget),

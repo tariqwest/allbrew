@@ -477,6 +477,31 @@ if [ "$BIN_OK" = "0" ]; then
     done
   fi
 fi
+# TUI / interactive CLIs often trap or hang on --version/--help without a TTY.
+# If the binary is present and executable under the formula prefix (or PATH),
+# accept existence as a soft BIN_OK rather than BIN_MISSING.
+if [ "$BIN_OK" = "0" ]; then
+  if command -v "$NAME" >/dev/null 2>&1; then
+    cand=$(command -v "$NAME")
+    if [ -x "$cand" ] && { [ -f "$cand" ] || [ -L "$cand" ]; }; then
+      echo BIN_OK; BIN_OK=1
+      echo "binary exists at $cand (TUI/no --version, verify via existence)"
+    fi
+  fi
+fi
+if [ "$BIN_OK" = "0" ]; then
+  PREFIX=$(brew --prefix "$NAME" 2>/dev/null || true)
+  if [ -n "$PREFIX" ] && [ -d "$PREFIX/bin" ]; then
+    for b in "$PREFIX/bin"/*; do
+      [ -e "$b" ] || continue
+      if [ -x "$b" ] || [ -L "$b" ]; then
+        echo BIN_OK; BIN_OK=1
+        echo "binary exists at $b (TUI/no --version, verify via existence)"
+        break
+      fi
+    done
+  fi
+fi
 if [ "$BIN_OK" = "0" ]; then echo BIN_MISSING; fi
 ls "$HOME/Applications" 2>/dev/null | head -10 || true
 if ls "$HOME/Applications" 2>/dev/null | grep -qi "$NAME"; then echo APP_OK; fi

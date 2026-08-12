@@ -90,6 +90,11 @@ let package = Package(
     expect(payload.binInstallPaths).toContain(".build/release/Rugby");
   });
 
+  it("emits libexec write_exec_script lines for each binary", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
+    expect(payload.binWriteExecScripts).toContain('bin.write_exec_script libexec/"Rugby"');
+  });
+
   it("changes binInstallPaths when binName is overridden", async () => {
     const payload = await collectSpmPackagePayload(repoInfo, release, {
       binName: "rugby-cli",
