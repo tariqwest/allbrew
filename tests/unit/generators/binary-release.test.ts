@@ -4,6 +4,8 @@ import {
   templateReleaseUrl,
   pickArchiveEntrypoint,
   buildBinaryReleaseInstallBody,
+  scoreBinaryAssetForFormula,
+  pickBestBinaryAssetForArch,
 } from "../../../lib/generators/binary-release.ts";
 import wakapiFixture from "../../fixtures/github/wakapi.json";
 
@@ -253,6 +255,68 @@ describe("collectBinaryReleasePayload", () => {
   });
 });
 
+
+describe("scoreBinaryAssetForFormula / multi-product releases", () => {
+  it("prefers primary atuin client over atuin-server for same arch", () => {
+    const client = "atuin-aarch64-apple-darwin.tar.gz";
+    const server = "atuin-server-aarch64-apple-darwin.tar.gz";
+    expect(scoreBinaryAssetForFormula(client, "atuin")).toBeGreaterThan(
+      scoreBinaryAssetForFormula(server, "atuin"),
+    );
+    const picked = pickBestBinaryAssetForArch(
+      [{ name: client }, { name: server }],
+      "atuin",
+    );
+    expect(picked?.name).toBe(client);
+  });
+
+  it("still prefers server asset when formula name is atuin-server", () => {
+    const client = "atuin-aarch64-apple-darwin.tar.gz";
+    const server = "atuin-server-aarch64-apple-darwin.tar.gz";
+    const picked = pickBestBinaryAssetForArch(
+      [{ name: client }, { name: server }],
+      "atuin-server",
+    );
+    expect(picked?.name).toBe(server);
+  });
+
+  it("collectBinaryReleasePayload uses client assets when both client and server exist", async () => {
+    const atuinRelease = {
+      tagName: "v18.19.0",
+      assets: [
+        {
+          name: "atuin-aarch64-apple-darwin.tar.gz",
+          url: "https://example.com/atuin-aarch64-apple-darwin.tar.gz",
+        },
+        {
+          name: "atuin-server-aarch64-apple-darwin.tar.gz",
+          url: "https://example.com/atuin-server-aarch64-apple-darwin.tar.gz",
+        },
+        {
+          name: "atuin-server-x86_64-apple-darwin.tar.gz",
+          url: "https://example.com/atuin-server-x86_64-apple-darwin.tar.gz",
+        },
+        {
+          name: "atuin-x86_64-apple-darwin.tar.gz",
+          url: "https://example.com/atuin-x86_64-apple-darwin.tar.gz",
+        },
+      ],
+    };
+    const repo = {
+      name: "atuin",
+      fullName: "atuinsh/atuin",
+      description: "magical shell history",
+      homepage: "https://atuin.sh",
+      htmlUrl: "https://github.com/atuinsh/atuin",
+      license: "MIT",
+    };
+    const payload = await collectBinaryReleasePayload(repo, atuinRelease);
+    expect(payload.platformBlocks).toContain("atuin-aarch64-apple-darwin.tar.gz");
+    expect(payload.platformBlocks).toContain("atuin-x86_64-apple-darwin.tar.gz");
+    expect(payload.platformBlocks).not.toContain("atuin-server-");
+    expect(payload.binName).toBe("atuin");
+  });
+});
 
 describe("pickArchiveEntrypoint / nested package archives", () => {
   it("picks bin/interpreter for open-interpreter package layout", () => {

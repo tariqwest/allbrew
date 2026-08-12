@@ -99,8 +99,14 @@ export function pickArchiveEntrypoint(
     if (/(^|\/)bin\//.test(path)) s += 50;
     const prefIdx = preferredNames.findIndex((n) => n.toLowerCase() === base.toLowerCase());
     if (prefIdx >= 0) s += 40 - prefIdx;
-    // Deprioritize helper hosts / path tools.
+    // Deprioritize helper hosts / path tools / companion server binaries.
     if (/host|rg$|zsh|node|python/i.test(base)) s -= 20;
+    if (
+      /(?:^|[-_.])(server|daemon|service)(?:[-_.]|$)/i.test(base) &&
+      !/(?:^|[-_.])(server|daemon|service)(?:[-_.]|$)/i.test(formulaName)
+    ) {
+      s -= 25;
+    }
     if (base.length === 1) s -= 5; // e.g. "i"
     // Boost binary-like files (no extension or known non-doc) over
     // documentation/license files (common in release archives).
@@ -115,6 +121,73 @@ export function pickArchiveEntrypoint(
   const base = best.split("/").pop() || formulaName;
   const binName = options.binName || preferredNames[0] || base;
   return { sourcePath: best, binName };
+}
+
+/**
+ * Score a release asset for a formula name when multiple assets share an arch.
+ * Prefers primary product archives (e.g. atuin-aarch64-apple-darwin) over
+ * companion binaries (atuin-server-*, *-daemon-*) that last-write-wins would
+ * otherwise pick when listed later on the GitHub release.
+ */
+export function scoreBinaryAssetForFormula(
+  assetName: string,
+  formulaName: string,
+): number {
+  const formula = String(formulaName || "").toLowerCase();
+  const lower = String(assetName || "").toLowerCase();
+  const base = lower
+    .replace(/\.tar\.gz$/i, "")
+    .replace(/\.tgz$/i, "")
+    .replace(/\.tar\.bz2$/i, "")
+    .replace(/\.tar\.xz$/i, "")
+    .replace(/\.tar\.zst$/i, "")
+    .replace(/\.zip$/i, "")
+    .replace(/\.exe$/i, "");
+
+  if (!formula || !base) return 0;
+
+  let s = 0;
+  const escaped = formula.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Product token present as a path segment (not substring of another token).
+  if (new RegExp(`(?:^|[^a-z0-9])${escaped}(?:[^a-z0-9]|$)`, "i").test(base)) {
+    s += 40;
+  }
+  if (
+    base === formula ||
+    base.startsWith(`${formula}-`) ||
+    base.startsWith(`${formula}_`)
+  ) {
+    s += 20;
+  }
+
+  // Companion products: atuin-server, foo-daemon, bar-desktop when formula is "foo".
+  const companion =
+    /(?:^|[-_.])(server|daemon|service|desktop|gui|webui|web-ui|agent|sidecar|proxy)(?:[-_.]|$)/i;
+  if (companion.test(base) && !companion.test(formula)) {
+    s -= 50;
+  }
+
+  // Prefer shorter basenames on near-ties (primary product names are usually shorter).
+  s -= Math.min(base.length, 80) * 0.01;
+  return s;
+}
+
+/** Pick the best asset for one arch given a formula name. */
+export function pickBestBinaryAssetForArch<T extends { name: string }>(
+  assets: T[],
+  formulaName: string,
+): T | null {
+  if (!assets || assets.length === 0) return null;
+  let best = assets[0];
+  let bestScore = scoreBinaryAssetForFormula(best.name, formulaName);
+  for (let i = 1; i < assets.length; i++) {
+    const sc = scoreBinaryAssetForFormula(assets[i].name, formulaName);
+    if (sc > bestScore) {
+      best = assets[i];
+      bestScore = sc;
+    }
+  }
+  return best;
 }
 
 export function buildBinaryReleaseInstallBody(
@@ -198,11 +271,20 @@ export async function collectBinaryReleasePayload(
   const license = guessLicenseIdentifier(repoInfo.license);
   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
 
-  const archAssets: Record<string, any> = {};
+  // Group binary assets by arch, then pick the best name match per arch.
+  // Last-write-wins previously preferred companion binaries listed later on the
+  // release (e.g. atuin-server-* over atuin-* for the same aarch64-apple tag).
+  const byArch: Record<string, any[]> = {};
   for (const asset of release.assets) {
     if (!isBinaryAsset(asset.name)) continue;
     const arch = matchAssetToArch(asset.name);
-    if (arch) archAssets[arch] = asset;
+    if (!arch) continue;
+    (byArch[arch] ||= []).push(asset);
+  }
+  const archAssets: Record<string, any> = {};
+  for (const [arch, assets] of Object.entries(byArch)) {
+    const best = pickBestBinaryAssetForArch(assets, name);
+    if (best) archAssets[arch] = best;
   }
 
   if (archAssets.macosUniversal) {
