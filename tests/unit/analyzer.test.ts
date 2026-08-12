@@ -4,6 +4,8 @@ import {
   detectInstallMethod,
   detectServiceConfig,
   detectServiceConfigFromFiles,
+  githubCoordsFromNpmRepository,
+  resolveNpmPackageServiceConfig,
   detectBuildSystemFromFiles,
   detectBuildSystemFromArchive,
 } from "../../lib/analyzer.ts";
@@ -757,6 +759,114 @@ describe("detectServiceConfigFromFiles", () => {
   it("returns null for empty file list", () => {
     expect(detectServiceConfigFromFiles([], "foo")).toBeNull();
     expect(detectServiceConfigFromFiles(null as any, "foo")).toBeNull();
+  });
+});
+
+describe("githubCoordsFromNpmRepository", () => {
+  it("parses git://github.com/owner/repo.git", () => {
+    expect(
+      githubCoordsFromNpmRepository("git://github.com/verdaccio/verdaccio.git"),
+    ).toEqual({ owner: "verdaccio", repo: "verdaccio" });
+  });
+
+  it("parses object form with https URL", () => {
+    expect(
+      githubCoordsFromNpmRepository({
+        type: "git",
+        url: "https://github.com/verdaccio/verdaccio.git",
+      }),
+    ).toEqual({ owner: "verdaccio", repo: "verdaccio" });
+  });
+
+  it("parses git+https and ssh forms", () => {
+    expect(
+      githubCoordsFromNpmRepository(
+        "git+https://github.com/foo/bar.git",
+      ),
+    ).toEqual({ owner: "foo", repo: "bar" });
+    expect(
+      githubCoordsFromNpmRepository("git@github.com:foo/bar.git"),
+    ).toEqual({ owner: "foo", repo: "bar" });
+  });
+
+  it("returns null for non-GitHub or empty repository", () => {
+    expect(githubCoordsFromNpmRepository(null)).toBeNull();
+    expect(githubCoordsFromNpmRepository("")).toBeNull();
+    expect(
+      githubCoordsFromNpmRepository("https://gitlab.com/foo/bar.git"),
+    ).toBeNull();
+  });
+});
+
+describe("resolveNpmPackageServiceConfig", () => {
+  it("uses registry README when it already documents a service", async () => {
+    const readme = [
+      "# maildev",
+      "Start the server:",
+      "```bash",
+      "maildev",
+      "```",
+      "Open http://localhost:1080 in a browser (web UI).",
+    ].join("\n");
+    const result = await resolveNpmPackageServiceConfig("maildev", {
+      readme,
+      description: "SMTP catcher",
+      repository: { url: "git://github.com/maildev/maildev.git" },
+    });
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("maildev");
+    expect(result!.source).toBe("npm-readme");
+    expect(result!.confidence).not.toBe("low");
+  });
+
+  it("falls back to GitHub README when npm registry readme is empty (verdaccio)", async () => {
+    const originalFetch = globalThis.fetch;
+    const ghReadme = [
+      "# Verdaccio",
+      "A lightweight private npm proxy registry.",
+      "",
+      "```bash",
+      "npm install -g verdaccio",
+      "verdaccio",
+      "```",
+      "",
+      "Open http://localhost:4873/ in your browser (registry web UI).",
+    ].join("\n");
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("raw.githubusercontent.com/verdaccio/verdaccio")) {
+        return new Response(ghReadme, { status: 200 });
+      }
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
+
+    try {
+      const result = await resolveNpmPackageServiceConfig("verdaccio", {
+        // npm registry publishes empty readme + short description only
+        readme: "",
+        description: "A lightweight private npm proxy registry",
+        repository: {
+          type: "git",
+          url: "git://github.com/verdaccio/verdaccio.git",
+        },
+      });
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe("verdaccio");
+      expect(result!.keepAlive).toBe(true);
+      expect(result!.confidence).toBe("high");
+      expect(result!.source).toBe("github-readme");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("returns null when registry is thin and no GitHub repository is present", async () => {
+    const result = await resolveNpmPackageServiceConfig("some-cli", {
+      readme: "",
+      description: "A lightweight private npm proxy registry",
+      repository: null,
+    });
+    expect(result).toBeNull();
   });
 });
 
