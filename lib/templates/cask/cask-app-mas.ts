@@ -5,15 +5,19 @@ export default function renderCaskAppMas(p: CaskAppMasPayload): string {
   version "${p.version}"
   sha256 :no_check
 
-  url "macappstore://apps.apple.com/app/id${p.appId}?mt=12"
+  url "https://apps.apple.com/app/id${p.appId}?mt=12"
   name "${p.appName}"
   desc "${p.desc}"
   homepage "${p.homepage}"
 
 ${p.livecheckBlock}  depends_on formula: "mas"
 
+  caveats <<~EOS
+    Requires being signed in to the Mac App Store (Apple ID) so mas install can run.
+  EOS
+
   installer script: {
-    executable: "mas",
+    executable: "#{HOMEBREW_PREFIX}/bin/mas",
     args: ["install", "${p.appId}"],
   }
 

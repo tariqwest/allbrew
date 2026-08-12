@@ -531,13 +531,16 @@ describe("renderCask", () => {
       `cask "foo" do\n` +
       `  version "9.9"\n` +
       `  sha256 :no_check\n\n` +
-      `  url "macappstore://apps.apple.com/app/id12345?mt=12"\n` +
+      `  url "https://apps.apple.com/app/id12345?mt=12"\n` +
       `  name "Foo"\n` +
       `  desc "Foo from MAS"\n` +
       `  homepage "https://example.com"\n\n` +
       `  depends_on formula: "mas"\n\n` +
+      `  caveats <<~EOS\n` +
+      `    Requires being signed in to the Mac App Store (Apple ID) so mas install can run.\n` +
+      `  EOS\n\n` +
       `  installer script: {\n` +
-      `    executable: "mas",\n` +
+      `    executable: "#{HOMEBREW_PREFIX}/bin/mas",\n` +
       `    args: ["install", "12345"],\n` +
       `  }\n\n` +
       `  uninstall delete: "/Applications/Foo.app"\n\n` +
