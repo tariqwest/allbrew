@@ -10,6 +10,7 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  isCliPlatformZipRelease,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
@@ -428,6 +429,35 @@ describe("isAppAsset", () => {
 
   it("rejects non-archive files", () => {
     expect(isAppAsset("README.md")).toBe(false);
+  });
+});
+
+describe("isCliPlatformZipRelease", () => {
+  it("detects swift-outdated-style macos+linux CLI zips (no DMG/.app)", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "swift-outdated-0.15.3-macos.zip" },
+        { name: "swift-outdated-0.15.3-linux.zip" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("rejects real app releases with DMG or .app in the name", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "App-1.0-macos.zip" },
+        { name: "App-1.0.dmg" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCliPlatformZipRelease([{ name: "Foo.app.zip" }, { name: "Foo-linux.zip" }]),
+    ).toBe(false);
+  });
+
+  it("rejects macos-only releases without a linux counterpart", () => {
+    expect(
+      isCliPlatformZipRelease([{ name: "tool-0.1.0-macos.zip" }]),
+    ).toBe(false);
   });
 });
 

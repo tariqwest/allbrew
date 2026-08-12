@@ -183,6 +183,25 @@ let package = Package(
     expect(bins).not.toContain("TurboFieldfare");
   });
 
+  it("prefers product names over differently-named executableTarget (swift-outdated)", () => {
+    const so = `
+let package = Package(
+  name: "SwiftOutdated",
+  products: [
+    .executable(name: "swift-outdated", targets: ["SwiftOutdated"]),
+    .library(name: "Outdated", targets: ["Outdated"]),
+  ],
+  targets: [
+    .target(name: "Outdated"),
+    .executableTarget(name: "SwiftOutdated", dependencies: ["Outdated"]),
+  ]
+)
+`;
+    const bins = parseSpmExecutableProducts(so);
+    expect(bins).toEqual(["swift-outdated"]);
+    expect(bins).not.toContain("SwiftOutdated");
+  });
+
   it("prefers CLI product for turbo-fieldfare", () => {
     const bins = parseSpmExecutableProducts(packageSwift);
     expect(preferSpmBinName(bins, "turbo-fieldfare", "turbo-fieldfare")).toBe(

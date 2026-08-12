@@ -12,23 +12,33 @@ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { SpmPackagePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
-/** Extract executable product names from Package.swift source text. */
+/** Extract executable product names from Package.swift source text.
+ * Prefer `.executable(name:)` product names (actual .build/release bins).
+ * Only fall back to `.executableTarget` names when no product-level
+ * executables are declared — SPM then auto-names the product after the target.
+ * Mixing both (e.g. product "swift-outdated" + target "SwiftOutdated") would
+ * invent a non-existent second bin and break `bin.install`.
+ */
 export function parseSpmExecutableProducts(packageSwiftText: string): string[] {
   if (!packageSwiftText) return [];
   const found: string[] = [];
   const seen = new Set<string>();
-  const patterns = [
-    /\.executable\s*\(\s*name:\s*"([^"]+)"/g,
-    /\.executableTarget\s*\(\s*name:\s*"([^"]+)"/g,
-  ];
-  for (const re of patterns) {
-    let match;
-    while ((match = re.exec(packageSwiftText)) !== null) {
-      const name = match[1];
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
-      found.push(name);
-    }
+  const productRe = /\.executable\s*\(\s*name:\s*"([^"]+)"/g;
+  let match;
+  while ((match = productRe.exec(packageSwiftText)) !== null) {
+    const name = match[1];
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    found.push(name);
+  }
+  if (found.length > 0) return found;
+
+  const targetRe = /\.executableTarget\s*\(\s*name:\s*"([^"]+)"/g;
+  while ((match = targetRe.exec(packageSwiftText)) !== null) {
+    const name = match[1];
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    found.push(name);
   }
   return found;
 }

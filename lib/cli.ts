@@ -31,6 +31,7 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  isCliPlatformZipRelease,
   chooseReleaseArtifactKind,
   resolveNonCollidingFormulaName,
   resolveNonCollidingCaskName,
@@ -901,7 +902,19 @@ async function handleGithubRepo(classification, opts) {
       `Latest release: ${chalk.bold(release.tagName)} (${release.assets.length} assets)`,
     );
 
-    const appAssets = release.assets.filter((a) => isAppAsset(a.name));
+    // Multi-platform CLI zips (foo-macos.zip + foo-linux.zip, no DMG/.app) are
+    // not desktop apps — skip cask-app-release so we fall through to SPM/source.
+    const cliPlatformZips = isCliPlatformZipRelease(release.assets);
+    if (cliPlatformZips) {
+      console.log(
+        chalk.dim(
+          "  Release looks like multi-platform CLI zips (macos+linux, no DMG/.app); not treating as macOS app cask",
+        ),
+      );
+    }
+    const appAssets = cliPlatformZips
+      ? []
+      : release.assets.filter((a) => isAppAsset(a.name));
     // Platform-tagged binaries. Homebrew on macOS needs at least one macOS
     // asset; Linux-only releases (e.g. ugm, gpg-tui) must fall through to README
     // install methods (go, cargo, source-build) instead of binary-release.
