@@ -137,9 +137,13 @@ export async function collectPipPackagePayload(
     pypiData.info.project_url ||
     repoInfo?.homepage ||
     `https://pypi.org/project/${packageName}/`;
-  const license = guessLicenseIdentifier(
-    pypiData.info.license || repoInfo?.license,
-  );
+  // Prefer a short SPDX (GitHub) when PyPI dumps the full LICENSE body.
+  const pypiLicense = guessLicenseIdentifier(pypiData.info.license);
+  const repoLicense = guessLicenseIdentifier(repoInfo?.license);
+  const license =
+    (pypiLicense && pypiLicense.length <= 64 ? pypiLicense : null) ||
+    repoLicense ||
+    pypiLicense;
 
   const testBinName =
     options.binName || KNOWN_BIN_NAMES[pkgKey] || name;

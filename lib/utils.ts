@@ -377,7 +377,29 @@ export function guessLicenseIdentifier(license) {
     "artistic-2.0": "Artistic-2.0",
   };
   const key = license.toLowerCase().trim();
-  return map[key] || license;
+  if (map[key]) return map[key];
+
+  // PyPI often ships the full LICENSE file body as info.license (multi-KB).
+  // Never emit that prose into Homebrew `license "..."` — map to SPDX or drop.
+  if (key.length > 80 || key.includes("\n") || key.includes("\r")) {
+    if (/apache license\s*,?\s*version 2\.0/i.test(license) ||
+        /licensed under the apache license, version 2\.0/i.test(license)) {
+      return "Apache-2.0";
+    }
+    if (/\bmit license\b/i.test(license) ||
+        /permission is hereby granted, free of charge/i.test(license)) {
+      return "MIT";
+    }
+    if (/gnu general public license.+version 3/i.test(license)) return "GPL-3.0-only";
+    if (/gnu general public license.+version 2/i.test(license)) return "GPL-2.0-only";
+    if (/mozilla public license\s*,?\s*version 2\.0/i.test(license)) return "MPL-2.0";
+    if (/bsd 3-clause/i.test(license)) return "BSD-3-Clause";
+    if (/bsd 2-clause/i.test(license)) return "BSD-2-Clause";
+    if (/\bunlicense\b/i.test(license)) return "Unlicense";
+    return null;
+  }
+
+  return license;
 }
 
 function isCloudMetadataHostname(hostname: string): boolean {

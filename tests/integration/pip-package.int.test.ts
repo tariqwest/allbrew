@@ -32,6 +32,9 @@ describe.concurrent("pip-package integration", () => {
     expect(ruby).toContain('depends_on "python@3.13"');
     expect(ruby).toContain("virtualenv_create(libexec, \"python3.13\")");
     expect(ruby).toContain("pip_install_main");
+    // Dependency resources may pre-create console_scripts; template must
+    // still link remaining libexec/bin scripts into formula bin/.
+    expect(ruby).toContain("link_venv_console_scripts");
   });
 
   it("marimo: has transitive resource blocks", async () => {

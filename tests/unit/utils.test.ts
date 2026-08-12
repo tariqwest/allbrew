@@ -358,6 +358,24 @@ describe("guessLicenseIdentifier", () => {
   it("passes through unknown licenses as-is", () => {
     expect(guessLicenseIdentifier("WTFPL")).toBe("WTFPL");
   });
+
+  it("maps full Apache-2.0 LICENSE body from PyPI to SPDX", () => {
+    const full = `Copyright 2018 Databricks, Inc.  All rights reserved.
+
+                                Apache License
+                                   Version 2.0, January 2004
+                                http://www.apache.org/licenses/
+
+           TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+           Licensed under the Apache License, Version 2.0 (the "License");
+`;
+    expect(guessLicenseIdentifier(full)).toBe("Apache-2.0");
+  });
+
+  it("returns null for unrecognizable multi-line license prose", () => {
+    const prose = "A".repeat(200) + "\n" + "B".repeat(200);
+    expect(guessLicenseIdentifier(prose)).toBeNull();
+  });
 });
 
 describe("matchAssetToArch", () => {

@@ -37,6 +37,29 @@ ${p.resourcesBlock}  def install
     end
     resources.each { |r| pip_install_dist(venv, r) }
     pip_install_main(venv)
+    # Homebrew Virtualenv#pip_install_and_link only symlinks scripts that are
+    # *new* after the main package install. Split PyPI distributions (e.g.
+    # mlflow-skinny providing console_scripts mlflow=...) already create the
+    # script during resource pip_install, so the main install produces no
+    # delta and formula bin/ stays empty. Link any remaining venv scripts.
+    link_venv_console_scripts
+  end
+
+  def link_venv_console_scripts
+    skip_exact = %w[python python3 pip pip3 wheel easy_install]
+    (libexec/"bin").children.each do |p|
+      next unless p.file? || p.symlink?
+      name = p.basename.to_s
+      next if skip_exact.include?(name)
+      next if name.start_with?("activate", "python", "pip")
+      next if (bin/name).exist?
+      begin
+        next unless p.executable? || (p.file? && File.read(p, 2) == "#!")
+      rescue
+        next
+      end
+      bin.install_symlink p
+    end
   end
 
   def pip_install_dist(venv, dist)
