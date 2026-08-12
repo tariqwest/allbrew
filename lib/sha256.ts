@@ -21,45 +21,66 @@ function normalizeFetchUrl(urlString: string, base?: string): string {
   return url.href;
 }
 
+function isTransientFetchError(err: unknown): boolean {
+  const msg = String((err as any)?.message || err || "");
+  return /socket connection was closed|network connection was lost|ECONNRESET|ECONNREFUSED|ETIMEDOUT|UND_ERR|fetch failed|connection reset|temporarily unavailable|Closed/i.test(
+    msg,
+  );
+}
+
 async function fetchFollowingRedirects(
   url: string,
   init: {
     headers?: HeadersInit;
     signal?: AbortSignal;
   },
+  attempts: number = 3,
 ): Promise<Response> {
-  let current = normalizeFetchUrl(url);
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      let current = normalizeFetchUrl(url);
 
-  for (let i = 0; i < MAX_REDIRECTS; i++) {
-    assertSafeFetchUrl(current);
+      for (let i = 0; i < MAX_REDIRECTS; i++) {
+        assertSafeFetchUrl(current);
 
-    const response = await fetch(current, {
-      redirect: "manual",
-      headers: init.headers,
-      signal: init.signal,
-    });
+        const response = await fetch(current, {
+          redirect: "manual",
+          headers: init.headers,
+          signal: init.signal,
+        });
 
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get("location");
-      if (!location) {
-        throw new Error(
-          `Redirect ${response.status} from ${current} without Location header`,
-        );
+        if (response.status >= 300 && response.status < 400) {
+          const location = response.headers.get("location");
+          if (!location) {
+            throw new Error(
+              `Redirect ${response.status} from ${current} without Location header`,
+            );
+          }
+          // Consume/cancel body so the connection can be reused.
+          try {
+            await response.arrayBuffer();
+          } catch {
+            /* ignore */
+          }
+          current = normalizeFetchUrl(location, current);
+          continue;
+        }
+
+        return response;
       }
-      // Consume/cancel body so the connection can be reused.
-      try {
-        await response.arrayBuffer();
-      } catch {
-        /* ignore */
+
+      throw new Error(`Too many redirects (max ${MAX_REDIRECTS}) for ${url}`);
+    } catch (err) {
+      lastErr = err;
+      if (attempt < attempts && isTransientFetchError(err)) {
+        await new Promise((r) => setTimeout(r, 500 * attempt));
+        continue;
       }
-      current = normalizeFetchUrl(location, current);
-      continue;
+      throw err;
     }
-
-    return response;
   }
-
-  throw new Error(`Too many redirects (max ${MAX_REDIRECTS}) for ${url}`);
+  throw lastErr;
 }
 
 export async function downloadAndHash(
