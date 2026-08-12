@@ -94,3 +94,20 @@ Total failed: **34**
 - Cold bottle smoke **v0.0.31** (`tests/monitored-install-runs/cold-smoke-0.0.31-*`):
   - PASS: starship, nanobot, toolong, television, mailcatcher
   - FAIL: verdaccio (see smoke log; service/github-readme path still flaky on bottle)
+
+
+## Infra wave execution (2026-08-12T21:29Z)
+
+Parent ran all 10 requeued “infra” items via bottled **0.0.31** `vm-install-one` (concurrency 3).
+
+**Result: 0/10 VERIFY_OK.**
+
+| Outcome | Count | Items |
+|---------|------:|-------|
+| generate_fail / marketing | 5 | t3code×2, openvox×2, prefs-editor |
+| github 404 | 1 | recordly |
+| brew_fail product | 4 | ugm, electrum, tes3edit, dotnet-counters |
+
+Post-run disposition: marketing + recordly → **skipped**; product brew fails remain **failed**.
+
+Conclusion: prior “infra” label was misleading for this set — failures reproduce on clean bottle path and are product/catalog, not VM host hygiene.
