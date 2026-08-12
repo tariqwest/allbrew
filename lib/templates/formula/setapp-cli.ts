@@ -20,8 +20,9 @@ ${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n\n` : ""}  def i
     return if setapp_installed?
 
     ohai "Setapp is required — installing via Homebrew cask"
-    setapp = Cask::CaskLoader.load("setapp")
-    setapp.install
+    # Cask::CaskLoader.load(...).install is not a public API and raises
+    # NoMethodError on modern Homebrew (Cask instances have no #install).
+    system HOMEBREW_BREW_FILE, "install", "--cask", "setapp"
   end
 
   def setapp_installed?
