@@ -94,7 +94,16 @@ function getDependencies(system: string): string[] {
     case "go":
       return ['"go" => :build'];
     case "python":
-      return ['"python@3.13"'];
+      // Many pure-Python apps pull a native helper (electrum_ecc → libsecp256k1,
+      // cryptography, etc.). Autotools toolchain lets those sdist builds succeed;
+      // runtime deps are installed via pip (see getInstallBlock — no --no-deps).
+      return [
+        '"autoconf" => :build',
+        '"automake" => :build',
+        '"libtool" => :build',
+        '"pkg-config" => :build',
+        '"python@3.13"',
+      ];
     default:
       return [];
   }
@@ -122,9 +131,12 @@ function getInstallBlock(system: string) {
     case "go":
       return `    system "go", "build", *std_go_args(ldflags: "-s -w")\n`;
     case "python":
+      // Install WITH deps. `--no-deps` left packages unusable (missing runtime
+      // imports) and is only appropriate when resource stanzas supply every dep
+      // (pip-package generator). source-build has no resource graph.
       return (
         `    venv = virtualenv_create(libexec, "python3.13")\n` +
-        `    system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."\n` +
+        `    system libexec/"bin/pip", "install", "-v", "--ignore-installed", "."\n` +
         `    bin.install_symlink Dir["#{libexec}/bin/*"]\n`
       );
     default:

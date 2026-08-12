@@ -58,9 +58,13 @@ describe.concurrent("source-build integration", () => {
     expect(ruby).toContain("class AuthsecBridge < Formula");
     expect(ruby).toContain("include Language::Python::Virtualenv");
     expect(ruby).toContain('depends_on "python@3.13"');
-    expect(ruby).not.toContain('=> :build');
+    expect(ruby).toContain('depends_on "autoconf" => :build');
+    expect(ruby).toContain('depends_on "automake" => :build');
+    expect(ruby).toContain('depends_on "libtool" => :build');
+    expect(ruby).toContain('depends_on "pkg-config" => :build');
     expect(ruby).toContain('virtualenv_create(libexec, "python3.13")');
-    expect(ruby).toContain('system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."');
+    expect(ruby).toContain('system libexec/"bin/pip", "install", "-v", "--ignore-installed", "."');
+    expect(ruby).not.toContain("--no-deps");
   });
 
   it("slides: payload fields are well-formed", async () => {
@@ -275,8 +279,10 @@ describe.concurrent("source-build integration", () => {
     expect(ruby).toContain("class TraeAgent < Formula");
     expect(ruby).toContain("include Language::Python::Virtualenv");
     expect(ruby).toContain('depends_on "python@3.13"');
+    expect(ruby).toContain('depends_on "autoconf" => :build');
     expect(ruby).toContain('head "https://github.com/bytedance/trae-agent.git"');
     expect(ruby).toContain('virtualenv_create(libexec, "python3.13")');
-    expect(ruby).toContain('system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."');
+    expect(ruby).toContain('system libexec/"bin/pip", "install", "-v", "--ignore-installed", "."');
+    expect(ruby).not.toContain("--no-deps");
   });
 });

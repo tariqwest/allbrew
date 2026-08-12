@@ -124,6 +124,9 @@ function mapRelease(data: any) {
  * GitHub's /releases/latest only returns the newest *non-prerelease* release.
  * Repos that ship only prereleases (e.g. portdeck) 404 that endpoint even when
  * list_releases has usable assets. Fall back to the newest non-draft prerelease.
+ * Repos that never publish GitHub Releases but still tag versions (e.g. electrum)
+ * fall through to the newest stable-looking tag as a synthetic release with a
+ * source tarball and empty assets (source-build / README paths consume it).
  */
 export async function getLatestRelease(owner, repo) {
   try {
@@ -137,17 +140,177 @@ export async function getLatestRelease(owner, repo) {
   try {
     const releases = await listReleases(owner, repo, { perPage: 20 });
     const usable = (releases || []).filter((r) => r && !r.draft);
-    if (usable.length === 0) return null;
-    // listReleases is newest-first from GitHub.
-    const picked = usable[0];
-    return {
-      ...picked,
-      /** True when we fell back because /releases/latest 404'd. */
-      usedPrereleaseFallback: true,
-    };
+    if (usable.length > 0) {
+      // listReleases is newest-first from GitHub.
+      const picked = usable[0];
+      return {
+        ...picked,
+        /** True when we fell back because /releases/latest 404'd. */
+        usedPrereleaseFallback: true,
+      };
+    }
+  } catch {
+    // continue to tag fallback
+  }
+
+  // No Releases at all — use a version-like git tag as a synthetic release so
+  // source-build gets a stable url/sha256 instead of HEAD-only.
+  try {
+    const tag = await getLatestStableTag(owner, repo);
+    if (!tag) return null;
+    return mapTagToSyntheticRelease(owner, repo, tag);
   } catch {
     return null;
   }
+}
+
+/**
+ * List recent tags (newest first per GitHub). Used when a repo has no Releases
+ * but still tags versioned source (electrum, some research tools).
+ */
+export async function listTags(
+  owner: string,
+  repo: string,
+  opts: { perPage?: number } = {},
+) {
+  const perPage = Math.min(Math.max(opts.perPage ?? 30, 1), 100);
+  try {
+    const { data } = await getOctokit().rest.repos.listTags({
+      owner,
+      repo,
+      per_page: perPage,
+    });
+    return (data || []).map((t: any) => ({
+      name: t.name as string,
+      commitSha: t.commit?.sha as string | undefined,
+      tarballUrl: t.tarball_url as string | undefined,
+      zipballUrl: t.zipball_url as string | undefined,
+    }));
+  } catch (err) {
+    if (err.status === 404) return [];
+    throw err;
+  }
+}
+
+/** Match plain semver / multi-segment tags; exclude seed_v*, password_v*, bare words. */
+const STABLE_TAG_RE =
+  /^v?(\d+(?:\.\d+)+(?:[-+]?[0-9A-Za-z.]+)?)$/i;
+const PRERELEASE_TAG_RE = /(?:^|[.\-])(alpha|beta|rc|pre|dev|a\d|b\d)(?:[.\-]|$)/i;
+
+/**
+ * Pick the newest stable-looking version tag from a list (GitHub order is
+ * typically push-newest-first, but we still sort by semver descending).
+ */
+export function pickLatestStableTag(
+  tags: Array<{ name: string; tarballUrl?: string; zipballUrl?: string }>,
+): { name: string; tarballUrl?: string; zipballUrl?: string } | null {
+  const scored: Array<{
+    name: string;
+    tarballUrl?: string;
+    zipballUrl?: string;
+    parts: number[];
+    prerelease: boolean;
+  }> = [];
+  for (const t of tags || []) {
+    const name = String(t?.name || "").trim();
+    if (!name || !STABLE_TAG_RE.test(name)) continue;
+    const ver = name.replace(/^v/i, "");
+    const prerelease = PRERELEASE_TAG_RE.test(ver);
+    const parts = ver
+      .split(/[.\-+]/)
+      .map((p) => {
+        const n = parseInt(p, 10);
+        return Number.isFinite(n) ? n : 0;
+      });
+    scored.push({
+      name,
+      tarballUrl: t.tarballUrl,
+      zipballUrl: t.zipballUrl,
+      parts,
+      prerelease,
+    });
+  }
+  if (scored.length === 0) return null;
+  const stable = scored.filter((s) => !s.prerelease);
+  const pool = stable.length > 0 ? stable : scored;
+  pool.sort((a, b) => {
+    const len = Math.max(a.parts.length, b.parts.length);
+    for (let i = 0; i < len; i++) {
+      const d = (b.parts[i] || 0) - (a.parts[i] || 0);
+      if (d !== 0) return d;
+    }
+    return 0;
+  });
+  const best = pool[0];
+  return {
+    name: best.name,
+    tarballUrl: best.tarballUrl,
+    zipballUrl: best.zipballUrl,
+  };
+}
+
+export async function getLatestStableTag(owner: string, repo: string) {
+  // Page a few times — electrum has many historical tags; first page may be seed_v*.
+  const collected: Array<{
+    name: string;
+    tarballUrl?: string;
+    zipballUrl?: string;
+  }> = [];
+  for (let page = 1; page <= 3; page++) {
+    try {
+      const { data } = await getOctokit().rest.repos.listTags({
+        owner,
+        repo,
+        per_page: 100,
+        page,
+      });
+      if (!data || data.length === 0) break;
+      for (const t of data) {
+        collected.push({
+          name: t.name,
+          tarballUrl: t.tarball_url,
+          zipballUrl: t.zipball_url,
+        });
+      }
+      if (data.length < 100) break;
+    } catch (err) {
+      if (err.status === 404) break;
+      throw err;
+    }
+  }
+  return pickLatestStableTag(collected);
+}
+
+function mapTagToSyntheticRelease(
+  owner: string,
+  repo: string,
+  tag: { name: string; tarballUrl?: string; zipballUrl?: string },
+) {
+  const full = `${owner}/${repo}`;
+  const tarballUrl =
+    tag.tarballUrl ||
+    `https://github.com/${full}/archive/refs/tags/${tag.name}.tar.gz`;
+  const zipballUrl =
+    tag.zipballUrl ||
+    `https://github.com/${full}/archive/refs/tags/${tag.name}.zip`;
+  return {
+    tagName: tag.name,
+    name: tag.name,
+    body: "",
+    draft: false,
+    prerelease: false,
+    assets: [] as Array<{
+      name: string;
+      url: string;
+      size: number;
+      contentType: string;
+    }>,
+    // Prefer codeload archive URL (hashable over HTTPS) over API tarball redirects.
+    tarballUrl: `https://github.com/${full}/archive/refs/tags/${tag.name}.tar.gz`,
+    zipballUrl,
+    /** True when constructed from a git tag because the repo has no Releases. */
+    usedTagFallback: true,
+  };
 }
 
 /** Ruby comment lines when a formula/cask was generated from a prerelease-only repo. */

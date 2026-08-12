@@ -2163,6 +2163,11 @@ async function brewAutoInstall(result: any, opts: any) {
     }
   } catch (err: any) {
     installSpinner.fail(`brew install failed: ${err.message}`);
+    const stderr = String(err?.stderr || err?.stdout || "").trim();
+    if (stderr) {
+      const tail = stderr.split("\n").slice(-40).join("\n");
+      console.log(chalk.dim(tail));
+    }
     console.log(
       chalk.dim(`  Retry manually: ${installLabel}`),
     );

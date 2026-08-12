@@ -1,21 +1,24 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 
 /**
- * Exercises getLatestRelease's 404 → prerelease fallback without network.
+ * Exercises getLatestRelease's 404 → prerelease → tag fallback without network.
  * We inject a fake Octokit via initOctokit by replacing the module's internal
  * client through the public API surface after mocking `octokit`.
  */
 
-describe("getLatestRelease prerelease fallback", () => {
+describe("getLatestRelease prerelease + tag fallback", () => {
   let getLatestRelease: (owner: string, repo: string) => Promise<any>;
+  let pickLatestStableTag: (tags: any[]) => any;
   let initOctokit: (token?: string | null) => void;
   let listHandler: any;
   let latestHandler: any;
+  let tagsHandler: any;
 
   beforeEach(async () => {
     mock.restore();
     latestHandler = null;
     listHandler = null;
+    tagsHandler = async () => ({ data: [] });
 
     mock.module("octokit", () => ({
       Octokit: class FakeOctokit {
@@ -23,6 +26,7 @@ describe("getLatestRelease prerelease fallback", () => {
           repos: {
             getLatestRelease: (...args: any[]) => latestHandler(...args),
             listReleases: (...args: any[]) => listHandler(...args),
+            listTags: (...args: any[]) => tagsHandler(...args),
           },
         };
         constructor(_opts?: any) {}
@@ -32,6 +36,7 @@ describe("getLatestRelease prerelease fallback", () => {
     // Fresh import after mock
     const gh = await import("../../lib/github.ts");
     getLatestRelease = gh.getLatestRelease;
+    pickLatestStableTag = gh.pickLatestStableTag;
     initOctokit = gh.initOctokit;
     initOctokit(null);
   });
@@ -98,7 +103,31 @@ describe("getLatestRelease prerelease fallback", () => {
     expect(release?.usedPrereleaseFallback).toBe(true);
   });
 
-  it("returns null when latest 404 and only drafts exist", async () => {
+  it("falls back to stable git tag when no Releases exist (electrum)", async () => {
+    latestHandler = async () => {
+      const err: any = new Error("Not Found");
+      err.status = 404;
+      throw err;
+    };
+    listHandler = async () => ({ data: [] });
+    tagsHandler = async () => ({
+      data: [
+        { name: "seed_v10", tarball_url: "t-seed", zipball_url: "z-seed" },
+        { name: "4.8.1", tarball_url: "t481", zipball_url: "z481" },
+        { name: "4.8.0", tarball_url: "t480", zipball_url: "z480" },
+        { name: "4.7.2", tarball_url: "t472", zipball_url: "z472" },
+      ],
+    });
+    const release = await getLatestRelease("spesmilo", "electrum");
+    expect(release?.tagName).toBe("4.8.1");
+    expect(release?.usedTagFallback).toBe(true);
+    expect(release?.assets).toEqual([]);
+    expect(release?.tarballUrl).toContain(
+      "github.com/spesmilo/electrum/archive/refs/tags/4.8.1.tar.gz",
+    );
+  });
+
+  it("returns null when latest 404, only drafts, and no version tags", async () => {
     latestHandler = async () => {
       const err: any = new Error("Not Found");
       err.status = 404;
@@ -118,7 +147,21 @@ describe("getLatestRelease prerelease fallback", () => {
         },
       ],
     });
+    tagsHandler = async () => ({
+      data: [{ name: "seed_v10" }, { name: "password_v2" }],
+    });
     const release = await getLatestRelease("o", "empty");
     expect(release).toBeNull();
+  });
+
+  it("pickLatestStableTag prefers highest stable semver over prerelease", () => {
+    const picked = pickLatestStableTag([
+      { name: "seed_v10" },
+      { name: "4.8.0b1" },
+      { name: "4.7.2" },
+      { name: "4.8.1" },
+      { name: "not-a-version" },
+    ]);
+    expect(picked?.name).toBe("4.8.1");
   });
 });
