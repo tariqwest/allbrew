@@ -11,6 +11,58 @@ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { GemPackagePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
+/**
+ * Native/build deps for gems that compile C extensions or link system libs.
+ * Keys are RubyGems names (underscores as published on rubygems.org).
+ */
+export const GEM_NATIVE_DEPENDS: Record<string, string[]> = {
+  mailcatcher: ["pkgconf", "sqlite"],
+  sqlite3: ["pkgconf", "sqlite"],
+  nokogiri: ["pkgconf"],
+  pg: ["libpq"],
+  mysql2: ["mysql-client"],
+  rugged: ["pkgconf", "libgit2"],
+  ffi: ["libffi"],
+  // geminabox itself is pure Ruby; common reverse deps may still need build tools
+  redic: [],
+  nio4r: ["pkgconf"],
+  websocket_driver: ["pkgconf"],
+  "websocket-driver": ["pkgconf"],
+  eventmachine: ["pkgconf"],
+  thin: ["pkgconf"],
+  puma: ["pkgconf"],
+  byebug: ["pkgconf"],
+  ruby_debug: ["pkgconf"],
+  sassc: ["pkgconf"],
+  charlock_holmes: ["pkgconf", "icu4c"],
+  gpgme: ["pkgconf", "gpgme"],
+  rmagick: ["pkgconf", "imagemagick"],
+  grpc: ["pkgconf"],
+  google_protobuf: ["pkgconf"],
+  "google-protobuf": ["pkgconf"],
+};
+
+/**
+ * Gems known to ship no executables (library-only). Used when RubyGems metadata
+ * does not list executables and the gem name should not be treated as a bin.
+ */
+export const GEM_LIBRARY_ONLY = new Set([
+  "adamantite",
+  "activesupport",
+  "activerecord",
+  "actionpack",
+  "railties",
+  "rack",
+  "rack-test",
+  "json",
+  "nokogiri",
+  "ffi",
+  "concurrent-ruby",
+  "i18n",
+  "tzinfo",
+  "minitest",
+]);
+
 export async function collectGemPackagePayload(
   gemName: string,
   repoInfo: any = null,
@@ -39,6 +91,38 @@ export async function collectGemPackagePayload(
 
   const urlLines = `  url ${rubyString(downloadUrl)}\n  sha256 ${rubyString(sha256)}\n  version ${rubyString(version)}\n`;
 
+  const nativeDeps = resolveGemNativeDepends(gemName, options);
+  const dependsOnLines = nativeDeps
+    .map((dep) => `  depends_on ${rubyString(dep)}\n`)
+    .join("");
+
+  const executables =
+    options.executables ??
+    gemData.executables ??
+    null;
+  const isLibrary =
+    options.library === true ||
+    (Array.isArray(executables) && executables.length === 0) ||
+    (executables == null && GEM_LIBRARY_ONLY.has(gemName));
+
+  // Prefer explicit bin, then first gem executable, then gem name (underscores).
+  const testBin =
+    options.binName ||
+    (Array.isArray(executables) && executables[0]) ||
+    gemName ||
+    name;
+
+  const requireName =
+    options.requireName || gemName.replace(/-/g, "_").replace(/^$/, gemName);
+  // Library gems ship no executables: verify via gem list + require rather than bin --version.
+  const testDoBody = isLibrary
+    ? [
+        `    ENV["GEM_HOME"] = libexec`,
+        `    assert_match ${rubyString(gemName)}, shell_output("gem list --local")`,
+        `    system "ruby", "-e", ${rubyString(`gem "${gemName}"; require "${requireName}"`)}`,
+      ].join("\n")
+    : `    assert_match version.to_s, shell_output("#{bin}/${rubyEscape(testBin)} --version")`;
+
   return {
     template: "gem_package",
     name,
@@ -51,11 +135,29 @@ export async function collectGemPackagePayload(
     urlLines,
     livecheckBlock: rubyGemsLivecheckBlock(gemName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    // Gem executables usually match the gem name (underscores), not the
-    // hyphenated Homebrew formula token (e.g. license_finder vs license-finder).
-    testBinName: rubyEscape(options.binName || gemName || name),
+    testBinName: rubyEscape(testBin),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
+    dependsOnLines,
+    testDoBody,
   };
+}
+
+export function resolveGemNativeDepends(
+  gemName: string,
+  options: any = {},
+): string[] {
+  if (Array.isArray(options.dependsOn)) {
+    return options.dependsOn.map(String).filter(Boolean);
+  }
+  const key = String(gemName || "");
+  const fromMap = GEM_NATIVE_DEPENDS[key] || GEM_NATIVE_DEPENDS[key.replace(/-/g, "_")] || [];
+  // Many gems with native extensions need a C toolchain at install time.
+  // pkgconf is the modern Homebrew name (pkg-config is an alias).
+  const extra: string[] = [];
+  if (options.nativeBuild === true && !fromMap.includes("pkgconf")) {
+    extra.push("pkgconf");
+  }
+  return [...new Set([...fromMap, ...extra])];
 }
 
 export async function generateGemPackage(
@@ -80,12 +182,39 @@ async function fetchRubyGemsData(gemName: string) {
   if (!data.version || !data.gem_uri) {
     throw new Error(`Incomplete gem data for ${gemName}`);
   }
+
+  // Prefer version metadata for executables when available (v2 API).
+  let executables: string[] | null = null;
+  try {
+    const v2Url = `${base}/api/v2/rubygems/${encodeURIComponent(gemName)}/versions/${encodeURIComponent(data.version)}.json`;
+    const v2Res = await fetch(v2Url, {
+      headers: { Accept: "application/json", "User-Agent": "allbrew/1.0" },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (v2Res.ok) {
+      const v2 = await v2Res.json();
+      if (Array.isArray(v2?.executables)) {
+        executables = v2.executables.map(String);
+      } else if (Array.isArray(v2?.metadata?.executables)) {
+        executables = v2.metadata.executables.map(String);
+      }
+    }
+  } catch {
+    /* optional */
+  }
+
+  // Some gems expose executables only under dependencies/extensions in v1.
+  if (executables == null && Array.isArray(data.executables)) {
+    executables = data.executables.map(String);
+  }
+
   return {
     version: data.version,
     gemUri: data.gem_uri,
     info: data.info,
     homepageUri: data.homepage_uri,
     licenses: data.licenses,
+    executables,
   };
 }
 

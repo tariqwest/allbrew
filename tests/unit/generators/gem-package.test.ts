@@ -1,5 +1,8 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectGemPackagePayload } from "../../../lib/generators/gem-package.ts";
+import {
+  collectGemPackagePayload,
+  resolveGemNativeDepends,
+} from "../../../lib/generators/gem-package.ts";
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
@@ -156,5 +159,66 @@ describe("collectGemPackagePayload — license_finder", () => {
     const payload = await collectGemPackagePayload("license_finder");
     expect(payload.livecheckBlock).toContain("rubygems.org");
     expect(payload.livecheckBlock).toContain("license_finder");
+  });
+});
+
+describe("gem native depends + library mode", () => {
+  it("maps mailcatcher to pkgconf and sqlite", () => {
+    expect(resolveGemNativeDepends("mailcatcher")).toEqual([
+      "pkgconf",
+      "sqlite",
+    ]);
+  });
+
+  it("emits dependsOnLines and library test for empty executables", async () => {
+    global.fetch = mock((url: string) => {
+      if (String(url).includes("/adamantite") && String(url).includes("/api/v1/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              version: "1.0.0",
+              gem_uri: "https://rubygems.org/gems/adamantite-1.0.0.gem",
+              info: "Library gem",
+              homepage_uri: "https://example.com",
+              licenses: ["MIT"],
+              executables: [],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    }) as any;
+
+    const payload = await collectGemPackagePayload("adamantite", null, {
+      executables: [],
+    });
+    expect(payload.testDoBody).toContain("gem list --local");
+    expect(payload.testDoBody).toContain("require");
+    expect(payload.testDoBody).not.toContain("--version");
+  });
+
+  it("adds depends_on lines for mailcatcher", async () => {
+    global.fetch = mock((url: string) => {
+      if (String(url).includes("mailcatcher") && String(url).includes("/api/v1/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              version: "0.10.0",
+              gem_uri: "https://rubygems.org/gems/mailcatcher-0.10.0.gem",
+              info: "Catches mail",
+              homepage_uri: "https://mailcatcher.me",
+              licenses: ["MIT"],
+              executables: ["mailcatcher", "catchmail"],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    }) as any;
+
+    const payload = await collectGemPackagePayload("mailcatcher");
+    expect(payload.dependsOnLines).toContain("pkgconf");
+    expect(payload.dependsOnLines).toContain("sqlite");
+    expect(payload.testBinName).toContain("mailcatcher");
   });
 });
