@@ -54,6 +54,11 @@ export type CargoPackagePayload = FormulaCommonFields & {
    * rescue path (gobang / oatmeal / rainfrog class of failures).
    */
   cargoInstallArgsUnlocked: string;
+  /**
+   * Ruby lines injected at the start of `def install` (e.g. git submodule
+   * update for path deps). Empty string when not needed.
+   */
+  installPreamble: string;
 };
 
 export type GoPackagePayload = FormulaCommonFields & {

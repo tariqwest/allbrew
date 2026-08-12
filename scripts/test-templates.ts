@@ -265,6 +265,8 @@ function buildCargoPackageCase(): Case {
     livecheckBlock: livecheck,
     cargoInstallArgs: "*std_cargo_args",
     cargoInstallArgsUnlocked: "*std_cargo_args(locked: false)",
+    installPreamble:
+      '    system "git", "submodule", "update", "--init", "--recursive" if build.head?\n',
     allbrewDependency: "",
     testBinName: "foo",
     serviceBlock: "",
@@ -280,6 +282,7 @@ function buildCargoPackageCase(): Case {
     livecheck +
     `  depends_on "rust" => :build\n\n` +
     `  def install\n` +
+    `    system "git", "submodule", "update", "--init", "--recursive" if build.head?\n` +
     `    # Prefer --locked (std_cargo_args) so builds match Cargo.lock; if the lockfile\n` +
     `    # is out of date relative to Cargo.toml (common on crates.io snapshots),\n` +
     `    # retry without --locked so install can still succeed.\n` +

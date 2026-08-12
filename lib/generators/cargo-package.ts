@@ -15,6 +15,7 @@ import {
 import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { CargoPackagePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
+import { getFileContent } from "../github.ts";
 
 /** Parse `name = "…"` from the first `[package]` section of a Cargo.toml. */
 export function parseCargoPackageName(
@@ -72,6 +73,61 @@ export function isCargoWorkspaceRoot(
     /(?:^|\n)\s*\[workspace\]/m.test(cargoToml) ||
     parseCargoWorkspaceMembers(cargoToml).length > 0
   );
+}
+
+
+/**
+ * Parse `path = "…"` dependency entries from a Cargo.toml.
+ * Covers both inline (`foo = { path = "…" }`) and section form.
+ */
+export function parseCargoPathDependencies(
+  cargoToml: string | null | undefined,
+): string[] {
+  if (!cargoToml) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const re = /(?:^|[,{\s])path\s*=\s*["']([^"']+)["']/gm;
+  for (const m of String(cargoToml).matchAll(re)) {
+    const raw = (m[1] || "").trim().replace(/^\.\//, "");
+    if (!raw || seen.has(raw)) continue;
+    seen.add(raw);
+    out.push(raw);
+  }
+  return out;
+}
+
+/** Absolute / Windows-drive / parent-escaping path deps cannot build from a tarball. */
+export function isUnusableCargoPathDep(path: string): boolean {
+  const t = (path || "").trim();
+  if (!t) return false;
+  if (/^[A-Za-z]:[\\/]/.test(t)) return true; // Windows absolute
+  if (t.startsWith("\\\\") || t.startsWith("//")) return true; // UNC
+  if (t.startsWith("/")) return true; // Unix absolute
+  if (t.split(/[\\/]/).includes("..")) return true;
+  return false;
+}
+
+/**
+ * True when a GitHub release tarball cannot supply a buildable cargo source:
+ * absolute/escape path deps, or relative path deps that are git submodules
+ * (GitHub source archives omit submodule contents).
+ */
+export function cargoGithubTarballUnusable(
+  cargoToml: string | null | undefined,
+  gitmodules: string | null | undefined = null,
+): boolean {
+  const paths = parseCargoPathDependencies(cargoToml);
+  if (paths.length === 0) return false;
+  if (paths.some(isUnusableCargoPathDep)) return true;
+  if (!gitmodules) return false;
+  const gm = String(gitmodules);
+  return paths.some((p) => {
+    const esc = p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(
+      `(?:^|\\n)\\s*path\\s*=\\s*["']?${esc}["']?\\s*(?:$|\\n)`,
+      "m",
+    ).test(gm);
+  });
 }
 
 /** Ruby fragment for `system "cargo", "install", …`. */
@@ -278,11 +334,54 @@ export async function collectCargoPackagePayload(
     "";
   const defaultBranch = repoInfo.defaultBranch || "main";
 
+  // Drop GitHub release tarball when Cargo.toml path deps cannot be satisfied
+  // from a source archive (absolute paths, or relative paths that are git
+  // submodules — GitHub tarballs omit submodule contents). Fall back to head-only.
+  let effectiveRelease = release;
+  if (effectiveRelease && !options.keepReleaseDespitePathDeps) {
+    const ownerRepo = (fullName || "").split("/");
+    const owner = ownerRepo[0];
+    const repo = ownerRepo[1];
+    const tag =
+      effectiveRelease.tagName ||
+      effectiveRelease.tag_name ||
+      effectiveRelease.name ||
+      null;
+    let tomlAtRelease =
+      options.cargoTomlAtRelease || options.cargoToml || null;
+    let gitmodulesAtRelease = options.gitmodulesAtRelease ?? options.gitmodules ?? null;
+    if (owner && repo && tag && (tomlAtRelease == null || gitmodulesAtRelease == null)) {
+      try {
+        if (tomlAtRelease == null) {
+          tomlAtRelease = await getFileContent(owner, repo, "Cargo.toml", tag);
+        }
+        if (gitmodulesAtRelease == null) {
+          gitmodulesAtRelease = await getFileContent(
+            owner,
+            repo,
+            ".gitmodules",
+            tag,
+          );
+        }
+      } catch {
+        // keep release; fetch failure is non-fatal
+      }
+    }
+    if (tomlAtRelease && cargoGithubTarballUnusable(tomlAtRelease, gitmodulesAtRelease)) {
+      effectiveRelease = null;
+    }
+  }
+
+  // Path deps / git submodules need a full git checkout. On `brew install --HEAD`,
+  // initialize submodules before cargo install (no-op when the repo has none).
+  const installPreamble =
+    '    system "git", "submodule", "update", "--init", "--recursive" if build.head?\n';
+
   let urlLines = "";
-  if (release) {
+  if (effectiveRelease) {
     const sourceUrl =
-      release.tarballUrl ||
-      `https://github.com/${fullName || repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
+      effectiveRelease.tarballUrl ||
+      `https://github.com/${fullName || repoInfo.fullName}/archive/refs/tags/${effectiveRelease.tagName}.tar.gz`;
     const sha256 = await hashUrl(sourceUrl);
     urlLines = `  url ${rubyString(sourceUrl)}\n  sha256 ${rubyString(sha256)}\n`;
   } else if (cratesMeta) {
@@ -319,6 +418,7 @@ export async function collectCargoPackagePayload(
     livecheckBlock,
     cargoInstallArgs: cargoStdInstallArgs(installPath),
     cargoInstallArgsUnlocked: cargoStdInstallArgs(installPath, { locked: false }),
+    installPreamble,
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(options.binName || binFromCrate || name),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),

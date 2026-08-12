@@ -238,9 +238,15 @@ export async function getRepoContents(owner, repo, path = '') {
   }
 }
 
-export async function getFileContent(owner, repo, path) {
+export async function getFileContent(owner, repo, path, ref = undefined) {
   try {
-    const { data } = await getOctokit().rest.repos.getContent({ owner, repo, path });
+    const params: { owner: any; repo: any; path: any; ref?: string } = {
+      owner,
+      repo,
+      path,
+    };
+    if (ref) params.ref = ref;
+    const { data } = await getOctokit().rest.repos.getContent(params);
     if (data.type !== 'file') return null;
     return Buffer.from(data.content, data.encoding || 'base64').toString('utf-8');
   } catch {

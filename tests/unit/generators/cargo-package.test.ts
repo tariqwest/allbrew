@@ -9,6 +9,10 @@ mock.module("../../../lib/sha256.ts", () => ({
   downloadAndHash: mock().mockResolvedValue({ sha256: "mocked_sha256" }),
 }));
 
+mock.module("../../../lib/github.ts", () => ({
+  getFileContent: mock().mockResolvedValue(null),
+}));
+
 describe("collectCargoPackagePayload", () => {
   beforeEach(() => {
     mock.restore();
@@ -315,3 +319,80 @@ describe("cargo toml helpers", () => {
     expect(cargoStdInstallArgs(".")).toBe("*std_cargo_args");
   });
 });
+
+describe("cargo path dependency helpers", () => {
+  it("parseCargoPathDependencies finds inline and section paths", async () => {
+    const { parseCargoPathDependencies } = await import(
+      "../../../lib/generators/cargo-package.ts"
+    );
+    const toml = `
+[package]
+name = "x"
+[dependencies]
+foo = { path = "./crates/foo" }
+[dependencies.tes3]
+path = "E:/GitHub/tes3conv/libs/tes3"
+`;
+    expect(parseCargoPathDependencies(toml)).toEqual([
+      "crates/foo",
+      "E:/GitHub/tes3conv/libs/tes3",
+    ]);
+  });
+
+  it("isUnusableCargoPathDep flags absolute and Windows paths", async () => {
+    const { isUnusableCargoPathDep } = await import(
+      "../../../lib/generators/cargo-package.ts"
+    );
+    expect(isUnusableCargoPathDep("E:/GitHub/tes3conv/libs/tes3")).toBe(true);
+    expect(isUnusableCargoPathDep("/opt/local/lib")).toBe(true);
+    expect(isUnusableCargoPathDep("../sibling")).toBe(true);
+    expect(isUnusableCargoPathDep("tes3")).toBe(false);
+    expect(isUnusableCargoPathDep("crates/foo")).toBe(false);
+  });
+
+  it("cargoGithubTarballUnusable for absolute path deps", async () => {
+    const { cargoGithubTarballUnusable } = await import(
+      "../../../lib/generators/cargo-package.ts"
+    );
+    const broken = `[package]\nname = "x"\n[dependencies.tes3]\npath = "E:/GitHub/tes3conv/libs/tes3"\n`;
+    expect(cargoGithubTarballUnusable(broken, null)).toBe(true);
+  });
+
+  it("cargoGithubTarballUnusable for submodule path deps", async () => {
+    const { cargoGithubTarballUnusable } = await import(
+      "../../../lib/generators/cargo-package.ts"
+    );
+    const toml = `[dependencies.tes3]\npath = "tes3"\n`;
+    const gm = `[submodule "tes3"]\npath = tes3\nurl = https://github.com/rfuzzo/tes3\n`;
+    expect(cargoGithubTarballUnusable(toml, gm)).toBe(true);
+    expect(cargoGithubTarballUnusable(toml, null)).toBe(false);
+  });
+
+  it("drops unusable GitHub release and emits head-only with submodule init", async () => {
+    const { collectCargoPackagePayload } = await import(
+      "../../../lib/generators/cargo-package.ts"
+    );
+    const repoInfo = {
+      name: "tes3edit",
+      fullName: "rfuzzo/tes3edit",
+      description: "Morrowind ESP editor",
+      homepage: "https://rfuzzo.github.io/tes3edit/",
+      htmlUrl: "https://github.com/rfuzzo/tes3edit",
+      defaultBranch: "main",
+      license: null,
+    };
+    const release = {
+      tagName: "v0.1",
+      tarballUrl: "https://api.github.com/repos/rfuzzo/tes3edit/tarball/v0.1",
+    };
+    const payload = await collectCargoPackagePayload(repoInfo, release, {
+      cargoTomlAtRelease:
+        '[package]\nname = "tes3edit"\n[dependencies.tes3]\npath = "E:/GitHub/tes3conv/libs/tes3"\n',
+      gitmodulesAtRelease: null,
+    });
+    expect(payload.urlLines).toBe("");
+    expect(payload.installPreamble).toContain("git");
+    expect(payload.installPreamble).toContain("submodule");
+  });
+});
+

@@ -17,7 +17,7 @@ ${p.licenseLine}${p.urlLines}  head "https://github.com/${p.fullName}.git", bran
 ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}  depends_on "rust" => :build
 
   def install
-    # Prefer --locked (std_cargo_args) so builds match Cargo.lock; if the lockfile
+${p.installPreamble}    # Prefer --locked (std_cargo_args) so builds match Cargo.lock; if the lockfile
     # is out of date relative to Cargo.toml (common on crates.io snapshots),
     # retry without --locked so install can still succeed.
     system "cargo", "install", ${p.cargoInstallArgs}
