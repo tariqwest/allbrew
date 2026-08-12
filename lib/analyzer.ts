@@ -198,11 +198,8 @@ export function detectInstallMethod(
     if (pkg) return { method: "dotnet", package: pkg };
   }
 
-  match = readmeText.match(GEM_INSTALL_RE);
-  if (match) {
-    const pkg = String(match[1] || "").trim();
-    if (pkg) return { method: "gem", package: pkg };
-  }
+  const gemHint = pickPreferredGemPackage(readmeText, preferredPackageName);
+  if (gemHint) return gemHint;
 
   match = readmeText.match(DENO_INSTALL_RE);
   if (match)
@@ -743,6 +740,91 @@ function pickPreferredNpmPackage(readmeText, preferredPackageName = "") {
   if (globalHit) return globalHit.package;
   return candidates[0].package;
 }
+
+/**
+ * Collect `gem install` specs from README and pick the app package.
+ * When preferredPackageName is set (repo name / --name), prefer that over
+ * toolchain deps (e.g. Smashing README documents `gem install bundler` then
+ * `gem install smashing`). Prefer preferred match; do not fall back to an
+ * unrelated gem when preferred is set — later gemspec detection can win.
+ */
+function pickPreferredGemPackage(readmeText, preferredPackageName = "") {
+  if (!readmeText) return null;
+
+  const candidates = [];
+  const globalRe = new RegExp(
+    GEM_INSTALL_RE.source,
+    GEM_INSTALL_RE.flags.includes("g")
+      ? GEM_INSTALL_RE.flags
+      : `${GEM_INSTALL_RE.flags}g`,
+  );
+  let match;
+  while ((match = globalRe.exec(readmeText)) !== null) {
+    const pkg = cleanGemPackageSpec(match[1]);
+    if (!pkg) continue;
+    candidates.push({
+      package: pkg,
+      raw: match[0],
+      index: match.index,
+    });
+  }
+  if (candidates.length === 0) return null;
+
+  const preferred = String(preferredPackageName || "").trim();
+  if (preferred) {
+    const preferredLower = preferred.toLowerCase();
+    const preferredLast = preferredLower.split("/").pop();
+    const matchPreferred = candidates.find((c) => {
+      const pkg = c.package.toLowerCase();
+      const last = pkg.split("/").pop();
+      return (
+        pkg === preferredLower ||
+        pkg === preferredLast ||
+        last === preferredLower ||
+        last === preferredLast
+      );
+    });
+    if (matchPreferred) {
+      return { method: "gem", package: matchPreferred.package };
+    }
+    // Preferred name set but no gem hit for it — let gemspec / other methods try.
+    return null;
+  }
+
+  // No preferred: skip well-known Ruby toolchain gems when a real app gem exists.
+  const app = candidates.find((c) => !GEM_TOOLCHAIN_PACKAGES.has(c.package.toLowerCase()));
+  if (app) return { method: "gem", package: app.package };
+  return { method: "gem", package: candidates[0].package };
+}
+
+/** Strip version pins / trailing punctuation from a `gem install` argument. */
+function cleanGemPackageSpec(raw) {
+  if (!raw) return null;
+  let s = String(raw).trim();
+  // Drop trailing markdown/code fences or sentence punctuation
+  s = s.replace(/[`'")\],.;:]+$/g, "");
+  // `gem install foo:1.2` / `foo -v 1.2` handled by regex already; strip :version
+  s = s.replace(/:[\w.+-]+$/, "");
+  // Reject local paths and empty
+  if (!s || s.startsWith(".") || s.startsWith("/") || s.startsWith("~")) {
+    return null;
+  }
+  // Gem names are [a-z0-9_-] with optional namespace separators rarely used
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(s)) return null;
+  return s;
+}
+
+/** Ruby toolchain / dep gems often listed before the app in install docs. */
+const GEM_TOOLCHAIN_PACKAGES = new Set([
+  "bundler",
+  "rake",
+  "rubygems-update",
+  "gem-release",
+  "rdoc",
+  "minitest",
+  "rspec",
+  "rake-compiler",
+]);
 
 /**
  * Collect pip/pipx/uv/uvx install specs from README and pick the app package.
