@@ -490,13 +490,17 @@ fi
 if [ "$BIN_OK" = "0" ]; then
   PREFIX=$(brew --prefix "$NAME" 2>/dev/null || true)
   if [ -n "$PREFIX" ] && [ -x "$PREFIX/libexec/bin/python" ]; then
-    MOD=$(echo "$NAME" | tr '-' '_')
+    # Formula tokens may be renamed for core collisions (foo → foo-tap); the
+    # importable module usually matches the PyPI name without the -tap suffix.
     # Use $MOD (shell) not \${MOD}: Bun still interpolates escaped \${} in template literals.
-    if perl -e "alarm 20; exec @ARGV" "$PREFIX/libexec/bin/python" -c "import $MOD; print(getattr($MOD, '__version__', 'ok'))" >/tmp/ab-bin-out 2>&1; then
-      echo BIN_OK; BIN_OK=1; echo IMPORT_OK; echo "IMPORT_MOD=$MOD"; head -5 /tmp/ab-bin-out
-    else
-      echo IMPORT_FAIL; head -10 /tmp/ab-bin-out 2>/dev/null || true
-    fi
+    BASE_NAME=$(echo "$NAME" | sed 's/-tap$//')
+    for MOD in $(echo "$BASE_NAME" | tr '-' '_') $(echo "$NAME" | tr '-' '_'); do
+      if perl -e "alarm 20; exec @ARGV" "$PREFIX/libexec/bin/python" -c "import $MOD; print(getattr($MOD, '__version__', 'ok'))" >/tmp/ab-bin-out 2>&1; then
+        echo BIN_OK; BIN_OK=1; echo IMPORT_OK; echo "IMPORT_MOD=$MOD"; head -5 /tmp/ab-bin-out
+        break
+      fi
+    done
+    if [ "$BIN_OK" = "0" ]; then echo IMPORT_FAIL; head -10 /tmp/ab-bin-out 2>/dev/null || true; fi
   fi
 fi
 if [ "$BIN_OK" = "0" ]; then echo BIN_MISSING; fi
