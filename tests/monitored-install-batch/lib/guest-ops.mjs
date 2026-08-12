@@ -306,8 +306,41 @@ exit 0
 }
 
 export async function syncAllbrewSrcToVM(h, hostSrcPath, vmDest) {
+  const { existsSync } = await import("node:fs");
+  const { spawn } = await import("node:child_process");
   const hostQ = h.q(hostSrcPath);
-  const branch = await h.execHost(`git -C ${hostQ} rev-parse --abbrev-ref HEAD 2>/dev/null || git -C ${hostQ} branch --show-current 2>/dev/null || echo HEAD`, { nothrow: true });
+  // Agent worktrees live on the batch child machine. When LUME_REMOTE_ENABLED,
+  // h.execHost SSHes to the Lume host where those paths do not exist — run git
+  // locally whenever hostSrcPath is present on this filesystem.
+  const localSrc = existsSync(hostSrcPath);
+  const runHostGit = async (cmd, opts = {}) => {
+    if (!localSrc) return h.execHost(cmd, { nothrow: true, ...opts });
+    return await new Promise((resolve) => {
+      const child = spawn("bash", ["-c", cmd], {
+        cwd: hostSrcPath,
+        env: process.env,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (d) => { stdout += d; });
+      child.stderr.on("data", (d) => { stderr += d; });
+      const timer = opts.timeout
+        ? setTimeout(() => {
+            try { child.kill("SIGKILL"); } catch {}
+          }, opts.timeout)
+        : null;
+      child.on("close", (code) => {
+        if (timer) clearTimeout(timer);
+        resolve({
+          stdout: stdout.trimEnd(),
+          stderr: stderr.trimEnd(),
+          exitCode: code ?? 1,
+        });
+      });
+    });
+  };
+  const branch = await runHostGit(`git rev-parse --abbrev-ref HEAD 2>/dev/null || git branch --show-current 2>/dev/null || echo HEAD`);
   const branchName = (branch.stdout || "").trim() || "HEAD";
   const isHead = branchName === "HEAD";
   const pushRef = isHead ? `HEAD:refs/heads/agent/batch-src-${Date.now()}` : `${branchName}:${branchName}`;
@@ -323,14 +356,14 @@ export async function syncAllbrewSrcToVM(h, hostSrcPath, vmDest) {
   const destQ = h.q(dest);
 
   // Push host worktree branch to origin so VM can fetch it (works for both local and remote VMs)
-  const pushRes = await h.execHost(`git -C ${hostQ} push origin ${pushRef} --force 2>&1`, { timeout: 120000, nothrow: true });
+  const pushRes = await runHostGit(`git push origin ${pushRef} --force 2>&1`, { timeout: 120000 });
   if (pushRes.exitCode !== 0 && !/Everything up-to-date/.test(pushRes.stdout || "") && !/To /.test(pushRes.stdout || "")) {
     throw new Error(`failed to push allbrew src branch ${pushBranch} to origin:\n${pushRes.stdout}\n${pushRes.stderr}`);
   }
 
-  const remoteUrlRes = await h.execHost(`git -C ${hostQ} remote get-url origin 2>/dev/null || echo https://github.com/tariqwest/allbrew.git`, { nothrow: true });
+  const remoteUrlRes = await runHostGit(`git remote get-url origin 2>/dev/null || echo https://github.com/tariqwest/allbrew.git`);
   const remoteUrl = (remoteUrlRes.stdout || "https://github.com/tariqwest/allbrew.git").trim();
-  const wantShaRes = await h.execHost(`git -C ${hostQ} rev-parse HEAD`, { nothrow: true });
+  const wantShaRes = await runHostGit(`git rev-parse HEAD`);
   const wantSha = (wantShaRes.stdout || "").trim();
 
   // lumeSshExec runs as user "lume"; the workspace under /Users/th-allbrew is
@@ -407,14 +440,28 @@ export async function syncAllbrewSrcToVM(h, hostSrcPath, vmDest) {
 
 export function strictVerifyCmd({ pkg, mountPoint }) {
   return `${brewEnvPreamble(mountPoint)}
+# Force unbuffered-ish output for SSH capture
+exec 1>&1
 NAME=${JSON.stringify(pkg)}
 echo VERIFY name=$NAME
+echo VERIFY_BEGIN $(date -u +%H:%M:%S)
 if brew list --formula "$NAME" >/dev/null 2>&1 || brew list "$NAME" >/dev/null 2>&1; then echo FORMULA_LISTED=1; else echo FORMULA_LISTED=0; fi
 if brew list --cask "$NAME" >/dev/null 2>&1; then echo CASK_LISTED=1; else echo CASK_LISTED=0; fi
 if test -f "$HOME/.config/allbrew/packages/$NAME.json"; then echo MANIFEST_OK; else echo MANIFEST_MISSING; fi
 BIN_OK=0
+run_bin_check() {
+  local bin="$1"
+  # macOS has no timeout(1); use perl alarm
+  if perl -e "alarm 12; exec @ARGV" "$bin" --version >/tmp/ab-bin-out 2>&1 \
+    || perl -e "alarm 12; exec @ARGV" "$bin" --help >/tmp/ab-bin-out 2>&1 \
+    || perl -e "alarm 12; exec @ARGV" "$bin" -h >/tmp/ab-bin-out 2>&1; then
+    return 0
+  fi
+  return 1
+}
 if command -v "$NAME" >/dev/null 2>&1; then
-  if "$NAME" --version >/tmp/ab-bin-out 2>&1 || "$NAME" --help >/tmp/ab-bin-out 2>&1 || "$NAME" -h >/tmp/ab-bin-out 2>&1; then echo BIN_OK; BIN_OK=1; head -5 /tmp/ab-bin-out; else echo BIN_HELP_FAIL; fi
+  echo "BIN_CANDIDATE=$(command -v "$NAME")"
+  if run_bin_check "$NAME"; then echo BIN_OK; BIN_OK=1; head -5 /tmp/ab-bin-out; else echo BIN_HELP_FAIL; cat /tmp/ab-bin-out 2>/dev/null | head -5; fi
 fi
 # Renamed formulae (core collision → name-tap) keep the original bin (e.g. starship-tap ships bin/starship).
 if [ "$BIN_OK" = "0" ]; then
@@ -423,7 +470,7 @@ if [ "$BIN_OK" = "0" ]; then
     for b in "$PREFIX/bin"/*; do
       [ -e "$b" ] || continue
       if [ -x "$b" ] || [ -L "$b" ]; then
-        if "$b" --version >/tmp/ab-bin-out 2>&1 || "$b" --help >/tmp/ab-bin-out 2>&1 || "$b" -h >/tmp/ab-bin-out 2>&1; then
+        if run_bin_check "$b"; then
           echo BIN_OK; BIN_OK=1; echo "BIN_PATH=$b"; head -5 /tmp/ab-bin-out; break
         fi
       fi
