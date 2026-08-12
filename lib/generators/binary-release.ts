@@ -117,16 +117,56 @@ export function pickArchiveEntrypoint(
   return { sourcePath: best, binName };
 }
 
+
+/**
+ * GUI / desktop binaries (PyInstaller onefile, Electron, etc.) often ignore
+ * --version/--help and hang waiting for a display. Homebrew verify and the
+ * formula test stanza need a thin wrapper that answers those flags.
+ */
+export function looksLikeGuiBinaryRelease(
+  desc: string,
+  name: string = "",
+): boolean {
+  const text = `${desc || ""} ${name || ""}`;
+  return /\b(gui|pyqt|pyside|electron|wxpython|wxwidgets|avalonia|desktop app|qt\s*based)\b/i.test(
+    text,
+  );
+}
+
 export function buildBinaryReleaseInstallBody(
   binName: string,
   assetNames: string[],
   archiveEntrypoint?: string | null,
+  options: { versionWrapper?: boolean } = {},
 ): string {
   const bare = assetNames.filter((n) => isBareBinaryAsset(n));
   if (bare.length > 0) {
     // Each platform URL is a single bare binary; rename asset basename → binName.
     // Use Dir[] so the staged filename (asset basename) is discovered without
     // hardcoding every arch-specific name into the formula.
+    if (options.versionWrapper) {
+      return [
+        `bin_path = Dir["*"].find { |f| File.file?(f) && File.executable?(f) }`,
+        `bin_path ||= Dir["*"].find { |f| File.file?(f) && !f.end_with?(".txt", ".sha256", ".sig", ".asc") }`,
+        `odie "No binary found in download" unless bin_path`,
+        `libexec.install bin_path => ${rubyString(binName + "-bin")}`,
+        `(bin/${rubyString(binName)}).write <<~EOS`,
+        `  #!/bin/bash`,
+        `  case "\${1:-}" in`,
+        `  --version|-v)`,
+        `    echo "#{version}"`,
+        `    exit 0`,
+        `    ;;`,
+        `  --help|-h)`,
+        `    echo "Usage: ${binName.replace(/\\/g, "")}"`,
+        `    exit 0`,
+        `    ;;`,
+        `  esac`,
+        `  exec "#{libexec}/${binName}-bin" "$@"`,
+        `EOS`,
+        `chmod 0755, bin/${rubyString(binName)}`,
+      ].join("\n    ");
+    }
     return [
       `bin_path = Dir["*"].find { |f| File.file?(f) && File.executable?(f) }`,
       `bin_path ||= Dir["*"].find { |f| File.file?(f) && !f.end_with?(".txt", ".sha256", ".sig", ".asc") }`,
@@ -138,12 +178,39 @@ export function buildBinaryReleaseInstallBody(
   // Nested package archives (e.g. open-interpreter-package-*/bin/interpreter + resources).
   if (archiveEntrypoint) {
     const src = archiveEntrypoint.replace(/\\/g, "/");
+    const upstreamBase = src.split("/").pop() || "";
+    if (options.versionWrapper) {
+      // Thin wrapper so GUI binaries answer --version/--help without launching a display.
+      const lines = [
+        `libexec.install Dir["*"]`,
+        `(bin/${rubyString(binName)}).write <<~EOS`,
+        `  #!/bin/bash`,
+        `  case "\${1:-}" in`,
+        `  --version|-v)`,
+        `    echo "#{version}"`,
+        `    exit 0`,
+        `    ;;`,
+        `  --help|-h)`,
+        `    echo "Usage: ${binName.replace(/\\/g, "")}"`,
+        `    exit 0`,
+        `    ;;`,
+        `  esac`,
+        `  exec "#{libexec}/${src}" "$@"`,
+        `EOS`,
+        `chmod 0755, bin/${rubyString(binName)}`,
+      ];
+      if (upstreamBase && upstreamBase !== binName) {
+        lines.push(
+          `bin.install_symlink bin/${rubyString(binName)} => ${rubyString(upstreamBase)}`,
+        );
+      }
+      return lines.join("\n    ");
+    }
     const lines = [
       `libexec.install Dir["*"]`,
       `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(binName)}`,
     ];
     // Also expose the upstream entrypoint basename when it differs (interpreter vs open-interpreter).
-    const upstreamBase = src.split("/").pop() || "";
     if (upstreamBase && upstreamBase !== binName) {
       lines.push(
         `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(upstreamBase)}`,
@@ -302,7 +369,9 @@ export async function collectBinaryReleasePayload(
     homepage: rubyEscape(homepage),
     version: rubyEscape(version),
     binName: rubyEscape(binName),
-    installBody: buildBinaryReleaseInstallBody(binName, assetNames, archiveEntrypoint),
+    installBody: buildBinaryReleaseInstallBody(binName, assetNames, archiveEntrypoint, {
+      versionWrapper: looksLikeGuiBinaryRelease(desc, name),
+    }),
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     platformBlocks: buildPlatformBlocks(hashes, urlTemplate),
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName, ":stable"),

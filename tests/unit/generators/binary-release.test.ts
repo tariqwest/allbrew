@@ -4,6 +4,7 @@ import {
   templateReleaseUrl,
   pickArchiveEntrypoint,
   buildBinaryReleaseInstallBody,
+  looksLikeGuiBinaryRelease,
 } from "../../../lib/generators/binary-release.ts";
 import wakapiFixture from "../../fixtures/github/wakapi.json";
 
@@ -329,4 +330,25 @@ describe("pickArchiveEntrypoint / nested package archives", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("looksLikeGuiBinaryRelease detects GUI/PyQt descriptors", () => {
+    expect(looksLikeGuiBinaryRelease("CadQuery GUI editor based on PyQT", "cq-editor")).toBe(true);
+    expect(looksLikeGuiBinaryRelease("A fast CLI finder", "fd")).toBe(false);
+  });
+
+  it("buildBinaryReleaseInstallBody emits version wrapper for GUI entrypoints", () => {
+    const body = buildBinaryReleaseInstallBody(
+      "cq-editor",
+      ["CQ-editor-macos-arm64.zip"],
+      "CQ-editor",
+      { versionWrapper: true },
+    );
+    expect(body).toContain('libexec.install Dir["*"]');
+    expect(body).toContain('(bin/"cq-editor").write <<~EOS');
+    expect(body).toContain('echo "#{version}"');
+    expect(body).toContain('exec "#{libexec}/CQ-editor" "$@"');
+    expect(body).toContain('bin.install_symlink bin/"cq-editor" => "CQ-editor"');
+    expect(body).not.toContain('bin.install_symlink libexec/"CQ-editor"');
+  });
+
 });
