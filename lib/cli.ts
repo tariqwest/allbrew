@@ -1053,6 +1053,60 @@ async function handleGithubRepo(classification, opts) {
     releaseSpinner.info("No releases found, checking README...");
   }
 
+  // Redirect for moved/archived repos (e.g. stonerl/Thaw -> thaw-app/Thaw):
+  // if the current repo has no usable release but README points at a
+  // different github.com/<owner>/<repo>, probe that canonical repo for
+  // app/binary assets before falling through to README/file heuristics.
+  if (!release) {
+    try {
+      const previewReadme = await getReadme(owner, repo);
+      if (previewReadme) {
+        const moved = previewReadme.match(/moved to:\s*https?:\/\/github\.com\/([^\/\s"']+)\/([^\/\s"'\)#]+)/i);
+        if (moved) {
+          const canonOwner = moved[1];
+          const canonRepo = moved[2].replace(/\.git$/i, "").replace(/\/$/, "");
+          if (canonOwner.toLowerCase() !== owner.toLowerCase() || canonRepo.toLowerCase() !== repo.toLowerCase()) {
+            const spinner2 = ora(`Repository moved to ${canonOwner}/${canonRepo}, checking canonical releases...`).start();
+            try {
+              const canonInfo = await getRepoInfo(canonOwner, canonRepo);
+              const canonRelease = await getLatestRelease(canonOwner, canonRepo);
+              const canonAppAssets = (canonRelease?.assets || []).filter((a) => isAppAsset(a.name));
+              const canonBinAssets = (canonRelease?.assets || []).filter((a) => isBinaryAsset(a.name) && matchAssetToArch(a.name));
+              if (canonRelease && (canonAppAssets.length > 0 || canonBinAssets.length > 0)) {
+                spinner2.succeed(`Found canonical release ${canonRelease.tagName} at ${canonOwner}/${canonRepo} (${canonAppAssets.length} app, ${canonBinAssets.length} bin assets)`);
+                repoInfo = canonInfo;
+                release = canonRelease;
+                // re-enter release handling: prefer app assets
+                if (canonAppAssets.length > 0) {
+                  return await generateWithConfirmation("cask-app-release", { repoInfo, release }, opts);
+                }
+                if (canonBinAssets.length > 0) {
+                  return await generateWithConfirmation("binary-release", { repoInfo, release }, opts);
+                }
+              } else if (canonRelease) {
+                spinner2.info(`Canonical release ${canonRelease.tagName} has no recognized assets, trying older canonical releases...`);
+                try {
+                  const recent = await listReleases(canonOwner, canonRepo, { perPage: 30 });
+                  const olderWithApp = pickReleaseWithAppAssets(recent, isAppAsset);
+                  if (olderWithApp && olderWithApp.tagName) {
+                    spinner2.succeed(`Found canonical app assets on ${olderWithApp.tagName} at ${canonOwner}/${canonRepo}`);
+                    repoInfo = canonInfo;
+                    return await generateWithConfirmation("cask-app-release", { repoInfo, release: olderWithApp }, opts);
+                  }
+                } catch {}
+                spinner2.info("No app assets on canonical releases, continuing with normal flow");
+              } else {
+                spinner2.info("No releases on canonical repository either");
+              }
+            } catch (e) {
+              spinner2.info(`Canonical probe failed: ${e?.message || e}`);
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
   // Step 2: Fetch and analyze README
   const readmeSpinner = ora("Fetching README...").start();
   const readme = await getReadme(owner, repo);
