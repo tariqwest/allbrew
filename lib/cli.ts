@@ -17,6 +17,7 @@ import {
   getReadme,
   getRepoContents,
   getFileContent,
+  getBranchTipSha,
 } from "./github.ts";
 import {
   detectBrewInstall,
@@ -64,30 +65,37 @@ async function generatePythonSourceBuildFallback(args: {
   let fallbackRelease = release;
   try {
     const pyproject = await getFileContent(owner, repo, "pyproject.toml");
-    if (pyproject) {
-      if (!binName) {
-        const m = pyproject.match(
-          /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
-        );
-        if (m) binName = m[1].trim();
-      }
-      // Prefer versioned GitHub archive over HEAD-only so brew install does not
-      // use --HEAD (unstable). Branch tarballs need an explicit version stanza
-      // (added by source-build when tagName is set).
-      if (!fallbackRelease) {
-        const ver =
-          pyproject.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1] ||
-          pyproject.match(
-            /\[project\][\s\S]*?^version\s*=\s*["']([^"']+)["']/m,
-          )?.[1];
-        if (ver) {
-          const branch = repoInfo.defaultBranch || "main";
+    if (pyproject && !binName) {
+      const m = pyproject.match(
+        /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
+      );
+      if (m) binName = m[1].trim();
+    }
+    // Prefer a commit-pinned tarball (stable sha256) over floating branch archives
+    // or HEAD-only. Uses the default branch tip via the GitHub tarball API URL
+    // which codeload serves immutably per SHA.
+    if (!fallbackRelease && pyproject) {
+      const ver =
+        pyproject.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1] ||
+        pyproject.match(
+          /\[project\][\s\S]*?^version\s*=\s*["']([^"']+)["']/m,
+        )?.[1];
+      try {
+        const branch = repoInfo.defaultBranch || "main";
+        const sha = await getBranchTipSha(owner, repo, branch);
+        if (sha && ver) {
           fallbackRelease = {
             tagName: ver,
-            // codeload is more reliable than github.com/archive redirects in VMs
-            tarballUrl: `https://codeload.github.com/${repoInfo.fullName}/tar.gz/refs/heads/${branch}`,
+            tarballUrl: `https://github.com/${repoInfo.fullName}/archive/${sha}.tar.gz`,
           };
+          console.log(
+            chalk.dim(
+              `  Pinning source to ${sha.slice(0, 7)} (version ${ver})`,
+            ),
+          );
         }
+      } catch {
+        /* fall through to HEAD-only */
       }
     }
   } catch {
@@ -107,10 +115,11 @@ async function generatePythonSourceBuildFallback(args: {
       buildOpts,
     );
   } catch (hashErr) {
-    // Transient network / redirect failures hashing the branch tarball — fall
-    // back to HEAD-only (no url/sha256 download at generate time).
     const msg = String((hashErr as Error)?.message || String(hashErr));
-    if (!fallbackRelease || !/socket|fetch|download|hash|ECONN|timed out|network/i.test(msg)) {
+    if (
+      !fallbackRelease ||
+      !/socket|fetch|download|hash|ECONN|timed out|network/i.test(msg)
+    ) {
       throw hashErr;
     }
     console.log(
@@ -2285,7 +2294,14 @@ async function brewAutoInstall(result: any, opts: any) {
       );
     }
   } catch (err: any) {
+    const stderrTail = String(err?.stderr || err?.stdout || "")
+      .split("\n")
+      .slice(-40)
+      .join("\n");
     installSpinner.fail(`brew install failed: ${err.message}`);
+    if (stderrTail.trim()) {
+      console.log(chalk.dim(stderrTail));
+    }
     console.log(
       chalk.dim(`  Retry manually: ${installLabel}`),
     );

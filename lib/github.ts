@@ -125,6 +125,11 @@ function mapRelease(data: any) {
  * Repos that ship only prereleases (e.g. portdeck) 404 that endpoint even when
  * list_releases has usable assets. Fall back to the newest non-draft prerelease.
  */
+export async function getBranchTipSha(owner, repo, ref = "HEAD") {
+  const { data } = await getOctokit().rest.repos.getCommit({ owner, repo, ref });
+  return data.sha as string;
+}
+
 export async function getLatestRelease(owner, repo) {
   try {
     const { data } = await getOctokit().rest.repos.getLatestRelease({ owner, repo });
