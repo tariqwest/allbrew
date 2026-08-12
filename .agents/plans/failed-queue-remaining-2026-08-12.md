@@ -86,3 +86,11 @@ Total failed: **34**
 4. **brew_fail / verify-bin / native-build**: product tickets (generators)
 5. **dotnet-experimental**: keep quarantined
 6. **product-investigate**: needs per-URL summary deep dive
+
+## Status 2026-08-12 evening
+
+- Official cask URLs + nix: **skipped** in queue
+- Infra bucket (10 agents): **requeued to pending** after host cleanup
+- Cold bottle smoke **v0.0.31** (`tests/monitored-install-runs/cold-smoke-0.0.31-*`):
+  - PASS: starship, nanobot, toolong, television, mailcatcher
+  - FAIL: verdaccio (see smoke log; service/github-readme path still flaky on bottle)
