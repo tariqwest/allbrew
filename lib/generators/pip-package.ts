@@ -64,12 +64,123 @@ type PypiPackageJson = {
     summary?: string;
     home_page?: string | null;
     project_url?: string | null;
+    project_urls?: Record<string, string | null> | null;
     license?: string | null;
     requires_dist?: string[] | null;
   };
   urls?: PypiUrl[];
   releases?: Record<string, PypiUrl[]>;
 };
+
+/** Parse owner/repo from a GitHub URL (homepage, project_urls, repository). */
+export function githubFullNameFromUrl(
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  try {
+    const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    const u = new URL(withScheme);
+    if (!/^(www\.)?github\.com$/i.test(u.hostname)) return null;
+    const parts = u.pathname.replace(/\.git$/i, "").split("/").filter(Boolean);
+    if (parts.length < 2) return null;
+    return `${parts[0]}/${parts[1]}`.toLowerCase();
+  } catch {
+    // bare owner/repo
+    const m = raw.match(/^(?:github\.com\/)?([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/i);
+    if (m) return `${m[1]}/${m[2]}`.toLowerCase();
+    return null;
+  }
+}
+
+/** Collect candidate GitHub full names from a PyPI info block. */
+export function githubFullNamesFromPypiInfo(
+  info: PypiPackageJson["info"] | null | undefined,
+): string[] {
+  if (!info) return [];
+  const candidates: Array<string | null | undefined> = [
+    info.home_page,
+    info.project_url,
+  ];
+  if (info.project_urls && typeof info.project_urls === "object") {
+    for (const v of Object.values(info.project_urls)) candidates.push(v);
+  }
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const c of candidates) {
+    const full = githubFullNameFromUrl(c);
+    if (full && !seen.has(full)) {
+      seen.add(full);
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+/**
+ * Identity of a PyPI package vs a GitHub fullName:
+ * - "match": PyPI lists this GitHub repo
+ * - "mismatch": PyPI lists a *different* GitHub repo (name collision)
+ * - "unknown": PyPI lists no GitHub URLs (legacy packages; allow by name)
+ */
+export function pypiGithubIdentityStatus(
+  info: PypiPackageJson["info"] | null | undefined,
+  fullName: string,
+): "match" | "mismatch" | "unknown" {
+  const want = String(fullName || "")
+    .replace(/^https?:\/\/github\.com\//i, "")
+    .replace(/\.git$/i, "")
+    .toLowerCase();
+  if (!want || !want.includes("/")) return "unknown";
+  const found = githubFullNamesFromPypiInfo(info);
+  if (found.length === 0) return "unknown";
+  return found.some((f) => f === want) ? "match" : "mismatch";
+}
+
+/** True unless PyPI clearly points at a different GitHub repo. */
+export function pypiInfoMatchesGithubRepo(
+  info: PypiPackageJson["info"] | null | undefined,
+  fullName: string,
+): boolean {
+  return pypiGithubIdentityStatus(info, fullName) !== "mismatch";
+}
+
+export type PypiGithubIdentity =
+  | { status: "match"; packageName: string; version?: string }
+  | { status: "mismatch"; packageName: string; pypiGithub: string[] }
+  | { status: "missing"; packageName: string; reason: string };
+
+/**
+ * Look up PyPI and verify the package is the same project as the GitHub repo.
+ * Used when a GitHub repo has pyproject.toml but the PyPI name may be a
+ * different project (e.g. lfnovo/open-notebook vs usnistgov/open-notebook).
+ */
+export async function resolvePypiGithubIdentity(
+  packageName: string,
+  fullName: string,
+): Promise<PypiGithubIdentity> {
+  try {
+    const data = await fetchPypiData(packageName);
+    const status = pypiGithubIdentityStatus(data.info, fullName);
+    if (status === "mismatch") {
+      return {
+        status: "mismatch",
+        packageName: data.info?.name || packageName,
+        pypiGithub: githubFullNamesFromPypiInfo(data.info),
+      };
+    }
+    // "match" or "unknown" (no GitHub URLs on PyPI) → proceed with pip
+    return {
+      status: "match",
+      packageName: data.info?.name || packageName,
+      version: data.info?.version,
+    };
+  } catch (err: any) {
+    const msg = String(err?.message || err || "");
+    return { status: "missing", packageName, reason: msg };
+  }
+}
 
 type SelectedDist = {
   url: string;
@@ -97,6 +208,23 @@ export async function collectPipPackagePayload(
   options: any = {},
 ): Promise<PipPackagePayload> {
   const pypiData = await fetchPypiData(packageName);
+  const fullName =
+    repoInfo?.fullName ||
+    (repoInfo?.owner && repoInfo?.name
+      ? `${repoInfo.owner}/${repoInfo.name}`
+      : null);
+  if (
+    fullName &&
+    options.skipGithubIdentityCheck !== true &&
+    !pypiInfoMatchesGithubRepo(pypiData.info, fullName)
+  ) {
+    const pypiGh = githubFullNamesFromPypiInfo(pypiData.info);
+    throw new Error(
+      `PyPI package "${packageName}" does not match GitHub repo ${fullName}` +
+        (pypiGh.length ? ` (PyPI points at ${pypiGh.join(", ")})` : " (no GitHub URL on PyPI)") +
+        `. Refusing pip-package generation to avoid packaging the wrong project.`,
+    );
+  }
   const dist = selectBestDistribution(pypiData.urls || [], {
     preferWheel: options.preferWheel !== false,
     version: pypiData.info.version,

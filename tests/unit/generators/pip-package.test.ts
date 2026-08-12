@@ -9,6 +9,10 @@ import {
   compareVersions,
   normalizePackageName,
   KNOWN_BIN_NAMES,
+  githubFullNameFromUrl,
+  githubFullNamesFromPypiInfo,
+  pypiInfoMatchesGithubRepo,
+  resolvePypiGithubIdentity,
 } from "../../../lib/generators/pip-package.ts";
 import marimoFixture from "../../fixtures/pypi/marimo.json";
 import clickFixture from "../../fixtures/pypi/click.json";
@@ -967,6 +971,129 @@ describe("collectPipPackagePayload — dependency extras expansion", () => {
     expect(payload.resourcesBlock).toContain('resource "platformdirs"');
     // unrelated optional extra stays off
     expect(payload.resourcesBlock).not.toContain('resource "anthropic"');
+  });
+});
+
+
+describe("pypi GitHub identity (name collision guard)", () => {
+  it("parses owner/repo from GitHub homepage URLs", () => {
+    expect(githubFullNameFromUrl("https://github.com/marimo-team/marimo")).toBe(
+      "marimo-team/marimo",
+    );
+    expect(
+      githubFullNameFromUrl("https://github.com/usnistgov/open-notebook.git"),
+    ).toBe("usnistgov/open-notebook");
+    expect(githubFullNameFromUrl("https://pages.nist.gov/open-notebook/")).toBe(
+      null,
+    );
+  });
+
+  it("collects GitHub full names from project_urls", () => {
+    const names = githubFullNamesFromPypiInfo({
+      home_page: null,
+      project_url: "https://pypi.org/project/open-notebook/",
+      project_urls: {
+        Documentation: "https://pages.nist.gov/open-notebook/",
+        Homepage: "https://github.com/usnistgov/open-notebook",
+      },
+    });
+    expect(names).toEqual(["usnistgov/open-notebook"]);
+  });
+
+  it("matches only when PyPI points at the same GitHub repo", () => {
+    const nist = {
+      home_page: null as string | null,
+      project_urls: {
+        Homepage: "https://github.com/usnistgov/open-notebook",
+      },
+    };
+    expect(pypiInfoMatchesGithubRepo(nist, "usnistgov/open-notebook")).toBe(
+      true,
+    );
+    expect(pypiInfoMatchesGithubRepo(nist, "lfnovo/open-notebook")).toBe(
+      false,
+    );
+    // empty GitHub URLs → unknown → allow (legacy name-only packages)
+    expect(
+      pypiInfoMatchesGithubRepo(
+        { home_page: null, project_url: "https://pypi.org/project/x/" },
+        "lfnovo/open-notebook",
+      ),
+    ).toBe(true);
+  });
+
+  it("resolvePypiGithubIdentity reports mismatch for unrelated same-named PyPI", async () => {
+    global.fetch = mock((url: string) => {
+      if (String(url).includes("/open-notebook/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              info: {
+                name: "open-notebook",
+                version: "0.2.0",
+                home_page: null,
+                project_urls: {
+                  Homepage: "https://github.com/usnistgov/open-notebook",
+                },
+              },
+              urls: [],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
+    }) as any;
+
+    const id = await resolvePypiGithubIdentity(
+      "open-notebook",
+      "lfnovo/open-notebook",
+    );
+    expect(id.status).toBe("mismatch");
+    if (id.status === "mismatch") {
+      expect(id.pypiGithub).toContain("usnistgov/open-notebook");
+    }
+  });
+
+  it("collectPipPackagePayload refuses GitHub/PyPI mismatch when repoInfo set", async () => {
+    global.fetch = mock((url: string) => {
+      if (String(url).includes("/open-notebook/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              info: {
+                name: "open-notebook",
+                version: "0.2.0",
+                summary: "NIST tool",
+                home_page: null,
+                project_urls: {
+                  Homepage: "https://github.com/usnistgov/open-notebook",
+                },
+                requires_dist: [],
+              },
+              urls: [
+                {
+                  packagetype: "bdist_wheel",
+                  python_version: "py3",
+                  filename: "open_notebook-0.2.0-py3-none-any.whl",
+                  url: "https://files.pythonhosted.org/packages/open_notebook-0.2.0-py3-none-any.whl",
+                  yanked: false,
+                  digests: { sha256: "abc123" },
+                },
+              ],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
+    }) as any;
+
+    await expect(
+      collectPipPackagePayload("open-notebook", {
+        fullName: "lfnovo/open-notebook",
+        name: "open-notebook",
+        owner: "lfnovo",
+      }),
+    ).rejects.toThrow(/does not match GitHub repo lfnovo\/open-notebook/);
   });
 });
 

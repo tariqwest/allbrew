@@ -771,6 +771,65 @@ async function handleArchiveManual(url: string, opts: any) {
   }
 }
 
+
+/**
+ * When a GitHub repo has pyproject.toml/setup.py, only use pip-package if the
+ * same-named PyPI project is actually that repo. Name collisions (e.g.
+ * lfnovo/open-notebook vs usnistgov/open-notebook on PyPI) must not install
+ * the wrong package — fall back to source-build from the GitHub tarball.
+ */
+async function resolveGithubPipOrSource(
+  packageName: string,
+  repoInfo: any,
+  release: any,
+  serviceConfig: any,
+  opts: any,
+) {
+  const { resolvePypiGithubIdentity } = await import(
+    "./generators/pip-package.ts"
+  );
+  const fullName =
+    repoInfo?.fullName ||
+    (repoInfo?.owner && repoInfo?.name
+      ? `${repoInfo.owner}/${repoInfo.name}`
+      : "");
+  const identity = await resolvePypiGithubIdentity(packageName, fullName);
+  if (identity.status === "match") {
+    return await generateWithConfirmation(
+      "pip-package",
+      {
+        packageName,
+        repoInfo,
+        serviceConfig,
+      },
+      opts,
+    );
+  }
+  const why =
+    identity.status === "mismatch"
+      ? `PyPI "${packageName}" points at ${
+          identity.pypiGithub.length
+            ? identity.pypiGithub.join(", ")
+            : "a different project"
+        }, not ${fullName}`
+      : `PyPI has no package matching GitHub ${fullName} (${identity.reason})`;
+  console.log(
+    chalk.yellow(
+      `  Skipping pip-package: ${why}. Falling back to source-build from GitHub.`,
+    ),
+  );
+  return await generateWithConfirmation(
+    "source-build",
+    {
+      repoInfo,
+      release,
+      buildSystem: { method: "build", system: "python" },
+      serviceConfig,
+    },
+    opts,
+  );
+}
+
 async function dispatchGithubRepoType(repoInfo, release, opts) {
   switch (opts.type) {
     case "npm-package":
@@ -1174,13 +1233,11 @@ async function handleGithubRepo(classification, opts) {
             opts,
           );
         case "pip":
-          return await generateWithConfirmation(
-            "pip-package",
-            {
-              packageName: opts.package || method.package,
-              repoInfo,
-              serviceConfig: serviceConfigFromReadme,
-            },
+          return await resolveGithubPipOrSource(
+            opts.package || method.package || repoInfo.name,
+            repoInfo,
+            release,
+            serviceConfigFromReadme,
             opts,
           );
         case "cargo":
@@ -1417,13 +1474,11 @@ async function handleGithubRepo(classification, opts) {
         );
       }
       case "pip":
-        return await generateWithConfirmation(
-          "pip-package",
-          {
-            packageName: opts.package || repoInfo.name,
-            repoInfo,
-            serviceConfig,
-          },
+        return await resolveGithubPipOrSource(
+          opts.package || repoInfo.name,
+          repoInfo,
+          release,
+          serviceConfig,
           opts,
         );
       case "cargo": {
