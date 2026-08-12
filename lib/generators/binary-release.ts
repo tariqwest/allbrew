@@ -50,7 +50,20 @@ export function resolveBinaryReleaseBinName(
       .replace(/[-_.]\d+\.\d+(?:\.\d+)*(?:[-_][0-9A-Za-z]+)?$/i, "")
       .replace(/[-_.]+$/g, ""),
   );
-  if (stripped.every((s) => s && s === stripped[0])) return stripped[0];
+  if (stripped.every((s) => s && s === stripped[0])) {
+    const candidate = stripped[0];
+    // Prefer formula token when assets are formula-cli / formula-tool style
+    // (gotify-cli-darwin-arm64 + formula gotify → bin gotify, not gotify-cli).
+    if (
+      formulaName &&
+      (candidate === formulaName ||
+        candidate === `${formulaName}-cli` ||
+        candidate.startsWith(`${formulaName}-`))
+    ) {
+      return formulaName;
+    }
+    return candidate;
+  }
 
   return formulaName;
 }
@@ -121,8 +134,16 @@ export function buildBinaryReleaseInstallBody(
   binName: string,
   assetNames: string[],
   archiveEntrypoint?: string | null,
+  formulaName?: string,
 ): string {
   const bare = assetNames.filter((n) => isBareBinaryAsset(n));
+  // When CLI name differs from the formula token (e.g. bin gotify, formula
+  // gotify-cli after a homebrew/core collision rename), also expose the formula
+  // token so `brew list`/verify via formula name and user PATH both work.
+  const aliasLine =
+    formulaName && formulaName !== binName
+      ? `\n    bin.install_symlink bin/${rubyString(binName)} => ${rubyString(formulaName)}`
+      : "";
   if (bare.length > 0) {
     // Each platform URL is a single bare binary; rename asset basename → binName.
     // Use Dir[] so the staged filename (asset basename) is discovered without
@@ -132,7 +153,7 @@ export function buildBinaryReleaseInstallBody(
       `bin_path ||= Dir["*"].find { |f| File.file?(f) && !f.end_with?(".txt", ".sha256", ".sig", ".asc") }`,
       `odie "No binary found in download" unless bin_path`,
       `bin.install bin_path => ${rubyString(binName)}`,
-    ].join("\n    ");
+    ].join("\n    ") + aliasLine;
   }
 
   // Nested package archives (e.g. open-interpreter-package-*/bin/interpreter + resources).
@@ -149,11 +170,16 @@ export function buildBinaryReleaseInstallBody(
         `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(upstreamBase)}`,
       );
     }
+    if (formulaName && formulaName !== binName && formulaName !== upstreamBase) {
+      lines.push(
+        `bin.install_symlink libexec/${rubyString(src)} => ${rubyString(formulaName)}`,
+      );
+    }
     return lines.join("\n    ");
   }
 
   // Fallback: flat archive with binary named like the formula.
-  return `bin.install ${rubyString(binName)}`;
+  return `bin.install ${rubyString(binName)}${aliasLine}`;
 }
 
 async function listArchiveMembersFromPath(archivePath: string): Promise<string[]> {
@@ -302,7 +328,7 @@ export async function collectBinaryReleasePayload(
     homepage: rubyEscape(homepage),
     version: rubyEscape(version),
     binName: rubyEscape(binName),
-    installBody: buildBinaryReleaseInstallBody(binName, assetNames, archiveEntrypoint),
+    installBody: buildBinaryReleaseInstallBody(binName, assetNames, archiveEntrypoint, name),
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     platformBlocks: buildPlatformBlocks(hashes, urlTemplate),
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName, ":stable"),

@@ -114,11 +114,50 @@ function homebrewCaskRubyPaths(caskRoot: string, token: string): string[] {
 export function isHomebrewCoreFormulaName(name: string): boolean {
   const token = toFormulaName(name || "");
   if (!token) return false;
-  const core = getHomebrewCorePrefix();
-  if (!core) return false;
   const letter = token[0];
   if (!/[a-z0-9]/.test(letter)) return false;
-  return existsSync(join(core, "Formula", letter, `${token}.rb`));
+
+  // Full core checkout (letter-sharded + legacy flat layout).
+  const core = getHomebrewCorePrefix();
+  if (core) {
+    if (existsSync(join(core, "Formula", letter, `${token}.rb`))) return true;
+    if (existsSync(join(core, "Formula", `${token}.rb`))) return true;
+  }
+
+  // Modern Homebrew often has no full homebrew/core checkout; use API cache JSON
+  // (same pattern as isHomebrewCaskToken). Critical for VMs / API-only installs
+  // so bare tokens like "gotify" still rename and avoid Cellar locks / wrong kegs.
+  const cacheRoot = getHomebrewCachePrefix();
+  if (cacheRoot && existsSync(join(cacheRoot, "api", "formula", `${token}.json`))) {
+    return true;
+  }
+
+  // Last resort: ask brew (works even when cache is cold).
+  try {
+    const out = execFileSync(
+      "brew",
+      ["info", "--json=v2", "--formula", token],
+      {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+      },
+    );
+    const parsed = JSON.parse(out);
+    const formulae = Array.isArray(parsed?.formulae) ? parsed.formulae : [];
+    return formulae.some((f: any) => {
+      const fname = String(f?.name || "");
+      const full = String(f?.full_name || "");
+      const tap = String(f?.tap || "");
+      const nameMatch =
+        fname === token ||
+        full === token ||
+        full === `homebrew/core/${token}` ||
+        full.endsWith(`/${token}`);
+      return nameMatch && (tap === "homebrew/core" || tap.includes("homebrew/core"));
+    });
+  } catch {
+    return false;
+  }
 }
 
 /** True when homebrew/cask already ships a cask with this token. */

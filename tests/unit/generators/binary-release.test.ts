@@ -4,6 +4,7 @@ import {
   templateReleaseUrl,
   pickArchiveEntrypoint,
   buildBinaryReleaseInstallBody,
+  resolveBinaryReleaseBinName,
 } from "../../../lib/generators/binary-release.ts";
 import wakapiFixture from "../../fixtures/github/wakapi.json";
 
@@ -253,6 +254,45 @@ describe("collectBinaryReleasePayload", () => {
   });
 });
 
+
+describe("resolveBinaryReleaseBinName", () => {
+  it("prefers formula name when bare assets are formula-cli-platform", () => {
+    expect(
+      resolveBinaryReleaseBinName("gotify", [
+        "gotify-cli-darwin-arm64",
+        "gotify-cli-darwin-amd64",
+        "gotify-cli-linux-amd64",
+      ]),
+    ).toBe("gotify");
+  });
+
+  it("keeps distinct product prefix when it is not formula-cli", () => {
+    expect(
+      resolveBinaryReleaseBinName("mytool", ["afm_0.1.0_macOS_universal"]),
+    ).toBe("afm");
+  });
+
+  it("honors explicit options.binName", () => {
+    expect(
+      resolveBinaryReleaseBinName("gotify", ["gotify-cli-darwin-arm64"], {
+        binName: "gotify-cli",
+      }),
+    ).toBe("gotify-cli");
+  });
+});
+
+describe("buildBinaryReleaseInstallBody aliases", () => {
+  it("symlinks formula token when it differs from CLI bin name", () => {
+    const body = buildBinaryReleaseInstallBody(
+      "gotify",
+      ["gotify-cli-darwin-arm64"],
+      null,
+      "gotify-cli",
+    );
+    expect(body).toContain('bin.install bin_path => "gotify"');
+    expect(body).toContain('bin.install_symlink bin/"gotify" => "gotify-cli"');
+  });
+});
 
 describe("pickArchiveEntrypoint / nested package archives", () => {
   it("picks bin/interpreter for open-interpreter package layout", () => {

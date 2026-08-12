@@ -1775,7 +1775,11 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
       // class name and bottle block stay aligned with the file name.
       userOpts.name = preferred;
     } else {
+      const owner = params.repoInfo?.fullName?.split?.("/")?.[0];
+      const repoName = params.repoInfo?.name;
       const altSources = [
+        // Prefer stable product tokens over bare repo names like "cli".
+        `${preferred}-cli`,
         params.packageName,
         params.crateName,
         params.gemName,
@@ -1783,7 +1787,13 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
         opts.package,
         opts.crateName,
         opts.binName,
-        params.repoInfo?.name,
+        owner && repoName ? `${repoName}-${owner}` : null,
+        owner ? `${preferred}-${owner}` : null,
+        params.repoInfo?.fullName
+          ? String(params.repoInfo.fullName).replace("/", "-")
+          : null,
+        // Bare repo name last — "cli" is too generic as a formula token.
+        repoName,
       ];
       const resolved = resolveNonCollidingFormulaName(preferred, altSources);
       if (resolved.renamedFrom && resolved.name !== preferred) {
