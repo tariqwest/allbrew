@@ -70,6 +70,9 @@ export function pickArchiveEntrypoint(
     if (!base || base.startsWith(".")) return false;
     if (/\.(txt|md|json|sha256|sig|asc|1|html|sample|dylib|so|a|ps1|psm1|bat|sh)$/i.test(base)) return false;
     if (m.includes("/node_modules/") || m.includes("/vendor/")) return false;
+    // App bundle inner binary (Paw.app/Contents/MacOS/paw) at depth >1 — common for
+    // macOS GUI releases that ship a .app inside an arch-tagged zip.
+    if (/\.app\/Contents\/MacOS\//i.test(m)) return true;
     // Prefer bin/ layout; also allow root-level binaries and files one directory
     // deep (common for release archives with a top-level wrapper directory like
     // `project-arch/binary`).
