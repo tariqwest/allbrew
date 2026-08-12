@@ -17,10 +17,79 @@ function extractVersionFromUrl(url: string): string | null {
   return match ? match[1] : null;
 }
 
+/** Known install-script hosts whose product maps to a GitHub releases repo. */
+const HOST_GITHUB_REPO: Record<string, [string, string]> = {
+  "starship.rs": ["starship", "starship"],
+  "railway.com": ["railwayapp", "cli"],
+  "cli.new": ["railwayapp", "cli"],
+};
+
+/**
+ * Pull owner/repo from install-script bodies that download GitHub releases
+ * (e.g. BASE_URL="https://github.com/railwayapp/cli/releases").
+ */
+function githubRepoFromScript(scriptText: string): [string, string] | null {
+  if (!scriptText) return null;
+  const m = scriptText.match(
+    /https?:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/releases/i,
+  );
+  if (!m) return null;
+  return [m[1], m[2]];
+}
+
+async function latestReleaseVersion(
+  owner: string,
+  repo: string,
+): Promise<string | null> {
+  try {
+    const { getLatestRelease } = await import("../github.ts");
+    const release = await getLatestRelease(owner, repo);
+    if (release?.tagName) return extractVersionFromTag(String(release.tagName));
+  } catch {
+    /* ignore network / parse errors */
+  }
+  return null;
+}
+
+async function fetchScriptText(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "allbrew/1.0" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return "";
+    const text = await res.text();
+    // Cap: install scripts are tiny; avoid huge downloads if misclassified.
+    return text.slice(0, 500_000);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Infer the product binary name from a starship-family (or similar) install script.
+ * Prefers explicit `$BIN_DIR/<name>` references and release asset prefixes over formula name.
+ */
+function binNameFromScript(scriptText: string): string | null {
+  if (!scriptText) return null;
+  const patterns = [
+    /\$BIN_DIR\/([A-Za-z0-9._-]+)/,
+    /CLI_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/,
+    /\/download\/[^/\s"']+\/([A-Za-z0-9._-]+)-v?\$\{?[A-Z0-9_]*VERSION/i,
+    /(?:was )?installed successfully to[^`\n]*\/([A-Za-z0-9._-]+)["'`\s]*$/m,
+  ];
+  for (const re of patterns) {
+    const m = scriptText.match(re);
+    if (m?.[1] && m[1] !== "install" && m[1] !== "bin") return m[1];
+  }
+  return null;
+}
+
 /** Resolve a Homebrew-safe version for static install-script URLs. */
 export async function resolveInstallScriptVersion(
   url: string,
   options: any = {},
+  scriptText?: string,
 ): Promise<string> {
   if (options.version) return extractVersionFromTag(String(options.version));
 
@@ -38,13 +107,31 @@ export async function resolveInstallScriptVersion(
       if (parts.length >= 3) {
         const [owner, repo, ref] = parts;
         if (/^v?\d/.test(ref)) return extractVersionFromTag(ref);
-        const { getLatestRelease } = await import("../github.ts");
-        const release = await getLatestRelease(owner, repo);
-        if (release?.tagName) return extractVersionFromTag(release.tagName);
+        const ver = await latestReleaseVersion(owner, repo);
+        if (ver) return ver;
       }
     }
   } catch {
     /* ignore network / parse errors */
+  }
+
+  // Script body references github.com/owner/repo/releases (starship, railway, etc.)
+  const fromScript = githubRepoFromScript(scriptText || "");
+  if (fromScript) {
+    const ver = await latestReleaseVersion(fromScript[0], fromScript[1]);
+    if (ver) return ver;
+  }
+
+  // Known product hostnames
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    const mapped = HOST_GITHUB_REPO[host];
+    if (mapped) {
+      const ver = await latestReleaseVersion(mapped[0], mapped[1]);
+      if (ver) return ver;
+    }
+  } catch {
+    /* ignore */
   }
 
   // Homebrew requires a non-nil version; livecheck can still move it later.
@@ -64,15 +151,21 @@ export async function collectInstallScriptPayload(
   const desc = options.desc || `Install ${baseName} via setup script`;
   const repoInfo = options.repoInfo;
   const license = guessLicenseIdentifier(options.license || repoInfo?.license || null);
-  const version = await resolveInstallScriptVersion(url, options);
-  let binName = options.binName || name;
-  if (!options.binName && /agent-cli/i.test(url) && /warp/i.test(name)) {
-    try {
-      const scriptText = await (await fetch(url, { signal: AbortSignal.timeout(15_000) })).text();
-      const m = scriptText.match(/CLI_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/);
-      if (m?.[1]) binName = m[1];
-    } catch { /* fallback to name */ }
+
+  // Fetch script once for version/bin heuristics (versionless hosts + bin-name overrides).
+  const scriptText = await fetchScriptText(url);
+  const version = await resolveInstallScriptVersion(url, options, scriptText);
+
+  let binName = options.binName || null;
+  if (!binName) {
+    const fromScript = binNameFromScript(scriptText);
+    if (fromScript) binName = fromScript;
   }
+  if (!binName && /agent-cli/i.test(url) && /warp/i.test(name)) {
+    const m = scriptText.match(/CLI_NAME\s*=\s*["']?([A-Za-z0-9._-]+)["']?/);
+    if (m?.[1]) binName = m[1];
+  }
+  if (!binName) binName = name;
 
   return {
     template: "install_script",

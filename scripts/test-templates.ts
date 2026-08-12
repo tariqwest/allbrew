@@ -492,21 +492,70 @@ function buildInstallScriptCase(): Case {
     `    # Many vendor installers honor PREFIX/DESTDIR; others ignore them and write under $HOME\n` +
     `    # (commonly ~/.local/bin). Sandbox HOME so those paths stay inside the buildpath.\n` +
     `    ENV["HOME"] = buildpath.to_s\n` +
+    `    # Stage bin dir so installers that require BIN_DIR to already exist (e.g. starship\n` +
+    `    # check_bin_dir) succeed inside the sandbox.\n` +
+    `    (buildpath/"bin").mkpath\n` +
     `    # Common generic override accepted by some installers.\n` +
     `    ENV["BIN_DIR"] = (buildpath/"bin").to_s\n` +
-    `    system "bash", cached_download.to_s\n` +
+    `    # Non-interactive: starship/railway-family (FORCE/--yes) and other CI-aware installers skip prompts.\n` +
+    `    ENV["FORCE"] = "1"\n` +
+    `    ENV["CI"] = "1"\n` +
+    `    # Railway CLI (starship-family installer) honors RAILWAY_BIN_DIR / RAILWAY_HOME over BIN_DIR.\n` +
+    `    # Point them at buildpath so the prebuilt binary lands under candidates, not ~/.railway/bin.\n` +
+    `    ENV["RAILWAY_BIN_DIR"] = (buildpath/"bin").to_s\n` +
+    `    ENV["RAILWAY_HOME"] = buildpath.to_s\n` +
+    `    # Warp Agent CLI honors WARP_TUI_* (defaults to $HOME/.warp and $HOME/.local/bin);\n` +
+    `    # point them inside buildpath so the versioned layout is discoverable.\n` +
+    `    ENV["WARP_TUI_INSTALL_DIR"] = (buildpath/"warp-tui").to_s\n` +
+    `    ENV["WARP_TUI_BIN_DIR"] = (buildpath/"bin").to_s\n` +
+    `    # Avoid interactive hangs: probe the script for non-interactive flags and pass them\n` +
+    `    # only when present so unknown scripts don't fail with "Unknown option".\n` +
+    `    script = cached_download.to_s\n` +
+    `    script_content = File.read(script) rescue ""\n` +
+    `    extra_args = []\n` +
+    `    if script_content.include?("--non-interactive")\n` +
+    `      extra_args << "--non-interactive"\n` +
+    `    elsif script_content.match?(/(?:^|\\s)(?:-y|--yes|--force)\\b/)\n` +
+    `      extra_args << "-y"\n` +
+    `    elsif script_content.include?("--skip-tmux-config")\n` +
+    `      extra_args << "--skip-tmux-config"\n` +
+    `    end\n` +
+    `    system "bash", script, *extra_args\n` +
+    `\n` +
+    `    # Warp Agent CLI uses a versioned layout: $WARP_TUI_INSTALL_DIR/warp-tui/versions/<version>/warp-tui-stable\n` +
+    `    # with a symlink $WARP_TUI_BIN_DIR/warp -> .../current/warp-tui-stable. The symlink target\n` +
+    `    # is under buildpath and would be broken after install, so install the real binary directly.\n` +
+    `    warp_bin = Dir[buildpath/"warp-tui"/"versions"/"*"/"warp-tui-*"].select { |f| File.file?(f) && File.executable?(f) }.first\n` +
+    `    if warp_bin\n` +
+    `      bin.install warp_bin => "warp"\n` +
+    `      # Also ensure the versioned layout's resources are available if needed (optional)\n` +
+    `      # The installer already staged everything under warp-tui/ — Homebrew only needs the binary.\n` +
+    `      return\n` +
+    `    end\n` +
     `\n` +
     `    candidates = [\n` +
     `      buildpath/"bin",\n` +
     `      buildpath/".local/bin",\n` +
+    `      buildpath/".railway/bin",\n` +
     `      buildpath/"usr/local/bin",\n` +
     `      Pathname.new(ENV.fetch("PREFIX"))/"bin",\n` +
     `    ].uniq\n` +
+    `    # Harvest any ~/.product/bin layout under the sandboxed HOME (dotdirs are invisible to Dir["**/*"]).\n` +
+    `    Dir[buildpath/".*"].each do |dot|\n` +
+    `      next unless File.directory?(dot)\n` +
+    `      next if [".", ".."].include?(File.basename(dot))\n` +
+    `      bin_cand = Pathname.new(dot)/"bin"\n` +
+    `      candidates << bin_cand if bin_cand.directory?\n` +
+    `    end\n` +
+    `    candidates.uniq!\n` +
     `    installed = false\n` +
     `    candidates.each do |dir|\n` +
     `      next unless dir.directory?\n` +
     `      bins = Dir[dir/"*"].select { |f| File.file?(f) && File.executable?(f) }\n` +
     `      next if bins.empty?\n` +
+    `      # If the only bin is a broken symlink (warp -> warp-tui/...), resolve to the real binary.\n` +
+    `      # Homebrew's bin.install would copy the symlink as-is, leaving a broken link.\n` +
+    `      # For warp, the real binary is already handled above; for others, install as-is.\n` +
     `      bin.install bins\n` +
     `      installed = true\n` +
     `      break\n` +
@@ -518,7 +567,8 @@ function buildInstallScriptCase(): Case {
     `      odie "install script produced no executable binaries under buildpath" if bins.empty?\n` +
     `      bin.install bins\n` +
     `    end\n` +
-    `  end\n\n` +
+    `  end\n` +
+    `\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
     `  end\n` +

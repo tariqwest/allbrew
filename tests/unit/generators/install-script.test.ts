@@ -254,3 +254,19 @@ describe("collectInstallScriptPayload — version attribute", () => {
   });
 });
 
+describe("collectInstallScriptPayload — Railway CLI", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
+  it("detects bin name railway from install.sh even when formula is railway-cli", async () => {
+    const payload = await collectInstallScriptPayload(
+      "https://raw.githubusercontent.com/railwayapp/cli/master/install.sh",
+      { name: "railway-cli" },
+    );
+    expect(payload.template).toBe("install_script");
+    expect(payload.name).toBe("railway-cli");
+    expect(payload.testBinName).toBe("railway");
+    expect(payload.version).toMatch(/^\d+/);
+  });
+});

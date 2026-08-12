@@ -14,13 +14,35 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
     # Many vendor installers honor PREFIX/DESTDIR; others ignore them and write under $HOME
     # (commonly ~/.local/bin). Sandbox HOME so those paths stay inside the buildpath.
     ENV["HOME"] = buildpath.to_s
+    # Stage bin dir so installers that require BIN_DIR to already exist (e.g. starship
+    # check_bin_dir) succeed inside the sandbox.
+    (buildpath/"bin").mkpath
     # Common generic override accepted by some installers.
     ENV["BIN_DIR"] = (buildpath/"bin").to_s
+    # Non-interactive: starship/railway-family (FORCE/--yes) and other CI-aware installers skip prompts.
+    ENV["FORCE"] = "1"
+    ENV["CI"] = "1"
+    # Railway CLI (starship-family installer) honors RAILWAY_BIN_DIR / RAILWAY_HOME over BIN_DIR.
+    # Point them at buildpath so the prebuilt binary lands under candidates, not ~/.railway/bin.
+    ENV["RAILWAY_BIN_DIR"] = (buildpath/"bin").to_s
+    ENV["RAILWAY_HOME"] = buildpath.to_s
     # Warp Agent CLI honors WARP_TUI_* (defaults to $HOME/.warp and $HOME/.local/bin);
     # point them inside buildpath so the versioned layout is discoverable.
     ENV["WARP_TUI_INSTALL_DIR"] = (buildpath/"warp-tui").to_s
     ENV["WARP_TUI_BIN_DIR"] = (buildpath/"bin").to_s
-    system "bash", cached_download.to_s
+    # Avoid interactive hangs: probe the script for non-interactive flags and pass them
+    # only when present so unknown scripts don't fail with "Unknown option".
+    script = cached_download.to_s
+    script_content = File.read(script) rescue ""
+    extra_args = []
+    if script_content.include?("--non-interactive")
+      extra_args << "--non-interactive"
+    elsif script_content.match?(/(?:^|\\s)(?:-y|--yes|--force)\\b/)
+      extra_args << "-y"
+    elsif script_content.include?("--skip-tmux-config")
+      extra_args << "--skip-tmux-config"
+    end
+    system "bash", script, *extra_args
 
     # Warp Agent CLI uses a versioned layout: $WARP_TUI_INSTALL_DIR/warp-tui/versions/<version>/warp-tui-stable
     # with a symlink $WARP_TUI_BIN_DIR/warp -> .../current/warp-tui-stable. The symlink target
@@ -36,9 +58,18 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
     candidates = [
       buildpath/"bin",
       buildpath/".local/bin",
+      buildpath/".railway/bin",
       buildpath/"usr/local/bin",
       Pathname.new(ENV.fetch("PREFIX"))/"bin",
     ].uniq
+    # Harvest any ~/.product/bin layout under the sandboxed HOME (dotdirs are invisible to Dir["**/*"]).
+    Dir[buildpath/".*"].each do |dot|
+      next unless File.directory?(dot)
+      next if [".", ".."].include?(File.basename(dot))
+      bin_cand = Pathname.new(dot)/"bin"
+      candidates << bin_cand if bin_cand.directory?
+    end
+    candidates.uniq!
     installed = false
     candidates.each do |dir|
       next unless dir.directory?
