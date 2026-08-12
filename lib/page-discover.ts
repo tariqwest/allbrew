@@ -1284,6 +1284,7 @@ export async function enrichProductDetailPages(
     htmlFixture?: { body: string; finalUrl?: string; contentType?: string };
     fetchHtml?: (url: string) => Promise<{ body: string; finalUrl?: string }>;
     hubHtmlByUrl?: Record<string, string>;
+    nameHint?: string;
   } = {},
 ): Promise<DiscoverCandidate[]> {
   const log = opts.log || (() => {});
@@ -1327,7 +1328,19 @@ export async function enrichProductDetailPages(
     }
     if (detailUrls.size >= maxPages + 2) break;
   }
-  const list = [...detailUrls].slice(0, maxPages);
+  let list = [...detailUrls].slice(0, maxPages + 4);
+  if (opts.nameHint) {
+    const hint = opts.nameHint.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const hintDash = opts.nameHint.toLowerCase();
+    list.sort((a, b) => {
+      const aHint = a.toLowerCase().includes(hintDash) || a.toLowerCase().replace(/[^a-z0-9]+/g, "").includes(hint) ? 1 : 0;
+      const bHint = b.toLowerCase().includes(hintDash) || b.toLowerCase().replace(/[^a-z0-9]+/g, "").includes(hint) ? 1 : 0;
+      return bHint - aHint;
+    });
+    list = list.slice(0, maxPages);
+  } else {
+    list = list.slice(0, maxPages);
+  }
   if (!list.length) return candidates;
 
   const extras: DiscoverCandidate[] = [];
@@ -1355,6 +1368,15 @@ export async function enrichProductDetailPages(
       const fromDetail = extractCandidatesFromHtml(body, finalUrl).map((c) => {
         const next = { ...c };
         next.score += 6;
+        if (opts.nameHint) {
+          const hintNorm = opts.nameHint.toLowerCase().replace(/[^a-z0-9]+/g, "");
+          const urlNorm = c.url.toLowerCase().replace(/[^a-z0-9]+/g, "");
+          const detailNorm = detailUrl.toLowerCase().replace(/[^a-z0-9]+/g, "");
+          if (urlNorm.includes(hintNorm) || detailNorm.includes(hintNorm) || c.url.toLowerCase().includes(opts.nameHint.toLowerCase())) {
+            next.score += 15;
+            next.evidence.push("nameHint-boost");
+          }
+        }
         next.evidence = [...c.evidence, "product-detail-follow", `detail:${detailUrl}`];
         return next;
       });
@@ -1855,7 +1877,7 @@ export async function discoverPageDownloads(
   // Tier A.7a: follow same-site product detail pages for listing hubs (e.g. /products → /products/right-crane/)
   if (!opts.htmlFixture) {
     try {
-      candidates = await enrichProductDetailPages(candidates, finalPageUrl, body, { log });
+      candidates = await enrichProductDetailPages(candidates, finalPageUrl, body, { log, nameHint: opts.nameHint });
       candidates = candidates.filter((c) => !isImplausibleArtifactUrl(c.url));
       // Re-enrich newly discovered GitHub repos to DMG assets
       candidates = await enrichGithubReleaseAssets(candidates, finalPageUrl, { log });
