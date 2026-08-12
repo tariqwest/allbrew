@@ -2279,12 +2279,36 @@ async function brewAutoInstall(result: any, opts: any) {
     HOMEBREW_DEVELOPER: "1",
     HOMEBREW_NO_AUTO_UPDATE: "1",
   };
+  // Homebrew 5+ requires tap trust before installing path formulae from custom taps.
+  try {
+    if (result.filePath) {
+      await execFileAsync(
+        "brew",
+        ["trust", "--formula", result.filePath],
+        { env: installEnv },
+      );
+    }
+    if (opts.tapPath) {
+      // Best-effort whole-tap trust for the worker tap (name may be th-allbrew/allbrew).
+      const tapDir = String(opts.tapPath || "");
+      const base = tapDir.split("/").filter(Boolean).pop() || "";
+      if (base.startsWith("homebrew-")) {
+        const user = process.env.USER || "th-allbrew";
+        const tap = `${user}/${base.replace(/^homebrew-/, "")}`;
+        await execFileAsync("brew", ["trust", tap], { env: installEnv }).catch(
+          () => {},
+        );
+      }
+    }
+  } catch {
+    /* trust is best-effort; install may still succeed for path formulae */
+  }
   const installSpinner = ora(`Running ${installLabel}...`).start();
   try {
     await execFileAsync(
       "brew",
       ["install", ...headFlag, installFlag, result.filePath],
-      { env: installEnv },
+      { env: installEnv, maxBuffer: 20 * 1024 * 1024 },
     );
     installSpinner.succeed(`Installed: ${chalk.green(result.name)}`);
 
