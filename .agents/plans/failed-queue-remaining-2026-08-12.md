@@ -111,3 +111,17 @@ Parent ran all 10 requeued “infra” items via bottled **0.0.31** `vm-install-
 Post-run disposition: marketing + recordly → **skipped**; product brew fails remain **failed**.
 
 Conclusion: prior “infra” label was misleading for this set — failures reproduce on clean bottle path and are product/catalog, not VM host hygiene.
+
+
+## Permanent catalog skips (2026-08-12)
+
+Marked `skipped` with `permanentSkip: true` / `skipReason: permanent_catalog_skip`:
+
+| agent | slug | Reasoning |
+|-------|------|-----------|
+| `url-0093-ugm` | ugm | Linux-only release binaries (no macOS assets). Go source packaging is optional; not a batch unlock target. |
+| `url-0344-dotnet-counters` | dotnet-counters | monorepo URL misroutes to cmake source-build; needs NuGet/`dotnet tool` URL. Experimental generator — not batch-ready. |
+| `url-0346-tes3edit` | tes3edit | Cargo GUI/editor with heavy native build; brew install failed on bottle path; low catalog value vs cost. |
+| `url-0272-electrum` | electrum | Multi-GB Bitcoin wallet desktop app. No stable macOS release assets for cask; HEAD Python build is unstable and unsuitable for batch. |
+
+Do **not** requeue these unless the user explicitly expands product scope (mac go for linux-only, NuGet routing, heavy cargo GUI, or wallet casks).
