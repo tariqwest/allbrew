@@ -38,6 +38,10 @@ export type PipPackagePayload = FormulaCommonFields & {
   resourcesBlock: string;
   /** Full body line(s) inside `test do` (pre-indented). */
   testDoBody: string;
+  /** Homebrew formula dep, e.g. python@3.12 when no 3.13 wheels exist. */
+  pythonDependsOn?: string;
+  /** virtualenv_create binary, e.g. python3.12 */
+  pythonVenvBinary?: string;
 };
 
 export type CargoPackagePayload = FormulaCommonFields & {
