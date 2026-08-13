@@ -1,4 +1,5 @@
 import type { InstallScriptPayload } from "../../template-payload.ts";
+import { codesignBlock } from "../codesign-block.ts";
 
 export default function renderInstallScript(p: InstallScriptPayload): string {
   const ensureBin = p.ensureBinDir
@@ -63,7 +64,7 @@ ${envExtra}${ensureBin}    system "${shell}", cached_download.to_s${args}
       end
       odie "install script produced no executable binaries under buildpath" if bins.empty?
       bin.install bins
-    end
+    end${codesignBlock(["libexec", "bin"])}
   end
 
 ${p.serviceBlock}  test do

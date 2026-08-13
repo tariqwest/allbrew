@@ -1,4 +1,5 @@
 import type { SetappCliPayload } from "../../template-payload.ts";
+import { codesignBlock } from "../codesign-block.ts";
 
 export default function renderSetappCli(p: SetappCliPayload): string {
   return `class ${p.className} < Formula
@@ -13,7 +14,7 @@ ${p.platformBlocks}  livecheck do
 
 ${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n\n` : ""}  def install
     ensure_setapp!
-    ${p.installBody}
+    ${p.installBody}${codesignBlock(["libexec", "bin"])}
   end
 
   def ensure_setapp!

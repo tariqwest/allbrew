@@ -6,10 +6,16 @@
  */
 
 import { renderCask, renderFormula } from "../lib/template-renderer.ts";
+import { codesignBlock } from "../lib/templates/codesign-block.ts";
 import type {
   CaskPayload,
   FormulaPayload,
 } from "../lib/template-payload.ts";
+
+/** Codesign re-sign block for libexec+bin (binary-release/direct/archive/script). */
+const CS_LIBEXEC_BIN = codesignBlock(["libexec", "bin"]);
+/** Codesign re-sign block for libexec only (npm-package). */
+const CS_LIBEXEC = codesignBlock(["libexec"]);
 
 type Case = {
   template: string;
@@ -93,19 +99,7 @@ function buildNpmPackageCase(): Case {
     `\n` +
     `  def install\n` +
     `    system "npm", "install", *std_npm_args, "--min-release-age=0"\n` +
-    `    bin.install_symlink libexec.glob("bin/*")\n\n` +
-    `    return unless OS.mac?\n\n` +
-    `    mach_o = Utils.safe_popen_read(\n` +
-    `      "/usr/bin/find", libexec.to_s, "-type", "f", "-perm", "+111", "-print0"\n` +
-    `    ).split("\\0").reject(&:empty?).select do |path|\n` +
-    `      Utils.safe_popen_read("/usr/bin/file", "-b", path).include?("Mach-O")\n` +
-    `    rescue\n` +
-    `      false\n` +
-    `    end\n\n` +
-    `    mach_o.each do |path|\n` +
-    `      system "/usr/bin/xattr", "-cr", path\n` +
-    `      system "/usr/bin/codesign", "--force", "--sign", "-", path\n` +
-    `    end\n` +
+    `    bin.install_symlink libexec.glob("bin/*")` + CS_LIBEXEC + `\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
@@ -194,7 +188,7 @@ function buildBinaryReleaseCase(): Case {
     `    strategy :github_latest\n` +
     `  end\n\n` +
     `  def install\n` +
-    `    bin.install "foo"\n` +
+    `    bin.install "foo"` + CS_LIBEXEC_BIN + `\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
@@ -465,7 +459,7 @@ function buildBinaryDirectCase(): Case {
     `  sha256 "ff"\n` +
     `\n` +
     `  def install\n` +
-    installBody +
+    installBody + CS_LIBEXEC_BIN + `\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
@@ -551,7 +545,7 @@ function buildInstallScriptCase(): Case {
     "      end\n" +
     "      odie \"install script produced no executable binaries under buildpath\" if bins.empty?\n" +
     "      bin.install bins\n" +
-    "    end\n" +
+    "    end" + CS_LIBEXEC_BIN + "\n" +
     "  end\n" +
     "\n" +
     "  test do\n" +
@@ -592,7 +586,7 @@ function buildArchiveBuildCase(): Case {
     `  depends_on "meson" => :build\n` +
     `  depends_on "ninja" => :build\n\n` +
     `  def install\n` +
-    installBody +
+    installBody + CS_LIBEXEC_BIN + `\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +

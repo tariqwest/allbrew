@@ -1,4 +1,5 @@
 import type { BinaryReleasePayload } from "../../template-payload.ts";
+import { codesignBlock } from "../codesign-block.ts";
 
 export default function renderBinaryRelease(p: BinaryReleasePayload): string {
   return `class ${p.className} < Formula
@@ -7,7 +8,7 @@ export default function renderBinaryRelease(p: BinaryReleasePayload): string {
 ${p.licenseLine}  version "${p.version}"
 
 ${p.platformBlocks}${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n\n` : ""}  def install
-    ${p.installBody}
+    ${p.installBody}${codesignBlock(["libexec", "bin"])}
   end
 
 ${p.serviceBlock}  test do
