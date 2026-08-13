@@ -87,23 +87,27 @@ bun scripts/archive-batch-artifacts.mjs --dry-run
 bun scripts/archive-batch-artifacts.mjs --verify --prune-move
 ```
 
-### 4. Release after product land
+### 4. Release after product land (gated — smoke mandatory)
 
 ```bash
-# clean tree required
+# clean tree required; bottle smoke must be green before release
+# 1) mandatory bottle smoke — at least 1 URL per touched generator
+LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs --url <url> --name <slug>
+# 2) only then
 GITHUB_TOKEN=… bun run release patch
 brew update && brew upgrade allbrew && allbrew --version
 ```
+> **Gate:** Do not run `bun run release` until the smoke in §5 is green. A red smoke blocks release.
 
-### 5. Cold smoke sample (bottle only)
+### 5. Cold smoke sample (bottle only) — mandatory gate
 
 ```bash
-# no --allbrew-src
+# no --allbrew-src; mandatory before next release
 LUME_REMOTE_ENABLED=true bun tests/monitored-install-batch/vm-install-one.mjs \
   --url <url> --name <slug> --log /tmp/<slug>.log
 ```
 
-Suggested sample after next release: oatmeal, go2tv, pyqt-openai, gotify, elia (plus prior 6/6 set).
+Required sample for `0.0.32` before next release: oatmeal, go2tv, pyqt-openai, gotify, elia (1/generator group, plus prior 6/6 set for regression). Red → fix and re-smoke; do not cut release on red.
 
 ## Verification gates
 
@@ -113,7 +117,7 @@ Suggested sample after next release: oatmeal, go2tv, pyqt-openai, gotify, elia (
 | `bun run test:templates` | every land |
 | Targeted unit tests for touched generators | every land |
 | Full `bun test ./tests/unit` | before release |
-| VM cold smoke 1/generator group | after release |
+| VM cold smoke 1/generator group (bottle-only, `vm-install-one.mjs`) | **mandatory before next `bun run release`** — at least 1 URL per touched generator (0.0.32: oatmeal/go2tv/pyqt-openai/gotify/elia); red blocks release |
 
 ## Risks
 
