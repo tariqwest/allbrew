@@ -2,15 +2,19 @@
 
 > Integrate `fix-package/` patches from monitored-install-batch into `main` without bulk-am, without host live-patch during waves, and without regressions.
 
-## Status (2026-08-12 evening)
+## Status (2026-08-12 evening — updated for 0.0.32)
 
 | Milestone | State |
 |-----------|--------|
-| Bottle | **`0.0.31` released** (P0 category fixes + first residual wave) |
+| Bottle | **`0.0.32` released** (`cd54499` → `e1f7f29`, tag `v0.0.32`) — oatmeal/go2tv/gotify/elia/pyqt-openai |
+| Bottle (prev) | `0.0.31` released `df0b0bb` (P0 category + first residual wave, `390eb89`) |
 | P0 category product | **Landed** (install-script, prerelease, core API, binary-release, gem, pip seeds, cargo unlock, npm service) |
 | Residual P0 patches | **Landed** in `390eb89` (starship `sh`, toolong `tl`, cargo reject-locked, verdaccio GH README, core third-party false positive) |
-| Wave 2 product patches (this execute) | **oatmeal** binary prefer, **go2tv** app-peek cask route, **gotify** product-cli bin, **elia** tap trust, **pyqt-openai** python@ requires_python + portaudio |
+| Wave 2 product patches | **Landed & released in 0.0.32** (`cd54499`): oatmeal binary prefer, go2tv app-peek cask route, gotify product-cli bin, elia tap trust, pyqt-openai python@ requires_python + portaudio |
+| Infra wave 2026-08-12T21:29Z | **0/10** on `0.0.31` bottle (`72134e1`) — 6 skipped (marketing/404) + 4 product fails (ugm/electrum/tes3edit/dotnet-counters); reclassified as product/catalog, not host hygiene |
+| Permanent skips | **4 applied** (`ecf8e1e`): ugm, electrum, tes3edit, dotnet-counters (`permanentSkip:true`, `permanent_catalog_skip`); queue `643/20/85/19/0` |
 | Cold smoke 0.0.31 | **6/6 green** (verdaccio after link residual retry) |
+| Cold smoke 0.0.32 | **Required before next release** — sample oatmeal/go2tv/pyqt-openai/gotify/elia (bottle-only, 1/generator group) |
 | Full 213-archive bulk merge | **Not done** (superseded by selective high-value integration; archive remains in `~/.cache/allbrew/batch-artifacts/2026-08-10/`) |
 
 ### Already on `main` (do not re-apply)
@@ -45,11 +49,11 @@
 | Overlapping stale patches vs already-landed hunks | `git apply --check` fails; treat as superseded |
 | Full 213-archive fan-out | Diminishing returns; selective product fixes + bottle release preferred |
 
-## Goals (unchanged)
+## Goals
 
 - Distinct new scenarios merged as minimal typed product changes
 - Gate: `bun run check`, targeted unit tests, `bun run test:templates`
-- Optional VM cold smoke after release
+- **Mandatory** VM cold smoke (bottle-only, 1/generator group) before next release — red blocks release
 
 ## Non-goals
 
