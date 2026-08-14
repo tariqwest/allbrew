@@ -102,6 +102,16 @@ describe("collectGemPackagePayload", () => {
     expect(payload.serviceBlock).toContain("service do");
   });
 
+  it("renders pkgconf build dependency for native gem extensions", async () => {
+    const { default: renderGemPackage } = await import(
+      "../../../lib/templates/formula/gem-package.ts"
+    );
+    const payload = await collectGemPackagePayload("pry");
+    const ruby = renderGemPackage(payload);
+    expect(ruby).toContain('depends_on "pkgconf" => :build');
+    expect(ruby).toContain('depends_on "ruby"');
+  });
+
   it("throws when RubyGems returns non-OK", async () => {
     await expect(
       collectGemPackagePayload("nonexistent-gem-xyz"),

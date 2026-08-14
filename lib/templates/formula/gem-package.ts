@@ -9,7 +9,8 @@ export default function renderGemPackage(p: GemPackagePayload): string {
   desc "${p.desc}"
   homepage "${p.homepage}"
 ${p.licenseLine}${p.urlLines}
-${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}${extraDepends}  depends_on "ruby"
+${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}${extraDepends}  depends_on "pkgconf" => :build
+  depends_on "ruby"
 
   def install
     ENV["GEM_HOME"] = libexec

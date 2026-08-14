@@ -2327,7 +2327,20 @@ async function brewAutoInstall(result: any, opts: any) {
       );
     }
   } catch (err: any) {
+    // brew writes most install/build progress (and gem native-extension
+    // failures) to stdout; Node's err.message only embeds stderr. Surface both
+    // so monitored-install / batch VM logs capture the real failure.
+    const stdout = String(err?.stdout ?? "").trim();
+    const stderr = String(err?.stderr ?? "").trim();
+    const combined = [stderr, stdout].filter(Boolean).join("\n");
     installSpinner.fail(`brew install failed: ${err.message}`);
+    if (combined) {
+      const lines = combined.split(/\r?\n/);
+      const tail = lines.slice(-80).join("\n");
+      if (tail && !String(err.message || "").includes(tail.slice(0, 60))) {
+        console.log(tail);
+      }
+    }
     console.log(
       chalk.dim(`  Retry manually: ${installLabel}`),
     );
