@@ -52,7 +52,22 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-/** When GitHub python has no PyPI package, fall back to source-build. */
+/**
+ * Verify a GitHub-derived pip package name is not a PyPI name collision.
+ * Returns the identity result; caller decides pip-package vs source-build.
+ */
+async function resolvePipGithubOrFallback(
+  packageName: string,
+  owner: string,
+  repo: string,
+) {
+  const { resolvePypiGithubIdentity } = await import(
+    "./generators/pip-package.ts"
+  );
+  return resolvePypiGithubIdentity(packageName, owner, repo);
+}
+
+/** When GitHub python has no PyPI package or mismatches identity, fall back to source-build. */
 async function generatePythonSourceBuildFallback(args: {
   owner: string;
   repo: string;
@@ -60,19 +75,25 @@ async function generatePythonSourceBuildFallback(args: {
   release: any;
   serviceConfig: any;
   opts: any;
+  reason?: string;
 }) {
-  const { owner, repo, repoInfo, release, serviceConfig, opts } = args;
+  const { owner, repo, repoInfo, release, serviceConfig, opts, reason } = args;
   console.log(
     chalk.dim(
-      "  PyPI lookup failed (404), falling back to source-build (python)",
+      `  ${reason || "PyPI lookup failed"}; falling back to source-build (python)`,
     ),
   );
   let binName: string | undefined = opts.binName;
   let fallbackRelease = release;
   let pipExtras: string | undefined = opts.pipExtras;
+  let requiresPython: string | undefined;
   try {
     const pyproject = await getFileContent(owner, repo, "pyproject.toml");
     if (pyproject) {
+      const {
+        parseRequiresPythonFromPyproject,
+      } = await import("./generators/source-build.ts");
+      requiresPython = parseRequiresPythonFromPyproject(pyproject) || undefined;
       if (!binName) {
         const m = pyproject.match(
           /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
@@ -132,7 +153,7 @@ async function generatePythonSourceBuildFallback(args: {
       {
         repoInfo,
         release: fallbackRelease,
-        buildSystem: { system: "python" },
+        buildSystem: { system: "python", requiresPython },
         serviceConfig,
       },
       buildOpts,
@@ -1377,32 +1398,37 @@ async function handleGithubRepo(classification, opts) {
             opts,
           );
         case "pip": {
-          try {
+          const pipPkg = opts.package || method.package || repoInfo.name;
+          const identity = await resolvePipGithubOrFallback(
+            pipPkg,
+            owner,
+            repo,
+          );
+          if (identity.matches) {
             return await generateWithConfirmation(
               "pip-package",
               {
-                packageName: opts.package || method.package,
+                packageName: identity.packageName,
                 repoInfo,
                 serviceConfig: serviceConfigFromReadme,
               },
               opts,
             );
-          } catch (e) {
-            if (
-              !/PyPI lookup failed.*404/.test(
-                String((e as Error)?.message || String(e)),
-              )
-            )
-              throw e;
-            return await generatePythonSourceBuildFallback({
-              owner,
-              repo,
-              repoInfo,
-              release,
-              serviceConfig: serviceConfigFromReadme,
-              opts,
-            });
           }
+          console.log(
+            chalk.dim(
+              `  PyPI identity mismatch for ${pipPkg}: ${identity.reason}; falling back to source-build (python)`,
+            ),
+          );
+          return await generatePythonSourceBuildFallback({
+            owner,
+            repo,
+            repoInfo,
+            release,
+            serviceConfig: serviceConfigFromReadme,
+            opts,
+            reason: `PyPI identity mismatch for ${pipPkg}: ${identity.reason}`,
+          });
         }
         case "cargo":
           return await generateWithConfirmation(
@@ -1638,32 +1664,37 @@ async function handleGithubRepo(classification, opts) {
         );
       }
       case "pip": {
-        try {
+        const pipPkg = opts.package || repoInfo.name;
+        const identity = await resolvePipGithubOrFallback(
+          pipPkg,
+          owner,
+          repo,
+        );
+        if (identity.matches) {
           return await generateWithConfirmation(
             "pip-package",
             {
-              packageName: opts.package || repoInfo.name,
+              packageName: identity.packageName,
               repoInfo,
               serviceConfig,
             },
             opts,
           );
-        } catch (e) {
-          if (
-            !/PyPI lookup failed.*404/.test(
-              String((e as Error)?.message || String(e)),
-            )
-          )
-            throw e;
-          return await generatePythonSourceBuildFallback({
-            owner,
-            repo,
-            repoInfo,
-            release,
-            serviceConfig,
-            opts,
-          });
         }
+        console.log(
+          chalk.dim(
+            `  PyPI identity mismatch for ${pipPkg}: ${identity.reason}; falling back to source-build (python)`,
+          ),
+        );
+        return await generatePythonSourceBuildFallback({
+          owner,
+          repo,
+          repoInfo,
+          release,
+          serviceConfig,
+          opts,
+          reason: `PyPI identity mismatch for ${pipPkg}: ${identity.reason}`,
+        });
       }
       case "cargo": {
         const cargoToml = await getFileContent(owner, repo, "Cargo.toml");

@@ -208,12 +208,12 @@ describe("selectHomebrewPythonFormula / requires-python", () => {
     expect(versionSatisfiesRequiresPython("3.12", ">=3.11,<3.13")).toBe(true);
   });
 
-  it("defaults to python@3.13 when unconstrained", async () => {
+  it("defaults to python@3.12 when unconstrained", async () => {
     const { selectHomebrewPythonFormula } = await import(
       "../../../lib/generators/source-build.ts"
     );
-    expect(selectHomebrewPythonFormula(null)).toBe("python@3.13");
-    expect(selectHomebrewPythonFormula("")).toBe("python@3.13");
+    expect(selectHomebrewPythonFormula(null)).toBe("python@3.12");
+    expect(selectHomebrewPythonFormula("")).toBe("python@3.12");
   });
 });
 
@@ -245,7 +245,7 @@ describe("collectSourceBuildPayload — open-notebook (Python web app, no PyPI, 
       { requiresPython: ">=3.11,<3.13" },
     );
     expect(payload.dependenciesLines).toContain('depends_on "python@3.12"');
-    expect(payload.installBody).toContain('virtualenv_create(libexec, "python3.12")');
+    expect(payload.installBody).toContain('system "python3.12", "-m", "venv", libexec');
     expect(payload.installBody).not.toContain("python3.13");
   });
 
