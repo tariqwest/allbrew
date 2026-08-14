@@ -2170,6 +2170,8 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
         repoName,
       ];
       const resolved = resolveNonCollidingFormulaName(preferred, altSources);
+      // Always normalize/sanitize the formula token (e.g. underscores → hyphens).
+      userOpts.name = resolved.name;
       if (resolved.renamedFrom && resolved.name !== preferred) {
         console.log(
           chalk.yellow(
@@ -2179,7 +2181,6 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
         if (!opts.binName && !userOpts.binName) {
           userOpts.binName = preferred;
         }
-        userOpts.name = resolved.name;
       }
     }
   }

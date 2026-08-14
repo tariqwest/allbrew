@@ -13,6 +13,7 @@ export function toFormulaName(name) {
 
 export function toClassName(formulaName) {
   return formulaName
+    .replace(/_/g, "-")
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
