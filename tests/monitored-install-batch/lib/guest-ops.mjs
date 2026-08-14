@@ -291,7 +291,7 @@ NAME=${JSON.stringify(slug)}
 AB=$(command -v allbrew || echo ${brewBin}/allbrew)
 set -o pipefail
 $AB "$URL" --name "$NAME" --verbose 2>&1 | tee -a "$LOG"
-EC=${PIPESTATUS[0]}
+EC=$?
 echo EXIT_CODE=$EC | tee -a "$LOG"
 exit 0
 `;
@@ -318,7 +318,7 @@ brew trust --formula "th-allbrew/allbrew/$NAME" 2>&1 || true
 # "run <path>" as a package.json script name and prints help instead of executing the file.
 set -o pipefail
 bun --cwd "$SRC" ./bin/allbrew.ts "$URL" --name "$NAME" --verbose 2>&1 | tee -a "$LOG"
-EC=${PIPESTATUS[0]}
+EC=$?
 echo EXIT_CODE=$EC | tee -a "$LOG"
 exit 0
 `;
