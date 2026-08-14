@@ -99,8 +99,8 @@ export function parseRequiresPythonFromPyproject(
 
 /**
  * Map a requires-python specifier (or explicit python@X.Y) to a Homebrew
- * python formula token. Prefer the newest commonly bottled version that
- * still satisfies an upper bound (e.g. ">=3.11,<3.13" → python@3.12).
+ * python formula token. Prefer the oldest commonly bottled version that
+ * satisfies the range (e.g. ">=3.11,<3.13" → python@3.12; ">=3.10" → python@3.12).
  */
 export function selectHomebrewPythonFormula(
   requiresPythonOrFormula: string | null | undefined,
@@ -108,7 +108,7 @@ export function selectHomebrewPythonFormula(
   const raw = String(requiresPythonOrFormula || "").trim();
   if (/^python@\d+\.\d+$/.test(raw)) return raw;
 
-  const candidates = ["3.13", "3.12", "3.11", "3.10"];
+  const candidates = ["3.12", "3.13", "3.11", "3.10"];
   if (!raw) return "python@3.12";
 
   for (const ver of candidates) {

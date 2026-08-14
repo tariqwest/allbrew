@@ -289,8 +289,9 @@ LOG=${JSON.stringify(guestLog)}
 URL=${JSON.stringify(url)}
 NAME=${JSON.stringify(slug)}
 AB=$(command -v allbrew || echo ${brewBin}/allbrew)
-$AB "$URL" --name "$NAME" --verbose >"$LOG" 2>&1
-EC=$?
+set -o pipefail
+$AB "$URL" --name "$NAME" --verbose 2>&1 | tee -a "$LOG"
+EC=${PIPESTATUS[0]}
 echo EXIT_CODE=$EC | tee -a "$LOG"
 exit 0
 `;
@@ -315,8 +316,9 @@ brew trust --formula "th-allbrew/allbrew/$NAME" 2>&1 || true
 # Prefer running the synced source directly (unreleased patch) over the bottled allbrew.
 # Use "bun ./bin/allbrew.ts" (not "bun run bin/allbrew.ts"): modern Bun treats bare
 # "run <path>" as a package.json script name and prints help instead of executing the file.
-bun --cwd "$SRC" ./bin/allbrew.ts "$URL" --name "$NAME" --verbose >"$LOG" 2>&1
-EC=$?
+set -o pipefail
+bun --cwd "$SRC" ./bin/allbrew.ts "$URL" --name "$NAME" --verbose 2>&1 | tee -a "$LOG"
+EC=${PIPESTATUS[0]}
 echo EXIT_CODE=$EC | tee -a "$LOG"
 exit 0
 `;
