@@ -56,11 +56,11 @@ describe.concurrent("source-build integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class AuthsecBridge < Formula");
-    expect(ruby).toContain("include Language::Python::Virtualenv");
-    expect(ruby).toContain('depends_on "python@3.13"');
+    expect(ruby).toContain("preserve_rpath");
+    expect(ruby).toContain('depends_on "python@3.12"');
     expect(ruby).not.toContain('=> :build');
-    expect(ruby).toContain('virtualenv_create(libexec, "python3.13")');
-    expect(ruby).toContain('system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."');
+    expect(ruby).toContain('system "python3.12", "-m", "venv", libexec');
+    expect(ruby).toContain('system libexec/"bin/pip", "install", "-v", buildpath');
   });
 
   it("slides: payload fields are well-formed", async () => {
@@ -189,8 +189,8 @@ describe.concurrent("source-build integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class OpenNotebook < Formula");
-    expect(ruby).toContain("include Language::Python::Virtualenv");
-    expect(ruby).toContain('depends_on "python@3.13"');
+    expect(ruby).toContain("preserve_rpath");
+    expect(ruby).toContain('depends_on "python@3.12"');
     expect(ruby).toContain('head "https://github.com/lfnovo/open-notebook.git"');
   });
 
@@ -273,10 +273,10 @@ describe.concurrent("source-build integration", () => {
     const ruby = renderFormula(payload);
     assertValidFormula(ruby);
     expect(ruby).toContain("class TraeAgent < Formula");
-    expect(ruby).toContain("include Language::Python::Virtualenv");
-    expect(ruby).toContain('depends_on "python@3.13"');
+    expect(ruby).toContain("preserve_rpath");
+    expect(ruby).toContain('depends_on "python@3.12"');
     expect(ruby).toContain('head "https://github.com/bytedance/trae-agent.git"');
-    expect(ruby).toContain('virtualenv_create(libexec, "python3.13")');
-    expect(ruby).toContain('system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."');
+    expect(ruby).toContain('system "python3.12", "-m", "venv", libexec');
+    expect(ruby).toContain('system libexec/"bin/pip", "install", "-v", buildpath');
   });
 });

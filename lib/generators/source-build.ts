@@ -40,11 +40,17 @@ export async function collectSourceBuildPayload(
   let urlLines = "";
   if (sourceUrl && version !== "HEAD") {
     const sha256 = await hashUrl(sourceUrl);
-    urlLines = `  url ${rubyString(sourceUrl)}\n  sha256 ${rubyString(sha256)}\n`;
+    // Branch archives (refs/heads/...) do not embed a version Homebrew can parse —
+    // always emit an explicit version stanza when we have one from the release tag.
+    urlLines =
+      `  url ${rubyString(sourceUrl)}\n` +
+      `  version ${rubyString(version)}\n` +
+      `  sha256 ${rubyString(sha256)}\n`;
   }
 
   const system = buildSystem?.system || "make";
 
+  const testBinName = options.binName || name;
   return {
     template: "source_build",
     name,
@@ -56,10 +62,10 @@ export async function collectSourceBuildPayload(
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     urlLines,
     dependenciesLines: buildDependenciesLines(system),
-    installBody: buildInstallBody(system),
+    installBody: buildInstallBody(system, testBinName, options.pipExtras),
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    testBinName: rubyEscape(options.binName || name),
+    testBinName: rubyEscape(testBinName),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
     isPython: system === "python",
   };
@@ -71,8 +77,8 @@ function buildDependenciesLines(system: string) {
   return deps.map((dep) => `  depends_on ${dep}\n`).join("") + "\n";
 }
 
-function buildInstallBody(system: string) {
-  return getInstallBlock(system);
+function buildInstallBody(system: string, binName?: string, pipExtras?: string) {
+  return getInstallBlock(system, binName, pipExtras);
 }
 
 function getDependencies(system: string): string[] {
@@ -94,13 +100,13 @@ function getDependencies(system: string): string[] {
     case "go":
       return ['"go" => :build'];
     case "python":
-      return ['"python@3.13"'];
+      return ['"python@3.12"'];
     default:
       return [];
   }
 }
 
-function getInstallBlock(system: string) {
+function getInstallBlock(system: string, binName?: string, pipExtras?: string) {
   switch (system) {
     case "cmake":
       return (
@@ -121,12 +127,27 @@ function getInstallBlock(system: string) {
       );
     case "go":
       return `    system "go", "build", *std_go_args(ldflags: "-s -w")\n`;
-    case "python":
+    case "python": {
+      // Prefer stdlib venv (includes pip) over virtualenv_create (--without-pip +
+      // Homebrew pip_install forces --no-deps). Only symlink the package console
+      // script so we do not collide with python@*/bin/python3.x.
+      // pipExtras: optional-dependency groups (e.g. "evaluation") for packages
+      // that import optional deps at module load (trae-agent → docker).
+      const script = rubyEscape(binName || "python");
+      const extras = String(pipExtras || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const pipTarget =
+        extras.length > 0
+          ? `"#{buildpath}[${extras.join(",")}]"`
+          : "buildpath";
       return (
-        `    venv = virtualenv_create(libexec, "python3.13")\n` +
-        `    system libexec/"bin/pip", "install", "-v", "--no-deps", "--ignore-installed", "."\n` +
-        `    bin.install_symlink Dir["#{libexec}/bin/*"]\n`
+        `    system "python3.12", "-m", "venv", libexec\n` +
+        `    system libexec/"bin/pip", "install", "-v", ${pipTarget}\n` +
+        `    bin.install_symlink libexec/"bin/${script}"\n`
       );
+    }
     default:
       return `    system "make", "PREFIX=#{prefix}", "install"\n`;
   }

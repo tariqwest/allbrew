@@ -17,6 +17,7 @@ import {
   getReadme,
   getRepoContents,
   getFileContent,
+  getBranchTipSha,
 } from "./github.ts";
 import {
   detectBrewInstall,
@@ -50,6 +51,118 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+
+/** When GitHub python has no PyPI package, fall back to source-build. */
+async function generatePythonSourceBuildFallback(args: {
+  owner: string;
+  repo: string;
+  repoInfo: any;
+  release: any;
+  serviceConfig: any;
+  opts: any;
+}) {
+  const { owner, repo, repoInfo, release, serviceConfig, opts } = args;
+  console.log(
+    chalk.dim(
+      "  PyPI lookup failed (404), falling back to source-build (python)",
+    ),
+  );
+  let binName: string | undefined = opts.binName;
+  let fallbackRelease = release;
+  let pipExtras: string | undefined = opts.pipExtras;
+  try {
+    const pyproject = await getFileContent(owner, repo, "pyproject.toml");
+    if (pyproject) {
+      if (!binName) {
+        const m = pyproject.match(
+          /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
+        );
+        if (m) binName = m[1].trim();
+      }
+      // Install optional-dependency groups so eager optional imports work
+      // (trae-agent imports docker from the evaluation extra at module load).
+      if (!pipExtras) {
+        const groups: string[] = [];
+        const table = pyproject.match(
+          /\[project\.optional-dependencies\]([\s\S]*?)(?:\n\[|\s*$)/,
+        );
+        if (table) {
+          for (const gm of table[1].matchAll(/^([a-zA-Z0-9_-]+)\s*=/gm)) {
+            if (!groups.includes(gm[1])) groups.push(gm[1]);
+          }
+        }
+        if (groups.length) pipExtras = groups.join(",");
+      }
+    }
+    // Prefer a commit-pinned tarball (stable sha256) over floating branch archives
+    // or HEAD-only. Uses the default branch tip via the GitHub tarball API URL
+    // which codeload serves immutably per SHA.
+    if (!fallbackRelease && pyproject) {
+      const ver =
+        pyproject.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1] ||
+        pyproject.match(
+          /\[project\][\s\S]*?^version\s*=\s*["']([^"']+)["']/m,
+        )?.[1];
+      try {
+        const branch = repoInfo.defaultBranch || "main";
+        const sha = await getBranchTipSha(owner, repo, branch);
+        if (sha && ver) {
+          fallbackRelease = {
+            tagName: ver,
+            tarballUrl: `https://codeload.github.com/${repoInfo.fullName}/tar.gz/${sha}`,
+          };
+          console.log(
+            chalk.dim(
+              `  Pinning source to ${sha.slice(0, 7)} (version ${ver})`,
+            ),
+          );
+        }
+      } catch {
+        /* fall through to HEAD-only */
+      }
+    }
+  } catch {
+    /* best-effort metadata */
+  }
+
+  const buildOpts = { ...opts, binName, pipExtras };
+  try {
+    return await generateWithConfirmation(
+      "source-build",
+      {
+        repoInfo,
+        release: fallbackRelease,
+        buildSystem: { system: "python" },
+        serviceConfig,
+      },
+      buildOpts,
+    );
+  } catch (hashErr) {
+    const msg = String((hashErr as Error)?.message || String(hashErr));
+    if (
+      !fallbackRelease ||
+      !/socket|fetch|download|hash|ECONN|timed out|network/i.test(msg)
+    ) {
+      throw hashErr;
+    }
+    console.log(
+      chalk.dim(
+        `  Source archive hash failed (${msg.slice(0, 80)}…); using HEAD-only source-build`,
+      ),
+    );
+    return await generateWithConfirmation(
+      "source-build",
+      {
+        repoInfo,
+        release: null,
+        buildSystem: { system: "python" },
+        serviceConfig,
+      },
+      buildOpts,
+    );
+  }
+}
+
 
 export async function run(url, opts: any = {}) {
   if (opts.token) initOctokit(opts.token);
@@ -1263,16 +1376,34 @@ async function handleGithubRepo(classification, opts) {
             },
             opts,
           );
-        case "pip":
-          return await generateWithConfirmation(
-            "pip-package",
-            {
-              packageName: opts.package || method.package,
+        case "pip": {
+          try {
+            return await generateWithConfirmation(
+              "pip-package",
+              {
+                packageName: opts.package || method.package,
+                repoInfo,
+                serviceConfig: serviceConfigFromReadme,
+              },
+              opts,
+            );
+          } catch (e) {
+            if (
+              !/PyPI lookup failed.*404/.test(
+                String((e as Error)?.message || String(e)),
+              )
+            )
+              throw e;
+            return await generatePythonSourceBuildFallback({
+              owner,
+              repo,
               repoInfo,
+              release,
               serviceConfig: serviceConfigFromReadme,
-            },
-            opts,
-          );
+              opts,
+            });
+          }
+        }
         case "cargo":
           return await generateWithConfirmation(
             "cargo-package",
@@ -1506,16 +1637,34 @@ async function handleGithubRepo(classification, opts) {
           opts,
         );
       }
-      case "pip":
-        return await generateWithConfirmation(
-          "pip-package",
-          {
-            packageName: opts.package || repoInfo.name,
+      case "pip": {
+        try {
+          return await generateWithConfirmation(
+            "pip-package",
+            {
+              packageName: opts.package || repoInfo.name,
+              repoInfo,
+              serviceConfig,
+            },
+            opts,
+          );
+        } catch (e) {
+          if (
+            !/PyPI lookup failed.*404/.test(
+              String((e as Error)?.message || String(e)),
+            )
+          )
+            throw e;
+          return await generatePythonSourceBuildFallback({
+            owner,
+            repo,
             repoInfo,
+            release,
             serviceConfig,
-          },
-          opts,
-        );
+            opts,
+          });
+        }
+      }
       case "cargo": {
         const cargoToml = await getFileContent(owner, repo, "Cargo.toml");
         const resolved = await resolveCargoGithubInstall(
@@ -2327,10 +2476,25 @@ async function brewAutoInstall(result: any, opts: any) {
       );
     }
   } catch (err: any) {
+    const combined = [err?.stdout, err?.stderr, err?.message]
+      .filter(Boolean)
+      .map(String)
+      .join("\n");
+    const tail = combined.split("\n").slice(-60).join("\n");
     installSpinner.fail(`brew install failed: ${err.message}`);
-    console.log(
-      chalk.dim(`  Retry manually: ${installLabel}`),
-    );
+    if (tail.trim()) console.log(chalk.dim(tail));
+    // Dump Homebrew formula build logs (pip failures live here, not in brew stderr).
+    try {
+      const logDir = `${process.env.HOME || ""}/Library/Logs/Homebrew/${result.name}`;
+      const { stdout: logList } = await execFileAsync("bash", [
+        "-c",
+        `ls -la ${JSON.stringify(logDir)} 2>/dev/null; for f in ${JSON.stringify(logDir)}/*; do [ -f "$f" ] || continue; echo "===== $f ====="; tail -n 80 "$f"; done`,
+      ], { maxBuffer: 8 * 1024 * 1024 });
+      if (logList?.trim()) console.log(chalk.dim(String(logList)));
+    } catch {
+      /* no logs */
+    }
+    console.log(chalk.dim(`  Retry manually: ${installLabel}`));
     process.exitCode = 1;
   }
 
