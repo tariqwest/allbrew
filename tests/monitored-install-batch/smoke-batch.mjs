@@ -13,7 +13,7 @@ if (!endpoint || !listFile || !src || !branch) {
   process.exit(2);
 }
 
-const PER_URL_TIMEOUT_MS = Number(process.env.TH_SMOKE_PER_URL_TIMEOUT_MS) || 5 * 60 * 1000;
+const PER_URL_TIMEOUT_MS = Number(process.env.TH_SMOKE_PER_URL_TIMEOUT_MS) || 3 * 60 * 1000;
 
 const list = JSON.parse(readFileSync(listFile, "utf8"));
 const outcomesPath = resolve(src, "tests/monitored-install-batch/logs/smoke-outcomes.jsonl");
