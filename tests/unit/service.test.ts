@@ -79,6 +79,31 @@ describe("normalizeServiceConfig", () => {
     ).toBeNull();
   });
 
+  it("rejects one-shot management CLIs as service run argv (mcphub servers add)", () => {
+    expect(
+      normalizeServiceConfig({
+        command:
+          "mcphub servers add fetch --type stdio --command uvx --arg mcp-server-fetch",
+      }),
+    ).toBeNull();
+    expect(
+      normalizeServiceConfig({
+        command: "mcphub login --url http://localhost:3000",
+      }),
+    ).toBeNull();
+    expect(
+      normalizeServiceConfig({ command: "mcphub tools list" }),
+    ).toBeNull();
+    // Bare binary and real server subcommands remain valid.
+    expect(normalizeServiceConfig({ command: "mcphub" })?.command).toBe(
+      "mcphub",
+    );
+    expect(
+      normalizeServiceConfig({ command: "omnigent server --background" })
+        ?.command,
+    ).toBe("omnigent server --background");
+  });
+
   it("defaults keepAlive to true", () => {
     const result = normalizeServiceConfig({ command: "foo" });
     expect(result?.keepAlive).toBe(true);

@@ -634,6 +634,54 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
     expect(result!.confidence).toBe("high");
   });
 
+  it("appends -f for daemons that background by default when --foreground is documented", () => {
+    // mailcatcher-style: SMTP+web daemon forks unless -f/--foreground (Homebrew core uses -f)
+    const readme = [
+      "# MailCatcher",
+      "",
+      "MailCatcher runs a super simple SMTP server which catches any message",
+      "sent to it to display in a web interface. Run mailcatcher, then check",
+      "out http://127.0.0.1:1080 to see the mail.",
+      "",
+      "## Features",
+      "",
+      "* Runs as a daemon in the background, optionally in foreground.",
+      "",
+      "## How",
+      "",
+      "1. `gem install mailcatcher`",
+      "2. `mailcatcher`",
+      "3. Go to http://127.0.0.1:1080/",
+      "",
+      "### Command Line Options",
+      "",
+      "```",
+      "Usage: mailcatcher [options]",
+      "    -f, --foreground                 Run in the foreground",
+      "```",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "mailcatcher");
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("mailcatcher -f");
+    expect(result!.keepAlive).toBe(true);
+    expect(result!.confidence).toBe("high");
+  });
+
+  it("does not invent -f when README never mentions foreground/daemon forking", () => {
+    const readme = [
+      "## Usage",
+      "",
+      "```bash",
+      "maildev",
+      "```",
+      "",
+      "The web UI is available at http://localhost:1080",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "maildev");
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("maildev");
+  });
+
   it("prefers gateway over interactive webui when both are documented", () => {
     const readme = [
       "# nanobot",
@@ -725,6 +773,54 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
       "```",
     ].join("\n");
     expect(detectServiceConfig(readme, "reveal-md")).toBeNull();
+  });
+
+  it("uses bare binary for hub servers whose README only documents management CLIs (mcphub)", () => {
+    // Regression: argv like `mcp-server-fetch` used to boost
+    // `mcphub servers add …` via /\bserver\b/ matching inside the package name,
+    // producing a one-shot CLI as the brew services run command.
+    const readme = [
+      "# MCPHub: The Unified Hub for MCP Servers",
+      "",
+      "Centralized management dashboard for MCP servers.",
+      "",
+      "### Access Dashboard",
+      "",
+      "Open `http://localhost:3000` and log in with username `admin`.",
+      "",
+      "### Connect AI Clients",
+      "",
+      "```",
+      "http://localhost:3000/mcp           # All servers",
+      "http://localhost:3000/mcp/{group}   # Specific group",
+      "```",
+      "",
+      "### Manage From the Terminal",
+      "",
+      "```bash",
+      "mcphub login --url http://localhost:3000 --username admin",
+      "mcphub servers list",
+      "mcphub servers add fetch --type stdio --command uvx --arg mcp-server-fetch",
+      "mcphub tools list",
+      "mcphub call fetch_url url=https://example.com --json",
+      "mcphub keys create --name ci --access-type all",
+      "```",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "mcphub");
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("mcphub");
+    expect(result!.keepAlive).toBe(true);
+    expect(result!.confidence).toBe("high");
+    expect(result!.command).not.toMatch(/servers add/);
+    expect(result!.command).not.toMatch(/mcp-server-fetch/);
+  });
+
+  it("does not treat Open prose near localhost as a service command", () => {
+    const readme = [
+      "Open http://localhost:3000 in a browser to access the dashboard.",
+    ].join("\n");
+    expect(detectServiceConfig(readme, "")).toBeNull();
+    expect(detectServiceConfig(readme, "mcphub")).toBeNull();
   });
 });
 
