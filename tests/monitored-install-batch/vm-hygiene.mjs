@@ -14,8 +14,18 @@ let session = null;
 try {
   session = await acquireHomebrewPrefixDurable(h);
   const mountPoint = process.env.TH_HOMEBREW_MOUNT_POINT || "/opt/homebrew";
-  const cmd = `export PATH="${mountPoint}/bin:\$HOME/.bun/bin:\$PATH"
-set +e
+  const cmd = `set +e
+set +u
+set +o pipefail 2>/dev/null || true
+export TMPDIR="\${TMPDIR:-/tmp}"
+export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_ENV_HINTS=1
+export HOMEBREW_NO_INSTALL_CLEANUP=1
+export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
+export CI=1
+export ALLBREW_NONINTERACTIVE=1
+export E2E_HEAVY=1
+export PATH="${mountPoint}/bin:\$HOME/.bun/bin:\$PATH"
 brew services stop --all 2>&1 || true
 # Clear Homebrew 6+ trust records so stale allbrew formulae from prior runs
 # don't shadow freshly generated ones.
