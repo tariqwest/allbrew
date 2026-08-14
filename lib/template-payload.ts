@@ -218,6 +218,12 @@ export type GemPackagePayload = FormulaCommonFields & {
   dependsOnLines: string;
   /** Full `test do` body lines (pre-indented), default bin --version. */
   testDoBody: string;
+  /**
+   * Pre-rendered install-method lines that symlink the gem executable to the
+   * hyphenated formula token when they differ (e.g. license_finder → license-finder).
+   * Empty string when primary bin already matches the formula name.
+   */
+  binAliasBlock: string;
 };
 
 export type MintPackagePayload = FormulaCommonFields & {

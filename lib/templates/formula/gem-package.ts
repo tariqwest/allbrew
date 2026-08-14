@@ -15,7 +15,7 @@ ${p.livecheckBlock}${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}
     ENV["GEM_HOME"] = libexec
     system "gem", "install", ${p.gemName}, "--version", version.to_s, "--no-document", "--bindir", "#{bin}"
     bin.env_script_all_files(libexec/"bin", GEM_HOME: ENV["GEM_HOME"])
-  end
+${p.binAliasBlock}  end
 
 ${p.serviceBlock}  test do
 ${testBody}
