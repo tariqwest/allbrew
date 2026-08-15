@@ -249,10 +249,29 @@ export async function collectBinaryReleasePayload(
   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
 
   const archAssets: Record<string, any> = {};
+  const scoreAsset = (assetName: string, formulaName: string): number => {
+    const lower = assetName.toLowerCase();
+    const formula = formulaName.toLowerCase();
+    let s = 0;
+    if (lower.startsWith(formula + "-") || lower.startsWith(formula + "_") || lower === formula) s += 20;
+    else if (lower.includes(formula)) s += 10;
+    if (lower.includes(`${formula}-cli`) || lower.includes(`${formula}_cli`)) s -= 15;
+    if (lower.includes("-cli") || lower.includes("_cli")) s -= 5;
+    s -= lower.length * 0.01;
+    return s;
+  };
   for (const asset of release.assets) {
     if (!isBinaryAsset(asset.name)) continue;
     const arch = matchAssetToArch(asset.name);
-    if (arch) archAssets[arch] = asset;
+    if (!arch) continue;
+    const existing = archAssets[arch];
+    if (!existing) {
+      archAssets[arch] = asset;
+    } else {
+      const curScore = scoreAsset(existing.name, name);
+      const newScore = scoreAsset(asset.name, name);
+      if (newScore > curScore) archAssets[arch] = asset;
+    }
   }
 
   if (archAssets.macosUniversal) {
