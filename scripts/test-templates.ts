@@ -528,7 +528,6 @@ function buildInstallScriptCase(): Case {
     "      buildpath/\"bin\",\n" +
     "      buildpath/\".local/bin\",\n" +
     "      buildpath/\"usr/local/bin\",\n" +
-    "      Pathname.new(ENV.fetch(\"PREFIX\"))/\"bin\",\n" +
     "    ].uniq\n" +
     "    # Add any dot-prefixed tool home bin/ directories the installer created (e.g. ~/.volta/bin).\n" +
     "    Dir.glob(File.join(buildpath, \".*\", \"bin\")).each do |d|\n" +
