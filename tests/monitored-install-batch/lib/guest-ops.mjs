@@ -209,39 +209,13 @@ export async function releaseHomebrewPrefixDurable(h, session) {
 
 export async function ensureAllbrew(h, session, mountPoint) {
   const user = h.config?.projectUser || process.env.TH_PROJECT_USER || "th-allbrew";
-  const brewBin = `${mountPoint}/bin`;
-  const script = [
-    "#!/bin/bash",
-    "set -uo pipefail",
-    `if [ "$(id -un)" != "${user}" ] && command -v sudo >/dev/null 2>&1; then`,
-    `  exec sudo -u "${user}" -H bash "$0" "$@"`,
-    `fi`,
-    `${brewEnvPreamble(mountPoint)}`,
-    `command -v brew; brew --version | head -1`,
-    `brew tap tariqwest/tap 2>&1 || true`,
-    `brew trust tariqwest/tap 2>&1 || true`,
-    `brew trust --formula tariqwest/tap/allbrew 2>&1 || true`,
-    `brew update 2>&1 | tail -20`,
-    `if command -v allbrew >/dev/null 2>&1 || test -x ${h.q(brewBin)}/allbrew; then`,
-    `  brew upgrade allbrew 2>&1 || brew reinstall allbrew 2>&1`,
-    `else`,
-    `  brew install allbrew 2>&1`,
-    `fi`,
-    `if command -v allbrew >/dev/null 2>&1; then allbrew --version; exit 0; fi`,
-    `if test -x ${h.q(brewBin)}/allbrew; then ${h.q(brewBin)}/allbrew --version; exit 0; fi`,
-    `exit 1`,
-  ].join("\n");
-  const encoded = Buffer.from(script).toString("base64");
-  const scriptPath = `/tmp/th-ensure-allbrew-${process.pid}.sh`;
-  const inner = [
-    `echo ${h.q(encoded)} | openssl base64 -d -A > ${h.q(scriptPath)}`,
-    `chmod +x ${h.q(scriptPath)}`,
-    h.q(scriptPath),
-    `rc=$?`,
-    `rm -f ${h.q(scriptPath)}`,
-    `exit $rc`,
-  ].join("\n");
-  const res = await h.lumeSshExec(inner, { nothrow: true, timeout: 600000 });
+  const q = h.q;
+  const env = `export PATH="${mountPoint}/bin:$HOME/.bun/bin:$PATH" NONINTERACTIVE=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_REQUIRE_TAP_TRUST=1 CI=1`;
+  const check = `command -v allbrew >/dev/null 2>&1 && allbrew --version`;
+  const install = `{ brew tap tariqwest/tap 2>&1 || true; brew trust tariqwest/tap 2>&1 || true; brew trust --formula tariqwest/tap/allbrew 2>&1 || true; brew install allbrew 2>&1; allbrew --version; }`;
+  const body = `${env}; ${check} || ${install}`;
+  const cmd = `if [ "$(id -un)" = "${user}" ]; then bash -lc ${q(body)}; else sudo -H -u ${q(user)} bash -lc ${q(body)}; fi`;
+  const res = await h.lumeSshExec(cmd, { nothrow: true, timeout: 600000 });
   if (res.exitCode !== 0 || !res.stdout.trim()) {
     throw new Error(`failed to ensure/upgrade allbrew:\n${res.stdout}\n${res.stderr}`);
   }
@@ -254,44 +228,9 @@ export async function ensureAllbrew(h, session, mountPoint) {
 export async function ensureTapConfigured(h, session, mountPoint, tapPath) {
   const user = h.config?.projectUser || process.env.TH_PROJECT_USER || "th-allbrew";
   const q = h.q;
-  const script = [
-    "#!/bin/bash",
-    "set -uo pipefail",
-    `if [ "$(id -un)" != "${user}" ] && command -v sudo >/dev/null 2>&1; then`,
-    `  exec sudo -u "${user}" -H bash "$0" "$@"`,
-    `fi`,
-    `${brewEnvPreamble(mountPoint)}`,
-    `TAP=${q(tapPath)}`,
-    `mkdir -p "$TAP/Formula" "$TAP/Casks" "$HOME/.config/allbrew"`,
-    `if [ ! -d "$TAP/.git" ] || ! git -C "$TAP" rev-parse HEAD >/dev/null 2>&1; then`,
-    `  rm -rf "$TAP/.git"`,
-    `  git -C "$TAP" init`,
-    `  git -C "$TAP" config user.email "batch-worker@local"`,
-    `  git -C "$TAP" config user.name "batch-worker"`,
-    `  if [ ! -f "$TAP/README.md" ]; then echo "# batch worker tap" > "$TAP/README.md"; fi`,
-    `  git -C "$TAP" add -A`,
-    `  git -C "$TAP" commit -m "init tap" || true`,
-    `fi`,
-    `AB=$(command -v allbrew || echo ${q(`${mountPoint}/bin/allbrew`)})`,
-    `$AB config set-tap "$TAP"`,
-    `USER_NAME=$(basename "$(dirname "$TAP")")`,
-    `TAP_BASE=$(basename "$TAP")`,
-    `TAP_SLUG="${USER_NAME}/${TAP_BASE#homebrew-}"`,
-    `brew tap "$TAP_SLUG" "$TAP" 2>&1 || true`,
-    `brew trust --tap "$TAP_SLUG" 2>&1 || brew trust "$TAP_SLUG" 2>&1 || true`,
-    `$AB config show | sed -E 's/(token|TOKEN|githubToken).*/REDACTED:/i'`,
-  ].join("\n");
-  const encoded = Buffer.from(script).toString("base64");
-  const scriptPath = `/tmp/th-ensure-tap-${process.pid}.sh`;
-  const inner = [
-    `echo ${q(encoded)} | openssl base64 -d -A > ${q(scriptPath)}`,
-    `chmod +x ${q(scriptPath)}`,
-    q(scriptPath),
-    `rc=$?`,
-    `rm -f ${q(scriptPath)}`,
-    `exit $rc`,
-  ].join("\n");
-  const res = await h.lumeSshExec(inner, { nothrow: true, timeout: 120000 });
+  const body = `export PATH="${mountPoint}/bin:$HOME/.bun/bin:$PATH" HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_REQUIRE_TAP_TRUST=1 CI=1; export TAP=${q(tapPath)}; mkdir -p "$TAP/Formula" "$TAP/Casks" "$HOME/.config/allbrew"; if [ ! -d "$TAP/.git" ] || ! git -C "$TAP" rev-parse HEAD >/dev/null 2>&1; then rm -rf "$TAP/.git"; git -C "$TAP" init; git -C "$TAP" config user.email "batch-worker@local"; git -C "$TAP" config user.name "batch-worker"; if [ ! -f "$TAP/README.md" ]; then echo "# batch worker tap" > "$TAP/README.md"; fi; git -C "$TAP" add -A; git -C "$TAP" commit -m "init tap" || true; fi; AB=$(command -v allbrew || echo ${q(`${mountPoint}/bin/allbrew`)}); $AB config set-tap "$TAP"; USER_NAME=$(basename "$(dirname "$TAP")"); TAP_BASE=$(basename "$TAP"); TAP_SLUG="$USER_NAME/${TAP_BASE#homebrew-}"; brew tap "$TAP_SLUG" "$TAP" 2>&1 || true; brew trust --tap "$TAP_SLUG" 2>&1 || brew trust "$TAP_SLUG" 2>&1 || true; $AB config show | sed -E 's/(token|TOKEN|githubToken).*/REDACTED:/i'`;
+  const cmd = `if [ "$(id -un)" = "${user}" ]; then bash -lc ${q(body)}; else sudo -H -u ${q(user)} bash -lc ${q(body)}; fi`;
+  const res = await h.lumeSshExec(cmd, { nothrow: true, timeout: 120000 });
   if (res.exitCode !== 0) throw new Error(`failed to configure tap: ${res.stdout}\n${res.stderr}`);
   return res.stdout;
 }
