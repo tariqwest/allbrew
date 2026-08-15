@@ -19,6 +19,21 @@ export async function loadHarness() {
   return { ...homebrew, ...users, ...shell, config };
 }
 
+export function makeProjectUserExecutor(h) {
+  const user = h.config?.projectUser || process.env.TH_PROJECT_USER || "th-allbrew";
+  const q = h.q;
+  return async (cmd, _description, opts = {}) => {
+    const sshCmd = `if [ "$(id -un)" = "${user}" ]; then bash -lc ${q(cmd)}; else sudo -H -u ${q(user)} bash -lc ${q(cmd)}; fi`;
+    const res = await h.lumeSshExec(sshCmd, { nothrow: true, timeout: opts.timeout });
+    if (res.exitCode !== 0) {
+      throw new Error(
+        `Command failed in VM as ${user} (exit ${res.exitCode}):\n${res.stderr}\n${res.stdout}`
+      );
+    }
+    return res.stdout;
+  };
+}
+
 export async function guest(runAsProjectUser, session, cmd, description, opts = {}) {
   try {
     const stdout = await runAsProjectUser(cmd, description, {
@@ -228,7 +243,7 @@ export async function ensureAllbrew(h, session, mountPoint) {
 export async function ensureTapConfigured(h, session, mountPoint, tapPath) {
   const user = h.config?.projectUser || process.env.TH_PROJECT_USER || "th-allbrew";
   const q = h.q;
-  const body = `export PATH="${mountPoint}/bin:$HOME/.bun/bin:$PATH" HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_REQUIRE_TAP_TRUST=1 CI=1; export TAP=${q(tapPath)}; mkdir -p "$TAP/Formula" "$TAP/Casks" "$HOME/.config/allbrew"; if [ ! -d "$TAP/.git" ] || ! git -C "$TAP" rev-parse HEAD >/dev/null 2>&1; then rm -rf "$TAP/.git"; git -C "$TAP" init; git -C "$TAP" config user.email "batch-worker@local"; git -C "$TAP" config user.name "batch-worker"; if [ ! -f "$TAP/README.md" ]; then echo "# batch worker tap" > "$TAP/README.md"; fi; git -C "$TAP" add -A; git -C "$TAP" commit -m "init tap" || true; fi; AB=$(command -v allbrew || echo ${q(`${mountPoint}/bin/allbrew`)}); $AB config set-tap "$TAP"; USER_NAME=$(basename "$(dirname "$TAP")"); TAP_BASE=$(basename "$TAP"); TAP_SLUG="$USER_NAME/${TAP_BASE#homebrew-}"; brew tap "$TAP_SLUG" "$TAP" 2>&1 || true; brew trust --tap "$TAP_SLUG" 2>&1 || brew trust "$TAP_SLUG" 2>&1 || true; $AB config show | sed -E 's/(token|TOKEN|githubToken).*/REDACTED:/i'`;
+  const body = `export PATH="${mountPoint}/bin:$HOME/.bun/bin:$PATH" HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_REQUIRE_TAP_TRUST=1 CI=1; export TAP=${q(tapPath)}; mkdir -p "$TAP/Formula" "$TAP/Casks" "$HOME/.config/allbrew"; if [ ! -d "$TAP/.git" ] || ! git -C "$TAP" rev-parse HEAD >/dev/null 2>&1; then rm -rf "$TAP/.git"; git -C "$TAP" init; git -C "$TAP" config user.email "batch-worker@local"; git -C "$TAP" config user.name "batch-worker"; if [ ! -f "$TAP/README.md" ]; then echo "# batch worker tap" > "$TAP/README.md"; fi; git -C "$TAP" add -A; git -C "$TAP" commit -m "init tap" || true; fi; AB=$(command -v allbrew || echo ${q(`${mountPoint}/bin/allbrew`)}); $AB config set-tap "$TAP"; USER_NAME=$(basename "$(dirname "$TAP")"); TAP_BASE=$(basename "$TAP"); TAP_SLUG="$USER_NAME/\${TAP_BASE#homebrew-}"; brew tap "$TAP_SLUG" "$TAP" 2>&1 || true; brew trust --tap "$TAP_SLUG" 2>&1 || brew trust "$TAP_SLUG" 2>&1 || true; $AB config show | sed -E 's/(token|TOKEN|githubToken).*/REDACTED:/i'`;
   const cmd = `if [ "$(id -un)" = "${user}" ]; then bash -lc ${q(body)}; else sudo -H -u ${q(user)} bash -lc ${q(body)}; fi`;
   const res = await h.lumeSshExec(cmd, { nothrow: true, timeout: 120000 });
   if (res.exitCode !== 0) throw new Error(`failed to configure tap: ${res.stdout}\n${res.stderr}`);
