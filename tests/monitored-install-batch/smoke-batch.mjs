@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { readFileSync, appendFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, appendFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 
@@ -72,23 +72,30 @@ for (const entry of list) {
         : code === 0
           ? "success"
           : "failed";
-      Bun.write(Bun.file(log), chunks.join("")).then(() => {
-        const finished = Date.now();
-        const durationMs = finished - started;
-        const outcome = {
-          runId: `${endpoint}-${name}-${finished}`,
-          name,
-          url,
-          endpoint,
-          exitCode,
-          durationMs,
-          status,
-          finishedAt: new Date(finished).toISOString(),
-        };
+      try {
+        writeFileSync(log, chunks.join(""));
+      } catch (e) {
+        console.error(`[smoke ${endpoint}] ${name} failed to write log: ${e.message}`);
+      }
+      const finished = Date.now();
+      const durationMs = finished - started;
+      const outcome = {
+        runId: `${endpoint}-${name}-${finished}`,
+        name,
+        url,
+        endpoint,
+        exitCode,
+        durationMs,
+        status,
+        finishedAt: new Date(finished).toISOString(),
+      };
+      try {
         appendFileSync(outcomesPath, JSON.stringify(outcome) + "\n");
-        console.log(`[smoke ${endpoint}] ${name} finished with status=${status} code=${exitCode} durationMs=${durationMs}`);
-        resolvePromise();
-      });
+      } catch (e) {
+        console.error(`[smoke ${endpoint}] ${name} failed to write outcome: ${e.message}`);
+      }
+      console.log(`[smoke ${endpoint}] ${name} finished with status=${status} code=${exitCode} durationMs=${durationMs}`);
+      resolvePromise();
     });
   });
 }
