@@ -195,6 +195,10 @@ export function applyEndpointEnv(endpoint) {
   if (env.LUME_REMOTE_ENABLED === "false" || env.LUME_REMOTE_ENABLED === false) {
     process.env.LUME_REMOTE_ENABLED = "false";
   }
+  // Batch mode does not stage a project workspace under /Volumes/Shared;
+  // run commands from the project user's home and let vm-install-one sync
+  // the source branch it needs.
+  process.env.TH_VM_WORKSPACE = "/Users/th-allbrew";
   console.error(
     `[vm-pool] using endpoint=${endpoint.id} remote=${process.env.LUME_REMOTE_ENABLED} vm=${process.env.LUME_VM_NAME}`,
   );
