@@ -114,6 +114,8 @@ export type InstallScriptPayload = FormulaCommonFields & {
   ensureBinDir: boolean;
   /** Shell for `system "…", cached_download` (`sh` for POSIX-only scripts like starship). */
   scriptShell?: "sh" | "bash";
+  /** When true, vendor the script to buildpath and rewrite hardcoded install paths / sudo. */
+  installScriptRewrite?: boolean;
 };
 
 export type ArchiveBuildPayload = FormulaCommonFields & {

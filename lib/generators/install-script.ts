@@ -53,6 +53,7 @@ export type InstallScriptFlags = {
   env: Record<string, string>;
   ensureBinDir: boolean;
   valueArgs: InstallScriptValueArg[];
+  installScriptRewrite?: boolean;
 };
 
 type FlagKind =
@@ -193,6 +194,29 @@ function valueFlagDescribesVersion(line: string): boolean {
 }
 
 /**
+ * Decide whether the vendor install script hardcodes paths or uses sudo in a
+ * way that requires us to vendor and rewrite it.  Starship-style scripts that
+ * honor BIN_DIR or accept --bin-dir are left alone.
+ */
+function shouldRewriteForHomebrew(scriptText: string): boolean {
+  const text = String(scriptText || "");
+  if (!text) return false;
+
+  // readonly INSTALL_DIR/BIN_DIR cannot be overridden with ENV.
+  if (/\breadonly\s+(?:INSTALL_DIR|BIN_DIR|install_dir|BINDIR)\s*=/i.test(text)) {
+    return true;
+  }
+
+  // Sudo-driven install commands are not allowed inside the brew build.
+  if (/\$\(command -v sudo \|\| true\)/.test(text)) return true;
+  if (/\bsudo\s+(?:bash|sh|cp|mv|mkdir|tar|unzip|install|tee)\b/i.test(text)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Detect non-interactive flags and common environment variables documented in
  * an install script.  Returns both the argument list and environment overrides
  * that should be set inside `def install`.
@@ -280,7 +304,12 @@ export function detectInstallScriptFlags(
   }
 
   // Detect and set common install-path / no-modify-path / quiet env variables.
-  const envNames = [...text.matchAll(/\b([A-Z][A-Z0-9_]*_(?:NO_MODIFY_PATH|NO_MODIFY|QUIET|SILENT|INSTALL_DIR|INSTALL_PATH|INSTALL|HOME|DIR))\b/g)].map((m) => m[1]);
+  // Capture prefixed forms (UV_INSTALL_DIR, VOLTA_HOME) and a small allow-list of
+  // bare forms (INSTALL_DIR, BIN_DIR, BINDIR, NO_MODIFY_PATH, NO_MODIFY, INSTALL).
+  // Bare HOME/DIR/QUIET/SILENT are too generic and are handled by explicit flags above.
+  const envPattern =
+    /\b((?:[A-Z][A-Z0-9_]*_)(?:NO_MODIFY_PATH|NO_MODIFY|QUIET|SILENT|INSTALL_DIR|INSTALL_PATH|INSTALL|BIN_DIR|BINDIR|HOME|DIR)|(?:NO_MODIFY_PATH|NO_MODIFY|INSTALL_DIR|INSTALL_PATH|INSTALL|BIN_DIR|BINDIR))\b/g;
+  const envNames = [...text.matchAll(envPattern)].map((m) => m[1]);
   const seen = new Set<string>();
   for (const name of envNames) {
     if (seen.has(name)) continue;
@@ -290,11 +319,18 @@ export function detectInstallScriptFlags(
       env[name] = "1";
     } else if (/_QUIET$/.test(name) || /_SILENT$/.test(name)) {
       env[name] = "1";
-    } else if (/_INSTALL_DIR$/.test(name)) {
+    } else if (
+      /_INSTALL_DIR$/.test(name) ||
+      /_BIN_DIR$/.test(name) ||
+      /_BINDIR$/.test(name) ||
+      name === "INSTALL_DIR" ||
+      name === "BIN_DIR" ||
+      name === "BINDIR"
+    ) {
       env[name] = '(buildpath/"bin").to_s';
-    } else if (/_INSTALL_PATH$/.test(name)) {
+    } else if (/_INSTALL_PATH$/.test(name) || name === "INSTALL_PATH") {
       env[name] = `(buildpath/"bin"/${rubyString(binName)}).to_s`;
-    } else if (/_INSTALL$/.test(name)) {
+    } else if (/_INSTALL$/.test(name) || name === "INSTALL") {
       // e.g. DENO_INSTALL: a top-level directory where the script appends /bin.
       env[name] = "buildpath.to_s";
     } else if (/_HOME$/.test(name)) {
@@ -307,7 +343,24 @@ export function detectInstallScriptFlags(
     }
   }
 
-  return { args, env, ensureBinDir, valueArgs };
+  // Some scripts use a bare NO_MODIFY_PATH env (e.g. ante) to skip shell
+  // profile edits.  Pick "true" when the default is "false"/"no" and "1"
+  // otherwise, so the guard passes regardless of the exact truthiness check.
+  if (/\bNO_MODIFY_PATH\b/i.test(text)) {
+    const defaultMatch = text.match(
+      /\bNO_MODIFY_PATH\s*=\s*["']?\$\{NO_MODIFY_PATH:-([^}]+)\}["']?/,
+    );
+    const defaultValue = defaultMatch?.[1] || "";
+    env.NO_MODIFY_PATH = /^(false|no)$/i.test(defaultValue) ? "true" : "1";
+  }
+
+  return {
+    args,
+    env,
+    ensureBinDir,
+    valueArgs,
+    installScriptRewrite: shouldRewriteForHomebrew(text),
+  };
 }
 
 /**
@@ -349,6 +402,7 @@ function installScriptRubyFragments(
   installArgsRuby: string;
   ensureBinDir: boolean;
   scriptShell: "sh" | "bash";
+  installScriptRewrite: boolean;
 } {
   const envLines = Object.entries(flags.env)
     .map(([k, v]) => `    ENV[${rubyString(k)}] = ${formatEnvValue(v)}\n`)
@@ -364,6 +418,7 @@ function installScriptRubyFragments(
     installArgsRuby: parts.join(""),
     ensureBinDir: flags.ensureBinDir,
     scriptShell: shell,
+    installScriptRewrite: flags.installScriptRewrite || false,
   };
 }
 
@@ -463,7 +518,7 @@ export async function collectInstallScriptPayload(
     options.installFlags ||
     (scriptText
       ? detectInstallScriptFlags(scriptText, binName)
-      : { args: [], env: {}, ensureBinDir: true, valueArgs: [] });
+      : { args: [], env: {}, ensureBinDir: true, valueArgs: [], installScriptRewrite: false });
 
   // Normalize partial option overrides.
   if (!flags.args) flags.args = [];
@@ -514,6 +569,7 @@ export async function collectInstallScriptPayload(
     installArgsRuby: rubyBits.installArgsRuby,
     ensureBinDir: rubyBits.ensureBinDir,
     scriptShell: rubyBits.scriptShell,
+    installScriptRewrite: rubyBits.installScriptRewrite,
   };
 }
 
