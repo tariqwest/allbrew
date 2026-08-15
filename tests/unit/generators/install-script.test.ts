@@ -147,6 +147,38 @@ describe("detectInstallScriptFlags", () => {
     );
     expect(flags.env.VOLTA_HOME).toBe('(buildpath/".volta").to_s');
   });
+
+  it("sets bare NO_MODIFY_PATH to 'true' when the script default is false", () => {
+    const flags = detectInstallScriptFlags(
+      'NO_MODIFY_PATH="${NO_MODIFY_PATH:-false}"\n',
+      "ante",
+    );
+    expect(flags.env.NO_MODIFY_PATH).toBe("true");
+  });
+
+  it("sets bare NO_MODIFY_PATH to '1' when the script default is 0", () => {
+    const flags = detectInstallScriptFlags(
+      'NO_MODIFY_PATH="${NO_MODIFY_PATH:-0}"\n',
+      "foo",
+    );
+    expect(flags.env.NO_MODIFY_PATH).toBe("1");
+  });
+
+  it("flags install scripts that need path/sudo rewriting", () => {
+    const flags = detectInstallScriptFlags(
+      'readonly INSTALL_DIR="/usr/local/bin"\nFORCE="${FORCE:-0}"\n',
+      "devbox",
+    );
+    expect(flags.installScriptRewrite).toBe(true);
+  });
+
+  it("does not rewrite starship-style scripts that honor BIN_DIR", () => {
+    const flags = detectInstallScriptFlags(
+      'BIN_DIR="/usr/local/bin"\n-y, --yes\n',
+      "starship",
+    );
+    expect(flags.installScriptRewrite).toBe(false);
+  });
 });
 
 describe("detectInstallScriptShell", () => {
