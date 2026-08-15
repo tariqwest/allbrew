@@ -139,8 +139,11 @@ function isFlagDocumented(text: string, flag: string): boolean {
 
   const re = new RegExp(
     [
-      // usage / help: "  --non-interactive  desc" or "[--non-interactive]"
-      `(?:^|[\\s\\[|,"'])${escaped}(?:[\\s\\]\\|,"':]|$)`,
+      // usage / help line where the flag is the first token (leading whitespace allowed)
+      // and is followed by a description, placeholder, or end of line.
+      `(?:^\\s*)${escaped}(?=\\s+(?:<[^>]+>|\\[[^\\]]+\\]|\\$\\{[A-Z_]+\\}|[A-Z_][A-Z0-9_]{1,}|\\w[^\\n]*)|\\s*$)`,
+      // usage [ --flag ]
+      `\\[${escaped}\\]`,
       // case arm: --non-interactive)
       `${escaped}\\)`,
       // paired with short form
