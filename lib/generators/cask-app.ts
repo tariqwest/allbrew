@@ -20,6 +20,7 @@ export async function collectCaskAppPayload(
     contentDisposition = "",
     versionHeader = null,
     serverFilename = null,
+    finalUrl = null,
   } = downloaded as {
     sha256: string;
     cleanup: () => Promise<void>;
@@ -28,6 +29,7 @@ export async function collectCaskAppPayload(
     contentDisposition?: string;
     versionHeader?: string | null;
     serverFilename?: string | null;
+    finalUrl?: string | null;
   };
   try {
     if (!appName) {
@@ -66,6 +68,7 @@ export async function collectCaskAppPayload(
     options.version ||
     (versionHeader && String(versionHeader).match(/\d+\.\d+(?:\.\d+)?/)?.[0]) ||
     extractVersionFromUrl(url) ||
+    extractVersionFromUrl(String(finalUrl || "")) ||
     extractCompactVersion(String(filename)) ||
     extractVersionFromUrl(String(serverFilename || "")) ||
     "1.0.0";
