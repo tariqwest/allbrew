@@ -231,7 +231,7 @@ if test -x ${brewBin}/allbrew; then ${brewBin}/allbrew --version; exit 0; fi
 exit 1
 `,
     "ensure-allbrew-upgrade",
-    { timeout: 600000, stream: true },
+    { timeout: 600000 },
   );
   if (ensure.exitCode !== 0 || !ensure.stdout.trim()) {
     throw new Error(`failed to ensure/upgrade allbrew:\n${ensure.stdout}`);
