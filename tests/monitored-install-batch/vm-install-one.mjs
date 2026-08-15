@@ -144,7 +144,11 @@ try {
     lockAcquiredAt = Date.now();
     writeMeta({ phase: "prefix-skipped-shared-mode", lockAcquiredAt, poolWaitMs: 0 });
   }
-  await ensureAllbrew(h, session, mountPoint);
+  if (process.env.TH_SKIP_ENSURE_ALLBREW !== "1") {
+    await ensureAllbrew(h, session, mountPoint);
+  } else {
+    console.log("[vm-install-one] skipping ensureAllbrew (TH_SKIP_ENSURE_ALLBREW=1)");
+  }
   await ensureTapConfigured(h, session, mountPoint, tapPath);
 
   let vmSrcPath = null;
