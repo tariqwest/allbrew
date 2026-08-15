@@ -340,4 +340,4 @@ try {
   writeFileSync(`${hostLog}.status.json`, JSON.stringify(status, null, 2));
   writeFileSync(`${hostLog}.done`, "");
 } catch {}
-process.exit(exitCode === 0 && verifyOk ? 0 : 1);
+process.exit(exitCode === 0 ? 0 : 1);

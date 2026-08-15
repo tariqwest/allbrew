@@ -30,7 +30,7 @@ export function makeProjectUserExecutor(h) {
         `Command failed in VM as ${user} (exit ${res.exitCode}):\n${res.stderr}\n${res.stdout}`
       );
     }
-    return res.stdout;
+    return [res.stdout, res.stderr].filter(Boolean).join("\n");
   };
 }
 
