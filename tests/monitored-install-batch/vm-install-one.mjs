@@ -23,6 +23,7 @@ import { resolve, dirname } from "node:path";
 import {
   loadHarness,
   guest,
+  makeProjectUserExecutor,
   ensureAllbrew,
   ensureTapConfigured,
   installCmd,
@@ -102,6 +103,7 @@ const tapPath =
   `/Users/${process.env.TH_PROJECT_USER}/homebrew-allbrew`;
 
 const h = await loadHarness();
+const runAsProjectUser = makeProjectUserExecutor(h);
 let session = null;
 let installLog = "";
 let exitCode = 1;
@@ -199,7 +201,7 @@ try {
       });
   writeMeta({ phase: "installing", guestLog });
   // stream VM stdout into hostLog incrementally so parent can tail during long downloads
-  const result = await guest(h.runAsProjectUser, session, cmd, `allbrew-${name}`, {
+  const result = await guest(runAsProjectUser, session, cmd, `allbrew-${name}`, {
     timeout: Number(process.env.TH_BATCH_INSTALL_TIMEOUT_MS || 720000),
     stream: true,
     onChunk: (chunk) => {
@@ -209,7 +211,7 @@ try {
   });
   // ensure hostLog has the full guestLog plus any streamed stdout
   const fetch = await guest(
-    h.runAsProjectUser,
+    runAsProjectUser,
     session,
     `set +e; cat ${JSON.stringify(guestLog)} 2>/dev/null || echo MISSING_LOG`,
     `fetch-${name}`,
@@ -233,7 +235,7 @@ try {
   writeMeta({ phase: exitCode === 0 ? "verifying" : "skipping-verify", pkg, exitCode });
   if (exitCode === 0) {
     const v = await guest(
-      h.runAsProjectUser,
+      runAsProjectUser,
       session,
       strictVerifyCmd({ pkg, mountPoint }),
       `verify-${pkg}`,
@@ -251,7 +253,7 @@ try {
   }
 
   const fr = await guest(
-    h.runAsProjectUser,
+    runAsProjectUser,
     session,
     fetchFormulaCmd({ pkg, mountPoint, tapPath }),
     `formula-${pkg}`,
@@ -268,7 +270,7 @@ try {
   // always uninstall + VM hygiene (disk, brew cache)
   writeMeta({ phase: "uninstalling", pkg });
   await guest(
-    h.runAsProjectUser,
+    runAsProjectUser,
     session,
     uninstallCmd({ pkg, mountPoint, tapPath }),
     `uninstall-${pkg}`,
@@ -277,7 +279,7 @@ try {
   // post-uninstall hygiene: brew cleanup + disk avail + VM ephemera purge so batch doesn't leak
   try {
     const hygiene = await guest(
-      h.runAsProjectUser,
+      runAsProjectUser,
       session,
       `${`export PATH="${mountPoint}/bin:$HOME/.bun/bin:$PATH"`}
 brew services stop --all 2>&1 || true
