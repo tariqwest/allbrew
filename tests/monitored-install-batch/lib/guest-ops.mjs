@@ -459,6 +459,77 @@ export async function syncAllbrewSrcToVM(h, hostSrcPath, vmDest) {
   return { branch: effectiveBranch, dest, stdout: res.stdout };
 }
 
+export async function isVmSrcFresh(h, hostSrcPath, vmDest) {
+  const { existsSync } = await import("node:fs");
+  const { spawn } = await import("node:child_process");
+  if (!existsSync(hostSrcPath)) return null;
+
+  const runHostGit = async (cmd, opts = {}) => {
+    return await new Promise((resolve) => {
+      const child = spawn("bash", ["-c", cmd], {
+        cwd: hostSrcPath,
+        env: process.env,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (d) => { stdout += d; });
+      child.stderr.on("data", (d) => { stderr += d; });
+      const timer = opts.timeout
+        ? setTimeout(() => { try { child.kill("SIGKILL"); } catch {} }, opts.timeout)
+        : null;
+      child.on("close", (code) => {
+        if (timer) clearTimeout(timer);
+        resolve({ stdout: stdout.trimEnd(), stderr: stderr.trimEnd(), exitCode: code ?? 1 });
+      });
+    });
+  };
+
+  const branchRes = await runHostGit(`git rev-parse --abbrev-ref HEAD 2>/dev/null || git branch --show-current 2>/dev/null || echo HEAD`);
+  const branchName = (branchRes.stdout || "").trim() || "HEAD";
+  const isHead = branchName === "HEAD";
+  const effectiveBranch = isHead ? `agent/batch-src-${Date.now()}` : branchName;
+  const projectUser = h.config?.projectUser || process.env.TH_PROJECT_USER || "th-allbrew";
+  const safeBranch = effectiveBranch.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 80);
+  const dest = vmDest || `/Users/${projectUser}/Developer/allbrew-src/${safeBranch}`;
+  const wantShaRes = await runHostGit(`git rev-parse HEAD`);
+  const wantSha = (wantShaRes.stdout || "").trim();
+  if (!wantSha) return null;
+
+  const script = [
+    "#!/bin/bash",
+    "set -uo pipefail",
+    `SRC=${h.q(dest)}`,
+    `WANT=${h.q(wantSha)}`,
+    `if [ -d "$SRC/.git" ] && [ -f "$SRC/bin/allbrew.ts" ] && [ -n "$WANT" ]; then`,
+    `  GOT=$(git -C "$SRC" rev-parse HEAD 2>/dev/null || echo "")`,
+    `  if [ "$GOT" = "$WANT" ]; then`,
+    `    echo "FRESH $GOT"`,
+    `    exit 0`,
+    `  fi`,
+    `  echo "STALE $GOT"`,
+    `  exit 1`,
+    `fi`,
+    `echo "MISSING"`,
+    `exit 1`,
+  ].join("\n");
+  const encoded = Buffer.from(script).toString("base64");
+  const scriptPath = `/tmp/th-is-src-fresh-${process.pid}.sh`;
+  const inner = [
+    `echo ${h.q(encoded)} | openssl base64 -d -A > ${h.q(scriptPath)}`,
+    `chmod +x ${h.q(scriptPath)}`,
+    h.q(scriptPath),
+    `rc=$?`,
+    `rm -f ${h.q(scriptPath)}`,
+    `exit $rc`,
+  ].join("\n");
+  const res = await h.lumeSshExec(inner, { nothrow: true, timeout: 60000 });
+  if (res.exitCode === 0 && /FRESH\s+([0-9a-f]+)/.test(res.stdout || "")) {
+    return { dest, sha: wantSha };
+  }
+  return null;
+}
+
 export function strictVerifyCmd({ pkg, mountPoint }) {
   return `${brewEnvPreamble(mountPoint)}
 # Force unbuffered-ish output for SSH capture

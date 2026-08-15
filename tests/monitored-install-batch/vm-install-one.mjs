@@ -28,6 +28,7 @@ import {
   installCmd,
   installCmdFromSrc,
   syncAllbrewSrcToVM,
+  isVmSrcFresh,
   strictVerifyCmd,
   uninstallCmd,
   fetchFormulaCmd,
@@ -149,14 +150,25 @@ try {
   let vmSrcPath = null;
   if (allbrewSrc) {
     const hostPath = resolve(allbrewSrc);
-    console.log(`[vm-install-one] syncing allbrew src ${hostPath} to VM...`);
-    writeMeta({ phase: "syncing-src", hostSrc: hostPath });
-    const sync = await syncAllbrewSrcToVM(h, hostPath);
-    vmSrcPath = sync.dest;
-    console.log(`[vm-install-one] src ready on branch ${sync.branch} at ${vmSrcPath}`);
-    writeMeta({ phase: "src-synced", vmSrcPath, branch: sync.branch });
-    if (allbrewBranch && allbrewBranch !== sync.branch) {
-      console.log(`[vm-install-one] note: requested --allbrew-branch ${allbrewBranch} resolved to ${sync.branch}`);
+    const skipIfFresh = process.env.TH_SKIP_SRC_SYNC === "1";
+    if (skipIfFresh) {
+      const fresh = await isVmSrcFresh(h, hostPath);
+      if (fresh) {
+        vmSrcPath = fresh.dest;
+        console.log(`[vm-install-one] using existing VM src at ${vmSrcPath} (sha matches)`);
+        writeMeta({ phase: "src-skipped", vmSrcPath });
+      }
+    }
+    if (!vmSrcPath) {
+      console.log(`[vm-install-one] syncing allbrew src ${hostPath} to VM...`);
+      writeMeta({ phase: "syncing-src", hostSrc: hostPath });
+      const sync = await syncAllbrewSrcToVM(h, hostPath);
+      vmSrcPath = sync.dest;
+      console.log(`[vm-install-one] src ready on branch ${sync.branch} at ${vmSrcPath}`);
+      writeMeta({ phase: "src-synced", vmSrcPath, branch: sync.branch });
+      if (allbrewBranch && allbrewBranch !== sync.branch) {
+        console.log(`[vm-install-one] note: requested --allbrew-branch ${allbrewBranch} resolved to ${sync.branch}`);
+      }
     }
   }
 
