@@ -149,7 +149,11 @@ try {
   } else {
     console.log("[vm-install-one] skipping ensureAllbrew (TH_SKIP_ENSURE_ALLBREW=1)");
   }
-  await ensureTapConfigured(h, session, mountPoint, tapPath);
+  if (process.env.TH_SKIP_TAP_CONFIGURE !== "1") {
+    await ensureTapConfigured(h, session, mountPoint, tapPath);
+  } else {
+    console.log("[vm-install-one] skipping ensureTapConfigured (TH_SKIP_TAP_CONFIGURE=1)");
+  }
 
   let vmSrcPath = null;
   if (allbrewSrc) {
