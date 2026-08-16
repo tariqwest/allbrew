@@ -21,6 +21,15 @@ function normalizeFetchUrl(urlString: string, base?: string): string {
   return url.href;
 }
 
+function getHeader(response: Response, name: string): string | null {
+  const headers = (response as any).headers;
+  if (!headers) return null;
+  if (typeof headers.get === "function") {
+    return headers.get(name);
+  }
+  return null;
+}
+
 async function fetchFollowingRedirects(
   url: string,
   init: {
@@ -40,7 +49,7 @@ async function fetchFollowingRedirects(
     });
 
     if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get("location");
+      const location = getHeader(response, "location");
       if (!location) {
         throw new Error(
           `Redirect ${response.status} from ${current} without Location header`,
@@ -125,13 +134,13 @@ export async function downloadAndHash(
     }
   }
 
-  const contentType = (response.headers.get("content-type") || "").toLowerCase();
-  const contentDisposition = response.headers.get("content-disposition") || "";
+  const contentType = (getHeader(response, "content-type") || "").toLowerCase();
+  const contentDisposition = getHeader(response, "content-disposition") || "";
   // Vendor version headers (e.g. Halo `x-halo-version: 0.6.0`)
   const versionHeader =
-    response.headers.get("x-halo-version") ||
-    response.headers.get("x-version") ||
-    response.headers.get("x-app-version") ||
+    getHeader(response, "x-halo-version") ||
+    getHeader(response, "x-version") ||
+    getHeader(response, "x-app-version") ||
     "";
 
   return {
