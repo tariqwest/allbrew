@@ -618,6 +618,7 @@ function buildCaskAppCase(): Case {
     versionLine: '  version "1.2.3"\n',
     homepageLine: '  homepage "https://example.com"\n',
     appOrPkgBlock: `  app "Foo.app"\n`,
+    zapBlock: "",
     livecheckBlock: "",
   };
   const expected =

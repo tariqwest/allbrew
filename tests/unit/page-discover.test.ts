@@ -165,6 +165,22 @@ describe("scoreCandidateUrl / pickAutoCandidate", () => {
     expect(kept.some((c) => c.url.includes("build-0.9.0.dmg"))).toBe(false);
     expect(kept.some((c) => c.kind === "store-download-gate")).toBe(true);
   });
+
+  it("filterUnreachableScriptArtifacts drops same-site high-score cask-dmg HTML soft-404s", async () => {
+    const page = "https://kosmik.app";
+    const dmg = scoreCandidateUrl(
+      "https://kosmik.app/downloads/Kosmik-Apple-Silicon.dmg",
+      page,
+      ["html-attr", "same-site"],
+    );
+    dmg.score = 145;
+    const kept = await filterUnreachableScriptArtifacts(
+      [dmg],
+      page,
+      { headOk: async () => false },
+    );
+    expect(kept.some((c) => c.url.includes("Kosmik-Apple-Silicon.dmg"))).toBe(false);
+  });
 });
 
 describe("discoverPageDownloads with fixtures", () => {
@@ -516,6 +532,31 @@ describe("extensionless download APIs (Halo-style)", () => {
     expect(hit).toBeTruthy();
     expect(hit!.kind).toBe("cask-dmg");
     expect(hit!.score).toBeGreaterThanOrEqual(120);
+  });
+
+  it("recognises /latest-download?arch= and boosts it above a curl|bash install script", async () => {
+    const page = "https://xirp.spotify.com/join-beta";
+    const api = scoreCandidateUrl("https://xirp.spotify.com/api/latest-download?arch=arm64", page, [
+      "html-attr",
+    ]);
+    expect(looksLikeExtensionlessArtifactUrl(api.url)).toBe(true);
+
+    const install = scoreCandidateUrl("https://xirp.spotify.com/install.sh", page, [
+      "install-command",
+    ]);
+
+    const merged = await enrichExtensionlessArtifactUrls([api, install], page, {
+      classifyHead: async (url) => {
+        if (url.includes("latest-download")) return { type: "cask-dmg", url };
+        if (url.endsWith("install.sh")) return { type: "bash-script", url };
+        return { type: "unknown", url };
+      },
+    });
+
+    const top = pickAutoCandidate(merged);
+    expect(top?.kind).toBe("cask-dmg");
+    expect(top?.url).toContain("latest-download");
+    expect(top!.score).toBeGreaterThan(install.score);
   });
 });
 

@@ -4,6 +4,7 @@ import {
   rubyEscape,
   isAppAsset,
   matchAssetToArch,
+  stripCaskArtifactSuffixes,
 } from "../utils.ts";
 import { downloadToTemp } from "../sha256.ts";
 import {
@@ -196,11 +197,7 @@ export async function detectAppAndNestedFromAsset(
       // fall through to filename heuristic
     }
 
-    const base = asset.name
-      .replace(/\.(dmg)$/i, "")
-      .replace(/[-_](?:aarch64|arm64|x64|amd64|universal)$/i, "")
-      .replace(/-[\d.]+$/, "")
-      .replace(/_[\d.]+$/, "");
+    const base = stripCaskArtifactSuffixes(asset.name.replace(/\.(dmg)$/i, ""));
     return { appName: base + ".app", nestedContainer: null };
   }
 

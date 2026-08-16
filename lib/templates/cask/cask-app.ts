@@ -1,6 +1,7 @@
 import type { CaskAppPayload } from "../../template-payload.ts";
 
 export default function renderCaskApp(p: CaskAppPayload): string {
+  const zapBlock = p.zapBlock || "";
   return `cask "${p.name}" do
 ${p.versionLine}  sha256 "${p.sha256}"
 
@@ -8,6 +9,6 @@ ${p.versionLine}  sha256 "${p.sha256}"
   name "${p.displayName}"
   desc "${p.desc}"
 ${p.homepageLine}
-${p.livecheckBlock}${p.appOrPkgBlock}end
+${p.livecheckBlock}${p.appOrPkgBlock}${zapBlock}end
 `;
 }

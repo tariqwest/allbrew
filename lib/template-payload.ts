@@ -163,6 +163,8 @@ export type CaskAppPayload = {
   versionLine: string;
   homepageLine: string;
   appOrPkgBlock: string;
+  /** Pre-rendered `zap trash:` block or empty string. */
+  zapBlock: string;
   livecheckBlock: string;
 };
 
