@@ -171,6 +171,19 @@ export async function classifyWithHead(url) {
             gct.includes('application/x-xz')) {
           return { type: 'archive', url };
         }
+
+        // Many vendor install scripts are served as text/plain or
+        // application/octet-stream but start with a shell shebang.
+        if (gct.includes('text/plain') || gct.includes('application/octet-stream')) {
+          try {
+            const body = (await getRes.text()).slice(0, 1024);
+            if (/^#![ \t]*(?:\/bin\/(?:bash|sh)|\/usr\/bin\/env[ \t]+(?:bash|sh|zsh))/im.test(body)) {
+              return { type: 'bash-script', url };
+            }
+          } catch {
+            // fall through
+          }
+        }
       } catch {
         // fall through
       }
