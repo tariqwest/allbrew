@@ -790,6 +790,44 @@ export function isAppAsset(assetName) {
   return false;
 }
 
+/**
+ * Multi-platform CLI release heuristic: product-version-macos.zip + linux archive,
+ * with no DMG / .app-named assets. Those zips are bare CLI binaries (e.g.
+ * swift-outdated-0.15.3-macos.zip), not desktop app bundles — even though
+ * isAppAsset() matches the macos token. Callers should skip cask-app-release
+ * and fall through to binary-release / SPM / README install methods.
+ */
+export function isCliPlatformZipRelease(
+  assets: Array<{ name?: string } | string> | null | undefined,
+): boolean {
+  if (!assets?.length) return false;
+  const names = assets.map((a) =>
+    String(typeof a === "string" ? a : a?.name || "").toLowerCase(),
+  );
+  if (names.some((n) => !n)) return false;
+  if (names.some((n) => n.endsWith(".dmg") || n.includes(".app"))) return false;
+
+  const hasMacZipNoArch = names.some((n) => {
+    if (!n.endsWith(".zip")) return false;
+    const hasMac =
+      /(?:^|[^a-z])(?:macos|darwin|osx)(?:[^a-z]|$)/i.test(n);
+    if (!hasMac) return false;
+    const hasCpuArch =
+      /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(n);
+    return !hasCpuArch;
+  });
+
+  const hasLinux = names.some((n) => {
+    if (!/(?:^|[^a-z])linux(?:[^a-z]|$)/i.test(n)) return false;
+    return (
+      /\.(?:zip|tgz|tar\.gz|tar\.bz2|tar\.xz)$/i.test(n) ||
+      (!n.includes(".") && n.length > 0)
+    );
+  });
+
+  return hasMacZipNoArch && hasLinux;
+}
+
 function isBareAppZipName(lowerName: string): boolean {
   if (!lowerName.endsWith(".zip")) return false;
   if (
