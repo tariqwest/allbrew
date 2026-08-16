@@ -1,0 +1,38 @@
+Removing: /opt/homebrew/var/homebrew/tmp/.cellar/brotli... (32 files, 1.9MB)
+Removing: /opt/homebrew/var/homebrew/tmp/.cellar/readline... (55 files, 2.7MB)
+Removing: /opt/homebrew/var/homebrew/tmp/.cellar/lz4... (23 files, 766.7KB)
+Removing: /opt/homebrew/var/homebrew/tmp/.cellar/libnghttp3... (19 files, 598.2KB)
+Removing: /opt/homebrew/var/homebrew/tmp/.cellar/sqlite... (12 files, 5.3MB)
+Removing: /opt/homebrew/var/homebrew/tmp/.cellar/c-ares... (175 files, 1MB)
+Removing: /opt/homebrew/var/homebrew/tmp/.cellar/xz... (95 files, 2.7MB)
+Removing: /opt/homebrew/var/homebrew/tmp/.cellar/libnghttp2... (13 files, 855.4KB)
+Removing: /opt/homebrew/var/homebrew/tmp/.cellar/uvwasi... (14 files, 285.8KB)
+Removing: /opt/homebrew/var/homebrew/tmp/.cellar/openssl@3... (2,054 files, 22.4MB)
+CLEANUP_OK
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk4s1s1    75Gi    12Gi    39Gi    24%    459k  409M    0%   /
+DF_OK
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk8s1    16Gi   456Mi    15Gi     3%     17k  161M    0%   /opt/homebrew
+DF_HB_OK
+==> Downloading Homebrew API data
+✔︎ JSON API packages.arm64_tahoe.jws.json
+All official taps and commands are trusted.
+Trusted taps:
+  /users/th-allbrew/homebrew-allbrew
+  tariqwest/allbrew
+  tariqwest/tap
+  th-allbrew/allbrew
+Trusted formulae:
+  /users/th-allbrew/homebrew-allbrew/agent-deck
+  /users/th-allbrew/homebrew-allbrew/ante-homepage
+  /users/th-allbrew/homebrew-allbrew/ante-install-sh
+  /users/th-allbrew/homebrew-allbrew/apiark
+  /users/th-allbrew/homebrew-allbrew/balenaetcher
+  /users/th-allbrew/homebrew-allbrew/bun
+  /users/th-allbrew/homebrew-allbrew/csvlens
+  /users/th-allbrew/homebrew-allbrew/cua-driver-prewarm
+  /users/th-allbrew/homebrew-allbrew/devbox
+  /users/th-allbrew/homebrew-allbrew/echo
+  /users/th-allbrew/homebrew-allbrew/filenq
+TRUST_OK

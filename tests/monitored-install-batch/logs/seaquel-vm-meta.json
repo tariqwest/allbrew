@@ -1,0 +1,17 @@
+{
+  "endpointId": "local-2",
+  "runName": "seaquel",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-seaquel-1786907254972.log",
+  "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/seaquel-vm-meta.json",
+  "poolAcquiredAt": 1786907255059,
+  "lockAcquiredAt": 1786907261188,
+  "lastLogAt": 1786907327611,
+  "hostClean": true,
+  "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
+  "phase": "uninstalled",
+  "pkg": "seaquel",
+  "verifyOk": true,
+  "exitCode": 0,
+  "hygiene": "Warning: Skipping tariqwest/tap/allbrew: most recent version 0.0.36 not installed\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/descriptions.json... (503.1KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/cask_descriptions.json... (474.9KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/external_commands_list.txt... (1B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/all_commands_list.txt... (1KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/Cask/seaquel--2026.4.8.dmg... (30.7MB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/bootsnap/34de6cb0fb04e1502e337b70e77119dd5ca691bf4ebe0c8a8a0aecd4430c66e7... (1,154 files, 10.6MB)\n==> This operation has freed approximately 42.3MB of disk space.\nCLEANUP_OK\nFilesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s1s1    75Gi    12Gi    41Gi    23%    459k  434M    0%   /\nDF_OK\nFilesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk8s1    16Gi   344M",
+  "diskAvail": "41Gi"
+}

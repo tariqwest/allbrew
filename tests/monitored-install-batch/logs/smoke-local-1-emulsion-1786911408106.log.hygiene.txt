@@ -1,0 +1,32 @@
+Warning: Skipping tariqwest/tap/allbrew: most recent version 0.0.36 not installed
+Warning: Skipping th-allbrew/allbrew/browser-sync: most recent version 3.0.4 not installed
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/linkage.json... (130B)
+==> This operation has freed approximately 130B of disk space.
+CLEANUP_OK
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk4s1s1    75Gi    12Gi    40Gi    23%    459k  418M    0%   /
+DF_OK
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk8s1    16Gi   683Mi    15Gi     5%     37k  158M    0%   /opt/homebrew
+DF_HB_OK
+==> Downloading Homebrew API data
+✔︎ JSON API packages.arm64_tahoe.jws.json
+All official taps and commands are trusted.
+Trusted taps:
+  /users/th-allbrew/homebrew-allbrew
+  tariqwest/allbrew
+  tariqwest/tap
+  th-allbrew/allbrew
+Trusted formulae:
+  /users/th-allbrew/homebrew-allbrew/agent-deck
+  /users/th-allbrew/homebrew-allbrew/ante-homepage
+  /users/th-allbrew/homebrew-allbrew/ante-install-sh
+  /users/th-allbrew/homebrew-allbrew/appbun
+  /users/th-allbrew/homebrew-allbrew/atuin
+  /users/th-allbrew/homebrew-allbrew/balenaetcher
+  /users/th-allbrew/homebrew-allbrew/browser-sync
+  /users/th-allbrew/homebrew-allbrew/chronoid
+  /users/th-allbrew/homebrew-allbrew/clinic
+  /users/th-allbrew/homebrew-allbrew/croc
+  /users/th-allbrew/homebrew-allbrew/cua-driver-prewarm
+TRUST_OK

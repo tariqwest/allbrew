@@ -1,0 +1,17 @@
+{
+  "endpointId": "local-2",
+  "runName": "portdeck",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-portdeck-1786910635979.log",
+  "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/portdeck-vm-meta.json",
+  "poolAcquiredAt": 1786910636046,
+  "lockAcquiredAt": 1786910642000,
+  "lastLogAt": 1786910677312,
+  "hostClean": true,
+  "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
+  "phase": "uninstalled",
+  "pkg": "portdeck",
+  "verifyOk": true,
+  "exitCode": 0,
+  "hygiene": "Removing: /opt/homebrew/var/homebrew/tmp/.cellar/brotli... (32 files, 1.9MB)\nRemoving: /opt/homebrew/var/homebrew/tmp/.cellar/readline... (55 files, 2.7MB)\nRemoving: /opt/homebrew/var/homebrew/tmp/.cellar/lz4... (23 files, 766.7KB)\nRemoving: /opt/homebrew/var/homebrew/tmp/.cellar/libnghttp3... (19 files, 598.2KB)\nRemoving: /opt/homebrew/var/homebrew/tmp/.cellar/sqlite... (12 files, 5.3MB)\nRemoving: /opt/homebrew/var/homebrew/tmp/.cellar/c-ares... (175 files, 1MB)\nRemoving: /opt/homebrew/var/homebrew/tmp/.cellar/xz... (95 files, 2.7MB)\nRemoving: /opt/homebrew/var/homebrew/tmp/.cellar/libnghttp2... (13 files, 855.4KB)\nRemoving: /opt/homebrew/var/homebrew/tmp/.cellar/uvwasi... (14 files, 285.8KB)\nRemoving: /opt/homebrew/var/homebrew/tmp/.cellar/openssl@3... (2,054 files, 22.4MB)\nCLEANUP_OK\nFilesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s1s1    75Gi    12Gi    39Gi    24%    459k  409M    0%   /\nDF_OK\nFilesystem      Size    Used   Avail Capacity i",
+  "diskAvail": "39Gi"
+}

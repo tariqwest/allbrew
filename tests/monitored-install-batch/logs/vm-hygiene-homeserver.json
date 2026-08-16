@@ -1,0 +1,61 @@
+{
+  "checkedAt": "2026-08-16T19:56:25.028Z",
+  "poolPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/vm-pool.json",
+  "summary": {
+    "checkedAt": "2026-08-16T19:56:25.028Z",
+    "total": 1,
+    "healthy": 0,
+    "usable": 0,
+    "busy": 0,
+    "sshUnavailable": 0,
+    "vmStopped": 1,
+    "otherUnhealthy": 0
+  },
+  "endpoints": [
+    {
+      "id": "homeserver",
+      "label": "homeserver remote Lume",
+      "enabled": true,
+      "checkedAt": "2026-08-16T19:56:23.462Z",
+      "remote": true,
+      "vmName": "vm-homeserver-macos-testing",
+      "usable": false,
+      "guestOk": false,
+      "free": true,
+      "status": "vm_stopped",
+      "issues": [
+        "VM 'vm-homeserver-macos-testing' state=stopped (not running)"
+      ],
+      "mutex": {
+        "locked": false,
+        "path": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/vm-mutex-homeserver.lockdir",
+        "holder": null,
+        "pidAlive": false,
+        "cleared": false
+      },
+      "remoteHost": {
+        "ok": true,
+        "host": "app-user@homeserver.local",
+        "exitCode": 0,
+        "stdout": "REMOTE_OK\nhomeserver.local\narm64",
+        "stderr": "",
+        "timedOut": false
+      },
+      "lume": {
+        "ok": true,
+        "exitCode": 0,
+        "detail": "declare -x CURL_CA_BUNDLE=\"/usr/local/etc/ssl/ca-bundle-with-caddy.pem\"\ndeclare -x HOME=\"/Users/app-user\"\ndeclare -x LANG=\"en_US.UTF-8\"\ndeclare -x LOGNAME=\"app-user\"\ndeclare -x NODE_EXTRA_CA_CERTS=\"/usr/local/share/ca-certificates/caddy-local-root.crt\"\ndeclare -x OLDPWD\ndeclare -x PATH=\"/Users/app-u"
+      },
+      "vm": {
+        "name": "vm-homeserver-macos-testing",
+        "state": "stopped",
+        "ip": "",
+        "sshAvailable": null,
+        "exitCode": 0,
+        "raw": "declare -x CURL_CA_BUNDLE=\"/usr/local/etc/ssl/ca-bundle-with-caddy.pem\"\ndeclare -x HOME=\"/Users/app-user\"\ndeclare -x LANG=\"en_US.UTF-8\"\ndeclare -x LOGNAME=\"app-user\"\ndeclare -x NODE_EXTRA_CA_CERTS=\"/usr/local/share/ca-certificates/caddy-local-root.crt\"\ndeclare -x OLDPWD\ndeclare -x PATH=\"/Users/app-user/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin\"\ndeclare -x PWD=\"/Users/app-user\"\ndeclare -x REQUESTS_CA_BUNDLE=\"/usr/local/etc/ssl/ca-bundle-with-caddy.pem\"\ndeclare -x SHELL=\"/bin/zsh\"\ndeclare -x SHLVL="
+      },
+      "ssh": null,
+      "guest": null
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "endpointId": "local-2",
+  "runName": "gotify-cli",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-gotify-cli-1786910548451.log",
+  "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/gotify-cli-vm-meta.json",
+  "poolAcquiredAt": 1786910548529,
+  "lockAcquiredAt": 1786910554374,
+  "lastLogAt": 1786910586647,
+  "hostClean": true,
+  "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
+  "phase": "uninstalled",
+  "pkg": "gotify-cli",
+  "verifyOk": true,
+  "exitCode": 0,
+  "hygiene": "Warning: Skipping tariqwest/tap/allbrew: most recent version 0.0.36 not installed\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/descriptions.json... (503.4KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/cask_descriptions.json... (475.6KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/external_commands_list.txt... (1B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/linkage.json... (2B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/gotify-cli--2.4.0... (16.4MB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/all_commands_list.txt... (1KB)\nRemoving: /Users/th-allbrew/Library/Logs/Homebrew/gotify-cli... (106B)\n==> This operation has freed approximately 17.4MB of disk space.\nCLEANUP_OK\nFilesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s1s1    75Gi    12Gi    39Gi    24%    459k  411M    0%   /\nDF_OK\nFilesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk8s1    16Gi   345Mi    15Gi     3%",
+  "diskAvail": "39Gi"
+}

@@ -1,0 +1,12 @@
+{
+  "busy": {
+    "homeserver": 1,
+    "local-1": 4,
+    "local-2": 1
+  },
+  "lastAssigned": {
+    "homeserver": 1786907904458,
+    "local-1": 1786911750274,
+    "local-2": 1786911046055
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "url": "https://github.com/alexpasmantier/television",
+  "name": "television",
+  "pkg": "alexpasmantier-television",
+  "exitCode": 0,
+  "verifyOk": false,
+  "endpointId": "local-2",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-television-1786910460740.log",
+  "formulaLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-television-1786910460740.log.formula.rb",
+  "verifyLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-television-1786910460740.log.verify.txt",
+  "finishedAt": "2026-08-16T20:01:46.145Z"
+}

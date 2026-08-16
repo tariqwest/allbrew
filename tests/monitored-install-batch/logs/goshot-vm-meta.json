@@ -1,0 +1,13 @@
+{
+  "endpointId": "local-1",
+  "runName": "goshot",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-1-goshot-1786911750175.log",
+  "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/goshot-vm-meta.json",
+  "poolAcquiredAt": 1786911750474,
+  "lockAcquiredAt": 1786911758219,
+  "lastLogAt": 1786911877890,
+  "hostClean": true,
+  "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
+  "phase": "uninstalling",
+  "pkg": "goshot"
+}

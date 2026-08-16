@@ -1,0 +1,38 @@
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/ada-url_bottle_manifest--4.0.0... (21.9KB)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/ada-url--4.0.0... (336.1KB)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/hdrhistogram_c_bottle_manifest--0.11.10... (7.8KB)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/brotli_bottle_manifest--1.2.0... (8.0KB)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/fmt_bottle_manifest--12.2.0... (7.3KB)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/c-ares_bottle_manifest--1.34.8... (14.9KB)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/c-ares--1.34.8... (307.3KB)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/brotli--1.2.0... (793.5KB)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/Cask/alexballas-go2tv--2.5.0.zip... (14MB)
+==> This operation has freed approximately 16.4MB of disk space.
+CLEANUP_OK
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk4s1s1    75Gi    12Gi    39Gi    24%    459k  411M    0%   /
+DF_OK
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk9s1    16Gi   345Mi    15Gi     3%     10k  162M    0%   /opt/homebrew
+DF_HB_OK
+==> Downloading Homebrew API data
+✔︎ JSON API packages.arm64_tahoe.jws.json
+All official taps and commands are trusted.
+Trusted taps:
+  /users/th-allbrew/homebrew-allbrew
+  tariqwest/allbrew
+  tariqwest/tap
+  th-allbrew/allbrew
+Trusted formulae:
+  /users/th-allbrew/homebrew-allbrew/agent-deck
+  /users/th-allbrew/homebrew-allbrew/ante-homepage
+  /users/th-allbrew/homebrew-allbrew/ante-install-sh
+  /users/th-allbrew/homebrew-allbrew/apiark
+  /users/th-allbrew/homebrew-allbrew/balenaetcher
+  /users/th-allbrew/homebrew-allbrew/bun
+  /users/th-allbrew/homebrew-allbrew/csvlens
+  /users/th-allbrew/homebrew-allbrew/cua-driver-prewarm
+  /users/th-allbrew/homebrew-allbrew/devbox
+  /users/th-allbrew/homebrew-allbrew/echo
+  /users/th-allbrew/homebrew-allbrew/filenq
+TRUST_OK

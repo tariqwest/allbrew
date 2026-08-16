@@ -1,0 +1,12 @@
+{
+  "url": "https://github.com/janpfeifer/goshot",
+  "name": "goshot",
+  "pkg": "goshot",
+  "exitCode": 138,
+  "verifyOk": false,
+  "endpointId": "local-2",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-goshot-1786911046016.log",
+  "formulaLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-goshot-1786911046016.log.formula.rb",
+  "verifyLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-goshot-1786911046016.log.verify.txt",
+  "finishedAt": "2026-08-16T20:12:14.449Z"
+}

@@ -1,0 +1,29 @@
+Warning: Skipping tariqwest/tap/allbrew: most recent version 0.0.36 not installed
+CLEANUP_OK
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk4s1s1    75Gi    12Gi    39Gi    24%    459k  411M    0%   /
+DF_OK
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk8s1    16Gi   345Mi    15Gi     3%     10k  162M    0%   /opt/homebrew
+DF_HB_OK
+All official taps and commands are trusted.
+Trusted taps:
+  /users/th-allbrew/homebrew-allbrew
+  tariqwest/allbrew
+  tariqwest/tap
+  th-allbrew/allbrew
+Trusted formulae:
+  /users/th-allbrew/homebrew-allbrew/agent-deck
+  /users/th-allbrew/homebrew-allbrew/ante-homepage
+  /users/th-allbrew/homebrew-allbrew/ante-install-sh
+  /users/th-allbrew/homebrew-allbrew/apiark
+  /users/th-allbrew/homebrew-allbrew/balenaetcher
+  /users/th-allbrew/homebrew-allbrew/bun
+  /users/th-allbrew/homebrew-allbrew/csvlens
+  /users/th-allbrew/homebrew-allbrew/cua-driver-prewarm
+  /users/th-allbrew/homebrew-allbrew/devbox
+  /users/th-allbrew/homebrew-allbrew/echo
+  /users/th-allbrew/homebrew-allbrew/emulsion
+  /users/th-allbrew/homebrew-allbrew/filenq
+  /users/th-allbrew/homebrew-allbrew/fly-io-cli
+TRUST_OK

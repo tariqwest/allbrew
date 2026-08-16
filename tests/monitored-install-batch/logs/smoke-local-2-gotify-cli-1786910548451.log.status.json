@@ -1,0 +1,12 @@
+{
+  "url": "https://github.com/gotify/cli",
+  "name": "gotify-cli",
+  "pkg": "gotify-cli",
+  "exitCode": 0,
+  "verifyOk": true,
+  "endpointId": "local-2",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-gotify-cli-1786910548451.log",
+  "formulaLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-gotify-cli-1786910548451.log.formula.rb",
+  "verifyLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-gotify-cli-1786910548451.log.verify.txt",
+  "finishedAt": "2026-08-16T20:03:11.386Z"
+}
