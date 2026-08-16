@@ -10,6 +10,7 @@ import {
   matchAssetToArch,
   isAppAsset,
   isBinaryAsset,
+  isCliPlatformZipRelease,
   releaseHasMacosArmBinaryAssets,
   assertSafeFetchUrl,
   resolveNonCollidingFormulaName,
@@ -549,5 +550,64 @@ describe("isBinaryAsset", () => {
     expect(matchAssetToArch("afm_0.1.0_macOS_universal")).toBe("macosUniversal");
     expect(isBinaryAsset("tool-1.2.3-linux-x64")).toBe(true);
     expect(isBinaryAsset("afm_0.1.0_checksums.txt")).toBe(false);
+  });
+});
+
+describe("isCliPlatformZipRelease", () => {
+  it("detects macos + linux CLI zip pairs", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "swift-outdated-0.15.3-macos.zip" },
+        { name: "swift-outdated-0.15.3-linux.zip" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("accepts tgz/tar.gz linux assets", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "foo-1.0.0-macos.zip" },
+        { name: "foo-1.0.0-linux.tar.gz" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("rejects single-platform macOS zip", () => {
+    expect(
+      isCliPlatformZipRelease([{ name: "foo-1.0.0-macos.zip" }]),
+    ).toBe(false);
+  });
+
+  it("releases .dmg / .app assets are not multi-platform CLI zips", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "Foo-1.0.0.dmg" },
+        { name: "foo-1.0.0-linux.zip" },
+      ]),
+    ).toBe(false);
+    expect(
+      isCliPlatformZipRelease([
+        { name: "Foo.app.zip" },
+        { name: "foo-1.0.0-linux.zip" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("rejects arch-tagged macOS zip", () => {
+    expect(
+      isCliPlatformZipRelease([
+        { name: "foo-1.0.0-macos-arm64.zip" },
+        { name: "foo-1.0.0-linux.zip" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("handles plain string asset names", () => {
+    expect(
+      isCliPlatformZipRelease([
+        "swift-outdated-0.15.3-macos.zip",
+        "swift-outdated-0.15.3-linux.zip",
+      ]),
+    ).toBe(true);
   });
 });
