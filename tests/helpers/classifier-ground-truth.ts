@@ -79,7 +79,6 @@ function archiveExt(path: string): boolean {
     ".tar.bz2",
     ".tar.xz",
     ".zip",
-    ".pkg",
     ".gz",
     ".bz2",
     ".xz",
@@ -180,11 +179,11 @@ export function expectedClassifierType(
   }
 
   // Direct artifacts
-  if (path.endsWith(".dmg")) {
+  if (path.endsWith(".dmg") || path.endsWith(".pkg")) {
     return {
       expected_type: "cask-dmg",
       basis: "url-shape",
-      rationale: ".dmg download URL",
+      rationale: ".dmg/.pkg download URL",
     };
   }
   if (archiveExt(path)) {
