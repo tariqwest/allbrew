@@ -1,0 +1,42 @@
+[
+  {
+    "name": "chirpy",
+    "url": "https://chirpy.pro/download"
+  },
+  {
+    "name": "canto",
+    "url": "https://canto.app"
+  },
+  {
+    "name": "tablen",
+    "url": "https://tablen.app/download"
+  },
+  {
+    "name": "seaquel",
+    "url": "https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg"
+  },
+  {
+    "name": "resurf",
+    "url": "https://resurf.app"
+  },
+  {
+    "name": "pasty",
+    "url": "https://pasty.dev"
+  },
+  {
+    "name": "multica",
+    "url": "https://multica.ai/download"
+  },
+  {
+    "name": "sanebar",
+    "url": "https://sanebar.com"
+  },
+  {
+    "name": "codemantis",
+    "url": "https://codemantis.dev/download"
+  },
+  {
+    "name": "echo",
+    "url": "https://theodorehq.com/echo"
+  }
+]
