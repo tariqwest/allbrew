@@ -12,16 +12,22 @@ import { buildServiceBlock, serviceFromOptions } from "./service.ts";
 import type { SpmPackagePayload } from "../template-payload.ts";
 import { writeRenderedFormula } from "../template-renderer.ts";
 
-/** Extract executable product names from Package.swift source text. */
+/**
+ * Extract installable binary names from Package.swift.
+ *
+ * Prefer `.executable(name:)` product names — those are the artifacts written
+ * to `.build/release/`. Only fall back to `.executableTarget(name:)` when no
+ * products are declared (SPM auto-names the product after the target). Unioning
+ * both causes `bin.install` failures when product != target (e.g. product
+ * `swiftpolyglot` + target `SwiftPolyglot` → only `swiftpolyglot` is built).
+ */
 export function parseSpmExecutableProducts(packageSwiftText: string): string[] {
   if (!packageSwiftText) return [];
-  const found: string[] = [];
-  const seen = new Set<string>();
-  const patterns = [
-    /\.executable\s*\(\s*name:\s*"([^"]+)"/g,
-    /\.executableTarget\s*\(\s*name:\s*"([^"]+)"/g,
-  ];
-  for (const re of patterns) {
+
+  const collect = (pattern: RegExp): string[] => {
+    const found: string[] = [];
+    const seen = new Set<string>();
+    const re = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
     let match;
     while ((match = re.exec(packageSwiftText)) !== null) {
       const name = match[1];
@@ -29,8 +35,17 @@ export function parseSpmExecutableProducts(packageSwiftText: string): string[] {
       seen.add(name);
       found.push(name);
     }
-  }
-  return found;
+    return found;
+  };
+
+  const products = collect(
+    /\.executable\s*\([\s\S]*?name:\s*"([^"]+)"[\s\S]*?\)/g,
+  );
+  if (products.length > 0) return products;
+
+  return collect(
+    /\.executableTarget\s*\([\s\S]*?name:\s*"([^"]+)"[\s\S]*?\)/g,
+  );
 }
 
 /** True when Package.swift only exposes libraries (no CLI install target). */
@@ -42,7 +57,9 @@ export function isLibraryOnlyPackageSwift(packageSwiftText: string): boolean {
 }
 
 /** Root Xcode app/workspace markers that should not become SPM formulae. */
-export function hasXcodeAppProject(fileNames: string[] | null | undefined): boolean {
+export function hasXcodeAppProject(
+  fileNames: string[] | null | undefined,
+): boolean {
   if (!fileNames?.length) return false;
   return fileNames.some((f) => /\.(xcodeproj|xcworkspace)$/i.test(String(f)));
 }
@@ -117,33 +134,56 @@ export async function collectSpmPackagePayload(
       ? parsedBins
       : [];
 
-  const binTarget =
+  let binTarget =
     options.binName ||
     preferSpmBinName(binNames, name, repoInfo.name) ||
-    binNames[0] ||
-    null;
+    binNames[0];
 
-  // Library-only Package.swift (common for Xcode app monorepos) has no CLI product.
-  // Falling back to repoInfo.name produced broken formulae (swift build + missing bin).
   if (!binTarget) {
-    const xcodeHint = options.xcodeApp
-      ? " This repository looks like an Xcode app project; distribute via release DMG/ZIP, MAS, or TestFlight instead of an SPM formula."
-      : "";
-    throw new Error(
-      `Cannot generate spm-package for ${repoInfo.fullName || repoInfo.name || name}: ` +
-        `Package.swift has no .executable / .executableTarget products (library-only).` +
-        xcodeHint +
-        ` Pass --bin-name if a product name is known.`,
-    );
+    const rootFileNames = options.rootFileNames || options.xcodeAppProjectFiles;
+    const xcode = hasXcodeAppProject(rootFileNames);
+    const packageText = String(packageSwift || "");
+
+    if (packageText && (isLibraryOnlyPackageSwift(packageText) || xcode)) {
+      const xcodeHint = xcode
+        ? " This repository looks like an Xcode app project; distribute via release DMG/ZIP, MAS, or TestFlight instead of an SPM formula."
+        : "";
+      throw new Error(
+        `Cannot generate spm-package for ${repoInfo.fullName || repoInfo.name || name}: ` +
+          `Package.swift has no .executable / .executableTarget products (library-only).` +
+          xcodeHint +
+          ` Pass --bin-name if a product name is known.`,
+      );
+    }
+
+    // Package.swift could not be fetched or the parser did not find a match.
+    // The repository may still build a binary with the repo/formula name, so
+    // fall back instead of hard-failing.
+    binTarget = repoInfo.name || name;
   }
 
-  const installTargets =
-    binNames.length > 0
-      ? Array.from(new Set([binTarget, ...binNames].filter(Boolean)))
-      : [binTarget];
+  const installTargets = (() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const n of [binTarget, ...binNames].filter(Boolean) as string[]) {
+      const key = n.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(n);
+      }
+    }
+    return out.length ? out : [binTarget];
+  })();
+
   const binInstallPaths = installTargets
     .map((b) => rubyString(`.build/release/${b}`))
     .join(", ");
+
+  // Install binaries into libexec so SPM resource bundles stay co-located.
+  // Then expose CLI entrypoints via thin wrappers in bin/.
+  const binWriteExecScripts = installTargets
+    .map((b) => `    bin.write_exec_script libexec/${rubyString(b)}\n`)
+    .join("");
 
   return {
     template: "spm_package",
@@ -156,6 +196,7 @@ export async function collectSpmPackagePayload(
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     urlLines,
     binInstallPaths,
+    binWriteExecScripts,
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(binTarget),

@@ -90,6 +90,13 @@ let package = Package(
     expect(payload.binInstallPaths).toContain(".build/release/Rugby");
   });
 
+  it("emits libexec write_exec_script lines for each binary", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
+    expect(payload.binWriteExecScripts).toContain(
+      'bin.write_exec_script libexec/"Rugby"',
+    );
+  });
+
   it("changes binInstallPaths when binName is overridden", async () => {
     const payload = await collectSpmPackagePayload(repoInfo, release, {
       binName: "rugby-cli",
@@ -183,6 +190,34 @@ let package = Package(
     expect(bins).not.toContain("TurboFieldfare");
   });
 
+  it("prefers product names over differently-named executableTarget", () => {
+    const swift = `
+let package = Package(
+  name: "swiftpolyglot",
+  products: [
+    .executable(name: "swiftpolyglot", targets: ["SwiftPolyglot"]),
+  ],
+  targets: [
+    .executableTarget(name: "SwiftPolyglot"),
+  ]
+)
+`;
+    const bins = parseSpmExecutableProducts(swift);
+    expect(bins).toEqual(["swiftpolyglot"]);
+  });
+
+  it("falls back to executableTarget names when no products are declared", () => {
+    const swift = `
+let package = Package(
+  name: "HeadlessTool",
+  targets: [
+    .executableTarget(name: "HeadlessTool"),
+  ]
+)
+`;
+    expect(parseSpmExecutableProducts(swift)).toEqual(["HeadlessTool"]);
+  });
+
   it("prefers CLI product for turbo-fieldfare", () => {
     const bins = parseSpmExecutableProducts(packageSwift);
     expect(preferSpmBinName(bins, "turbo-fieldfare", "turbo-fieldfare")).toBe(
@@ -211,7 +246,43 @@ let package = Package(
     expect(payload.binInstallPaths).toContain(
       ".build/release/TurboFieldfareServer",
     );
+    expect(payload.binWriteExecScripts).toContain(
+      'bin.write_exec_script libexec/"TurboFieldfareCLI"',
+    );
     expect(payload.serviceBlock).toBe("");
+  });
+
+  it("dedups install targets case-insensitively", async () => {
+    const payload = await collectSpmPackagePayload(
+      {
+        name: "swiftpolyglot",
+        fullName: "appdecostudio/SwiftPolyglot",
+        description: "A CLI tool to generate Swift localization code",
+        homepage: "",
+        htmlUrl: "https://github.com/appdecostudio/SwiftPolyglot",
+        license: "MIT",
+        defaultBranch: "main",
+      },
+      { tagName: "v2.0.2" },
+      {
+        packageSwiftText: `
+let package = Package(
+  name: "SwiftPolyglot",
+  products: [
+    .executable(name: "swiftpolyglot", targets: ["SwiftPolyglot"]),
+  ],
+  targets: [
+    .executableTarget(name: "SwiftPolyglot"),
+  ]
+)
+`,
+        name: "swiftpolyglot",
+      },
+    );
+    expect(payload.binInstallPaths).toBe('".build/release/swiftpolyglot"');
+    expect(payload.binWriteExecScripts).toBe(
+      '    bin.write_exec_script libexec/"swiftpolyglot"\n',
+    );
   });
 });
 
@@ -270,6 +341,13 @@ let package = Package(
     expect(payload.binInstallPaths).toContain(".build/release/utiluti");
   });
 
+  it("emits write_exec_script for utiluti", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
+    expect(payload.binWriteExecScripts).toContain(
+      'bin.write_exec_script libexec/"utiluti"',
+    );
+  });
+
   it("head-only mode produces empty urlLines", async () => {
     const payload = await collectSpmPackagePayload(repoInfo, null, withBin);
     expect(payload.urlLines).toBe("");
@@ -278,5 +356,70 @@ let package = Package(
   it("generates license line", async () => {
     const payload = await collectSpmPackagePayload(repoInfo, release, withBin);
     expect(payload.licenseLine).toContain("MIT");
+  });
+});
+
+describe("collectSpmPackagePayload — SwiftPlantUML (Makefile + Package.swift CLI)", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
+  // README advertises `make install` and `brew install swiftplantuml`; the
+  // Makefile wraps `swift build`. allbrew must prefer spm-package when
+  // Package.swift declares an executable (see cli.ts README build preference).
+  const repoInfo = {
+    name: "SwiftPlantUML",
+    fullName: "MarcoEidinger/SwiftPlantUML",
+    description:
+      "A command-line tool and Swift Package for generating class diagrams powered by PlantUML",
+    homepage: "https://marcoeidinger.github.io/SwiftPlantUML/",
+    htmlUrl: "https://github.com/MarcoEidinger/SwiftPlantUML",
+    license: "MIT",
+    defaultBranch: "main",
+  };
+
+  const release = { tagName: "0.8.1" };
+  const packageSwift = `
+// swift-tools-version:5.3
+import PackageDescription
+
+let package = Package(
+    name: "SwiftPlantUML",
+    platforms: [.macOS(.v10_11)],
+    products: [
+        .library(
+            name: "SwiftPlantUMLFramework",
+            targets: ["SwiftPlantUMLFramework"]
+        ),
+        .executable(name: "swiftplantuml", targets: ["swiftplantuml"]),
+    ],
+    targets: [
+        .target(name: "swiftplantuml", dependencies: ["SwiftPlantUMLFramework"]),
+        .target(name: "SwiftPlantUMLFramework", dependencies: []),
+    ]
+)
+`;
+
+  it("parses swiftplantuml executable (not library-only)", () => {
+    const bins = parseSpmExecutableProducts(packageSwift);
+    expect(bins).toEqual(["swiftplantuml"]);
+    expect(isLibraryOnlyPackageSwift(packageSwift)).toBe(false);
+  });
+
+  it("generates spm payload with bin .build/release/swiftplantuml", async () => {
+    const payload = await collectSpmPackagePayload(repoInfo, release, {
+      packageSwiftText: packageSwift,
+      name: "swiftplantuml",
+    });
+    expect(payload.template).toBe("spm_package");
+    expect(payload.name).toBe("swiftplantuml");
+    expect(payload.testBinName).toBe("swiftplantuml");
+    expect(payload.binInstallPaths).toContain(
+      ".build/release/swiftplantuml",
+    );
+    expect(payload.binWriteExecScripts).toContain(
+      'bin.write_exec_script libexec/"swiftplantuml"',
+    );
+    expect(payload.serviceBlock).toBe("");
   });
 });

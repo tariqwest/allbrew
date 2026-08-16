@@ -197,6 +197,8 @@ export type SpmPackagePayload = FormulaCommonFields & {
   licenseLine: string;
   urlLines: string;
   binInstallPaths: string;
+  /** Pre-indented `bin.write_exec_script libexec/"…"` lines (one per binary). */
+  binWriteExecScripts: string;
   livecheckBlock: string;
 };
 
