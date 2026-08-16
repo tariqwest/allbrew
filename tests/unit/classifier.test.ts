@@ -43,6 +43,15 @@ describe("classify", () => {
       );
       expect(result.url).toBe("https://github.com/muety/wakapi");
     });
+
+    it("rejects GitHub reserved pseudo-owners", () => {
+      expect(classify("https://github.com/sponsors/schollz").type).toBe(
+        "unknown",
+      );
+      expect(classify("https://github.com/settings/profile").type).toBe(
+        "unknown",
+      );
+    });
   });
 
   describe("setapp-app", () => {
