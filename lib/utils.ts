@@ -3,28 +3,45 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 
-export function toFormulaName(name) {
-  return name
+const DEFAULT_EMPTY_TOKEN = "untitled";
+
+function sanitizeToken(
+  name: string,
+  opts: { allowLeadingDigit?: boolean } = {},
+): string {
+  let s = String(name ?? "")
     .replace(/[^a-zA-Z0-9-]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase();
+  if (!s) return DEFAULT_EMPTY_TOKEN;
+  if (!opts.allowLeadingDigit && /^\d/.test(s)) {
+    s = `x-${s}`;
+  }
+  return s;
 }
 
-export function toClassName(formulaName) {
-  return formulaName
+export function toFormulaName(name: string | null | undefined): string {
+  return sanitizeToken(name, { allowLeadingDigit: false });
+}
+
+export function toClassName(formulaName: string | null | undefined): string {
+  let s = String(formulaName ?? DEFAULT_EMPTY_TOKEN)
     .replace(/_/g, "-")
-    .split("-")
+    .toLowerCase();
+  if (!s) s = DEFAULT_EMPTY_TOKEN;
+  if (/^\d/.test(s)) s = `x-${s}`;
+  const parts = s.split("-").filter(Boolean);
+  if (parts.length === 0) return "Untitled";
+  return parts
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
 }
 
-export function toCaskToken(name) {
-  return name
-    .replace(/[^a-zA-Z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase();
+export function toCaskToken(name: string | null | undefined): string {
+  // Cask tokens may legitimately begin with digits (e.g. "4k-youtube-to-mp3"),
+  // so we do not prepend the x- prefix used for formula class safety.
+  return sanitizeToken(name, { allowLeadingDigit: true });
 }
 
 let cachedHomebrewCorePrefix: string | null | undefined;
@@ -272,7 +289,8 @@ export function resolveNonCollidingFormulaName(
 
   const seen = new Set<string>([preferred]);
   for (const alt of alternatives) {
-    const candidate = toFormulaName(String(alt || ""));
+    if (alt == null || String(alt).trim() === "") continue;
+    const candidate = toFormulaName(String(alt));
     if (!candidate || seen.has(candidate)) continue;
     seen.add(candidate);
     if (!isHomebrewCoreFormulaName(candidate)) {
@@ -323,7 +341,8 @@ export function resolveNonCollidingCaskName(
 
   const seen = new Set<string>([preferred]);
   for (const alt of alternatives) {
-    const candidate = toCaskToken(String(alt || ""));
+    if (alt == null || String(alt).trim() === "") continue;
+    const candidate = toCaskToken(String(alt));
     if (!candidate || seen.has(candidate)) continue;
     seen.add(candidate);
     if (!isHomebrewCaskToken(candidate)) {
@@ -468,15 +487,17 @@ export function guessLicenseIdentifier(license) {
 }
 
 function isCloudMetadataHostname(hostname: string): boolean {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  let host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  host = host.replace(/\.$/, ""); // ignore a trailing root dot
   if (
     host === "metadata.google.internal" ||
     host.endsWith(".metadata.google.internal")
   ) {
     return true;
   }
-  // AWS IMDS / link-local metadata
+  // AWS IMDS (IPv4 and IPv6 link-local)
   if (host === "169.254.169.254") return true;
+  if (host === "fd00:ec2::254" || host === "fd00:ec2::") return true;
   return false;
 }
 
