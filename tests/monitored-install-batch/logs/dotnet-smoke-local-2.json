@@ -1,0 +1,52 @@
+[
+  {
+    "name": "dotnet-format",
+    "url": "https://www.nuget.org/packages/dotnet-format",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-outdated-tool",
+    "url": "https://www.nuget.org/packages/dotnet-outdated-tool",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-sonarscanner",
+    "url": "https://www.nuget.org/packages/dotnet-sonarscanner",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-reportgenerator-globaltool",
+    "url": "https://www.nuget.org/packages/dotnet-reportgenerator-globaltool",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-script",
+    "url": "https://www.nuget.org/packages/dotnet-script",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-t4",
+    "url": "https://www.nuget.org/packages/dotnet-t4",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-aspnet-codegenerator",
+    "url": "https://www.nuget.org/packages/dotnet-aspnet-codegenerator",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "Microsoft.dotnet-interactive",
+    "url": "https://www.nuget.org/packages/Microsoft.dotnet-interactive",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "CSharpRepl",
+    "url": "https://www.nuget.org/packages/CSharpRepl",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "ilspycmd",
+    "url": "https://www.nuget.org/packages/ilspycmd",
+    "source": "in_dotnet"
+  }
+]
