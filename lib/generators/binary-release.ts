@@ -45,40 +45,81 @@ export function resolveBinaryReleaseBinName(
   if (bare.length === 0) return formulaName;
 
   // Prefer common prefix before arch/platform token and optional embedded version.
-  // e.g. afm_0.1.0_macOS_universal → afm, csctf-macos-arm64 → csctf
+  // e.g. afm_0.1.0_macOS_universal → afm, csctf-macos-arm64 → csctf,
+  // mac_krokiet_all_backends_arm64 → krokiet
   const stripped = bare.map((n) =>
     n
       .replace(/\.exe$/i, "")
+      // Strip platform + optional arch suffix (e.g. csctf-macos-arm64, afm_0.1.0_macOS_universal).
       .replace(
-        /[-_.]?(darwin|macos|osx|linux|windows|win32|apple)[-_.]?(arm64|aarch64|amd64|x86_64|x64|i386|universal|all)?$/i,
+        /[-_.]?(?:darwin|macos|osx|linux|windows|win32|apple)(?:[-_.]?(?:arm64|aarch64|amd64|x86_64|x64|i386|universal|all))?$/i,
+        "",
+      )
+      // Strip bare arch suffix when no platform token is present (e.g. mac_krokiet_all_backends_arm64).
+      .replace(
+        /[-_.](?:arm64|aarch64|amd64|x86_64|x64|i386|universal|all)$/i,
         "",
       )
       .replace(/[-_.]\d+\.\d+(?:\.\d+)*(?:[-_][0-9A-Za-z]+)?$/i, "")
       .replace(/[-_.]+$/g, ""),
   );
-  if (stripped.every((s) => s && s === stripped[0])) {
-    const fromAssets = stripped[0];
-    const formula = (formulaName || "").toLowerCase();
-    if (formula && fromAssets.toLowerCase() === formula) return fromAssets;
 
-    // gotify-cli-darwin-arm64 → gotify-cli; formula gotify / gotify-tap → gotify
-    // (README uses -O gotify; homebrew/core ships bin/gotify).
-    const m = PRODUCT_CLI_SUFFIX_RE.exec(fromAssets);
-    if (m) {
-      const product = m[1];
-      const productLc = product.toLowerCase();
-      if (
-        formula === productLc ||
-        formula === `${productLc}-tap` ||
-        formula.startsWith(`${productLc}-tap`)
-      ) {
-        return product;
-      }
+  // Drop a leading "mac_" / "mac-" / "macos-" / "darwin_" platform token that
+  // some repos (qarmin/czkawka) prepend to the actual product name.
+  const normalized = stripped.map((s) =>
+    s.replace(/^(mac|macos|darwin|osx)[-_]/i, ""),
+  );
+
+  // If all normalized names share the same first significant token, use that.
+  const parts = normalized.map((s) =>
+    s
+      .split(/[-_.]+/)
+      .filter((p) => p && !/^\d+(?:\.\d+)*$/.test(p)),
+  );
+  const minLen = Math.min(...parts.map((p) => p.length));
+  let common = "";
+  for (let i = 0; i < minLen; i++) {
+    const set = new Set(parts.map((p) => p[i].toLowerCase()));
+    if (set.size === 1) {
+      common = parts[0][i];
+    } else {
+      break;
     }
-    return fromAssets;
   }
 
-  return formulaName;
+  const firstEqual =
+    normalized.every((s) => s && s.toLowerCase() === normalized[0].toLowerCase())
+      ? normalized[0]
+      : common;
+  const fromAssets = firstEqual || normalized[0] || stripped[0] || bare[0];
+  const formula = (formulaName || "").toLowerCase();
+
+  if (formula && fromAssets.toLowerCase() === formula) return fromAssets;
+
+  // gotify-cli-darwin-arm64 → gotify-cli; formula gotify / gotify-tap → gotify
+  // (README uses -O gotify; homebrew/core ships bin/gotify).
+  const m = PRODUCT_CLI_SUFFIX_RE.exec(fromAssets);
+  if (m) {
+    const product = m[1];
+    const productLc = product.toLowerCase();
+    if (
+      formula === productLc ||
+      formula === `${productLc}-tap` ||
+      formula.startsWith(`${productLc}-tap`)
+    ) {
+      return product;
+    }
+  }
+
+  // If the derived product contains the formula token, trust the formula name.
+  // This covers mac_krokiet_all_backends_arm64 with formula krokiet.
+  const productRe = new RegExp(
+    `(?:^|[^a-z0-9])${formula.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:[^a-z0-9]|$)`,
+    "i",
+  );
+  if (formula && productRe.test(fromAssets)) return formulaName;
+
+  return fromAssets;
 }
 
 /** Doc / legal files that must never become the install entrypoint. */
@@ -249,19 +290,33 @@ export async function collectBinaryReleasePayload(
   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
 
   const archAssets: Record<string, any> = {};
+  const allNames = (release.assets || []).map((a: any) => a.name);
   const scoreAsset = (assetName: string, formulaName: string): number => {
     const lower = assetName.toLowerCase();
     const formula = formulaName.toLowerCase();
     let s = 0;
     if (lower.startsWith(formula + "-") || lower.startsWith(formula + "_") || lower === formula) s += 20;
     else if (lower.includes(formula)) s += 10;
+    // Deprioritize companion / variant binaries (server, daemon, backend, cli, etc.)
+    const companionTokens = ["-cli", "_cli", "-server", "_server", "-daemon", "_daemon", "-backend", "_backend", "-agent", "_agent", "-gui", "_gui", "-app", "_app", "-tool", "_tool", "-bin", "_bin"];
+    for (const token of companionTokens) {
+      if (lower.includes(token)) s -= 8;
+    }
     if (lower.includes(`${formula}-cli`) || lower.includes(`${formula}_cli`)) s -= 15;
-    if (lower.includes("-cli") || lower.includes("_cli")) s -= 5;
+    if (lower.includes(`${formula}-server`) || lower.includes(`${formula}_server`)) s -= 15;
+    if (lower.includes(`${formula}-daemon`) || lower.includes(`${formula}_daemon`)) s -= 15;
+    if (lower.includes(`${formula}-backend`) || lower.includes(`${formula}_backend`)) s -= 15;
+    // Penalize asset names that embed a version different from the release version
+    // (companion assets often ship with their own older/newer version).
+    const versionMatch = lower.match(/\d+\.\d+(?:\.\d+)?(?:[-+][0-9a-z.]+)?/);
+    if (versionMatch && version && versionMatch[0] !== version) {
+      s -= 25;
+    }
     s -= lower.length * 0.01;
     return s;
   };
   for (const asset of release.assets) {
-    if (!isBinaryAsset(asset.name)) continue;
+    if (!isBinaryAsset(asset.name, allNames)) continue;
     const arch = matchAssetToArch(asset.name);
     if (!arch) continue;
     const existing = archAssets[arch];
@@ -299,7 +354,7 @@ export async function collectBinaryReleasePayload(
   for (const arch of orderedArchs) {
     const asset = archAssets[arch];
     const shouldInspect =
-      !inspectedArchive && isArchiveBinaryAsset(asset.name);
+      !inspectedArchive && isArchiveBinaryAsset(asset.name, allNames);
 
     if (shouldInspect) {
       inspectedArchive = true;
@@ -334,7 +389,12 @@ export async function collectBinaryReleasePayload(
               const allPrefixed = members
                 .filter((m) => m && !m.endsWith("/"))
                 .every((m) => m === wrapper || m.startsWith(`${wrapper}/`));
-              if (allPrefixed && src.startsWith(`${wrapper}/`)) {
+              // Only strip the top wrapper when the entrypoint is nested deeper
+              // inside it (e.g. wrapper/bin/foo). Single-segment binaries like
+              // wrapper/tv must keep the wrapper path for libexec "tv" => "television".
+              const nestedEntrypoint =
+                src.startsWith(`${wrapper}/`) && src.split("/").length > 2;
+              if (allPrefixed && nestedEntrypoint) {
                 src = src.slice(wrapper.length + 1);
               }
             }
@@ -410,9 +470,11 @@ export async function collectBinaryReleasePayload(
  */
 export function templateEntrypointPath(path: string): string {
   const src = String(path || "").replace(/\\/g, "/");
-  // Path segments like name-1.2.3 or name_1.2.3
+  // Path segments like name-1.2.3 or name_1.2.3, optionally followed by
+  // pre-release / build / platform / arch tokens (e.g.
+  // tv-0.15.9-aarch64-apple-darwin/tv, Foo-1.2.3.tar.gz).
   const versionedSeg = src.match(
-    /(?:^|\/)([A-Za-z0-9._-]*?)[-_](\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.]+)?)(?=\/|$)/,
+    /(?:^|\/)([A-Za-z0-9._-]*?)[-_](\d+\.\d+(?:\.\d+)?)(?:[-_.][0-9A-Za-z.]+)*(?=\/|$)/,
   );
   if (!versionedSeg) {
     return rubyString(src);
@@ -422,12 +484,13 @@ export function templateEntrypointPath(path: string): string {
   const idx = src.indexOf(full);
   const before = src.slice(0, idx);
   const after = src.slice(idx + full.length);
-  const prefix = versionedSeg[1];
-  const sep = full.includes(`_${versionedSeg[2]}`) ? "_" : "-";
   // before may include leading path with slash
   const left = before.endsWith("/") || before === "" ? before : before;
+  // Replace the dotted version inside the matched segment and preserve any
+  // trailing pre-release / build / platform / arch tokens.
+  const fullTemplated = full.replace(versionedSeg[2], "#{version}");
   // Use double-quoted Ruby so #{version} interpolates at brew time.
-  const rubyPath = `${left}${prefix}${sep}#{version}${after}`;
+  const rubyPath = `${left}${fullTemplated}${after}`;
   return `"${rubyPath.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
