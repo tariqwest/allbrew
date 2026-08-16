@@ -1,13 +1,17 @@
 {
-  "endpointId": "local-1",
+  "endpointId": "homeserver",
   "runName": "go2tv",
-  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-1-go2tv-1786911228086.log",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-homeserver-go2tv-1786913812112.log",
   "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/go2tv-vm-meta.json",
-  "poolAcquiredAt": 1786911228215,
-  "lockAcquiredAt": 1786911242644,
-  "lastLogAt": 1786911280630,
+  "poolAcquiredAt": 1786913812212,
+  "lockAcquiredAt": 1786913818723,
+  "lastLogAt": 1786913851861,
   "hostClean": true,
   "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
-  "phase": "uninstalling",
-  "pkg": "go2tv"
+  "phase": "uninstalled",
+  "pkg": "alexballas-go2tv",
+  "verifyOk": true,
+  "exitCode": 0,
+  "hygiene": "Removing: /Users/th-allbrew/Library/Caches/Homebrew/descriptions.json... (501.9KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/cask_descriptions.json... (474.6KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/external_commands_list.txt... (1B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/all_commands_list.txt... (1KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/Cask/alexballas-go2tv--2.5.0.zip... (14MB)\n==> This operation has freed approximately 15MB of disk space.\nCLEANUP_OK\nFilesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s1s1    45Gi    12Gi    18Gi    40%    459k  191M    0%   /\nDF_OK\nFilesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk8s1    16Gi   343Mi    15Gi     3%    9.6k  162M    0%   /opt/homebrew\nDF_HB_OK\n==> Downloading Homebrew API data\n✔︎ JSON API packages.arm64_tahoe.jws.json\nAll official taps and commands are trusted.\nTrusted taps:\n  /users/th-allbrew/homebrew-allbre",
+  "diskAvail": "18Gi"
 }

@@ -1,17 +1,17 @@
 {
-  "endpointId": "local-2",
+  "endpointId": "homeserver",
   "runName": "television",
-  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-television-1786910460740.log",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-homeserver-television-1786913531344.log",
   "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/television-vm-meta.json",
-  "poolAcquiredAt": 1786910460834,
-  "lockAcquiredAt": 1786910467138,
-  "lastLogAt": 1786910501158,
+  "poolAcquiredAt": 1786913531471,
+  "lockAcquiredAt": 1786913538221,
+  "lastLogAt": 1786913565079,
   "hostClean": true,
   "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
   "phase": "uninstalled",
   "pkg": "alexpasmantier-television",
   "verifyOk": false,
   "exitCode": 0,
-  "hygiene": "Warning: Skipping tariqwest/tap/allbrew: most recent version 0.0.36 not installed\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/descriptions.json... (503.1KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/cask_descriptions.json... (475.6KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/external_commands_list.txt... (1B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/linkage.json... (2B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/alexpasmantier-television--0.15.9.tar.gz... (3.6MB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/all_commands_list.txt... (1KB)\nRemoving: /Users/th-allbrew/Library/Logs/Homebrew/alexpasmantier-television... (3 files, 520B)\n==> This operation has freed approximately 4.5MB of disk space.\nCLEANUP_OK\nFilesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s1s1    75Gi    12Gi    39Gi    24%    459k  411M    0%   /\nDF_OK\nFilesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted o",
-  "diskAvail": "39Gi"
+  "hygiene": "Removing: /Users/th-allbrew/Library/Caches/Homebrew/external_commands_list.txt... (1B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/linkage.json... (2B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/alexpasmantier-television--0.15.9.tar.gz... (3.6MB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/all_commands_list.txt... (1KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/bootsnap/b92fb194f5b43b4791c8c252304af07e45c95a2fdc66794a843d41301781e209... (707 files, 6.1MB)\nRemoving: /Users/th-allbrew/Library/Logs/Homebrew/alexpasmantier-television... (3 files, 520B)\n==> This operation has freed approximately 9.7MB of disk space.\nCLEANUP_OK\nFilesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s1s1    45Gi    12Gi    19Gi    39%    459k  196M    0%   /\nDF_OK\nFilesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk8s1    16Gi   343Mi    15Gi     3%    9.5k  162M    0%   /opt/homebrew\nDF_HB_OK\n==> Downloadin",
+  "diskAvail": "19Gi"
 }

@@ -4,15 +4,15 @@
 
 **Worktree:** `/Users/tariqwest/Developer/allbrew-wt-github-release-parsing`
 
-**Reconciled at:** 2026-08-16T20:25:53.139Z
+**Reconciled at:** 2026-08-16T21:02:37.584Z
 
 ## Summary
 
-- Total outcome lines: 54
-- Unique (name, endpoint) pairs after reconciling by latest: 50
+- Total outcome lines: 64
+- Unique (name, endpoint) pairs after reconciling by latest: 54
 - Expected list/endpoint combinations: 3 (homeserver, local-1, local-2 lists)
-- VM status at hygiene: local-1 ✅ usable, local-2 ✅ usable, homeserver ❌ stopped (security error on start)
-- Additional re-runs: local-2 full homeserver-list fallback, local-1 retry of 4 heavy/failing homeserver-list items
+- VM status at hygiene: local-1 ✅ usable, local-2 ✅ usable, homeserver ✅ usable and running
+- Additional re-runs: homeserver list re-run against a freshly recreated VM; local-2 full homeserver-list fallback, local-1 retry of 4 heavy/failing homeserver-list items remain in the log
 - Code validation: `bun run check` ✅, targeted unit tests ✅, `bun run test:templates` ✅
 
 ## Per-list results
@@ -21,16 +21,16 @@
 
 | name | intended endpoint | latest status | duration | endpoint(s) attempted |
 |------|-------------------|---------------|----------|-----------------------|
-| television | homeserver | ✅ success | 50065ms | homeserver, local-1, local-2 |
-| swift-outdated | homeserver | ✅ success | 49657ms | homeserver, local-1, local-2 |
-| gotify-cli | homeserver | ✅ success | 54945ms | homeserver, local-1, local-2 |
-| gokapi | homeserver | ✅ success | 48743ms | homeserver, local-1, local-2 |
-| portdeck | homeserver | ✅ success | 54424ms | homeserver, local-1, local-2 |
-| krokiet | homeserver | ✅ success | 53291ms | homeserver, local-1, local-2 |
-| go2tv | homeserver | ⏱️ timeout | 180020ms | homeserver, local-2, local-1 |
-| emulsion | homeserver | ❌ failed | 161723ms | homeserver, local-2, local-1 |
-| nicotine-plus | homeserver | ⏱️ timeout | 180342ms | homeserver, local-2, local-1 |
-| goshot | homeserver | ⏱️ timeout | 180016ms | homeserver, local-2, local-1 |
+| television | homeserver | ✅ success | 38709ms | homeserver, local-1, local-2 |
+| swift-outdated | homeserver | ✅ success | 41514ms | homeserver, local-1, local-2 |
+| gotify-cli | homeserver | ✅ success | 43714ms | homeserver, local-1, local-2 |
+| gokapi | homeserver | ✅ success | 45692ms | homeserver, local-1, local-2 |
+| portdeck | homeserver | ✅ success | 52205ms | homeserver, local-1, local-2 |
+| krokiet | homeserver | ✅ success | 58931ms | homeserver, local-1, local-2 |
+| go2tv | homeserver | ✅ success | 45404ms | homeserver, local-2, local-1 |
+| emulsion | homeserver | ⏱️ timeout | 180018ms | homeserver, local-2, local-1 |
+| nicotine-plus | homeserver | ✅ success | 48891ms | homeserver, local-2, local-1 |
+| goshot | homeserver | ❌ failed | 47486ms | homeserver, local-2, local-1 |
 
 ### local-1 list (intended endpoint: local-1)
 
@@ -70,27 +70,27 @@
 | balenaetcher | — | — | ✅ success |
 | csvlens | — | — | ✅ success |
 | dnote | — | ✅ success | — |
-| emulsion | ❌ failed | ❌ failed | ❌ failed |
-| go2tv | ❌ failed | ⏱️ timeout | ⏱️ timeout |
+| emulsion | ⏱️ timeout | ❌ failed | ❌ failed |
+| go2tv | ✅ success | ⏱️ timeout | ⏱️ timeout |
 | godns | — | ✅ success | — |
-| gokapi | ❌ failed | ✅ success | ✅ success |
+| gokapi | ✅ success | ✅ success | ✅ success |
 | goshot | ❌ failed | ⏱️ timeout | ❌ failed |
-| gotify-cli | ❌ failed | ✅ success | ✅ success |
+| gotify-cli | ✅ success | ✅ success | ✅ success |
 | hermes-desktop | — | ✅ success | — |
 | kdash | — | ✅ success | — |
 | kdash-direct | — | — | ✅ success |
 | knownote | — | ✅ success | — |
-| krokiet | ❌ failed | ✅ success | ❌ failed |
+| krokiet | ✅ success | ✅ success | ❌ failed |
 | localsend | — | — | ✅ success |
 | mission-control-plus | — | ✅ success | — |
 | moicons | — | ✅ success | — |
-| nicotine-plus | ❌ failed | ⏱️ timeout | ❌ failed |
-| portdeck | ❌ failed | ✅ success | ✅ success |
+| nicotine-plus | ✅ success | ⏱️ timeout | ❌ failed |
+| portdeck | ✅ success | ✅ success | ✅ success |
 | seaquel | — | — | ✅ success |
 | seaquel-release | — | ✅ success | — |
 | starship-binary | — | ✅ success | — |
-| swift-outdated | ❌ failed | ✅ success | ✅ success |
-| television | ⏱️ timeout | ✅ success | ✅ success |
+| swift-outdated | ✅ success | ✅ success | ✅ success |
+| television | ✅ success | ✅ success | ✅ success |
 | tv | — | — | ✅ success |
 | utm | — | — | ✅ success |
 | veronum | — | — | ✅ success |
@@ -99,27 +99,23 @@
 
 ## Persistent failures (after retries)
 
-- **go2tv**
-  - homeserver: ❌ failed (84827ms, exitCode=1)
-  - local-2: ⏱️ timeout (180015ms, exitCode=null)
-  - local-1: ⏱️ timeout (180020ms, exitCode=null)
 - **emulsion**
-  - homeserver: ❌ failed (85166ms, exitCode=1)
+  - homeserver: ⏱️ timeout (180018ms, exitCode=null)
   - local-2: ❌ failed (60728ms, exitCode=1)
   - local-1: ❌ failed (161723ms, exitCode=1)
-- **nicotine-plus**
-  - homeserver: ❌ failed (85503ms, exitCode=1)
-  - local-2: ❌ failed (64440ms, exitCode=1)
-  - local-1: ⏱️ timeout (180342ms, exitCode=null)
 - **goshot**
-  - homeserver: ❌ failed (85200ms, exitCode=1)
+  - homeserver: ❌ failed (47486ms, exitCode=138)
   - local-2: ❌ failed (88437ms, exitCode=1)
   - local-1: ⏱️ timeout (180016ms, exitCode=null)
 
 ## Notes
 
-- homeserver endpoint could not be used: `vm-homeserver-macos-testing` is stopped and fails to start with `Unable to access security information. The virtual machine encountered a security error.`
-- Homeserver-list items were therefore re-run on local-2 (10 items) and the 4 heaviest/failing items were retried on local-1.
-- `go2tv`, `emulsion`, `nicotine-plus`, and `goshot` remain non-success across all endpoints/timeouts. These are heavy desktop/PyQt/Go-build packages and may need a longer per-URL budget or generator fixes beyond the current branch.
-- `krokiet` succeeded on local-1 and homeserver-list but failed on local-2 (flaky).
+- homeserver VM `vm-homeserver-macos-testing` was deleted and recreated (macOS 26.6.1 on external storage, 2 CPU / 3.5 GB) because the previous image could not start due to a Virtualization security error.
+- After recreation, `sudo` was configured passwordless for the `lume` user so the harness can acquire the Homebrew sparsebundle.
+- Homeserver list was re-run on the recreated VM. 8/10 items succeeded on homeserver.
+- `go2tv` and `nicotine-plus` succeeded on homeserver but had timed out on local-1/local-2, confirming earlier failures were resource/infrastructure-driven, not a code regression.
+- `emulsion` timed out on homeserver (heavy desktop/PyQt package; 3 min budget insufficient).
+- `goshot` failed on homeserver with guest exit code `138` (`SIGBUS`), matching the npm-service VM stability pattern rather than a generator issue.
+- `krokiet` succeeded on homeserver and local-1 but failed on local-2 (flaky).
+- No merge or push to `main` was performed.
 - `bun run check`, targeted unit tests and template parity passed, so the github-release-parsing patch itself is type-safe and matches fixtures.
