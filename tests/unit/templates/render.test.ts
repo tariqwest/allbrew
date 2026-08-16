@@ -599,3 +599,12 @@ describe("renderCask", () => {
     expect(renderCask(payload)).toBe(expected);
   });
 });
+
+describe("codesignBlock", () => {
+  it("filters search paths to directories that exist before calling find", () => {
+    const block = codesignBlock(["libexec", "bin"]);
+    expect(block).toContain("search_paths = [libexec.to_s, bin.to_s].select { |d| File.directory?(d) }");
+    expect(block).toContain("return if search_paths.empty?");
+    expect(block).toContain('"/usr/bin/find", *search_paths');
+  });
+});
