@@ -8,15 +8,15 @@ export default function renderNpmPackage(p: NpmPackagePayload): string {
   url "${p.url}"
   sha256 "${p.sha256}"
 ${p.licenseLine}
-${p.livecheckBlock}  depends_on "node"
+${p.livecheckBlock}  depends_on "${p.nodeVersion}"
 ${p.allbrewDependency ? `  depends_on "${p.allbrewDependency}"\n` : ""}
   def install
-    system "npm", "install", *std_npm_args, "--min-release-age=0"
-    bin.install_symlink libexec.glob("bin/*")${codesignBlock(["libexec"])}
+    system "npm", "install", ${p.stdNpmArgs}, "--min-release-age=0"
+    bin.install_symlink libexec.glob("bin/*").select { |f| f.file? || f.symlink? }${codesignBlock(["libexec"])}
   end
 
 ${p.serviceBlock}  test do
-    assert_match version.to_s, shell_output("#{bin}/${p.testBinName} --version")
+${p.testDoBody}
   end
 end
 `;

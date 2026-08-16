@@ -27,6 +27,12 @@ export type NpmPackagePayload = FormulaCommonFields & {
   sha256: string;
   licenseLine: string;
   livecheckBlock: string;
+  /** Full body line(s) inside `test do` (pre-indented). */
+  testDoBody: string;
+  /** Homebrew node formula token, e.g. "node" or "node@18". */
+  nodeVersion: string;
+  /** `*std_npm_args` or `*std_npm_args(ignore_scripts: false)`. */
+  stdNpmArgs: string;
 };
 
 export type PipPackagePayload = FormulaCommonFields & {
