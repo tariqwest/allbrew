@@ -125,14 +125,19 @@ export async function downloadAndHash(
     }
   }
 
-  const contentType = (response.headers.get("content-type") || "").toLowerCase();
-  const contentDisposition = response.headers.get("content-disposition") || "";
+  // Headers may be missing on some Response mocks; use the helper to avoid
+  // `headers is undefined` runtime errors.
+  const getHeader = (name: string) =>
+    typeof response.headers?.get === "function"
+      ? response.headers.get(name) || ""
+      : "";
+  const contentType = getHeader("content-type").toLowerCase();
+  const contentDisposition = getHeader("content-disposition");
   // Vendor version headers (e.g. Halo `x-halo-version: 0.6.0`)
   const versionHeader =
-    response.headers.get("x-halo-version") ||
-    response.headers.get("x-version") ||
-    response.headers.get("x-app-version") ||
-    "";
+    getHeader("x-halo-version") ||
+    getHeader("x-version") ||
+    getHeader("x-app-version");
 
   return {
     sha256: hash.digest("hex"),
