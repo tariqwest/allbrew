@@ -1996,9 +1996,10 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
             `  Formula name "${preferred}" collides with homebrew/core; using "${resolved.name}" instead`,
           ),
         );
-        if (!opts.binName && !userOpts.binName) {
-          userOpts.binName = preferred;
-        }
+        // Do not inherit the core-collision token as the binary name; that
+        // would claim the same /opt/homebrew/bin/<preferred> as the core
+        // formula. Let pickArchiveEntrypoint / resolveBinaryReleaseBinName
+        // choose a non-colliding bin from the actual asset.
         userOpts.name = resolved.name;
       }
     }
