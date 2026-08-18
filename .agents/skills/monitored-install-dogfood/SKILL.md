@@ -7,7 +7,9 @@ metadata:
 
 # Monitored allbrew dogfood install
 
-Drive a single URL through the **Homebrew-installed `allbrew-dogfood`** CLI, verify the resulting formula/cask install, and — on failure — capture the fix as a patch artifact, apply it to the `allbrew-dogfood` branch, release a new `allbrew-dogfood` version to the Homebrew tap, and retry.
+Drive a single URL through the **Homebrew-installed `allbrew-dogfood` package**, which provides the same `allbrew` command as the canonical build. Verify the resulting formula/cask install, and — on failure — capture the fix as a patch artifact, apply it to the `allbrew-dogfood` branch, release a new `allbrew-dogfood` version to the Homebrew tap, and retry.
+
+`allbrew-dogfood` and `allbrew` are mutually exclusive: both install `/opt/homebrew/bin/allbrew`, so Homebrew will refuse to install one while the other is present.
 
 This skill intentionally does **not** commit fixes to `main` or drive the canonical `allbrew` release. Patches live on the `allbrew-dogfood` branch and can later be cherry-picked / PR'd back to `main` when proven stable.
 
@@ -22,7 +24,7 @@ Run records still live under `tests/monitored-install-runs/` so the same flat-fi
 | `package` | no | Registry package name override (`--package` / crate / gem / go module) |
 | `expect` | no | Expected binary name or app bundle for post-install checks |
 
-Work from the allbrew repo root. Use `/opt/homebrew/bin/allbrew-dogfood` for user-facing install attempts. Use a temp tap for local validation of an unreleased dogfood patch (`bun run bin/allbrew.ts --tap "$TMP_TAP"`) only when proving a source fix before it lands on the `allbrew-dogfood` branch.
+Work from the allbrew repo root. Use `/opt/homebrew/bin/allbrew` for user-facing install attempts. Use a temp tap for local validation of an unreleased dogfood patch (`bun run bin/allbrew.ts --tap "$TMP_TAP"`) only when proving a source fix before it lands on the `allbrew-dogfood` branch.
 
 **Service blocks:** do **not** pass `--service` or `--no-service`. `allbrew-dogfood` must auto-detect whether a Homebrew `service` stanza is appropriate.
 
@@ -31,31 +33,31 @@ Work from the allbrew repo root. Use `/opt/homebrew/bin/allbrew-dogfood` for use
 - **Source branch:** `allbrew-dogfood` on `github.com/tariqwest/allbrew` — long-lived, diverges from `main` with accumulated patches.
 - **Patch artifacts:** one `.patch` per failure under `patches/dogfood/<run-id>/` in the `allbrew-dogfood` branch. Also keep a copy in `tests/monitored-install-runs/<run-id>/fix-package/`.
 - **Homebrew formula:** `tariqwest/homebrew-tap/Formula/allbrew-dogfood.rb` — a sibling to `allbrew.rb`.
-- **Dogfood CLI:** `/opt/homebrew/bin/allbrew-dogfood`.
+- **Dogfood CLI:** `/opt/homebrew/bin/allbrew`.
 - **Versioning:** semantically `X.Y.Z-dogfood.N` (e.g. `0.0.37-dogfood.1`). The base `X.Y.Z` tracks the last merged `main` tag; `N` is the dogfood patch counter.
 
 ## Success criteria
 
 Stop when:
 
-1. `allbrew-dogfood <url> …` exits 0 and writes a formula/cask into the configured tap. On the first successful run, **do not** generate a patch, do not touch the `allbrew-dogfood` branch, and do not release.
-2. `brew install` / `allbrew-dogfood` auto-install succeeds.
+1. `allbrew <url> …` exits 0 and writes a formula/cask into the configured tap. On the first successful run, **do not** generate a patch, do not touch the `allbrew-dogfood` branch, and do not release.
+2. `brew install` / `allbrew` auto-install succeeds.
 3. Post-install verification passes.
-4. Agent service expectation matches `allbrew-dogfood` service decision.
-5. If a code fix was required: the fix is committed to the `allbrew-dogfood` branch, a new `allbrew-dogfood` tag is released, the tap formula is updated, and the final retry with `/opt/homebrew/bin/allbrew-dogfood` passes.
+4. Agent service expectation matches `allbrew` service decision.
+5. If a code fix was required: the fix is committed to the `allbrew-dogfood` branch, a new `allbrew-dogfood` tag is released, the tap formula is updated, and the final retry with `/opt/homebrew/bin/allbrew` passes.
 6. A run record exists under `tests/monitored-install-runs/<run-id>/` with judgment, outcome, logs, and `index.jsonl` entry.
 
 ## Phase 0 — Preconditions
 
 1. Confirm the dogfood CLI is installed and current:
    ```bash
-   which allbrew-dogfood
-   allbrew-dogfood --version
+   which allbrew
+   allbrew --version
    brew info allbrew-dogfood
    ```
 2. Confirm tap config:
    ```bash
-   allbrew-dogfood config show
+   allbrew config show
    # expect tapPath → homebrew-allbrew
    ```
 3. Ensure the `allbrew-dogfood` branch exists and is up to date:
@@ -75,11 +77,11 @@ Stop when:
 
 Same as `.agents/skills/monitored-install/SKILL.md` § Phase 1: form `expected` (generator, package/bin name, service) from the URL and README, write to `$RUN_DIR/agent-judgment.json`.
 
-## Phase 2 — Baseline install attempt (Homebrew allbrew-dogfood)
+## Phase 2 — Baseline install attempt (Homebrew allbrew-dogfood, which provides `allbrew`)
 
 1. Derive a slug and capture the attempt:
    ```bash
-   /opt/homebrew/bin/allbrew-dogfood "<url>" --name "<slug>" --verbose 2>&1 | tee "$RUN_DIR/allbrew-initial.log"
+   /opt/homebrew/bin/allbrew "<url>" --name "<slug>" --verbose 2>&1 | tee "$RUN_DIR/allbrew-initial.log"
    ```
 2. Record exit code, generator, formula/cask path, service, and failure class.
 3. Update `$RUN_DIR/agent-judgment.json` → `codebaseObserved` and `$RUN_DIR/metadata.json` → `attempts`.
@@ -191,12 +193,12 @@ If the patch needs hand-editing to apply to `allbrew-dogfood` (e.g. because the 
    ```bash
    brew update
    brew upgrade allbrew-dogfood || brew reinstall allbrew-dogfood
-   allbrew-dogfood --version
+   allbrew --version
    ```
 
 ## Phase 7 — Retry and finalize
 
-1. Re-run the same URL with `/opt/homebrew/bin/allbrew-dogfood` and capture to `$RUN_DIR/allbrew-retry.log`.
+1. Re-run the same URL with `/opt/homebrew/bin/allbrew` and capture to `$RUN_DIR/allbrew-retry.log`.
 2. On success, copy the final retry log to `$RUN_DIR/allbrew-final.log`, copy the generated tap formula/cask to `$RUN_DIR/formula.rb`, write `$RUN_DIR/summary.md`, and run the finalizer:
    ```bash
    bun .agents/skills/monitored-install/scripts/finalize-run-record.mjs \
@@ -208,7 +210,7 @@ If the patch needs hand-editing to apply to `allbrew-dogfood` (e.g. because the 
      --package-kind formula \
      --verify-ok true \
      --release-tag "v$VERSION" \
-     --allbrew-version-final "$(allbrew-dogfood --version)"
+     --allbrew-version-final "$(allbrew --version)"
    ```
 3. Confirm `tests/monitored-install-runs/latest` and `index.jsonl`.
 
@@ -220,3 +222,4 @@ If the patch needs hand-editing to apply to `allbrew-dogfood` (e.g. because the 
 - Do not use `--service` / `--no-service` as the success path; auto-detect must be correct.
 - Cap automated fix → release → retry loops at **2** per URL.
 - Keep `allbrew-dogfood` patches tracked as files; do not let them live only in the branch history.
+- Do not have `allbrew` and `allbrew-dogfood` installed at the same time; the formulae declare `conflicts_with` to prevent this. Use `allbrew --version` to verify the active package is the dogfood build.
