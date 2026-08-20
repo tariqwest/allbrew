@@ -2,6 +2,7 @@ import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { extractNpmBinName } from "../../lib/generators/npm-package.ts";
 import { collectNpmPackagePayload } from "../../lib/generators/npm-package.ts";
 import { collectPipPackagePayload } from "../../lib/generators/pip-package.ts";
+import { resolveNpmPackageName } from "../../lib/cli.ts";
 
 // ─── B1: Bin-name matrix ────────────────────────────────────────────────
 // Tests that generators correctly link the binary name from package
@@ -15,6 +16,30 @@ import { collectPipPackagePayload } from "../../lib/generators/pip-package.ts";
 // | toolong | toolong | tl | npm bin object |
 // | elia-chat | elia-chat | elia | npm bin object (pip pkg is elia-chat) |
 // | orange3 | orange3 | orange-canvas | pip entry_points (needs --bin-name) |
+
+describe("resolveNpmPackageName", () => {
+  it("skips a private root and selects a publishable workspace CLI", async () => {
+    const root = {
+      name: "@deepseek-ai/dsh-root",
+      private: true,
+      workspaces: ["apps/*"],
+    };
+    const getRepoContents = async (_owner: string, _repo: string, path: string) =>
+      path === "apps" ? [{ type: "dir", path: "apps/cli" }] : [];
+    const getFileContent = async (_owner: string, _repo: string, path: string) =>
+      path === "apps/cli/package.json"
+        ? JSON.stringify({ name: "@deepseek-ai/dsh", bin: { dsh: "lib/bin.js" } })
+        : null;
+    const resolved = await resolveNpmPackageName(
+      "deepseek-ai",
+      "deepseek-harness",
+      root,
+      "deepseek-harness",
+      { getRepoContents, getFileContent },
+    );
+    expect(resolved).toBe("@deepseek-ai/dsh");
+  });
+});
 
 describe("extractNpmBinName", () => {
   it("returns null when bin field is absent", () => {

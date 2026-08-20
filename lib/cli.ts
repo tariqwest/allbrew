@@ -1495,7 +1495,12 @@ async function handleGithubRepo(classification, opts) {
         if (pkgJson) {
           try {
             const pkg = JSON.parse(pkgJson);
-            packageName = pkg.name || packageName;
+            packageName = await resolveNpmPackageName(
+              owner,
+              repo,
+              pkg,
+              packageName,
+            );
           } catch {
             /* use repo name */
           }
@@ -1649,6 +1654,54 @@ async function handleHomebrewCask(classification, opts) {
     { name: classification.name },
     opts,
   );
+}
+
+export async function resolveNpmPackageName(
+  owner: string,
+  repo: string,
+  rootPackage: any,
+  fallback: string,
+  githubFns: {
+    getRepoContents: typeof getRepoContents;
+    getFileContent: typeof getFileContent;
+  } = { getRepoContents, getFileContent },
+): Promise<string> {
+  if (rootPackage.name && rootPackage.private !== true) return rootPackage.name;
+
+  const workspacePatterns = [
+    ...(Array.isArray(rootPackage.workspaces) ? rootPackage.workspaces : []),
+    ...(Array.isArray(rootPackage.workspaces?.packages)
+      ? rootPackage.workspaces.packages
+      : []),
+  ];
+  const candidates: Array<{ name: string; binCount: number }> = [];
+  for (const pattern of workspacePatterns) {
+    const prefix = String(pattern).replace(/\/\*+$/, "");
+    const entries = await githubFns.getRepoContents(owner, repo, prefix);
+    if (!Array.isArray(entries)) continue;
+    for (const entry of entries) {
+      if (entry.type !== "dir") continue;
+      const child = await githubFns.getFileContent(
+        owner,
+        repo,
+        `${entry.path}/package.json`,
+      );
+      if (!child) continue;
+      try {
+        const pkg = JSON.parse(child);
+        if (pkg.name && pkg.private !== true && pkg.bin) {
+          candidates.push({
+            name: pkg.name,
+            binCount: typeof pkg.bin === "object" ? Object.keys(pkg.bin).length : 1,
+          });
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+  candidates.sort((a, b) => a.binCount - b.binCount);
+  return candidates[0]?.name || rootPackage.name || fallback;
 }
 
 async function handleNpmPackage(classification, opts) {
