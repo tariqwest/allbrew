@@ -169,6 +169,12 @@ describe("B3: routing priority (conflict resolution)", () => {
     );
     expect(result.type).toBe("cask-dmg");
   });
+
+  it("GitHub reserved pseudo-owners are not repos", () => {
+    // URLs like /sponsors or /settings look like owner/repo but are site pages.
+    expect(classify("https://github.com/sponsors/schollz").type).toBe("unknown");
+    expect(classify("https://github.com/settings/profile").type).toBe("unknown");
+  });
 });
 
 describe("B3: --type override (manual selection)", () => {
@@ -253,6 +259,87 @@ describe("B3: classifyWithHead (content-type sniffing)", () => {
     try {
       const result = await classifyWithHead("https://example.com/download");
       expect(result.type).toBe("unknown");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("sniffs a text/plain shell script body for extensionless install URLs", async () => {
+    const originalFetch = global.fetch;
+    const script = "#!/bin/sh\necho \"hello\"\n";
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(script);
+    global.fetch = (() =>
+      Promise.resolve({
+        ok: true,
+        url: "https://example.com/install",
+        headers: new Headers({ "content-type": "text/plain" }),
+        arrayBuffer: () => Promise.resolve(bytes.buffer.slice(0)),
+      })) as any;
+
+    try {
+      const result = await classifyWithHead("https://example.com/install");
+      expect(result.type).toBe("bash-script");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("sniffs an octet-stream shell script body", async () => {
+    const originalFetch = global.fetch;
+    const script = "#!/bin/bash\necho \"hello\"\n";
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(script);
+    global.fetch = (() =>
+      Promise.resolve({
+        ok: true,
+        url: "https://example.com/launch",
+        headers: new Headers({ "content-type": "application/octet-stream" }),
+        arrayBuffer: () => Promise.resolve(bytes.buffer.slice(0)),
+      })) as any;
+
+    try {
+      const result = await classifyWithHead("https://example.com/launch");
+      expect(result.type).toBe("bash-script");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("does not classify binary archives as shell scripts", async () => {
+    const originalFetch = global.fetch;
+    // ZIP local file header magic with control bytes → binary sample.
+    const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+    global.fetch = (() =>
+      Promise.resolve({
+        ok: true,
+        url: "https://example.com/download",
+        headers: new Headers({ "content-type": "application/octet-stream" }),
+        arrayBuffer: () => Promise.resolve(bytes.buffer.slice(0)),
+      })) as any;
+
+    try {
+      const result = await classifyWithHead("https://example.com/download");
+      expect(result.type).toBe("unknown");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("sniffs .pkg content-disposition / response path as cask-dmg", async () => {
+    const originalFetch = global.fetch;
+    global.fetch = (() =>
+      Promise.resolve({
+        ok: true,
+        url: "https://cdn.example.com/pkg/Zoom_1.0.0",
+        headers: new Headers({
+          "content-disposition": 'attachment; filename="Zoom.pkg"',
+        }),
+      })) as any;
+
+    try {
+      const result = await classifyWithHead("https://example.com/download");
+      expect(result.type).toBe("cask-dmg");
     } finally {
       global.fetch = originalFetch;
     }

@@ -43,6 +43,34 @@ const GITHUB_REPO_TREE_RE =
   /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/(tree|blob)\//i;
 const RAW_GITHUB_RE = /^https?:\/\/raw\.githubusercontent\.com\//i;
 
+// GitHub pseudo-owners that look like a repo root but are site pages.
+const GITHUB_RESERVED_OWNERS = new Set([
+  "sponsors",
+  "orgs",
+  "settings",
+  "marketplace",
+  "topics",
+  "collections",
+  "events",
+  "features",
+  "pricing",
+  "enterprise",
+  "customer-stories",
+  "readme",
+  "about",
+  "site",
+  "login",
+  "join",
+  "notifications",
+  "account",
+  "pulls",
+  "issues",
+  "codespaces",
+  "explore",
+  "sessions",
+  "logout",
+]);
+
 const SCRIPT_EXTENSIONS = [".sh", ".bash"];
 const ARCHIVE_EXTENSIONS = [
   ".tar.gz",
@@ -108,7 +136,7 @@ export function oracleClassify(url: string): OracleResult {
   }
 
   const ghMatch = url.match(GITHUB_REPO_RE);
-  if (ghMatch) {
+  if (ghMatch && !GITHUB_RESERVED_OWNERS.has(ghMatch[1].toLowerCase())) {
     return {
       type: "github-repo",
       url,
@@ -118,7 +146,10 @@ export function oracleClassify(url: string): OracleResult {
   }
 
   const ghTreeMatch = url.match(GITHUB_REPO_TREE_RE);
-  if (ghTreeMatch) {
+  if (
+    ghTreeMatch &&
+    !GITHUB_RESERVED_OWNERS.has(ghTreeMatch[1].toLowerCase())
+  ) {
     return {
       type: "github-repo",
       url: `https://github.com/${ghTreeMatch[1]}/${ghTreeMatch[2]}`,
