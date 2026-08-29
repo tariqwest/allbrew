@@ -84,6 +84,10 @@ function buildNpmPackageCase(): Case {
     livecheckBlock: livecheck,
     allbrewDependency: "",
     testBinName: "foo",
+    testDoBody:
+      `    assert_match version.to_s, shell_output("#{bin}/foo --version")`,
+    nodeVersion: "node",
+    stdNpmArgs: "*std_npm_args",
     serviceBlock: "",
   };
   const expected =
@@ -99,7 +103,7 @@ function buildNpmPackageCase(): Case {
     `\n` +
     `  def install\n` +
     `    system "npm", "install", *std_npm_args, "--min-release-age=0"\n` +
-    `    bin.install_symlink libexec.glob("bin/*")` + CS_LIBEXEC + `\n` +
+    `    bin.install_symlink libexec.glob("bin/*").select { |f| f.file? || f.symlink? }` + CS_LIBEXEC + `\n` +
     `  end\n\n` +
     `  test do\n` +
     `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
@@ -618,6 +622,7 @@ function buildCaskAppCase(): Case {
     versionLine: '  version "1.2.3"\n',
     homepageLine: '  homepage "https://example.com"\n',
     appOrPkgBlock: `  app "Foo.app"\n`,
+    zapBlock: "",
     livecheckBlock: "",
   };
   const expected =

@@ -1,0 +1,33 @@
+{
+  "name": "gtop",
+  "description": "System monitoring dashboard for the terminal",
+  "license": "MIT",
+  "homepage": "https://github.com/aksakalli/gtop",
+  "dist-tags": {
+    "latest": "1.1.5"
+  },
+  "versions": {
+    "1.1.5": {
+      "name": "gtop",
+      "version": "1.1.5",
+      "description": "System monitoring dashboard for the terminal",
+      "license": "MIT",
+      "homepage": "https://github.com/aksakalli/gtop",
+      "keywords": ["system", "monitoring", "dashboard", "terminal", "tui"],
+      "bin": {
+        "gtop": "bin/gtop"
+      },
+      "dependencies": {
+        "blessed": "^0.1.81",
+        "blessed-contrib": "^4.11.0"
+      },
+      "engines": {
+        "node": ">=18 <22"
+      },
+      "dist": {
+        "tarball": "https://registry.npmjs.org/gtop/-/gtop-1.1.5.tgz",
+        "shasum": "0000000000000000000000000000000000000000"
+      }
+    }
+  }
+}

@@ -5132,5 +5132,21 @@
     ],
     "skip": true,
     "notes": "Rust ~15MB single binary agent harness (TUI/headless/server/gateway); Apache-2.0; v0.preview.76; 4 prebuilt tar.gz (darwin arm64/x86_64, linux musl arm64/x86_64); also install-script https://ante.run/install.sh; test utm_source strip -> canonical https://github.com/AntigmaLabs/ante"
+  },
+  {
+    "name": "xirp",
+    "url": "https://xirp.spotify.com/join-beta",
+    "generator": "cask-app",
+    "allbrewArgs": [
+      "--name",
+      "xirp"
+    ],
+    "expectedBin": null,
+    "verifyCommand": [
+      "ls",
+      "/Applications/Xirp.app"
+    ],
+    "skip": true,
+    "notes": "Spotify Xirp beta macOS desktop app. Marketing page exposes a curl|bash installer wrapping an electron-builder DMG. Correct generator is cask-app from /api/latest-download?arch=arm64, not install-script."
   }
 ]

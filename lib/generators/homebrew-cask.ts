@@ -63,6 +63,17 @@ function isDocumentationHost(hostname: string): boolean {
   return false;
 }
 
+/**
+ * Install-script / setup subdomains host the curl|sh entrypoint, not the
+ * marketing homepage. Matching them to an official cask adopts the wrong
+ * product (e.g. setup.atuin.sh → atuin-desktop). Fall through to script
+ * discovery or the direct installer instead.
+ */
+function isInstallScriptHost(hostname: string): boolean {
+  const h = String(hostname || "").toLowerCase().replace(/^www\./, "");
+  return /^(setup|install)\./.test(h);
+}
+
 function isDocumentationPath(pathname: string): boolean {
   const p = String(pathname || "").toLowerCase();
   if (/\/(docs?|documentation|quickstart|guide|guides|cli|sdk|api-reference)\b/.test(p)) return true;
@@ -90,8 +101,11 @@ function preferredRelatedToToken(
   if (!t || preferred.size === 0) return false;
   if (preferred.has(t)) return true;
 
+  // Product-line suffixes like "desktop" denote a separate app (e.g.
+  // atuin vs atuin-desktop). Only treat them as related when the user
+  // explicitly names the full token (atuin-desktop), not the base (atuin).
   const editionRest =
-    /^[-_]?(pro|app|mac|desktop|for-mac|premium|plus|free|lite|beta|nightly|stable|x|\d+)$/i;
+    /^[-_]?(pro|app|mac|for-mac|premium|plus|free|lite|beta|nightly|stable|x|\d+)$/i;
 
   for (const p of preferred) {
     if (!p) continue;
@@ -174,7 +188,11 @@ export async function matchOfficialCaskByHomepage(
   // product's marketing homepage for the purpose of adopting an official cask.
   // The homepage match is intended for the actual product site (e.g. warp.dev),
   // not docs.warp.dev or similar.
-  if (isDocumentationHost(rawHost) || isDocumentationPath(rawPath)) {
+  if (
+    isDocumentationHost(rawHost) ||
+    isDocumentationPath(rawPath) ||
+    isInstallScriptHost(rawHost)
+  ) {
     return null;
   }
 

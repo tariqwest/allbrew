@@ -201,3 +201,41 @@ bun test tests/unit/automate-vm-batch.test.ts
 - **Real-Time Progress**: `tests/monitored-install-batch/state/progress.json`
 - **Canonical Run Records**: `tests/monitored-install-runs/<timestamp>__<slug>/`
 - **Host Lock Directories**: `tests/monitored-install-batch/logs/vm-mutex-*.lockdir`
+
+---
+
+## Default test-VM toolchain (rustup + native clang)
+
+All Lume endpoints used for cargo (and any source-build) smoke tests should run the persisted toolchain setup before batch work. The script is idempotent and re-runnable after VM recreation or hygiene resets.
+
+- **Script**: `tests/monitored-install-batch/lib/setup-vm-toolchain.sh`
+- **What it does**:
+  1. Mounts the Homebrew prefix if not already mounted.
+  2. Uninstalls Homebrew `rust` and `llvm`.
+  3. Installs `rustup` with the stable toolchain.
+  4. Writes `~/.cargo/config.toml` with macOS native `/usr/bin/clang` as `CC`/`CXX`/linker and `jobs = 2`.
+  5. Persists `RUSTUP_HOME`, `CARGO_HOME`, and `PATH` in `~/.zshenv`, `~/.bash_profile`, `~/.bashrc`, and `~/.zshrc`.
+  6. Verifies `rustc`, `cargo`, and `clang`.
+
+- **Convenience runner**:
+  ```bash path=null start=null
+  bun tests/monitored-install-batch/setup-vm-toolchain.mjs
+  ```
+  This reads `tests/monitored-install-batch/vm-pool.json` and runs the setup script on all enabled endpoints via `lume ssh`.
+
+- **Manual (local endpoint)**:
+  ```bash path=null start=null
+  lume ssh vm-local-macos-testing-1 --user th-allbrew --password th-allbrew \
+    'curl -fsS http://192.168.64.1:8000/tests/monitored-install-batch/lib/setup-vm-toolchain.sh \
+      -o /tmp/setup-vm-toolchain.sh && bash /tmp/setup-vm-toolchain.sh'
+  ```
+
+- **Manual (remote endpoint, after `vm-homeserver-setup`)**:
+  Copy `tests/monitored-install-batch/lib/setup-vm-toolchain.sh` to the remote host, start a local HTTP server in `/tmp`, then:
+  ```bash path=null start=null
+  ssh -o User=app-user -i ~/.ssh/id_server509 homeserver.local \
+    'lume ssh vm-homeserver-macos-testing --storage external --user th-allbrew --password th-allbrew \
+      "curl -fsS http://192.168.64.1:8000/setup-vm-toolchain.sh -o /tmp/setup-vm-toolchain.sh && bash /tmp/setup-vm-toolchain.sh"'
+  ```
+
+- **Re-setup after VM recreation**: the script is stored in the repo and can be re-run as soon as `th-allbrew` exists and the sparsebundle is created.

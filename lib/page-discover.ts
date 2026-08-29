@@ -197,7 +197,18 @@ export function looksLikeExtensionlessArtifactUrl(url: string): boolean {
       /(?:^|\/)download(?:s)?\/(?:latest|current|stable)(?:\/|$)/i.test(path) ||
       /(?:^|\/)download(?:s)?\/(?:mac|macos|osx|darwin)(?:\/|$)/i.test(path) ||
       /(?:^|\/)(?:latest|current)\/(?:mac|macos|osx|darwin|dmg)(?:\/|$)/i.test(path) ||
+      /(?:^|\/)(?:latest-download|download-latest)(?:\/|$)/i.test(path) ||
       /[?&](?:platform|os)=(?:mac|macos|osx|darwin)/i.test(u.search)
+    ) {
+      return true;
+    }
+    // Architecture-select extensionless download APIs
+    // (e.g. https://xirp.spotify.com/api/latest-download?arch=arm64)
+    if (
+      /[?&]arch=(?:arm64|x64|x86_64|aarch64|universal)(?:&|$)/i.test(u.search) &&
+      (/(?:^|\/)download(?:s)?/i.test(path) ||
+        /(?:^|\/)(?:latest|current|release)/i.test(path) ||
+        /^api\./i.test(u.hostname))
     ) {
       return true;
     }
@@ -608,12 +619,24 @@ export async function filterUnreachableScriptArtifacts(
       /script-bundle|api-or-bundle|extensionless-guess|client-latest-guess/i.test(e),
     );
     // Always probe same-site high-score DMGs that only came from bundle guessing
-    if (!fromBundle) return false;
-    try {
-      return sameSite(c.url, pageUrl);
-    } catch {
-      return false;
+    if (fromBundle) {
+      try {
+        return sameSite(c.url, pageUrl);
+      } catch {
+        return false;
+      }
     }
+    // Same-site high-confidence cask-dmg candidates (e.g. product download page
+    // with a DMG link) can also be SPA shells that return text/html. Probing
+    // them prevents brewing a 2KB HTML soft-404 (kosmik.app).
+    if (c.kind === "cask-dmg" && c.score >= 100) {
+      try {
+        return sameSite(c.url, pageUrl);
+      } catch {
+        return false;
+      }
+    }
+    return false;
   };
 
   const defaultHeadOk = async (url: string): Promise<boolean> => {
@@ -923,7 +946,9 @@ export async function enrichGithubReleaseAssets(
           "github-release-asset",
           `repo:${owner}/${repo}`,
         ]);
-        scored.score += 20;
+        // Release DMGs are the canonical macOS app artifact; they should beat
+        // same-page curl|bash install scripts (e.g. for an agent/repo).
+        scored.score += 45;
         scored.evidence.push("release-enrichment");
         extras.push(scored);
       }
@@ -1331,6 +1356,13 @@ export async function enrichExtensionlessArtifactUrls(
       if (head.type === "cask-dmg") {
         scored.score = Math.max(scored.score, 120);
         scored.evidence.push("head-cask-dmg");
+        // Architecture-select extensionless download APIs (e.g. Xirp's
+        // /api/latest-download?arch=arm64) are the canonical DMG source and
+        // should beat a same-page curl|bash install-script wrapper.
+        if (/[?&]arch=(?:arm64|x64|x86_64|aarch64|universal)(?:&|$)/i.test(scored.url)) {
+          scored.score = Math.max(scored.score, 195);
+          scored.evidence.push("arch-cask-dmg-api");
+        }
       } else if (head.type === "archive") {
         scored.score = Math.max(scored.score, 95);
       } else if (head.type === "bash-script") {

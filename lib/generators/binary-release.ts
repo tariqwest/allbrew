@@ -249,28 +249,56 @@ export async function collectBinaryReleasePayload(
   const homepage = repoInfo.homepage || repoInfo.htmlUrl;
 
   const archAssets: Record<string, any> = {};
-  const scoreAsset = (assetName: string, formulaName: string): number => {
-    const lower = assetName.toLowerCase();
-    const formula = formulaName.toLowerCase();
-    let s = 0;
-    if (lower.startsWith(formula + "-") || lower.startsWith(formula + "_") || lower === formula) s += 20;
-    else if (lower.includes(formula)) s += 10;
-    if (lower.includes(`${formula}-cli`) || lower.includes(`${formula}_cli`)) s -= 15;
-    if (lower.includes("-cli") || lower.includes("_cli")) s -= 5;
-    s -= lower.length * 0.01;
-    return s;
-  };
   for (const asset of release.assets) {
     if (!isBinaryAsset(asset.name)) continue;
     const arch = matchAssetToArch(asset.name);
     if (!arch) continue;
-    const existing = archAssets[arch];
-    if (!existing) {
+
+    const expectedBin = (options.binName || repoInfo.name || name).toLowerCase();
+    const current = archAssets[arch];
+    if (!current) {
       archAssets[arch] = asset;
-    } else {
-      const curScore = scoreAsset(existing.name, name);
-      const newScore = scoreAsset(asset.name, name);
-      if (newScore > curScore) archAssets[arch] = asset;
+      continue;
+    }
+
+    // When a release ships multiple archives per arch (e.g. atuin and
+    // atuin-server), prefer the one whose asset name most closely matches the
+    // expected CLI binary. A separate server/daemon archive is a distinct
+    // deliverable and should not be installed as the main binary.
+    const score = (n: string): number => {
+      const base = n.toLowerCase().replace(/\.(?:tar\.[a-z0-9]+|zip|tgz|tar)$/i, "");
+      const tokens = base.split(/[-_.]+/);
+
+      // Tokens to strip: platforms, architectures, versions, and common suffixes.
+      const noise = new Set([
+        "tar", "gz", "tgz", "zip", "bz2", "xz", "zst",
+        "darwin", "macos", "osx", "linux", "windows", "win32", "apple",
+        "arm64", "aarch64", "amd64", "x86_64", "x64", "i386", "x86", "64",
+        "universal", "all", "unknown", "gnu", "musl",
+      ]);
+
+      const productTokens: string[] = [];
+      for (const t of tokens) {
+        if (noise.has(t)) continue;
+        if (/^v?\d+(\.\d+)*(?:[-+][0-9A-Za-z.]+)?$/.test(t)) continue;
+        if (/^(release|final|stable|beta|alpha|rc|nightly)$/i.test(t)) continue;
+        productTokens.push(t);
+      }
+
+      const idx = productTokens.indexOf(expectedBin);
+      if (idx === 0 && productTokens.length === 1) return 100;
+      if (idx === 0 && productTokens.length > 1) {
+        const rest = productTokens[1];
+        if (/^(server|daemon|agent|service|headless|core)$/i.test(rest)) return 20;
+        return 60;
+      }
+      if (idx >= 0) return 40;
+      if (productTokens.some((t) => t.includes(expectedBin))) return 20;
+      return 0;
+    };
+
+    if (score(asset.name) > score(current.name)) {
+      archAssets[arch] = asset;
     }
   }
 
