@@ -434,6 +434,16 @@ describe("pickArchiveEntrypoint / nested package archives", () => {
     expect(picked!.binName).toBe("television");
   });
 
+  it("uses the renamed formula name as the bin when archive entrypoint differs", () => {
+    // Regression: a formula renamed to avoid homebrew/core should install its
+    // own binary, not try to claim the original (possibly colliding) token.
+    const members = ["codecane"];
+    const picked = pickArchiveEntrypoint(members, "codebuffai-freebuff");
+    expect(picked).not.toBeNull();
+    expect(picked!.sourcePath).toBe("codecane");
+    expect(picked!.binName).toBe("codebuffai-freebuff");
+  });
+
   it("returns null when archive only has documentation", () => {
     const picked = pickArchiveEntrypoint(
       ["LICENSE", "README.md", "NOTICE"],

@@ -22,6 +22,31 @@ afterEach(() => {
   mock.restore();
 });
 
+describe("resolveNpmPackageName", () => {
+  it("skips a private root and selects a publishable workspace CLI", async () => {
+    const root = {
+      name: "@deepseek-ai/dsh-root",
+      private: true,
+      workspaces: ["apps/*"],
+    };
+    const getRepoContents = async (_owner: string, _repo: string, path: string) =>
+      path === "apps" ? [{ type: "dir", path: "apps/cli" }] : [];
+    const getFileContent = async (_owner: string, _repo: string, path: string) =>
+      path === "apps/cli/package.json"
+        ? JSON.stringify({ name: "@deepseek-ai/dsh", bin: { dsh: "lib/bin.js" } })
+        : null;
+    const { resolveNpmPackageName } = await import("../../lib/cli.ts");
+    const resolved = await resolveNpmPackageName(
+      "deepseek-ai",
+      "deepseek-harness",
+      root,
+      "deepseek-harness",
+      { getRepoContents, getFileContent } as any,
+    );
+    expect(resolved).toBe("@deepseek-ai/dsh");
+  });
+});
+
 describe("extractNpmBinName", () => {
   it("returns null when bin field is absent", () => {
     expect(extractNpmBinName({ name: "foo" }, "foo")).toBeNull();
