@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, rm, mkdir, writeFile, symlink } from "node:fs/promises";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import {
   assertUninstallResiduals,
   checkUninstallResiduals,
@@ -167,6 +167,29 @@ describe("assertUninstallResiduals — cask", () => {
       appName: "NonExistentApp",
     });
     expect(result.details.binResolvesToCellar).toBeNull();
+  });
+
+  it("strips .app suffix and sanitizes app names with special characters", async () => {
+    await saveManifest(makeManifest("bar", "cask"));
+    const userApps = join(homedir(), "Applications");
+    const targetApp = join(userApps, "Bear Markdown Notes.app");
+    await mkdir(targetApp, { recursive: true });
+
+    _setExecFileSyncForTesting(mockExec({
+      list: () => "other-pkg\n",
+    }));
+
+    try {
+      const result = await checkUninstallResiduals({
+        name: "bar",
+        kind: "cask",
+        appName: "Bear: Markdown Notes.app",
+      });
+      expect(result.passed).toBe(false);
+      expect(result.failures[0]).toMatch(/"Bear Markdown Notes\.app"/);
+    } finally {
+      await rm(targetApp, { recursive: true, force: true });
+    }
   });
 });
 

@@ -2318,6 +2318,13 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
     }
   }
 
+  if (!userOpts.name || userOpts.name === "untitled") {
+    throw new Error(
+      `Unable to derive a valid package name from "${opts.name || userOpts.name || ""}". ` +
+        `Please provide a non-empty --name.`,
+    );
+  }
+
   if (!opts.desc) {
     const defaultDesc = guessDesc(generatorName, params);
     if (isNonInteractive(opts)) {
