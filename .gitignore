@@ -3,6 +3,9 @@ node_modules/
 .cursor/
 .DS_Store
 
+# Local agent-only reference notes, not part of committed skills
+.agents/reference/
+
 # Devin CLI local config and agent worktrees
 .devin/
 .worktrees/

@@ -21,15 +21,6 @@ function normalizeFetchUrl(urlString: string, base?: string): string {
   return url.href;
 }
 
-function getHeader(response: Response, name: string): string | null {
-  const headers = (response as any).headers;
-  if (!headers) return null;
-  if (typeof headers.get === "function") {
-    return headers.get(name);
-  }
-  return null;
-}
-
 async function fetchFollowingRedirects(
   url: string,
   init: {
@@ -49,7 +40,7 @@ async function fetchFollowingRedirects(
     });
 
     if (response.status >= 300 && response.status < 400) {
-      const location = getHeader(response, "location");
+      const location = response.headers.get("location");
       if (!location) {
         throw new Error(
           `Redirect ${response.status} from ${current} without Location header`,
@@ -134,14 +125,19 @@ export async function downloadAndHash(
     }
   }
 
-  const contentType = (getHeader(response, "content-type") || "").toLowerCase();
-  const contentDisposition = getHeader(response, "content-disposition") || "";
+  // Headers may be missing on some Response mocks; use the helper to avoid
+  // `headers is undefined` runtime errors.
+  const getHeader = (name: string) =>
+    typeof response.headers?.get === "function"
+      ? response.headers.get(name) || ""
+      : "";
+  const contentType = getHeader("content-type").toLowerCase();
+  const contentDisposition = getHeader("content-disposition");
   // Vendor version headers (e.g. Halo `x-halo-version: 0.6.0`)
   const versionHeader =
-    getHeader(response, "x-halo-version") ||
-    getHeader(response, "x-version") ||
-    getHeader(response, "x-app-version") ||
-    "";
+    getHeader("x-halo-version") ||
+    getHeader("x-version") ||
+    getHeader("x-app-version");
 
   return {
     sha256: hash.digest("hex"),
