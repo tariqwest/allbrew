@@ -1,4 +1,4 @@
-import { toCaskToken, rubyEscape } from "../utils.ts";
+import { toCaskToken, rubyEscape, stripCaskArtifactSuffixes } from "../utils.ts";
 import { downloadToTemp } from "../sha256.ts";
 import { listDmgAppNames, listZipEntries } from "../archive-inspector.ts";
 import type { CaskAppPayload } from "../template-payload.ts";
@@ -37,40 +37,48 @@ export async function collectCaskAppPayload(
         contentType,
         contentDisposition,
         serverFilename,
+        finalUrl,
       });
     }
   } finally {
     await cleanup();
   }
 
+  const effectiveUrl = finalUrl || url;
   const pathFilename = url.split("/").pop().split("?")[0];
+  const finalFilename = effectiveUrl.split("/").pop().split("?")[0];
   const filename =
     (serverFilename && String(serverFilename)) ||
     (/\.(dmg|zip|pkg)$/i.test(pathFilename) ? pathFilename : null) ||
+    (/\.(dmg|zip|pkg)$/i.test(finalFilename) ? finalFilename : null) ||
     pathFilename;
-  const baseName = String(filename)
-    .replace(/\.(dmg|zip|pkg)$/i, "")
-    .replace(/-[\d.]+$/, "")
-    // Avoid basing token/app on placeholder path segments from /download/latest APIs
-    .replace(/^(latest|download|current|stable)$/i, "");
+
+  const baseName = stripCaskArtifactSuffixes(
+    String(filename)
+      .replace(/^(latest|download|current|stable)$/i, ""),
+  );
 
   const name =
     options.name ||
     (baseName ? toCaskToken(baseName) : null) ||
     toCaskToken(String(appName || "app").replace(/\.app$/i, ""));
   const rawApp = appName || baseName || name;
-  const displayName = String(rawApp).replace(/\.app$/i, "") || baseName || name;
+  const displayName =
+    stripCaskArtifactSuffixes(String(rawApp).replace(/\.app$/i, "")) ||
+    baseName ||
+    name;
   const desc =
     options.desc ||
     `Install ${displayName}`.replace(/\s+from\s+https?:\/\/\S+/i, "");
+
   // Always emit a version: Homebrew 4+ can crash (`latest?` on nil) when version is omitted.
   const version =
     options.version ||
     (versionHeader && String(versionHeader).match(/\d+\.\d+(?:\.\d+)?/)?.[0]) ||
     extractVersionFromUrl(url) ||
     extractVersionFromUrl(String(finalUrl || "")) ||
-    extractCompactVersion(String(filename)) ||
     extractVersionFromUrl(String(serverFilename || "")) ||
+    extractCompactVersion(String(filename)) ||
     "1.0.0";
 
   return {
@@ -91,6 +99,7 @@ export async function collectCaskAppPayload(
       baseName || String(displayName),
       name,
     ),
+    zapBlock: buildCaskAppZapBlock(displayName),
     livecheckBlock: urlVersionLivecheckBlock(url),
   };
 }
@@ -102,9 +111,12 @@ function buildAppOrPkgBlock(
   baseName: string,
   caskToken: string,
 ) {
-  if (url.toLowerCase().endsWith(".pkg")) {
+  if (url.toLowerCase().endsWith(".pkg") || /\.pkg$/i.test(filename)) {
     let block = `  pkg "${rubyEscape(filename)}"\n\n`;
-    block += `  uninstall pkgutil: "com.example.${rubyEscape(caskToken)}"\n`;
+    const pkgId = appName
+      ? `com.${toCaskToken(appName.replace(/\.app$/i, ""))}.pkg.${caskToken}`
+      : `com.example.${rubyEscape(caskToken)}`;
+    block += `  uninstall pkgutil: "${rubyEscape(pkgId)}"\n`;
     return block;
   }
 
@@ -112,9 +124,16 @@ function buildAppOrPkgBlock(
   return `  app "${rubyEscape(app)}"\n`;
 }
 
-export async function generateCaskApp(url: string, options: any = {}) {
-  const payload = await collectCaskAppPayload(url, options);
-  return writeRenderedCask(payload, options.tapPath);
+function buildCaskAppZapBlock(displayName: string): string {
+  if (!displayName) return "";
+  const app = String(displayName);
+  return (
+    `  zap trash: [\n` +
+    `    "~/Library/Application Support/${rubyEscape(app)}",\n` +
+    `    "~/Library/Caches/${rubyEscape(app)}",\n` +
+    `    "~/Library/Preferences/${rubyEscape(app)}.plist",\n` +
+    `  ]\n`
+  );
 }
 
 async function detectAppName(
@@ -124,22 +143,26 @@ async function detectAppName(
     contentType?: string;
     contentDisposition?: string;
     serverFilename?: string | null;
+    finalUrl?: string | null;
   } = {},
 ) {
   const lower = url.toLowerCase();
   const pathLower = (localPath || "").toLowerCase();
   const serverLower = String(meta.serverFilename || "").toLowerCase();
+  const finalLower = String(meta.finalUrl || "").toLowerCase();
   const ct = (meta.contentType || "").toLowerCase();
   const looksDmg =
     lower.endsWith(".dmg") ||
     pathLower.endsWith(".dmg") ||
     serverLower.endsWith(".dmg") ||
+    finalLower.endsWith(".dmg") ||
     ct.includes("application/x-apple-diskimage") ||
     /filename[^;]*\.dmg/i.test(meta.contentDisposition || "");
   const looksZip =
     lower.endsWith(".zip") ||
     pathLower.endsWith(".zip") ||
     serverLower.endsWith(".zip") ||
+    finalLower.endsWith(".zip") ||
     ct.includes("application/zip");
 
   // Prefer inspecting a real local artifact for extensionless download APIs.
@@ -193,7 +216,8 @@ async function detectAppName(
     }
   }
 
-  // Last resort: path/server filename — never invent placeholder "latest.app"
+  // Last resort: use the final redirected filename or the server filename when
+  // the original URL is an extensionless API (e.g. Xirp /api/latest-download).
   const fromServer = meta.serverFilename
     ? String(meta.serverFilename).replace(/\.(dmg|zip|pkg)$/i, "")
     : null;
@@ -202,19 +226,28 @@ async function detectAppName(
     !/^(latest|download|current|stable)$/i.test(fromServer) &&
     !/-latest$/i.test(fromServer)
   ) {
-    return `${fromServer}.app`;
+    return `${stripCaskArtifactSuffixes(fromServer)}.app`;
   }
-  const filename = url.split("/").pop().split("?")[0];
-  const stem = filename.replace(/\.(dmg|zip|pkg)$/i, "");
-  if (/^(latest|download|current|stable)$/i.test(stem)) {
+
+  const effectiveUrl = meta.finalUrl || url;
+  const candidate = /\.(dmg|zip|pkg)$/i.test(effectiveUrl)
+    ? effectiveUrl
+    : url;
+  const filename = candidate.split("/").pop().split("?")[0];
+  const stem = stripCaskArtifactSuffixes(
+    filename.replace(/\.(dmg|zip|pkg)$/i, ""),
+  );
+  if (!stem || /^(latest|download|current|stable)$/i.test(stem)) {
     return null;
   }
   return `${stem}.app`;
 }
 
 function extractVersionFromUrl(url: string) {
-  // Allow _, -, / separators so MonkMode_0.1.0_aarch64.dmg → 0.1.0
-  const match = url.match(/[/_-]v?(\d+\.\d+(?:\.\d+)?)/);
+  if (!url) return null;
+  // Allow _, -, /, ., or space separators so names like
+  // Xirp-0.14.0-arm64-external.dmg or MyApp_1.2.3.dmg work.
+  const match = url.match(/[/_\s.-]v?(\d+\.\d+(?:\.\d+)?)/);
   return match ? match[1] : null;
 }
 
@@ -223,7 +256,7 @@ function extractVersionFromUrl(url: string) {
  * trailing digits (1.6 / 1.5) without a separator — common on marketing sites.
  */
 function extractCompactVersion(filename: string): string | null {
-  const base = filename.replace(/\.(dmg|zip|pkg)$/i, "");
+  const base = stripCaskArtifactSuffixes(filename);
   // Do not treat arch tags (aarch64, x86_64, arm64, amd64, x64) as Unfatten-style compact versions
   if (/(?:^|[_-])(?:aarch64|x86_64|amd64|arm64|x64)$/i.test(base)) return null;
   const m = base.match(/([A-Za-z])(\d)(\d)$/);
@@ -232,3 +265,8 @@ function extractCompactVersion(filename: string): string | null {
 }
 
 export { extractVersionFromUrl, extractCompactVersion };
+
+export async function generateCaskApp(url: string, options: any = {}) {
+  const payload = await collectCaskAppPayload(url, options);
+  return writeRenderedCask(payload, options.tapPath);
+}

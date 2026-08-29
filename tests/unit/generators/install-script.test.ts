@@ -3,12 +3,22 @@ import {
   collectInstallScriptPayload,
   detectInstallScriptFlags,
 } from "../../../lib/generators/install-script.ts";
+import { downloadAndHash } from "../../../lib/sha256.ts";
+
+const MOCK_SCRIPT = '#!/bin/bash\n# FORCE=1 skips prompts\nif [ "$FORCE" = "1" ]; then true; fi\n';
+
+function makeDownloadAndHashMock(buffer: string | Buffer = MOCK_SCRIPT) {
+  return { sha256: "script_sha256_mock_value_64chars_pad_abcdef0123456789abcdef", buffer: typeof buffer === "string" ? Buffer.from(buffer) : buffer };
+}
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("mocked_sha256"),
-  downloadAndHash: mock()
-    .mockResolvedValue({ sha256: "script_sha256_mock_value_64chars_pad_abcdef0123456789abcdef" }),
+  downloadAndHash: mock().mockResolvedValue(makeDownloadAndHashMock()),
 }));
+
+function mockDownloadText(script: string) {
+  (downloadAndHash as any).mockResolvedValue(makeDownloadAndHashMock(script));
+}
 
 describe("detectInstallScriptFlags", () => {
   it("detects FORCE and ensures BIN_DIR", () => {
@@ -41,6 +51,134 @@ describe("detectInstallScriptFlags", () => {
     );
     expect(flags.args).not.toContain("-y");
   });
+
+  it("detects --no-modify-path and --quiet", () => {
+    const flags = detectInstallScriptFlags(
+      `Usage: install.sh [options]
+        -y, --yes
+        --no-modify-path
+        -q, --quiet
+      `,
+    );
+    expect(flags.args).toContain("--no-modify-path");
+    expect(flags.args).toContain("--quiet");
+    expect(flags.env.NO_MODIFY_PATH).toBe("1");
+    expect(flags.env.QUIET).toBe("1");
+  });
+
+  it("detects -f/--force and sets FORCE", () => {
+    const flags = detectInstallScriptFlags(
+      'Usage: install.sh [-f|--force]\nwhile [ $# -gt 0 ]; do\n  case "$1" in\n    -f | --force)\n      FORCE=1\n      shift\n      ;;\n  esac\ndone\n',
+    );
+    expect(flags.args).toContain("--force");
+    expect(flags.args).not.toContain("-f");
+    expect(flags.env.FORCE).toBe("1");
+  });
+
+  it("passes --version value when the script documents it", () => {
+    const flags = detectInstallScriptFlags(
+      `Usage: install.sh [options]
+        --version <version>  Install a specific version
+      `,
+      "myapp",
+    );
+    expect(flags.valueArgs).toEqual([
+      { arg: "--version", value: "version.to_s" },
+    ]);
+  });
+
+  it("passes --to / --prefix / --bin-dir when documented as install paths", () => {
+    const flags = detectInstallScriptFlags(
+      `Usage: install.sh [options]
+        --to <dir>         Install to directory
+        --bin-dir <dir>    Bin directory
+      `,
+      "myapp",
+    );
+    expect(flags.valueArgs).toContainEqual({
+      arg: "--to",
+      value: '(buildpath/"bin").to_s',
+    });
+    expect(flags.valueArgs).toContainEqual({
+      arg: "--bin-dir",
+      value: '(buildpath/"bin").to_s',
+    });
+  });
+
+  it("detects rustup-style --default-toolchain and --profile literals", () => {
+    const flags = detectInstallScriptFlags(
+      `Options:
+        --default-toolchain <DEFAULT_TOOLCHAIN>
+        --profile <PROFILE>
+      `,
+      "rustup",
+    );
+    expect(flags.valueArgs).toContainEqual({
+      arg: "--default-toolchain",
+      value: '"none"',
+    });
+    expect(flags.valueArgs).toContainEqual({ arg: "--profile", value: '"minimal"' });
+  });
+
+  it("does not treat rustup --version as a value flag", () => {
+    const flags = detectInstallScriptFlags(
+      `Options:
+        -V, --version
+                Print version
+      `,
+    );
+    expect(flags.valueArgs).not.toContainEqual(
+      expect.objectContaining({ arg: "--version" }),
+    );
+  });
+
+  it("sets app-specific NO_MODIFY_PATH env variables", () => {
+    const flags = detectInstallScriptFlags(
+      'UV_NO_MODIFY_PATH="${UV_NO_MODIFY_PATH:-0}"\n',
+      "uv",
+    );
+    expect(flags.env.UV_NO_MODIFY_PATH).toBe("1");
+  });
+
+  it("sets VOLTA_HOME to a buildpath app home", () => {
+    const flags = detectInstallScriptFlags(
+      'VOLTA_HOME="${VOLTA_HOME:-$HOME/.volta}"\n',
+      "volta",
+    );
+    expect(flags.env.VOLTA_HOME).toBe('(buildpath/".volta").to_s');
+  });
+
+  it("sets bare NO_MODIFY_PATH to 'true' when the script default is false", () => {
+    const flags = detectInstallScriptFlags(
+      'NO_MODIFY_PATH="${NO_MODIFY_PATH:-false}"\n',
+      "ante",
+    );
+    expect(flags.env.NO_MODIFY_PATH).toBe("true");
+  });
+
+  it("sets bare NO_MODIFY_PATH to '1' when the script default is 0", () => {
+    const flags = detectInstallScriptFlags(
+      'NO_MODIFY_PATH="${NO_MODIFY_PATH:-0}"\n',
+      "foo",
+    );
+    expect(flags.env.NO_MODIFY_PATH).toBe("1");
+  });
+
+  it("flags install scripts that need path/sudo rewriting", () => {
+    const flags = detectInstallScriptFlags(
+      'readonly INSTALL_DIR="/usr/local/bin"\nFORCE="${FORCE:-0}"\n',
+      "devbox",
+    );
+    expect(flags.installScriptRewrite).toBe(true);
+  });
+
+  it("does not rewrite starship-style scripts that honor BIN_DIR", () => {
+    const flags = detectInstallScriptFlags(
+      'BIN_DIR="/usr/local/bin"\n-y, --yes\n',
+      "starship",
+    );
+    expect(flags.installScriptRewrite).toBe(false);
+  });
 });
 
 describe("detectInstallScriptShell", () => {
@@ -51,7 +189,6 @@ describe("detectInstallScriptShell", () => {
     expect(
       detectInstallScriptShell("#!/usr/bin/env sh\necho hi\n"),
     ).toBe("sh");
-    // No shebang but starship-style POSIX guard → sh
     expect(
       detectInstallScriptShell(
         "if [ -n \"$BASH_VERSION\" ] && [ -z \"$POSIXLY_CORRECT\" ]; then\n  echo 'Please use `sh` instead'\n  exit 1\nfi\n",
@@ -64,15 +201,7 @@ describe("detectInstallScriptShell", () => {
 describe("collectInstallScriptPayload", () => {
   beforeEach(() => {
     mock.restore();
-    global.fetch = mock(() =>
-      Promise.resolve({
-        ok: true,
-        text: () =>
-          Promise.resolve(
-            '#!/bin/bash\n# FORCE=1 skips prompts\nif [ "$FORCE" = "1" ]; then true; fi\n',
-          ),
-      }),
-    ) as any;
+    (downloadAndHash as any).mockResolvedValue(makeDownloadAndHashMock());
   });
 
   it("returns payload with correct template identifier", async () => {
@@ -100,16 +229,12 @@ describe("collectInstallScriptPayload", () => {
     const payload = await collectInstallScriptPayload(
       "https://get.volta.sh",
     );
-    // url.split("/").pop() on "https://get.volta.sh" → "get.volta.sh"
-    // baseName strips .sh → "get.volta"
     expect(payload.scriptFilename).toBe("get.volta.sh");
     expect(payload.name).toBe("get-volta");
   });
 
   it("handles bare domain URL", async () => {
     const payload = await collectInstallScriptPayload("https://mise.run");
-    // url.split("/").pop() → "mise.run", .run is not .sh/.bash so baseName stays "mise.run"
-    // toFormulaName("mise.run") → "mise-run"
     expect(payload.scriptFilename).toBe("mise.run");
     expect(payload.name).toBe("mise-run");
   });
@@ -170,11 +295,27 @@ describe("collectInstallScriptPayload", () => {
         name: "agent-deck",
         force: true,
         scriptArgs: ["--non-interactive"],
-        installFlags: { args: [], env: {}, ensureBinDir: true },
+        installFlags: {
+          args: [],
+          env: {},
+          ensureBinDir: true,
+          valueArgs: [],
+        },
       },
     );
     expect(payload.installEnvLines).toContain("FORCE");
     expect(payload.installArgsRuby).toContain("--non-interactive");
+  });
+
+  it("extracts binary name from install script body", async () => {
+    mockDownloadText(
+      '#!/bin/bash\nBINARY_NAME="${BINARY_NAME:-ante}"\necho "$BINARY_NAME"\n',
+    );
+    const payload = await collectInstallScriptPayload(
+      "https://ante.run/install.sh",
+      { name: "ante-install-sh" },
+    );
+    expect(payload.testBinName).toBe("ante");
   });
 
   it("generates livecheck block with URL", async () => {
@@ -203,6 +344,7 @@ describe("collectInstallScriptPayload", () => {
 describe("collectInstallScriptPayload — Qoder", () => {
   beforeEach(() => {
     mock.restore();
+    (downloadAndHash as any).mockResolvedValue(makeDownloadAndHashMock());
   });
 
   it("returns correct template identifier", async () => {
@@ -256,6 +398,7 @@ describe("collectInstallScriptPayload — Qoder", () => {
 describe("collectInstallScriptPayload — Cua Driver", () => {
   beforeEach(() => {
     mock.restore();
+    (downloadAndHash as any).mockResolvedValue(makeDownloadAndHashMock());
   });
 
   it("returns correct template identifier", async () => {
@@ -314,6 +457,7 @@ describe("collectInstallScriptPayload — Cua Driver", () => {
 describe("collectInstallScriptPayload — version attribute", () => {
   beforeEach(() => {
     mock.restore();
+    (downloadAndHash as any).mockResolvedValue(makeDownloadAndHashMock());
   });
 
   it("includes a non-empty version for static install URLs", async () => {
@@ -339,4 +483,3 @@ describe("collectInstallScriptPayload — version attribute", () => {
     expect(payload.version).toBe("1.2.3");
   });
 });
-

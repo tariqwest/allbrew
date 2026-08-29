@@ -619,12 +619,24 @@ export async function filterUnreachableScriptArtifacts(
       /script-bundle|api-or-bundle|extensionless-guess|client-latest-guess/i.test(e),
     );
     // Always probe same-site high-score DMGs that only came from bundle guessing
-    if (!fromBundle) return false;
-    try {
-      return sameSite(c.url, pageUrl);
-    } catch {
-      return false;
+    if (fromBundle) {
+      try {
+        return sameSite(c.url, pageUrl);
+      } catch {
+        return false;
+      }
     }
+    // Same-site high-confidence cask-dmg candidates (e.g. product download page
+    // with a DMG link) can also be SPA shells that return text/html. Probing
+    // them prevents brewing a 2KB HTML soft-404 (kosmik.app).
+    if (c.kind === "cask-dmg" && c.score >= 100) {
+      try {
+        return sameSite(c.url, pageUrl);
+      } catch {
+        return false;
+      }
+    }
+    return false;
   };
 
   const defaultHeadOk = async (url: string): Promise<boolean> => {

@@ -3,8 +3,9 @@ import { collectCaskAppPayload } from "../../../lib/generators/cask-app.ts";
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("cask_sha256_64chars_padding_abcdef0123456789abcdef0123456789ab"),
-  downloadAndHash: mock()
-    .mockResolvedValue({ sha256: "cask_sha256_64chars_padding_abcdef0123456789abcdef0123456789ab" }),
+  downloadAndHash: mock().mockResolvedValue({
+    sha256: "cask_sha256_64chars_padding_abcdef0123456789abcdef0123456789ab",
+  }),
   downloadToTemp: mock().mockResolvedValue({
     path: "/tmp/mock.dmg",
     sha256: "cask_sha256_64chars_padding_abcdef0123456789abcdef0123456789ab",
@@ -27,5 +28,15 @@ describe("collectCaskAppPayload finalUrl version extraction", () => {
     );
     expect(payload.versionLine).toContain("0.14.0");
     expect(payload.appOrPkgBlock).toContain("Xirp.app");
+    expect(payload.name).toBe("xirp");
+    expect(payload.zapBlock).toContain("zap trash");
+  });
+
+  it("strips architecture and distribution tags from the final DMG filename", async () => {
+    const payload = await collectCaskAppPayload(
+      "https://example.com/download/latest?arch=arm64",
+    );
+    expect(payload.name).toBe("xirp");
+    expect(payload.displayName).toBe("Xirp");
   });
 });

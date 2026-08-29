@@ -19,6 +19,21 @@ export async function loadHarness() {
   return { ...homebrew, ...users, ...shell, config };
 }
 
+export function makeProjectUserExecutor(h) {
+  const user = h.config?.projectUser || process.env.TH_PROJECT_USER || "th-allbrew";
+  const q = h.q;
+  return async (cmd, _description, opts = {}) => {
+    const sshCmd = `if [ "$(id -un)" = "${user}" ]; then bash -lc ${q(cmd)}; else sudo -H -u ${q(user)} bash -lc ${q(cmd)}; fi`;
+    const res = await h.lumeSshExec(sshCmd, { nothrow: true, timeout: opts.timeout });
+    if (res.exitCode !== 0) {
+      throw new Error(
+        `Command failed in VM as ${user} (exit ${res.exitCode}):\n${res.stderr}\n${res.stdout}`
+      );
+    }
+    return [res.stdout, res.stderr].filter(Boolean).join("\n");
+  };
+}
+
 export async function guest(runAsProjectUser, session, cmd, description, opts = {}) {
   try {
     const stdout = await runAsProjectUser(cmd, description, {
@@ -208,75 +223,31 @@ export async function releaseHomebrewPrefixDurable(h, session) {
 }
 
 export async function ensureAllbrew(h, session, mountPoint) {
-  const { runAsProjectUser } = h;
-  const brewBin = `${mountPoint}/bin`;
-  // Always refresh tap + upgrade so guest picks up freshly released allbrew
-  // (probe-only path left stale versions after patch releases).
-  const ensure = await guest(
-    runAsProjectUser,
-    session,
-    `${brewEnvPreamble(mountPoint)}
-command -v brew; brew --version | head -1
-brew tap tariqwest/tap 2>&1 || true
-brew trust tariqwest/tap 2>&1 || true
-brew trust --formula tariqwest/tap/allbrew 2>&1 || true
-brew update 2>&1 | tail -20
-if command -v allbrew >/dev/null 2>&1 || test -x ${brewBin}/allbrew; then
-  brew upgrade allbrew 2>&1 || brew reinstall allbrew 2>&1
-else
-  brew install allbrew 2>&1
-fi
-if command -v allbrew >/dev/null 2>&1; then allbrew --version; exit 0; fi
-if test -x ${brewBin}/allbrew; then ${brewBin}/allbrew --version; exit 0; fi
-exit 1
-`,
-    "ensure-allbrew-upgrade",
-    { timeout: 600000, stream: true },
-  );
-  if (ensure.exitCode !== 0 || !ensure.stdout.trim()) {
-    throw new Error(`failed to ensure/upgrade allbrew:\n${ensure.stdout}`);
+  const user = h.config?.projectUser || process.env.TH_PROJECT_USER || "th-allbrew";
+  const q = h.q;
+  const env = `export PATH="${mountPoint}/bin:$HOME/.bun/bin:$PATH" NONINTERACTIVE=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_REQUIRE_TAP_TRUST=1 CI=1`;
+  const check = `command -v allbrew >/dev/null 2>&1 && allbrew --version`;
+  const install = `{ brew tap tariqwest/tap 2>&1 || true; brew trust tariqwest/tap 2>&1 || true; brew trust --formula tariqwest/tap/allbrew 2>&1 || true; brew install allbrew 2>&1; allbrew --version; }`;
+  const body = `${env}; ${check} || ${install}`;
+  const cmd = `if [ "$(id -un)" = "${user}" ]; then bash -lc ${q(body)}; else sudo -H -u ${q(user)} bash -lc ${q(body)}; fi`;
+  const res = await h.lumeSshExec(cmd, { nothrow: true, timeout: 600000 });
+  if (res.exitCode !== 0 || !res.stdout.trim()) {
+    throw new Error(`failed to ensure/upgrade allbrew:\n${res.stdout}\n${res.stderr}`);
   }
-  // Prefer last non-empty line that looks like a version probe
-  const lines = ensure.stdout.trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const lines = res.stdout.trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const verLine = [...lines].reverse().find((l) => /allbrew|^\d+\.\d+\.\d+/.test(l)) || lines.at(-1);
   return verLine;
 }
 
 
 export async function ensureTapConfigured(h, session, mountPoint, tapPath) {
-  const { runAsProjectUser } = h;
-  const r = await guest(
-    runAsProjectUser,
-    session,
-    `${brewEnvPreamble(mountPoint)}
-TAP=${JSON.stringify(tapPath)}
-mkdir -p "$TAP/Formula" "$TAP/Casks" "$HOME/.config/allbrew"
-# Repair missing or corrupt tap git (shared VMs often leave "bad object HEAD").
-if [ ! -d "$TAP/.git" ] || ! git -C "$TAP" rev-parse HEAD >/dev/null 2>&1; then
-  rm -rf "$TAP/.git"
-  git -C "$TAP" init
-  git -C "$TAP" config user.email "batch-worker@local"
-  git -C "$TAP" config user.name "batch-worker"
-  if [ ! -f "$TAP/README.md" ]; then echo "# batch worker tap" > "$TAP/README.md"; fi
-  git -C "$TAP" add -A
-  git -C "$TAP" commit -m "init tap" || true
-fi
-AB=$(command -v allbrew || echo ${mountPoint}/bin/allbrew)
-$AB config set-tap "$TAP"
-# Register + trust the disposable user tap so brew install of generated
-# formulae is not blocked by Homebrew 6+ third-party trust gates.
-USER_NAME=$(basename "$(dirname "$TAP")")
-TAP_BASE=$(basename "$TAP")
-TAP_SLUG="\${USER_NAME}/\${TAP_BASE#homebrew-}"
-brew tap "$TAP_SLUG" "$TAP" 2>&1 || true
-brew trust --tap "$TAP_SLUG" 2>&1 || brew trust "$TAP_SLUG" 2>&1 || true
-$AB config show | sed -E 's/(token|TOKEN|githubToken).*/REDACTED:/i'
-`,
-    "ensure-tap",
-    { timeout: 120000 },
-  );
-  if (r.exitCode !== 0) throw new Error(`failed to configure tap: ${r.stdout}`);
-  return r.stdout;
+  const user = h.config?.projectUser || process.env.TH_PROJECT_USER || "th-allbrew";
+  const q = h.q;
+  const body = `export PATH="${mountPoint}/bin:$HOME/.bun/bin:$PATH" HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_REQUIRE_TAP_TRUST=1 CI=1; export TAP=${q(tapPath)}; mkdir -p "$TAP/Formula" "$TAP/Casks" "$HOME/.config/allbrew"; if [ ! -d "$TAP/.git" ] || ! git -C "$TAP" rev-parse HEAD >/dev/null 2>&1; then rm -rf "$TAP/.git"; git -C "$TAP" init; git -C "$TAP" config user.email "batch-worker@local"; git -C "$TAP" config user.name "batch-worker"; if [ ! -f "$TAP/README.md" ]; then echo "# batch worker tap" > "$TAP/README.md"; fi; git -C "$TAP" add -A; git -C "$TAP" commit -m "init tap" || true; fi; AB=$(command -v allbrew || echo ${q(`${mountPoint}/bin/allbrew`)}); $AB config set-tap "$TAP"; USER_NAME=$(basename "$(dirname "$TAP")"); TAP_BASE=$(basename "$TAP"); TAP_SLUG="$USER_NAME/\${TAP_BASE#homebrew-}"; brew tap "$TAP_SLUG" "$TAP" 2>&1 || true; brew trust --tap "$TAP_SLUG" 2>&1 || brew trust "$TAP_SLUG" 2>&1 || true; $AB config show | sed -E 's/(token|TOKEN|githubToken).*/REDACTED:/i'`;
+  const cmd = `if [ "$(id -un)" = "${user}" ]; then bash -lc ${q(body)}; else sudo -H -u ${q(user)} bash -lc ${q(body)}; fi`;
+  const res = await h.lumeSshExec(cmd, { nothrow: true, timeout: 120000 });
+  if (res.exitCode !== 0) throw new Error(`failed to configure tap: ${res.stdout}\n${res.stderr}`);
+  return res.stdout;
 }
 
 export function installCmd({ url, slug, mountPoint, guestLog, token }) {
@@ -457,6 +428,77 @@ export async function syncAllbrewSrcToVM(h, hostSrcPath, vmDest) {
     throw new Error(`syncAllbrewSrcToVM failed (branch ${effectiveBranch}):\n${res.stdout}\n${res.stderr}`);
   }
   return { branch: effectiveBranch, dest, stdout: res.stdout };
+}
+
+export async function isVmSrcFresh(h, hostSrcPath, vmDest) {
+  const { existsSync } = await import("node:fs");
+  const { spawn } = await import("node:child_process");
+  if (!existsSync(hostSrcPath)) return null;
+
+  const runHostGit = async (cmd, opts = {}) => {
+    return await new Promise((resolve) => {
+      const child = spawn("bash", ["-c", cmd], {
+        cwd: hostSrcPath,
+        env: process.env,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (d) => { stdout += d; });
+      child.stderr.on("data", (d) => { stderr += d; });
+      const timer = opts.timeout
+        ? setTimeout(() => { try { child.kill("SIGKILL"); } catch {} }, opts.timeout)
+        : null;
+      child.on("close", (code) => {
+        if (timer) clearTimeout(timer);
+        resolve({ stdout: stdout.trimEnd(), stderr: stderr.trimEnd(), exitCode: code ?? 1 });
+      });
+    });
+  };
+
+  const branchRes = await runHostGit(`git rev-parse --abbrev-ref HEAD 2>/dev/null || git branch --show-current 2>/dev/null || echo HEAD`);
+  const branchName = (branchRes.stdout || "").trim() || "HEAD";
+  const isHead = branchName === "HEAD";
+  const effectiveBranch = isHead ? `agent/batch-src-${Date.now()}` : branchName;
+  const projectUser = h.config?.projectUser || process.env.TH_PROJECT_USER || "th-allbrew";
+  const safeBranch = effectiveBranch.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 80);
+  const dest = vmDest || `/Users/${projectUser}/Developer/allbrew-src/${safeBranch}`;
+  const wantShaRes = await runHostGit(`git rev-parse HEAD`);
+  const wantSha = (wantShaRes.stdout || "").trim();
+  if (!wantSha) return null;
+
+  const script = [
+    "#!/bin/bash",
+    "set -uo pipefail",
+    `SRC=${h.q(dest)}`,
+    `WANT=${h.q(wantSha)}`,
+    `if [ -d "$SRC/.git" ] && [ -f "$SRC/bin/allbrew.ts" ] && [ -n "$WANT" ]; then`,
+    `  GOT=$(git -C "$SRC" rev-parse HEAD 2>/dev/null || echo "")`,
+    `  if [ "$GOT" = "$WANT" ]; then`,
+    `    echo "FRESH $GOT"`,
+    `    exit 0`,
+    `  fi`,
+    `  echo "STALE $GOT"`,
+    `  exit 1`,
+    `fi`,
+    `echo "MISSING"`,
+    `exit 1`,
+  ].join("\n");
+  const encoded = Buffer.from(script).toString("base64");
+  const scriptPath = `/tmp/th-is-src-fresh-${process.pid}.sh`;
+  const inner = [
+    `echo ${h.q(encoded)} | openssl base64 -d -A > ${h.q(scriptPath)}`,
+    `chmod +x ${h.q(scriptPath)}`,
+    h.q(scriptPath),
+    `rc=$?`,
+    `rm -f ${h.q(scriptPath)}`,
+    `exit $rc`,
+  ].join("\n");
+  const res = await h.lumeSshExec(inner, { nothrow: true, timeout: 60000 });
+  if (res.exitCode === 0 && /FRESH\s+([0-9a-f]+)/.test(res.stdout || "")) {
+    return { dest, sha: wantSha };
+  }
+  return null;
 }
 
 export function strictVerifyCmd({ pkg, mountPoint }) {

@@ -50,7 +50,6 @@ const ARCHIVE_EXTENSIONS = [
   ".tar.bz2",
   ".tar.xz",
   ".zip",
-  ".pkg",
   ".gz",
   ".bz2",
   ".xz",
@@ -143,7 +142,7 @@ export function oracleClassify(url: string): OracleResult {
     return { type: "bash-script", url };
   }
 
-  if (path.endsWith(".dmg")) {
+  if (path.endsWith(".dmg") || path.endsWith(".pkg")) {
     return { type: "cask-dmg", url };
   }
 

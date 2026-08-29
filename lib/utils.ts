@@ -27,6 +27,33 @@ export function toCaskToken(name) {
     .toLowerCase();
 }
 
+/**
+ * Strip distribution-only suffixes from macOS installer filenames so the
+ * inferred cask token, display name, and .app name come from the product name
+ * rather than version / architecture / platform tags (e.g. MyApp-1.2.3-arm64
+ * or Xirp-0.14.0-arm64-external.dmg → MyApp / Xirp).
+ */
+const CASK_ARCH_TAG_RE = /[-_.\s](?:aarch64|arm64|x64|x86_64|amd64|intel?|universal|apple[-\s]?silicon|apple|silicon)[-_.\s]?$/i;
+const CASK_PLATFORM_TAG_RE = /[-_.\s](?:macos|osx|darwin|mac)[-_.\s]?$/i;
+const CASK_DIST_TAG_RE = /[-_.\s](?:external|internal|release|setup|installer|latest|direct|signed|unsigned)[-_.\s]?$/i;
+const CASK_VERSION_TAIL_RE = /[-_.\s]v?\d+(?:\.\d+)*(?:[-+][\w.]+)?$/i;
+
+export function stripCaskArtifactSuffixes(name: string): string {
+  if (!name) return "";
+  let previous: string;
+  let cleaned = name.replace(/\.(dmg|zip|pkg)$/i, "");
+  do {
+    previous = cleaned;
+    cleaned = cleaned
+      .replace(CASK_ARCH_TAG_RE, "")
+      .replace(CASK_PLATFORM_TAG_RE, "")
+      .replace(CASK_DIST_TAG_RE, "")
+      .replace(CASK_VERSION_TAIL_RE, "")
+      .replace(/[-_.\s]+$/g, "");
+  } while (cleaned !== previous);
+  return cleaned;
+}
+
 let cachedHomebrewCorePrefix: string | null | undefined;
 let cachedHomebrewCaskPrefix: string | null | undefined;
 let cachedHomebrewCachePrefix: string | null | undefined;
@@ -788,6 +815,44 @@ export function isAppAsset(assetName) {
   // common for single-platform macOS .app releases where version is in tag not filename.
   if (!hasCpuArch && isBareAppZipName(lower)) return true;
   return false;
+}
+
+/**
+ * Multi-platform CLI release heuristic: product-version-macos.zip + linux archive,
+ * with no DMG / .app-named assets. Those zips are bare CLI binaries (e.g.
+ * swift-outdated-0.15.3-macos.zip), not desktop app bundles — even though
+ * isAppAsset() matches the macos token. Callers should skip cask-app-release
+ * and fall through to binary-release / SPM / README install methods.
+ */
+export function isCliPlatformZipRelease(
+  assets: Array<{ name?: string } | string> | null | undefined,
+): boolean {
+  if (!assets?.length) return false;
+  const names = assets.map((a) =>
+    String(typeof a === "string" ? a : a?.name || "").toLowerCase(),
+  );
+  if (names.some((n) => !n)) return false;
+  if (names.some((n) => n.endsWith(".dmg") || n.includes(".app"))) return false;
+
+  const hasMacZipNoArch = names.some((n) => {
+    if (!n.endsWith(".zip")) return false;
+    const hasMac =
+      /(?:^|[^a-z])(?:macos|darwin|osx)(?:[^a-z]|$)/i.test(n);
+    if (!hasMac) return false;
+    const hasCpuArch =
+      /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(n);
+    return !hasCpuArch;
+  });
+
+  const hasLinux = names.some((n) => {
+    if (!/(?:^|[^a-z])linux(?:[^a-z]|$)/i.test(n)) return false;
+    return (
+      /\.(?:zip|tgz|tar\.gz|tar\.bz2|tar\.xz)$/i.test(n) ||
+      (!n.includes(".") && n.length > 0)
+    );
+  });
+
+  return hasMacZipNoArch && hasLinux;
 }
 
 function isBareAppZipName(lowerName: string): boolean {

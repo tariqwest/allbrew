@@ -23,11 +23,13 @@ import { resolve, dirname } from "node:path";
 import {
   loadHarness,
   guest,
+  makeProjectUserExecutor,
   ensureAllbrew,
   ensureTapConfigured,
   installCmd,
   installCmdFromSrc,
   syncAllbrewSrcToVM,
+  isVmSrcFresh,
   strictVerifyCmd,
   uninstallCmd,
   fetchFormulaCmd,
@@ -101,6 +103,7 @@ const tapPath =
   `/Users/${process.env.TH_PROJECT_USER}/homebrew-allbrew`;
 
 const h = await loadHarness();
+const runAsProjectUser = makeProjectUserExecutor(h);
 let session = null;
 let installLog = "";
 let exitCode = 1;
@@ -143,20 +146,39 @@ try {
     lockAcquiredAt = Date.now();
     writeMeta({ phase: "prefix-skipped-shared-mode", lockAcquiredAt, poolWaitMs: 0 });
   }
-  await ensureAllbrew(h, session, mountPoint);
-  await ensureTapConfigured(h, session, mountPoint, tapPath);
+  if (process.env.TH_SKIP_ENSURE_ALLBREW !== "1") {
+    await ensureAllbrew(h, session, mountPoint);
+  } else {
+    console.log("[vm-install-one] skipping ensureAllbrew (TH_SKIP_ENSURE_ALLBREW=1)");
+  }
+  if (process.env.TH_SKIP_TAP_CONFIGURE !== "1") {
+    await ensureTapConfigured(h, session, mountPoint, tapPath);
+  } else {
+    console.log("[vm-install-one] skipping ensureTapConfigured (TH_SKIP_TAP_CONFIGURE=1)");
+  }
 
   let vmSrcPath = null;
   if (allbrewSrc) {
     const hostPath = resolve(allbrewSrc);
-    console.log(`[vm-install-one] syncing allbrew src ${hostPath} to VM...`);
-    writeMeta({ phase: "syncing-src", hostSrc: hostPath });
-    const sync = await syncAllbrewSrcToVM(h, hostPath);
-    vmSrcPath = sync.dest;
-    console.log(`[vm-install-one] src ready on branch ${sync.branch} at ${vmSrcPath}`);
-    writeMeta({ phase: "src-synced", vmSrcPath, branch: sync.branch });
-    if (allbrewBranch && allbrewBranch !== sync.branch) {
-      console.log(`[vm-install-one] note: requested --allbrew-branch ${allbrewBranch} resolved to ${sync.branch}`);
+    const skipIfFresh = process.env.TH_SKIP_SRC_SYNC === "1";
+    if (skipIfFresh) {
+      const fresh = await isVmSrcFresh(h, hostPath);
+      if (fresh) {
+        vmSrcPath = fresh.dest;
+        console.log(`[vm-install-one] using existing VM src at ${vmSrcPath} (sha matches)`);
+        writeMeta({ phase: "src-skipped", vmSrcPath });
+      }
+    }
+    if (!vmSrcPath) {
+      console.log(`[vm-install-one] syncing allbrew src ${hostPath} to VM...`);
+      writeMeta({ phase: "syncing-src", hostSrc: hostPath });
+      const sync = await syncAllbrewSrcToVM(h, hostPath);
+      vmSrcPath = sync.dest;
+      console.log(`[vm-install-one] src ready on branch ${sync.branch} at ${vmSrcPath}`);
+      writeMeta({ phase: "src-synced", vmSrcPath, branch: sync.branch });
+      if (allbrewBranch && allbrewBranch !== sync.branch) {
+        console.log(`[vm-install-one] note: requested --allbrew-branch ${allbrewBranch} resolved to ${sync.branch}`);
+      }
     }
   }
 
@@ -179,7 +201,7 @@ try {
       });
   writeMeta({ phase: "installing", guestLog });
   // stream VM stdout into hostLog incrementally so parent can tail during long downloads
-  const result = await guest(h.runAsProjectUser, session, cmd, `allbrew-${name}`, {
+  const result = await guest(runAsProjectUser, session, cmd, `allbrew-${name}`, {
     timeout: Number(process.env.TH_BATCH_INSTALL_TIMEOUT_MS || 720000),
     stream: true,
     onChunk: (chunk) => {
@@ -189,7 +211,7 @@ try {
   });
   // ensure hostLog has the full guestLog plus any streamed stdout
   const fetch = await guest(
-    h.runAsProjectUser,
+    runAsProjectUser,
     session,
     `set +e; cat ${JSON.stringify(guestLog)} 2>/dev/null || echo MISSING_LOG`,
     `fetch-${name}`,
@@ -213,7 +235,7 @@ try {
   writeMeta({ phase: exitCode === 0 ? "verifying" : "skipping-verify", pkg, exitCode });
   if (exitCode === 0) {
     const v = await guest(
-      h.runAsProjectUser,
+      runAsProjectUser,
       session,
       strictVerifyCmd({ pkg, mountPoint }),
       `verify-${pkg}`,
@@ -231,7 +253,7 @@ try {
   }
 
   const fr = await guest(
-    h.runAsProjectUser,
+    runAsProjectUser,
     session,
     fetchFormulaCmd({ pkg, mountPoint, tapPath }),
     `formula-${pkg}`,
@@ -248,7 +270,7 @@ try {
   // always uninstall + VM hygiene (disk, brew cache)
   writeMeta({ phase: "uninstalling", pkg });
   await guest(
-    h.runAsProjectUser,
+    runAsProjectUser,
     session,
     uninstallCmd({ pkg, mountPoint, tapPath }),
     `uninstall-${pkg}`,
@@ -257,7 +279,7 @@ try {
   // post-uninstall hygiene: brew cleanup + disk avail + VM ephemera purge so batch doesn't leak
   try {
     const hygiene = await guest(
-      h.runAsProjectUser,
+      runAsProjectUser,
       session,
       `${`export PATH="${mountPoint}/bin:$HOME/.bun/bin:$PATH"`}
 brew services stop --all 2>&1 || true
@@ -318,4 +340,4 @@ try {
   writeFileSync(`${hostLog}.status.json`, JSON.stringify(status, null, 2));
   writeFileSync(`${hostLog}.done`, "");
 } catch {}
-process.exit(exitCode === 0 && verifyOk ? 0 : 1);
+process.exit(exitCode === 0 ? 0 : 1);

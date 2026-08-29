@@ -4,6 +4,7 @@ import {
   rubyEscape,
   isAppAsset,
   matchAssetToArch,
+  stripCaskArtifactSuffixes,
 } from "../utils.ts";
 import { downloadToTemp } from "../sha256.ts";
 import {
@@ -15,6 +16,12 @@ import type { CaskAppReleasePayload } from "../template-payload.ts";
 import { writeRenderedCask } from "../template-renderer.ts";
 import { githubLatestLivecheckBlock } from "./livecheck.ts";
 import { templateReleaseUrl } from "./binary-release.ts";
+
+/** True when cask-app-release rejected a false-positive app asset (CLI zip, etc.). */
+export function isMissingAppBundleError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return /No \.app bundle found/i.test(msg);
+}
 
 /** Prefer DMG, then host-arch zip, then first app asset. */
 export function pickBestAppReleaseAsset<
@@ -190,11 +197,7 @@ export async function detectAppAndNestedFromAsset(
       // fall through to filename heuristic
     }
 
-    const base = asset.name
-      .replace(/\.(dmg)$/i, "")
-      .replace(/[-_](?:aarch64|arm64|x64|amd64|universal)$/i, "")
-      .replace(/-[\d.]+$/, "")
-      .replace(/_[\d.]+$/, "");
+    const base = stripCaskArtifactSuffixes(asset.name.replace(/\.(dmg)$/i, ""));
     return { appName: base + ".app", nestedContainer: null };
   }
 

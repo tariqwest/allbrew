@@ -42,7 +42,7 @@
   {
     "name": "zoom-pkg",
     "url": "https://zoom.us/client/latest/Zoom.pkg",
-    "notes": ".pkg → archive"
+    "notes": ".pkg → cask-dmg"
   },
   {
     "name": "bear-mas",
