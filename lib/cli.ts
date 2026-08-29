@@ -2609,7 +2609,7 @@ async function brewAutoInstall(result: any, opts: any) {
     await execFileAsync(
       "brew",
       ["install", ...headFlag, installFlag, result.filePath],
-      { env: installEnv },
+      { env: installEnv, maxBuffer: 50 * 1024 * 1024 },
     );
     installSpinner.succeed(`Installed: ${chalk.green(result.name)}`);
 
