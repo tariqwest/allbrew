@@ -156,8 +156,12 @@ describe("renderFormula", () => {
       `  sha256 "cc"\n` +
       `  head "https://github.com/x/foo.git", branch: "main"\n\n` +
       livecheck +
-      `  depends_on "rust" => :build\n\n` +
+      `  # Rust toolchain is provided by the pre-installed rustup on allbrew test VMs,\n` +
+      `  # not by the Homebrew rust formula, to avoid heavy rebuilds in small guests.\n\n` +
       `  def install\n` +
+      `    ENV.prepend_path "PATH", Dir.home + "/.cargo/bin"\n` +
+      `    ENV["CC"] = "/usr/bin/clang"\n` +
+      `    ENV["CXX"] = "/usr/bin/clang++"\n\n` +
       `    # Prefer --locked (std_cargo_args) so builds match Cargo.lock; if the lockfile\n` +
       `    # is out of date relative to Cargo.toml (common on crates.io snapshots),\n` +
       `    # retry without --locked so install can still succeed.\n` +
@@ -610,5 +614,14 @@ describe("renderCask", () => {
       zap +
       `end\n`;
     expect(renderCask(payload)).toBe(expected);
+  });
+});
+
+describe("codesignBlock", () => {
+  it("filters search paths to directories that exist before calling find", () => {
+    const block = codesignBlock(["libexec", "bin"]);
+    expect(block).toContain("search_paths = [libexec.to_s, bin.to_s].select { |d| File.directory?(d) }");
+    expect(block).toContain("return if search_paths.empty?");
+    expect(block).toContain('"/usr/bin/find", *search_paths');
   });
 });

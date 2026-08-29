@@ -353,3 +353,20 @@ chown -R app-user:staff /Volumes/External/lume-vms/vm-homeserver-macos-testing
 - Base lifecycle, heursitics, and lock model: `../vm-local-setup/SKILL.md` (Architecture, 5-Phase Loop, Local Twin Provisioning).
 - Harness single-user mode vs exclusive prefix: `vm-local-setup` § `TH_HOMEBREW_PREFIX_ENABLED`.
 - Remote access: `~/.ssh/config` Host `homeserver-app` (`app-user@homeserver.local`, `id_server509`).
+
+## Default test-VM toolchain
+
+After provisioning or recreating `vm-homeserver-macos-testing`, apply the persisted rustup + native clang toolchain so cargo source builds use the lightweight rustup installation instead of Homebrew `rust`/`llvm`.
+
+- **Convenience runner** (runs on all enabled endpoints, including homeserver):
+  ```bash path=null start=null
+  bun tests/monitored-install-batch/setup-vm-toolchain.mjs
+  ```
+- **Manual (remote homeserver)**:
+  ```bash path=null start=null
+  ssh -o User=app-user -i ~/.ssh/id_server509 homeserver.local \
+    'lume ssh vm-homeserver-macos-testing --storage external --user th-allbrew --password th-allbrew \
+      "curl -fsS http://192.168.64.1:8000/setup-vm-toolchain.sh -o /tmp/setup-vm-toolchain.sh && bash /tmp/setup-vm-toolchain.sh"'
+  ```
+- **Script**: `tests/monitored-install-batch/lib/setup-vm-toolchain.sh`
+- See `vm-local-setup` SKILL for full details.

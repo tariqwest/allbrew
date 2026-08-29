@@ -122,4 +122,25 @@ describe("matchOfficialCaskByHomepage", () => {
     expect(m).toBeNull();
   });
 
+  it("does not adopt atuin-desktop for atuin CLI homepage + atuin slug", async () => {
+    // The atuin.sh homepage advertises the atuin CLI install script.
+    // atuin-desktop is a separate GUI .app and should not be adopted
+    // when the user asks for the base "atuin" product.
+    const m = await matchOfficialCaskByHomepage(
+      "https://atuin.sh",
+      "atuin",
+    );
+    expect(m).toBeNull();
+  });
+
+  it("does not adopt atuin-desktop for setup.atuin.sh install subdomain", async () => {
+    // setup.atuin.sh is the curl|sh install script endpoint, not the
+    // marketing homepage for the desktop cask.
+    const m = await matchOfficialCaskByHomepage(
+      "https://setup.atuin.sh",
+      "atuin",
+    );
+    expect(m).toBeNull();
+  });
+
 });
