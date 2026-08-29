@@ -1,0 +1,52 @@
+[
+  {
+    "name": "Rnwood.Smtp4dev",
+    "url": "https://www.nuget.org/packages/Rnwood.Smtp4dev",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "DepotDownloader",
+    "url": "https://www.nuget.org/packages/DepotDownloader",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-stryker",
+    "url": "https://www.nuget.org/packages/dotnet-stryker",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-subset",
+    "url": "https://www.nuget.org/packages/dotnet-subset",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-svcutil",
+    "url": "https://www.nuget.org/packages/dotnet-svcutil",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-affected",
+    "url": "https://www.nuget.org/packages/dotnet-affected",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-stack",
+    "url": "https://www.nuget.org/packages/dotnet-stack",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-certificate-tool",
+    "url": "https://www.nuget.org/packages/dotnet-certificate-tool",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-project-licenses",
+    "url": "https://www.nuget.org/packages/dotnet-project-licenses",
+    "source": "in_dotnet"
+  },
+  {
+    "name": "dotnet-xscgen",
+    "url": "https://www.nuget.org/packages/dotnet-xscgen",
+    "source": "in_dotnet"
+  }
+]

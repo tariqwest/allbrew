@@ -213,10 +213,15 @@ export type SpmPackagePayload = FormulaCommonFields & {
 export type DotnetPackagePayload = FormulaCommonFields & {
   template: "dotnet_package";
   packageName: string;
+  packageId: string;
   version: string;
   licenseLine: string;
   urlLines: string;
   livecheckBlock: string;
+  /** The actual executable name the nupkg's DotnetToolSettings.xml declares. */
+  toolCommand: string;
+  /** DOTNET_ROLL_FORWARD value for the generated env script. */
+  rollForward: string;
 };
 
 export type GemPackagePayload = FormulaCommonFields & {
