@@ -310,6 +310,64 @@ z.close()`,
     );
   });
 
+  it("prefers the client archive over a separate server archive per arch (atuin-style)", async () => {
+    const atuinRelease = {
+      tagName: "v18.19.0",
+      assets: [
+        {
+          name: "atuin-aarch64-apple-darwin.tar.gz",
+          url: "https://github.com/atuinsh/atuin/releases/download/v18.19.0/atuin-aarch64-apple-darwin.tar.gz",
+        },
+        {
+          name: "atuin-server-aarch64-apple-darwin.tar.gz",
+          url: "https://github.com/atuinsh/atuin/releases/download/v18.19.0/atuin-server-aarch64-apple-darwin.tar.gz",
+        },
+        {
+          name: "atuin-server-x86_64-apple-darwin.tar.gz",
+          url: "https://github.com/atuinsh/atuin/releases/download/v18.19.0/atuin-server-x86_64-apple-darwin.tar.gz",
+        },
+        {
+          name: "atuin-x86_64-apple-darwin.tar.gz",
+          url: "https://github.com/atuinsh/atuin/releases/download/v18.19.0/atuin-x86_64-apple-darwin.tar.gz",
+        },
+        {
+          name: "atuin-aarch64-unknown-linux-gnu.tar.gz",
+          url: "https://github.com/atuinsh/atuin/releases/download/v18.19.0/atuin-aarch64-unknown-linux-gnu.tar.gz",
+        },
+        {
+          name: "atuin-server-aarch64-unknown-linux-gnu.tar.gz",
+          url: "https://github.com/atuinsh/atuin/releases/download/v18.19.0/atuin-server-aarch64-unknown-linux-gnu.tar.gz",
+        },
+        {
+          name: "atuin-x86_64-unknown-linux-gnu.tar.gz",
+          url: "https://github.com/atuinsh/atuin/releases/download/v18.19.0/atuin-x86_64-unknown-linux-gnu.tar.gz",
+        },
+        {
+          name: "atuin-server-x86_64-unknown-linux-gnu.tar.gz",
+          url: "https://github.com/atuinsh/atuin/releases/download/v18.19.0/atuin-server-x86_64-unknown-linux-gnu.tar.gz",
+        },
+      ],
+    };
+    const atuinRepo = {
+      name: "atuin",
+      fullName: "atuinsh/atuin",
+      description: "✨ Making your shell magical",
+      homepage: "https://atuin.sh",
+      htmlUrl: "https://github.com/atuinsh/atuin",
+      license: "MIT",
+      defaultBranch: "main",
+    };
+    const payload = await collectBinaryReleasePayload(atuinRepo, atuinRelease, {
+      name: "atuin",
+      binName: "atuin",
+    });
+    expect(payload.platformBlocks).toContain("atuin-aarch64-apple-darwin.tar.gz");
+    expect(payload.platformBlocks).toContain("atuin-x86_64-apple-darwin.tar.gz");
+    expect(payload.platformBlocks).toContain("atuin-aarch64-unknown-linux-gnu.tar.gz");
+    expect(payload.platformBlocks).toContain("atuin-x86_64-unknown-linux-gnu.tar.gz");
+    expect(payload.platformBlocks).not.toContain("atuin-server-");
+  });
+
   it("detects versioned bare universal binaries (afm_0.1.0_macOS_universal)", async () => {
     const bareRelease = {
       tagName: "0.1.0",

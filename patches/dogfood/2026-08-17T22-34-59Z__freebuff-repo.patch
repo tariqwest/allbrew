@@ -1,0 +1,39 @@
+diff --git a/lib/cli.ts b/lib/cli.ts
+index 195777f..ca8ac2d 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -1996,9 +1996,10 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
+             `  Formula name "${preferred}" collides with homebrew/core; using "${resolved.name}" instead`,
+           ),
+         );
+-        if (!opts.binName && !userOpts.binName) {
+-          userOpts.binName = preferred;
+-        }
++        // Do not inherit the core-collision token as the binary name; that
++        // would claim the same /opt/homebrew/bin/<preferred> as the core
++        // formula. Let pickArchiveEntrypoint / resolveBinaryReleaseBinName
++        // choose a non-colliding bin from the actual asset.
+         userOpts.name = resolved.name;
+       }
+     }
+diff --git a/tests/unit/generators/binary-release.test.ts b/tests/unit/generators/binary-release.test.ts
+index c992b75..b30d011 100644
+--- a/tests/unit/generators/binary-release.test.ts
++++ b/tests/unit/generators/binary-release.test.ts
+@@ -434,6 +434,16 @@ describe("pickArchiveEntrypoint / nested package archives", () => {
+     expect(picked!.binName).toBe("television");
+   });
+ 
++  it("uses the renamed formula name as the bin when archive entrypoint differs", () => {
++    // Regression: a formula renamed to avoid homebrew/core should install its
++    // own binary, not try to claim the original (possibly colliding) token.
++    const members = ["codecane"];
++    const picked = pickArchiveEntrypoint(members, "codebuffai-freebuff");
++    expect(picked).not.toBeNull();
++    expect(picked!.sourcePath).toBe("codecane");
++    expect(picked!.binName).toBe("codebuffai-freebuff");
++  });
++
+   it("returns null when archive only has documentation", () => {
+     const picked = pickArchiveEntrypoint(
+       ["LICENSE", "README.md", "NOTICE"],

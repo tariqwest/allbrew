@@ -40,9 +40,8 @@ describe("collectCaskAppPayload", () => {
     const payload = await collectCaskAppPayload(
       "https://github.com/webstonehq/seaquel/releases/download/v2026.4.8/Seaquel_2026.4.8_aarch64.dmg",
     );
-    // Filename: Seaquel_2026.4.8_aarch64.dmg → strip .dmg → "Seaquel_2026.4.8_aarch64"
-    // baseName regex only strips trailing -digits → no match → full string → toCaskToken
-    expect(payload.name).toBe("seaquel-2026-4-8-aarch64");
+    // Version and architecture tags should be stripped, leaving the product name.
+    expect(payload.name).toBe("seaquel");
   });
 
   it("derives clean cask token when version uses hyphens", async () => {

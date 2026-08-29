@@ -14,19 +14,17 @@
  * @returns Ruby source lines (indented for placement inside `def install`).
  */
 export function codesignBlock(dirs: string[] = ["libexec", "bin"]): string {
-  const dirVars = dirs
-    .map((d) => `${d}`)
-    .join(", ");
+  const pathList = dirs.map((d) => `${d}.to_s`).join(", ");
 
   return [
     ``,
     `    return unless OS.mac?`,
     ``,
-    `    search_dirs = [${dirVars}].select { |d| d.respond_to?(:directory?) ? d.directory? : Dir.exist?(d.to_s) }.map(&:to_s)`,
-    `    return if search_dirs.empty?`,
+    `    search_paths = [${pathList}].select { |d| File.directory?(d) }`,
+    `    return if search_paths.empty?`,
     ``,
     `    mach_o = Utils.safe_popen_read(`,
-    `      "/usr/bin/find", *search_dirs, "-type", "f", "-perm", "+111", "-print0"`,
+    `      "/usr/bin/find", *search_paths, "-type", "f", "-perm", "+111", "-print0"`,
     `    ).split("\\0").reject(&:empty?).select do |path|`,
     `      Utils.safe_popen_read("/usr/bin/file", "-b", path).include?("Mach-O")`,
     `    rescue`,
