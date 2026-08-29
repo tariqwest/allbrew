@@ -330,25 +330,37 @@ export async function matchOfficialCaskByHomepage(
 }
 
 async function fetchJson(url: string): Promise<any> {
-  const response = await fetch(url, {
-    headers: { "User-Agent": "allbrew/1.0" },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT),
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} for ${url}`);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "allbrew/1.0" },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+      return await response.json();
+    } catch (err) {
+      if (attempt === 1) throw err;
+      await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+    }
   }
-  return response.json();
+  throw new Error("fetchJson retry exhausted");
 }
 
 async function fetchText(url: string): Promise<string> {
-  const response = await fetch(url, {
-    headers: { "User-Agent": "allbrew/1.0" },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT),
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} for ${url}`);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "allbrew/1.0" },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+      return await response.text();
+    } catch (err) {
+      if (attempt === 1) throw err;
+      await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+    }
   }
-  return response.text();
+  throw new Error("fetchText retry exhausted");
 }
 
 export async function generateHomebrewCask(name: string, options: any = {}) {

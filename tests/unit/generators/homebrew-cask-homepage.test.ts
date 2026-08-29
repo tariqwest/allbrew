@@ -1,5 +1,48 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test";
 import { matchOfficialCaskByHomepage } from "../../../lib/generators/homebrew-cask.ts";
+
+const originalFetch = global.fetch;
+
+const CASK_FIXTURES: Record<string, { token: string; homepage: string }> = {
+  superwhisper: { token: "superwhisper", homepage: "https://superwhisper.com/" },
+  pictogram: { token: "pictogram", homepage: "https://pictogramapp.com/" },
+  refine: { token: "refine", homepage: "https://refine.sh/" },
+  aldente: { token: "aldente", homepage: "https://apphousekitchen.com/" },
+  cleanshot: { token: "cleanshot", homepage: "https://getcleanshot.com/" },
+  bartender: { token: "bartender", homepage: "https://www.macbartender.com/" },
+  thingsmacsandboxhelper: { token: "thingsmacsandboxhelper", homepage: "https://culturedcode.com/things/" },
+};
+
+const CASK_INDEX_FIXTURE = Object.values(CASK_FIXTURES).map((c) => ({
+  token: c.token,
+  homepage: c.homepage,
+}));
+
+function mockHomebrewCaskFetch() {
+  global.fetch = mock(async (url: string | URL | Request) => {
+    const u = String(url);
+    if (u.includes("/api/cask.json")) {
+      return { ok: true, json: async () => CASK_INDEX_FIXTURE } as any;
+    }
+    const m = u.match(/\/api\/cask\/([^/]+)\.json/);
+    if (m) {
+      const token = decodeURIComponent(m[1]);
+      const hit = CASK_FIXTURES[token];
+      if (hit) return { ok: true, json: async () => hit } as any;
+      return { ok: false, status: 404, json: async () => ({}) } as any;
+    }
+    return { ok: false, status: 404, json: async () => ({}) } as any;
+  }) as any;
+}
+
+beforeEach(() => {
+  mockHomebrewCaskFetch();
+});
+
+afterEach(() => {
+  global.fetch = originalFetch;
+  mock.restore();
+});
 
 describe("matchOfficialCaskByHomepage", () => {
   it("matches superwhisper.com to official homebrew/cask token", async () => {
