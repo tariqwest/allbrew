@@ -1,0 +1,17 @@
+{
+  "endpointId": "homeserver",
+  "runName": "gokapi",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-homeserver-gokapi-1786913655283.log",
+  "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/gokapi-vm-meta.json",
+  "poolAcquiredAt": 1786913655370,
+  "lockAcquiredAt": 1786913661895,
+  "lastLogAt": 1786913695601,
+  "hostClean": true,
+  "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
+  "phase": "uninstalled",
+  "pkg": "gokapi",
+  "verifyOk": true,
+  "exitCode": 0,
+  "hygiene": "Removing: /Users/th-allbrew/Library/Caches/Homebrew/descriptions.json... (501.8KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/cask_descriptions.json... (474.4KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/external_commands_list.txt... (1B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/linkage.json... (2B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/all_commands_list.txt... (1KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/gokapi--2.2.4.zip... (16.0MB)\nRemoving: /Users/th-allbrew/Library/Logs/Homebrew/gokapi... (3 files, 453B)\n==> This operation has freed approximately 17.0MB of disk space.\nCLEANUP_OK\nFilesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s1s1    45Gi    12Gi    18Gi    39%    459k  194M    0%   /\nDF_OK\nFilesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk8s1    16Gi   343Mi    15Gi     3%    9.6k  162M    0%   /opt/homebrew\nDF_HB_OK\n==> Downloading Homebrew API da",
+  "diskAvail": "18Gi"
+}

@@ -56,6 +56,17 @@ describe("toFormulaName", () => {
   it("handles dots", () => {
     expect(toFormulaName("Rnwood.Smtp4dev")).toBe("rnwood-smtp4dev");
   });
+
+  it("prefixes names that start with a digit so the formula class is valid", () => {
+    expect(toFormulaName("4K Video Downloader")).toBe("x-4k-video-downloader");
+    expect(toFormulaName("1password-cli")).toBe("x-1password-cli");
+  });
+
+  it("falls back to 'untitled' when the input has no alphanumeric characters", () => {
+    expect(toFormulaName("---")).toBe("untitled");
+    expect(toFormulaName("!@#")).toBe("untitled");
+    expect(toFormulaName("")).toBe("untitled");
+  });
 });
 
 describe("toClassName", () => {
@@ -73,6 +84,17 @@ describe("toClassName", () => {
 
   it("handles numeric segments", () => {
     expect(toClassName("smtp4dev")).toBe("Smtp4dev");
+  });
+
+  it("makes digit-leading tokens valid Ruby constants", () => {
+    expect(toClassName("4k")).toBe("X4k");
+    expect(toClassName("x-4k")).toBe("X4k");
+    expect(toClassName("4k-video-downloader")).toBe("X4kVideoDownloader");
+  });
+
+  it("falls back to Untitled for empty or invalid input", () => {
+    expect(toClassName("")).toBe("Untitled");
+    expect(toClassName("---")).toBe("Untitled");
   });
 });
 
@@ -260,6 +282,15 @@ describe("toCaskToken", () => {
   it("strips leading/trailing hyphens", () => {
     expect(toCaskToken(".FooBar.")).toBe("foobar");
   });
+
+  it("preserves leading digits (cask tokens can start with a number)", () => {
+    expect(toCaskToken("4K YouTube to MP3")).toBe("4k-youtube-to-mp3");
+  });
+
+  it("falls back to 'untitled' for empty input", () => {
+    expect(toCaskToken("---")).toBe("untitled");
+    expect(toCaskToken("")).toBe("untitled");
+  });
 });
 
 describe("extractVersionFromTag", () => {
@@ -363,6 +394,18 @@ describe("assertSafeFetchUrl", () => {
     expect(() => assertSafeFetchUrl("http://169.254.169.254/latest/meta-data/")).toThrow(
       /Blocked cloud metadata URL/,
     );
+  });
+
+  it("rejects Google metadata with trailing root dot", () => {
+    expect(() =>
+      assertSafeFetchUrl("http://metadata.google.internal./computeMetadata/v1/"),
+    ).toThrow(/Blocked cloud metadata URL/);
+  });
+
+  it("rejects AWS IPv6 metadata endpoint", () => {
+    expect(() =>
+      assertSafeFetchUrl("http://[fd00:ec2::254]/latest/meta-data/"),
+    ).toThrow(/Blocked cloud metadata URL/);
   });
 });
 
@@ -608,6 +651,62 @@ describe("isCliPlatformZipRelease", () => {
         "swift-outdated-0.15.3-macos.zip",
         "swift-outdated-0.15.3-linux.zip",
       ]),
+    ).toBe(true);
+  });
+});
+
+describe("github-release-parsing arch / classification updates", () => {
+  it("matchAssetToArch recognizes short mac_ product binaries", () => {
+    expect(matchAssetToArch("mac_krokiet_all_backends_arm64.zip")).toBe(
+      "macosArm",
+    );
+    expect(matchAssetToArch("mac_krokiet_all_backends_x86_64.zip")).toBe(
+      "macosIntel",
+    );
+    expect(matchAssetToArch("mac_czkawka_cli_arm64")).toBe("macosArm");
+  });
+
+  it("matchAssetToArch treats platform-only macos zips as universal", () => {
+    expect(matchAssetToArch("swift-outdated-0.15.3-macos.zip")).toBe(
+      "macosUniversal",
+    );
+    expect(matchAssetToArch("foo-1.0.0-darwin.zip")).toBe("macosUniversal");
+  });
+
+  it("matchAssetToArch treats bare linux zips as intel", () => {
+    expect(matchAssetToArch("foo-1.0.0-linux.zip")).toBe("linuxIntel");
+  });
+
+  it("isAppAsset rejects distro and generic package zips", () => {
+    expect(isAppAsset("debian-package.zip")).toBe(false);
+    expect(isAppAsset("foo-ubuntu-1.0.0.zip")).toBe(false);
+  });
+
+  it("isAppAsset rejects short mac_ arch-tagged zips", () => {
+    expect(isAppAsset("mac_krokiet_all_backends_arm64.zip")).toBe(false);
+    expect(isAppAsset("mac_krokiet_all_backends_x86_64.zip")).toBe(false);
+  });
+
+  it("isAppAsset sibling context treats multi-platform CLI zips as binary", () => {
+    const siblings = [
+      "swift-outdated-0.15.3-macos.zip",
+      "swift-outdated-0.15.3-linux.zip",
+    ];
+    expect(isAppAsset("swift-outdated-0.15.3-macos.zip", siblings)).toBe(false);
+    expect(isBinaryAsset("swift-outdated-0.15.3-macos.zip", siblings)).toBe(
+      true,
+    );
+  });
+
+  it("releaseHasMacosArmBinaryAssets finds mac_ arm64 binaries", () => {
+    expect(
+      releaseHasMacosArmBinaryAssets({
+        assets: [
+          { name: "mac_krokiet_all_backends_arm64.zip" },
+          { name: "mac_krokiet_all_backends_x86_64.zip" },
+          { name: "linux_krokiet_all_backends_x86_64.zip" },
+        ],
+      }),
     ).toBe(true);
   });
 });

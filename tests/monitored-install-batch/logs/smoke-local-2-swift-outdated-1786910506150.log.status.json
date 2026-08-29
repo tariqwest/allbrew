@@ -1,0 +1,12 @@
+{
+  "url": "https://github.com/kiliankoe/swift-outdated",
+  "name": "swift-outdated",
+  "pkg": "kiliankoe-swift-outdated",
+  "exitCode": 0,
+  "verifyOk": false,
+  "endpointId": "local-2",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-swift-outdated-1786910506150.log",
+  "formulaLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-swift-outdated-1786910506150.log.formula.rb",
+  "verifyLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-swift-outdated-1786910506150.log.verify.txt",
+  "finishedAt": "2026-08-16T20:02:28.447Z"
+}

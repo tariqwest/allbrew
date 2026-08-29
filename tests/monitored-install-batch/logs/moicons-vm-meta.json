@@ -1,0 +1,17 @@
+{
+  "endpointId": "local-1",
+  "runName": "moicons",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-1-moicons-1786907416910.log",
+  "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/moicons-vm-meta.json",
+  "poolAcquiredAt": 1786907416986,
+  "lockAcquiredAt": 1786907423407,
+  "lastLogAt": 1786907480208,
+  "hostClean": true,
+  "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
+  "phase": "uninstalled",
+  "pkg": "moicons",
+  "verifyOk": true,
+  "exitCode": 0,
+  "hygiene": "Warning: Skipping tariqwest/tap/allbrew: most recent version 0.0.36 not installed\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/descriptions.json... (503.2KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/cask_descriptions.json... (475.6KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/external_commands_list.txt... (1B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/all_commands_list.txt... (1KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/Cask/moicons--1.0.4.dmg... (155.9MB)\n==> This operation has freed approximately 156.9MB of disk space.\nCLEANUP_OK\nFilesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s1s1    75Gi    12Gi    40Gi    23%    459k  423M    0%   /\nDF_OK\nFilesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk8s1    16Gi   373Mi    15Gi     3%     10k  161M    0%   /opt/homebrew\nDF_HB_OK\n==> Downloading Homebrew API data\n✔︎ JSON API packages.arm64_tahoe.jws.json\nAll official t",
+  "diskAvail": "40Gi"
+}

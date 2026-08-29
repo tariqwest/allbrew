@@ -1,0 +1,13 @@
+{
+  "endpointId": "homeserver",
+  "runName": "emulsion",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-homeserver-emulsion-1786913857516.log",
+  "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/emulsion-vm-meta.json",
+  "poolAcquiredAt": 1786913857615,
+  "lockAcquiredAt": 1786913864147,
+  "lastLogAt": 1786913869341,
+  "hostClean": true,
+  "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
+  "phase": "installing",
+  "guestLog": "/tmp/allbrew-agent-emulsion.log"
+}

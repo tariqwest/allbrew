@@ -1,0 +1,37 @@
+VERIFY name=kiliankoe-swift-outdated
+VERIFY_BEGIN 20:02:14
+FORMULA_LISTED=1
+CASK_LISTED=0
+MANIFEST_OK
+BREW_TEST_FAIL
+/opt/homebrew/Library/Homebrew/formula.rb:3320:in 'block in Formula#run_test'
+/opt/homebrew/Library/Homebrew/mktemp.rb:97:in 'block in Mktemp#run'
+/opt/homebrew/Library/Homebrew/mktemp.rb:97:in 'Dir.chdir'
+/opt/homebrew/Library/Homebrew/mktemp.rb:97:in 'Mktemp#run'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'UnboundMethod#bind_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'T::Private::Methods::CallValidation.validate_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/_methods.rb:390:in 'block in Mktemp#_on_method_added'
+/opt/homebrew/Library/Homebrew/formula.rb:3686:in 'Formula#mktemp'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'UnboundMethod#bind_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'T::Private::Methods::CallValidation.validate_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/_methods.rb:390:in 'block in Formula#_on_method_added'
+/opt/homebrew/Library/Homebrew/formula.rb:3309:in 'Formula#run_test'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'UnboundMethod#bind_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'T::Private::Methods::CallValidation.validate_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/_methods.rb:390:in 'block in Formula#_on_method_added'
+/opt/homebrew/Library/Homebrew/test.rb:52:in 'block in <main>'
+/opt/homebrew/Library/Homebrew/vendor/portable-ruby/4.0.6/lib/ruby/4.0.0/timeout.rb:296:in 'block in Timeout.timeout'
+/opt/homebrew/Library/Homebrew/vendor/portable-ruby/4.0.6/lib/ruby/4.0.0/timeout.rb:38:in 'Timeout::Error.handle_timeout'
+/opt/homebrew/Library/Homebrew/vendor/portable-ruby/4.0.6/lib/ruby/4.0.0/timeout.rb:306:in 'Timeout.timeout'
+/opt/homebrew/Library/Homebrew/test.rb:63:in '<main>'
+BIN_MISSING
+==> th-allbrew/allbrew/kiliankoe-swift-outdated: stable 0.15.3
+A swift subcommand for displaying when your dependencies (SwiftPM or Xcode) are out of date
+https://github.com/kiliankoe/swift-outdated
+Installed (on request)
+From: /Users/th-allbrew/homebrew-allbrew/Formula/kiliankoe-swift-outdated.rb
+Tap: th-allbrew/allbrew
+License: MIT
+==> Installed Versions
+th-allbrew/allbrew/kiliankoe-swift-outdated 0.15.3 (6 files, 4.3MB) [Linked]
+SERVICE_STANZA=0

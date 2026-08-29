@@ -100,10 +100,19 @@ function binResolvesToCellar(name: string): boolean {
   }
 }
 
+export function sanitizeAppName(appName: string): string {
+  return String(appName ?? "")
+    .replace(/\.app$/i, "")
+    .replace(/[:/\\?*|"<>]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function appPathExists(appName: string): boolean {
+  const safe = sanitizeAppName(appName);
   const candidates = [
-    join("/Applications", `${appName}.app`),
-    join(homedir(), "Applications", `${appName}.app`),
+    join("/Applications", `${safe}.app`),
+    join(homedir(), "Applications", `${safe}.app`),
   ];
   return candidates.some((p) => existsSync(p));
 }
@@ -150,8 +159,9 @@ export async function assertUninstallResiduals(
     const appName = target.appName || target.name;
     details.appPathExists = appPathExists(appName);
     if (details.appPathExists) {
+      const safe = sanitizeAppName(appName);
       failures.push(
-        `App "${appName}.app" still exists in /Applications or ~/Applications after uninstall`,
+        `App "${safe}.app" still exists in /Applications or ~/Applications after uninstall`,
       );
     }
   }

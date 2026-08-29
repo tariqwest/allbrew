@@ -1,0 +1,17 @@
+{
+  "endpointId": "homeserver",
+  "runName": "nicotine-plus",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-homeserver-nicotine-plus-1786914037535.log",
+  "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/nicotine-plus-vm-meta.json",
+  "poolAcquiredAt": 1786914037620,
+  "lockAcquiredAt": 1786914040972,
+  "lastLogAt": 1786914083108,
+  "hostClean": true,
+  "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
+  "phase": "uninstalled",
+  "pkg": "nicotine-plus-nicotine-plus",
+  "verifyOk": false,
+  "exitCode": 0,
+  "hygiene": "CLEANUP_OK\n==> Downloading Homebrew API data\n✔︎ JSON API packages.arm64_tahoe.jws.json\nFilesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s1s1    45Gi    12Gi    18Gi    40%    459k  186M    0%   /\nDF_OK\nFilesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk8s1    16Gi   343Mi    15Gi     3%    9.6k  162M    0%   /opt/homebrew\nDF_HB_OK\n==> Downloading Homebrew API data\n✔︎ JSON API packages.arm64_tahoe.jws.json\nAll official taps and commands are trusted.\nTrusted taps:\n  /users/th-allbrew/homebrew-allbrew\n  tariqwest/allbrew\n  tariqwest/tap\nTrusted formulae:\n  /users/th-allbrew/homebrew-allbrew/chirpy\n  /users/th-allbrew/homebrew-allbrew/emulsion\n  /users/th-allbrew/homebrew-allbrew/go2tv\n  /users/th-allbrew/homebrew-allbrew/gokapi\n  /users/th-allbrew/homebrew-allbrew/gotify-cli\n  /users/th-allbrew/homebrew-allbrew/krokiet\n  /users/th-allbrew/homebrew-allbrew/nicotine-plus\n  /users/th-allbrew/homebrew-allbrew/portdeck\n",
+  "diskAvail": "18Gi"
+}

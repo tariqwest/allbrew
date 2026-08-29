@@ -1,0 +1,12 @@
+{
+  "url": "https://github.com/Forceu/Gokapi",
+  "name": "gokapi",
+  "pkg": "gokapi",
+  "exitCode": 0,
+  "verifyOk": true,
+  "endpointId": "local-2",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-gokapi-1786910591391.log",
+  "formulaLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-gokapi-1786910591391.log.formula.rb",
+  "verifyLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-gokapi-1786910591391.log.verify.txt",
+  "finishedAt": "2026-08-16T20:03:55.976Z"
+}

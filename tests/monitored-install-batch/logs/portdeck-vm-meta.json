@@ -1,0 +1,17 @@
+{
+  "endpointId": "homeserver",
+  "runName": "portdeck",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-homeserver-portdeck-1786913700976.log",
+  "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/portdeck-vm-meta.json",
+  "poolAcquiredAt": 1786913701051,
+  "lockAcquiredAt": 1786913707576,
+  "lastLogAt": 1786913747747,
+  "hostClean": true,
+  "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
+  "phase": "uninstalled",
+  "pkg": "portdeck",
+  "verifyOk": true,
+  "exitCode": 0,
+  "hygiene": "Removing: /Users/th-allbrew/Library/Caches/Homebrew/descriptions.json... (501.8KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/cask_descriptions.json... (474.5KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/external_commands_list.txt... (1B)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/all_commands_list.txt... (1KB)\nRemoving: /Users/th-allbrew/Library/Caches/Homebrew/Cask/portdeck--0.1.0-beta.17.dmg... (37MB)\n==> This operation has freed approximately 38.0MB of disk space.\nCLEANUP_OK\nFilesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s1s1    45Gi    12Gi    18Gi    40%    459k  192M    0%   /\nDF_OK\nFilesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk8s1    16Gi   343Mi    15Gi     3%    9.6k  162M    0%   /opt/homebrew\nDF_HB_OK\n==> Downloading Homebrew API data\n✔︎ JSON API packages.arm64_tahoe.jws.json\nAll official taps and commands are trusted.\nTrusted taps:\n  /users/th-allbrew/homebrew-allb",
+  "diskAvail": "18Gi"
+}

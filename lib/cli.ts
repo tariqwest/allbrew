@@ -1074,14 +1074,15 @@ async function handleGithubRepo(classification, opts) {
         ),
       );
     }
+    const allNames = release.assets.map((a) => a.name);
     const appAssets = cliPlatformZips
       ? []
-      : release.assets.filter((a) => isAppAsset(a.name));
+      : release.assets.filter((a) => isAppAsset(a.name, allNames));
     // Platform-tagged binaries. Homebrew on macOS needs at least one macOS
     // asset; Linux-only releases (e.g. ugm, gpg-tui) must fall through to README
     // install methods (go, cargo, source-build) instead of binary-release.
     const allBinAssets = release.assets.filter(
-      (a) => isBinaryAsset(a.name) && matchAssetToArch(a.name),
+      (a) => isBinaryAsset(a.name, allNames) && matchAssetToArch(a.name),
     );
     const binAssetsRaw = allBinAssets.filter((a) => {
       const arch = matchAssetToArch(a.name);
@@ -1299,8 +1300,9 @@ async function handleGithubRepo(classification, opts) {
         olderWithApp.tagName &&
         olderWithApp.tagName !== release.tagName
       ) {
+        const olderNames = olderWithApp.assets.map((a) => a.name);
         const names = olderWithApp.assets
-          .filter((a) => isAppAsset(a.name))
+          .filter((a) => isAppAsset(a.name, olderNames))
           .map((a) => a.name);
         console.log(
           `  Found macOS app assets on older release ${chalk.bold(olderWithApp.tagName)}: ${names.join(", ")}`,
@@ -2316,6 +2318,13 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
     }
   }
 
+  if (!userOpts.name || userOpts.name === "untitled") {
+    throw new Error(
+      `Unable to derive a valid package name from "${opts.name || userOpts.name || ""}". ` +
+        `Please provide a non-empty --name.`,
+    );
+  }
+
   if (!opts.desc) {
     const defaultDesc = guessDesc(generatorName, params);
     if (isNonInteractive(opts)) {
@@ -2600,7 +2609,7 @@ async function brewAutoInstall(result: any, opts: any) {
     await execFileAsync(
       "brew",
       ["install", ...headFlag, installFlag, result.filePath],
-      { env: installEnv },
+      { env: installEnv, maxBuffer: 50 * 1024 * 1024 },
     );
     installSpinner.succeed(`Installed: ${chalk.green(result.name)}`);
 

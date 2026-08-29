@@ -67,8 +67,9 @@ export async function collectCaskAppReleasePayload(
       .map((n: unknown) => String(n || ""))
       .filter(Boolean),
   );
+  const allNames = release.assets.map((a: any) => a.name);
   const appAssets = release.assets.filter(
-    (a: any) => isAppAsset(a.name) || extraNames.has(a.name),
+    (a: any) => isAppAsset(a.name, allNames) || extraNames.has(a.name),
   );
   if (appAssets.length === 0) {
     throw new Error("No .dmg or macOS .zip assets found in release");

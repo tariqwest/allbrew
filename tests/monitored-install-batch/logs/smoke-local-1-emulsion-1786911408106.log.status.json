@@ -1,0 +1,12 @@
+{
+  "url": "https://github.com/ArturKovacs/emulsion",
+  "name": "emulsion",
+  "pkg": "emulsion",
+  "exitCode": 138,
+  "verifyOk": false,
+  "endpointId": "local-1",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-1-emulsion-1786911408106.log",
+  "formulaLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-1-emulsion-1786911408106.log.formula.rb",
+  "verifyLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-1-emulsion-1786911408106.log.verify.txt",
+  "finishedAt": "2026-08-16T20:19:29.825Z"
+}

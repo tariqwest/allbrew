@@ -1,0 +1,7 @@
+[vm-pool] clearing stale mutex endpoint=local-1 deadPid=83457
+[vm-pool] acquired endpoint=local-1 owner=goshot pid=85056 attempt=2
+[vm-pool] using endpoint=local-1 remote=false vm=vm-local-macos-testing-1
+[th-homebrew] Acquiring exclusive Homebrew prefix for th-allbrew
+[th-homebrew] Reusing existing mount at /opt/homebrew
+[vm-install-one] syncing allbrew src /Users/tariqwest/Developer/allbrew-wt-github-release-parsing to VM...
+[vm-install-one] src ready on branch fix/github-release-parsing at /Users/th-allbrew/Developer/allbrew-src/fix-github-release-parsing
