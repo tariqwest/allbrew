@@ -82,7 +82,7 @@ export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
 export CI=1
 export ALLBREW_NONINTERACTIVE=1
 export E2E_HEAVY=1
-export PATH="${brew}:$HOME/.bun/bin:$PATH"
+export PATH="$HOME/.cargo/bin:${brew}:$HOME/.bun/bin:$PATH"
 `;
 }
 
