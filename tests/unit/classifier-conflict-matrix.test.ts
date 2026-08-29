@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, mock, afterEach } from "bun:test";
 import { classify, classifyWithHead } from "../../lib/classifier.ts";
 
 // ─── B3: Classifier / routing conflict matrix ───────────────────────────
@@ -114,6 +114,12 @@ const CONFLICT_MATRIX: ConflictCase[] = [
     expectedType: "unknown",
   },
 ];
+
+const originalFetch = global.fetch;
+afterEach(() => {
+  global.fetch = originalFetch;
+  mock.restore();
+});
 
 describe("B3: classifier conflict matrix", () => {
   for (const { name, url, expectedType, expectedFields } of CONFLICT_MATRIX) {

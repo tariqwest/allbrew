@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -16,6 +16,8 @@ const BARTENDER_HTML = `<!DOCTYPE html>
 describe("updateManagedPackage — cask-app-setapp", () => {
   let tapPath: string;
 
+  const originalFetch = global.fetch;
+
   beforeEach(async () => {
     mock.restore();
     tapPath = await mkdtemp(join(tmpdir(), "allbrew-tap-"));
@@ -25,6 +27,11 @@ describe("updateManagedPackage — cask-app-setapp", () => {
         text: () => Promise.resolve(BARTENDER_HTML),
       }),
     ) as any;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mock.restore();
   });
 
   it("regenerates cask from manifest and returns latest version", async () => {

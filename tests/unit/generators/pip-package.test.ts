@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import {
   collectPipPackagePayload,
   selectBestDistribution,
@@ -26,6 +26,12 @@ mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("mocked_sha256_hash"),
   downloadAndHash: mock().mockResolvedValue({ sha256: "mocked_sha256_hash" }),
 }));
+
+const originalFetch = global.fetch;
+afterEach(() => {
+  global.fetch = originalFetch;
+  mock.restore();
+});
 
 describe("collectPipPackagePayload", () => {
   beforeEach(() => {

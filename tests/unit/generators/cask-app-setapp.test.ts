@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import {
   collectCaskAppSetappPayload,
   parseSetappPage,
@@ -12,6 +12,12 @@ const BARTENDER_HTML = `<!DOCTYPE html>
 <h1>Bartender Pro</h1>
 <p>Version 6.5.2</p>
 </body></html>`;
+
+const originalFetch = global.fetch;
+afterEach(() => {
+  global.fetch = originalFetch;
+  mock.restore();
+});
 
 describe("extractSetappSlug", () => {
   it("extracts slug from Setapp URL", () => {

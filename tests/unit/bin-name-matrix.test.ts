@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import { extractNpmBinName } from "../../lib/generators/npm-package.ts";
 import { collectNpmPackagePayload } from "../../lib/generators/npm-package.ts";
 import { collectPipPackagePayload } from "../../lib/generators/pip-package.ts";
@@ -15,6 +15,12 @@ import { collectPipPackagePayload } from "../../lib/generators/pip-package.ts";
 // | toolong | toolong | tl | npm bin object |
 // | elia-chat | elia-chat | elia | npm bin object (pip pkg is elia-chat) |
 // | orange3 | orange3 | orange-canvas | pip entry_points (needs --bin-name) |
+
+const originalFetch = global.fetch;
+afterEach(() => {
+  global.fetch = originalFetch;
+  mock.restore();
+});
 
 describe("extractNpmBinName", () => {
   it("returns null when bin field is absent", () => {

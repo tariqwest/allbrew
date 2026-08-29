@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, writeFile, mkdir } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { join, dirname } from "node:path";
@@ -96,6 +96,12 @@ function mockDownloadToTemp(nupkg: string) {
     hashUrl: mock().mockResolvedValue(MOCK_SHA256),
   }));
 }
+
+const originalFetch = global.fetch;
+afterEach(() => {
+  global.fetch = originalFetch;
+  mock.restore();
+});
 
 describe("collectDotnetPackagePayload", () => {
   beforeEach(() => {

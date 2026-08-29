@@ -1,5 +1,11 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import { collectCaskAppMasPayload } from "../../../lib/generators/cask-app-mas.ts";
+
+const originalFetch = global.fetch;
+afterEach(() => {
+  global.fetch = originalFetch;
+  mock.restore();
+});
 
 describe("collectCaskAppMasPayload", () => {
   beforeEach(() => {
