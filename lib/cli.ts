@@ -17,6 +17,7 @@ import {
   getReadme,
   getRepoContents,
   getFileContent,
+  getBranchTipSha,
 } from "./github.ts";
 import {
   detectBrewInstall,
@@ -50,6 +51,139 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Verify a GitHub-derived pip package name is not a PyPI name collision.
+ * Returns the identity result; caller decides pip-package vs source-build.
+ */
+async function resolvePipGithubOrFallback(
+  packageName: string,
+  owner: string,
+  repo: string,
+) {
+  const { resolvePypiGithubIdentity } = await import(
+    "./generators/pip-package.ts"
+  );
+  return resolvePypiGithubIdentity(packageName, owner, repo);
+}
+
+/** When GitHub python has no PyPI package or mismatches identity, fall back to source-build. */
+async function generatePythonSourceBuildFallback(args: {
+  owner: string;
+  repo: string;
+  repoInfo: any;
+  release: any;
+  serviceConfig: any;
+  opts: any;
+  reason?: string;
+}) {
+  const { owner, repo, repoInfo, release, serviceConfig, opts, reason } = args;
+  console.log(
+    chalk.dim(
+      `  ${reason || "PyPI lookup failed"}; falling back to source-build (python)`,
+    ),
+  );
+  let binName: string | undefined = opts.binName;
+  let fallbackRelease = release;
+  let pipExtras: string | undefined = opts.pipExtras;
+  let requiresPython: string | undefined;
+  try {
+    const pyproject = await getFileContent(owner, repo, "pyproject.toml");
+    if (pyproject) {
+      const {
+        parseRequiresPythonFromPyproject,
+      } = await import("./generators/source-build.ts");
+      requiresPython = parseRequiresPythonFromPyproject(pyproject) || undefined;
+      if (!binName) {
+        const m = pyproject.match(
+          /\[project\.scripts\][\s\S]*?^([a-zA-Z0-9_-]+)\s*=/m,
+        );
+        if (m) binName = m[1].trim();
+      }
+      // Install optional-dependency groups so eager optional imports work
+      // (trae-agent imports docker from the evaluation extra at module load).
+      if (!pipExtras) {
+        const groups: string[] = [];
+        const table = pyproject.match(
+          /\[project\.optional-dependencies\]([\s\S]*?)(?:\n\[|\s*$)/,
+        );
+        if (table) {
+          for (const gm of table[1].matchAll(/^([a-zA-Z0-9_-]+)\s*=/gm)) {
+            if (!groups.includes(gm[1])) groups.push(gm[1]);
+          }
+        }
+        if (groups.length) pipExtras = groups.join(",");
+      }
+    }
+    // Prefer a commit-pinned tarball (stable sha256) over floating branch archives
+    // or HEAD-only. Uses the default branch tip via the GitHub tarball API URL
+    // which codeload serves immutably per SHA.
+    if (!fallbackRelease && pyproject) {
+      const ver =
+        pyproject.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1] ||
+        pyproject.match(
+          /\[project\][\s\S]*?^version\s*=\s*["']([^"']+)["']/m,
+        )?.[1];
+      try {
+        const branch = repoInfo.defaultBranch || "main";
+        const sha = await getBranchTipSha(owner, repo, branch);
+        if (sha && ver) {
+          fallbackRelease = {
+            tagName: ver,
+            tarballUrl: `https://codeload.github.com/${repoInfo.fullName}/tar.gz/${sha}`,
+          };
+          console.log(
+            chalk.dim(
+              `  Pinning source to ${sha.slice(0, 7)} (version ${ver})`,
+            ),
+          );
+        }
+      } catch {
+        /* fall through to HEAD-only */
+      }
+    }
+  } catch {
+    /* best-effort metadata */
+  }
+
+  const buildOpts = { ...opts, binName, pipExtras };
+  try {
+    return await generateWithConfirmation(
+      "source-build",
+      {
+        repoInfo,
+        release: fallbackRelease,
+        buildSystem: { system: "python", requiresPython },
+        serviceConfig,
+      },
+      buildOpts,
+    );
+  } catch (hashErr) {
+    const msg = String((hashErr as Error)?.message || String(hashErr));
+    if (
+      !fallbackRelease ||
+      !/socket|fetch|download|hash|ECONN|timed out|network/i.test(msg)
+    ) {
+      throw hashErr;
+    }
+    console.log(
+      chalk.dim(
+        `  Source archive hash failed (${msg.slice(0, 80)}…); using HEAD-only source-build`,
+      ),
+    );
+    return await generateWithConfirmation(
+      "source-build",
+      {
+        repoInfo,
+        release: null,
+        buildSystem: { system: "python" },
+        serviceConfig,
+      },
+      buildOpts,
+    );
+  }
+}
+
 
 export async function run(url, opts: any = {}) {
   if (opts.token) initOctokit(opts.token);
@@ -1269,9 +1403,8 @@ async function handleGithubRepo(classification, opts) {
             pipPkg,
             owner,
             repo,
-            repoInfo,
           );
-          if (identity.use === "pip-package") {
+          if (identity.matches) {
             return await generateWithConfirmation(
               "pip-package",
               {
@@ -1287,15 +1420,15 @@ async function handleGithubRepo(classification, opts) {
               `  PyPI identity mismatch for ${pipPkg}: ${identity.reason}; falling back to source-build (python)`,
             ),
           );
-          return await generatePythonSourceBuildFallback(
+          return await generatePythonSourceBuildFallback({
             owner,
             repo,
             repoInfo,
             release,
-            serviceConfigFromReadme,
+            serviceConfig: serviceConfigFromReadme,
             opts,
-            identity.reason,
-          );
+            reason: `PyPI identity mismatch for ${pipPkg}: ${identity.reason}`,
+          });
         }
         case "cargo":
           return await generateWithConfirmation(
@@ -1536,9 +1669,8 @@ async function handleGithubRepo(classification, opts) {
           pipPkg,
           owner,
           repo,
-          repoInfo,
         );
-        if (identity.use === "pip-package") {
+        if (identity.matches) {
           return await generateWithConfirmation(
             "pip-package",
             {
@@ -1554,15 +1686,15 @@ async function handleGithubRepo(classification, opts) {
             `  PyPI identity mismatch for ${pipPkg}: ${identity.reason}; falling back to source-build (python)`,
           ),
         );
-        return await generatePythonSourceBuildFallback(
+        return await generatePythonSourceBuildFallback({
           owner,
           repo,
           repoInfo,
           release,
           serviceConfig,
           opts,
-          identity.reason,
-        );
+          reason: `PyPI identity mismatch for ${pipPkg}: ${identity.reason}`,
+        });
       }
       case "cargo": {
         const cargoToml = await getFileContent(owner, repo, "Cargo.toml");
@@ -2038,6 +2170,8 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
         repoName,
       ];
       const resolved = resolveNonCollidingFormulaName(preferred, altSources);
+      // Always normalize/sanitize the formula token (e.g. underscores → hyphens).
+      userOpts.name = resolved.name;
       if (resolved.renamedFrom && resolved.name !== preferred) {
         console.log(
           chalk.yellow(
@@ -2047,7 +2181,6 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
         if (!opts.binName && !userOpts.binName) {
           userOpts.binName = preferred;
         }
-        userOpts.name = resolved.name;
       }
     }
   }
@@ -2375,21 +2508,25 @@ async function brewAutoInstall(result: any, opts: any) {
       );
     }
   } catch (err: any) {
-    const stderr = String(err?.stderr || "").trim();
-    const stdout = String(err?.stdout || "").trim();
-    const tail = [stderr, stdout]
+    const combined = [err?.stdout, err?.stderr, err?.message]
       .filter(Boolean)
-      .join("\n")
-      .split("\n")
-      .slice(-40)
+      .map(String)
       .join("\n");
+    const tail = combined.split("\n").slice(-60).join("\n");
     installSpinner.fail(`brew install failed: ${err.message}`);
-    if (tail) {
-      console.log(chalk.red(tail));
+    if (tail.trim()) console.log(chalk.dim(tail));
+    // Dump Homebrew formula build logs (pip failures live here, not in brew stderr).
+    try {
+      const logDir = `${process.env.HOME || ""}/Library/Logs/Homebrew/${result.name}`;
+      const { stdout: logList } = await execFileAsync("bash", [
+        "-c",
+        `ls -la ${JSON.stringify(logDir)} 2>/dev/null; for f in ${JSON.stringify(logDir)}/*; do [ -f "$f" ] || continue; echo "===== $f ====="; tail -n 80 "$f"; done`,
+      ], { maxBuffer: 8 * 1024 * 1024 });
+      if (logList?.trim()) console.log(chalk.dim(String(logList)));
+    } catch {
+      /* no logs */
     }
-    console.log(
-      chalk.dim(`  Retry manually: ${installLabel}`),
-    );
+    console.log(chalk.dim(`  Retry manually: ${installLabel}`));
     process.exitCode = 1;
   }
 
@@ -2495,81 +2632,6 @@ async function collectServiceOptions(params: any, opts: any, formulaName: any) {
       keepAlive,
     },
   };
-}
-
-/**
- * When a GitHub repo has pyproject.toml / README `pip install <name>`, verify the
- * PyPI package of that name is the same project (project_urls / home_page point at
- * this owner/repo). Name collisions (e.g. lfnovo/open-notebook vs NIST open-notebook
- * on PyPI) must fall back to source-build from the GitHub tarball — never install
- * the wrong registry package.
- */
-async function resolvePipGithubOrFallback(
-  packageName: string,
-  owner: string,
-  repo: string,
-  _repoInfo: any,
-): Promise<
-  | { use: "pip-package"; packageName: string; reason: string }
-  | { use: "source-build"; packageName: string; reason: string }
-> {
-  const { resolvePypiGithubIdentity } = await import(
-    "./generators/pip-package.ts"
-  );
-  const identity = await resolvePypiGithubIdentity(packageName, owner, repo);
-  if (identity.matches) {
-    return {
-      use: "pip-package",
-      packageName: identity.packageName || packageName,
-      reason: identity.reason,
-    };
-  }
-  return {
-    use: "source-build",
-    packageName,
-    reason: identity.reason,
-  };
-}
-
-/** source-build (python) after a PyPI identity mismatch, honouring requires-python. */
-async function generatePythonSourceBuildFallback(
-  owner: string,
-  repo: string,
-  repoInfo: any,
-  release: any,
-  serviceConfig: any,
-  opts: any,
-  reason: string,
-) {
-  const {
-    parseRequiresPythonFromPyproject,
-    selectHomebrewPythonFormula,
-  } = await import("./generators/source-build.ts");
-  let requiresPython: string | null = null;
-  try {
-    const pyproject = await getFileContent(owner, repo, "pyproject.toml");
-    requiresPython = parseRequiresPythonFromPyproject(pyproject);
-  } catch {
-    /* optional */
-  }
-  const pythonFormula = selectHomebrewPythonFormula(requiresPython);
-  if (requiresPython) {
-    console.log(
-      chalk.dim(
-        `  requires-python=${requiresPython} → ${pythonFormula} (${reason.slice(0, 80)})`,
-      ),
-    );
-  }
-  return await generateWithConfirmation(
-    "source-build",
-    {
-      repoInfo,
-      release,
-      buildSystem: { system: "python", requiresPython },
-      serviceConfig,
-    },
-    { ...opts, requiresPython, pythonFormula },
-  );
 }
 
 async function resolveCargoGithubInstall(

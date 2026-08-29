@@ -13,6 +13,7 @@ export function toFormulaName(name) {
 
 export function toClassName(formulaName) {
   return formulaName
+    .replace(/_/g, "-")
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
@@ -130,6 +131,9 @@ function homebrewCoreRubyPaths(coreRoot: string, token: string): string[] {
   ];
 }
 
+/** In-memory memo for brew info probes so slow VM API calls are not repeated. */
+const homebrewCoreFormulaProbeCache = new Map<string, boolean>();
+
 /** True when homebrew/core already ships a formula with this token. */
 export function isHomebrewCoreFormulaName(name: string): boolean {
   const token = toFormulaName(name || "");
@@ -165,7 +169,11 @@ export function isHomebrewCoreFormulaName(name: string): boolean {
     }
   }
 
-  // 3) Cold cache / no checkout: ask brew (bounded timeout so unit tests never hang).
+  if (homebrewCoreFormulaProbeCache.has(token)) {
+    return homebrewCoreFormulaProbeCache.get(token) as boolean;
+  }
+
+  // 3) Cold cache / no checkout: ask brew (longer timeout for slow VM API probes).
   try {
     const out = execFileSync(
       "brew",
@@ -173,14 +181,14 @@ export function isHomebrewCoreFormulaName(name: string): boolean {
       {
         encoding: "utf-8",
         stdio: ["ignore", "pipe", "ignore"],
-        timeout: 8_000,
+        timeout: 30_000,
       },
     );
     const parsed = JSON.parse(out);
     const formulae = Array.isArray(parsed?.formulae) ? parsed.formulae : [];
     // Require homebrew/core — do not treat residual third-party taps as core
     // (e.g. leftover nanobot-ai from a prior allbrew install).
-    return formulae.some((f: any) => {
+    const result = formulae.some((f: any) => {
       const nameMatch =
         f?.name === token ||
         f?.full_name === token ||
@@ -192,7 +200,10 @@ export function isHomebrewCoreFormulaName(name: string): boolean {
       if (!tap && (f?.full_name === token || f?.name === token)) return true;
       return false;
     });
+    homebrewCoreFormulaProbeCache.set(token, result);
+    return result;
   } catch {
+    homebrewCoreFormulaProbeCache.set(token, false);
     return false;
   }
 }

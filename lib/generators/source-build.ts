@@ -30,18 +30,9 @@ export async function collectSourceBuildPayload(
   let version: string;
   if (release) {
     version = extractVersionFromTag(release.tagName);
-    // Prefer the public codeload/archive URL over api.github.com/.../tarball/...
-    // The API tarball often requires auth and can hash differently than what
-    // unauthenticated `brew install` downloads → SHA256 mismatch / silent fail.
-    const archiveUrl = release.tagName
-      ? `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`
-      : null;
-    const apiTarball =
-      release.tarballUrl &&
-      /api\.github\.com\/repos\/.+\/tarball\//i.test(String(release.tarballUrl))
-        ? null
-        : release.tarballUrl;
-    sourceUrl = archiveUrl || apiTarball || release.tarballUrl || null;
+    sourceUrl =
+      release.tarballUrl ||
+      `https://github.com/${repoInfo.fullName}/archive/refs/tags/${release.tagName}.tar.gz`;
   } else {
     version = "HEAD";
   }
@@ -49,7 +40,12 @@ export async function collectSourceBuildPayload(
   let urlLines = "";
   if (sourceUrl && version !== "HEAD") {
     const sha256 = await hashUrl(sourceUrl);
-    urlLines = `  url ${rubyString(sourceUrl)}\n  sha256 ${rubyString(sha256)}\n`;
+    // Branch archives (refs/heads/...) do not embed a version Homebrew can parse —
+    // always emit an explicit version stanza when we have one from the release tag.
+    urlLines =
+      `  url ${rubyString(sourceUrl)}\n` +
+      `  version ${rubyString(version)}\n` +
+      `  sha256 ${rubyString(sha256)}\n`;
   }
 
   const system = buildSystem?.system || "make";
@@ -63,6 +59,7 @@ export async function collectSourceBuildPayload(
         )
       : null;
 
+  const testBinName = options.binName || name;
   return {
     template: "source_build",
     name,
@@ -74,10 +71,15 @@ export async function collectSourceBuildPayload(
     licenseLine: license ? `  license ${rubyString(license)}\n` : "",
     urlLines,
     dependenciesLines: buildDependenciesLines(system, pythonFormula),
-    installBody: buildInstallBody(system, pythonFormula),
+    installBody: buildInstallBody(
+      system,
+      pythonFormula,
+      testBinName,
+      options.pipExtras,
+    ),
     livecheckBlock: githubLatestLivecheckBlock(repoInfo.fullName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
-    testBinName: rubyEscape(options.binName || name),
+    testBinName: rubyEscape(testBinName),
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
     isPython: system === "python",
   };
@@ -91,17 +93,14 @@ export function parseRequiresPythonFromPyproject(
   text: string | null | undefined,
 ): string | null {
   if (!text) return null;
-  // [project] requires-python = ">=3.11,<3.13"
-  const m = String(text).match(
-    /^\s*requires-python\s*=\s*["']([^"']+)["']/im,
-  );
+  const m = String(text).match(/^\s*requires-python\s*=\s*["']([^"']+)["']/im);
   return m ? m[1].trim() : null;
 }
 
 /**
  * Map a requires-python specifier (or explicit python@X.Y) to a Homebrew
- * python formula token. Prefer the newest commonly bottled version that
- * still satisfies an upper bound (e.g. ">=3.11,<3.13" → python@3.12).
+ * python formula token. Prefer the oldest commonly bottled version that
+ * satisfies the range (e.g. ">=3.11,<3.13" → python@3.12; ">=3.10" → python@3.12).
  */
 export function selectHomebrewPythonFormula(
   requiresPythonOrFormula: string | null | undefined,
@@ -109,14 +108,12 @@ export function selectHomebrewPythonFormula(
   const raw = String(requiresPythonOrFormula || "").trim();
   if (/^python@\d+\.\d+$/.test(raw)) return raw;
 
-  // Candidates newest-first (Homebrew bottles these).
-  const candidates = ["3.13", "3.12", "3.11", "3.10"];
-  if (!raw) return "python@3.13";
+  const candidates = ["3.12", "3.13", "3.11", "3.10"];
+  if (!raw) return "python@3.12";
 
   for (const ver of candidates) {
     if (versionSatisfiesRequiresPython(ver, raw)) return `python@${ver}`;
   }
-  // Spec too tight / unparseable — keep historical default.
   return "python@3.13";
 }
 
@@ -157,7 +154,6 @@ export function versionSatisfiesRequiresPython(
         if (cmp >= 0) return false;
         break;
       case "~=": {
-        // Compatible release: >=bound, ==bound.major.minor.*
         if (cmp < 0) return false;
         if (ver[0] !== bound[0] || ver[1] !== bound[1]) return false;
         break;
@@ -196,8 +192,13 @@ function buildDependenciesLines(
   return deps.map((dep) => `  depends_on ${dep}\n`).join("") + "\n";
 }
 
-function buildInstallBody(system: string, pythonFormula: string | null) {
-  return getInstallBlock(system, pythonFormula);
+function buildInstallBody(
+  system: string,
+  pythonFormula: string | null,
+  binName?: string,
+  pipExtras?: string,
+) {
+  return getInstallBlock(system, pythonFormula, binName, pipExtras);
 }
 
 function getDependencies(
@@ -228,7 +229,12 @@ function getDependencies(
   }
 }
 
-function getInstallBlock(system: string, pythonFormula: string | null) {
+function getInstallBlock(
+  system: string,
+  pythonFormula: string | null,
+  binName?: string,
+  pipExtras?: string,
+) {
   switch (system) {
     case "cmake":
       return (
@@ -250,17 +256,26 @@ function getInstallBlock(system: string, pythonFormula: string | null) {
     case "go":
       return `    system "go", "build", *std_go_args(ldflags: "-s -w")\n`;
     case "python": {
-      // python@3.12 → python3.12 for virtualenv_create
+      // Prefer stdlib venv (includes pip) over virtualenv_create (--without-pip +
+      // Homebrew pip_install forces --no-deps). Only symlink the package console
+      // script so we do not collide with python@*/bin/python3.x.
+      // pipExtras: optional-dependency groups (e.g. "evaluation") for packages
+      // that import optional deps at module load (trae-agent → docker).
       const formula = pythonFormula || "python@3.13";
       const pyBin = formula.replace(/^python@/, "python");
-      // Idiomatic Homebrew path: virtualenv_create leaves the venv without a
-      // local pip binary; Virtualenv#pip_install runs
-      // `python -m pip --python=<venv>/bin/python` and std_pip_args already
-      // includes --no-deps / --ignore-installed. pip_install_and_link also
-      // symlinks new console scripts into bin/.
+      const script = rubyEscape(binName || "python");
+      const extras = String(pipExtras || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const pipTarget =
+        extras.length > 0
+          ? `"#{buildpath}[${extras.join(",")}]"`
+          : "buildpath";
       return (
-        `    venv = virtualenv_create(libexec, "${pyBin}")\n` +
-        `    venv.pip_install_and_link buildpath\n`
+        `    system "${pyBin}", "-m", "venv", libexec\n` +
+        `    system libexec/"bin/pip", "install", "-v", ${pipTarget}\n` +
+        `    bin.install_symlink libexec/"bin/${script}"\n`
       );
     }
     default:

@@ -289,7 +289,8 @@ LOG=${JSON.stringify(guestLog)}
 URL=${JSON.stringify(url)}
 NAME=${JSON.stringify(slug)}
 AB=$(command -v allbrew || echo ${brewBin}/allbrew)
-$AB "$URL" --name "$NAME" --verbose >"$LOG" 2>&1
+set -o pipefail
+$AB "$URL" --name "$NAME" --verbose 2>&1 | tee -a "$LOG"
 EC=$?
 echo EXIT_CODE=$EC | tee -a "$LOG"
 exit 0
@@ -307,10 +308,16 @@ URL=${JSON.stringify(url)}
 NAME=${JSON.stringify(slug)}
 SRC=${JSON.stringify(src)}
 if [ ! -f "$SRC/bin/allbrew.ts" ]; then echo "SRC_MISSING $SRC" >&2; exit 2; fi
+# Homebrew 5+ ignores formulae from untrusted taps — trust worker/user taps first.
+brew trust --tap tariqwest/allbrew 2>&1 || true
+brew trust --tap th-allbrew/allbrew 2>&1 || true
+brew trust --formula "tariqwest/allbrew/$NAME" 2>&1 || true
+brew trust --formula "th-allbrew/allbrew/$NAME" 2>&1 || true
 # Prefer running the synced source directly (unreleased patch) over the bottled allbrew.
 # Use "bun ./bin/allbrew.ts" (not "bun run bin/allbrew.ts"): modern Bun treats bare
 # "run <path>" as a package.json script name and prints help instead of executing the file.
-bun --cwd "$SRC" ./bin/allbrew.ts "$URL" --name "$NAME" --verbose >"$LOG" 2>&1
+set -o pipefail
+bun --cwd "$SRC" ./bin/allbrew.ts "$URL" --name "$NAME" --verbose 2>&1 | tee -a "$LOG"
 EC=$?
 echo EXIT_CODE=$EC | tee -a "$LOG"
 exit 0
@@ -392,6 +399,8 @@ export async function syncAllbrewSrcToVM(h, hostSrcPath, vmDest) {
     `BRANCH=${h.q(effectiveBranch)}`,
     `REMOTE=${h.q(remoteUrl)}`,
     `WANT_SHA=${h.q(wantSha)}`,
+    `git config --global --add safe.directory '*' 2>/dev/null || true`,
+    `git config --global --add safe.directory ${destQ} 2>/dev/null || true`,
     `echo "[sync-src] user=$(id -un) branch=$BRANCH remote=$REMOTE dest=$SRC want=$WANT_SHA"`,
     `mkdir -p "$(dirname "$SRC")"`,
     `if [ -d "$SRC/.git" ]; then`,
@@ -475,9 +484,9 @@ fi
 run_bin_check() {
   local bin="$1"
   # macOS has no timeout(1); use perl alarm
-  if perl -e "alarm 8; exec @ARGV" "$bin" --version >/tmp/ab-bin-out 2>&1 \
-    || perl -e "alarm 8; exec @ARGV" "$bin" --help >/tmp/ab-bin-out 2>&1 \
-    || perl -e "alarm 8; exec @ARGV" "$bin" -h >/tmp/ab-bin-out 2>&1; then
+  if perl -e "alarm 45; exec @ARGV" "$bin" --version >/tmp/ab-bin-out 2>&1 \
+    || perl -e "alarm 45; exec @ARGV" "$bin" --help >/tmp/ab-bin-out 2>&1 \
+    || perl -e "alarm 45; exec @ARGV" "$bin" -h >/tmp/ab-bin-out 2>&1; then
     return 0
   fi
   return 1
@@ -492,8 +501,11 @@ if [ "$BIN_OK" = "0" ]; then
     for b in "$PREFIX/bin"/*; do
       [ -e "$b" ] || continue
       if [ -x "$b" ] || [ -L "$b" ]; then
+        echo "BIN_CANDIDATE=$b"
         if run_bin_check "$b"; then
           echo BIN_OK; BIN_OK=1; echo "BIN_PATH=$b"; head -5 /tmp/ab-bin-out; break
+        else
+          echo BIN_HELP_FAIL; cat /tmp/ab-bin-out 2>/dev/null | head -8
         fi
       fi
     done

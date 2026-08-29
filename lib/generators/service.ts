@@ -41,7 +41,7 @@ export function isValidServiceCommand(command: string): boolean {
   if (/https?:\/\//i.test(c)) return false;
   if (/(?:^|[\s/])\.build\//.test(c)) return false;
   if (
-    /^(?:The|This|These|Those|A|An|When|Where|What|How|If|For|With|After|Before|Once|Then|Also|Note|Please|Run|Start|Stop|Install|Usage|Local)\b/.test(
+    /^(?:The|This|These|Those|A|An|When|Where|What|How|If|For|With|After|Before|Once|Then|Also|Note|Please|Run|Start|Stop|Install|Usage|Local|Open|Close|See|Visit)\b/.test(
       c,
     )
   ) {
@@ -52,6 +52,24 @@ export function isValidServiceCommand(command: string): boolean {
   const first = tokens[0] || "";
   if (!/^[a-zA-Z0-9._/-]+$/.test(first)) return false;
   if (first === "-" || first === "--") return false;
+  // One-shot management CLIs (`pkg servers add …`, `pkg login`) are not daemons.
+  // Singular server/serve/daemon/gateway/agent/start remain valid.
+  const sub = tokens[1] || "";
+  if (
+    /^(?:login|logout|auth|config|configure|init|setup|list|ls|get|show|describe|inspect|add|remove|rm|delete|create|update|set|unset|call|invoke|install|uninstall|discover|search|find|export|import|keys|tools|servers|groups|users|help|version|completion|completions)$/i.test(
+      sub,
+    )
+  ) {
+    return false;
+  }
+  if (
+    tokens.length >= 3 &&
+    /^(?:list|ls|get|add|remove|rm|delete|create|update|set|call|show)$/i.test(
+      tokens[2],
+    )
+  ) {
+    return false;
+  }
   if (tokens.length >= 4) {
     const hasFlag = tokens.some((t) => t.startsWith("-"));
     const hasPath = first.includes("/");

@@ -208,12 +208,12 @@ describe("selectHomebrewPythonFormula / requires-python", () => {
     expect(versionSatisfiesRequiresPython("3.12", ">=3.11,<3.13")).toBe(true);
   });
 
-  it("defaults to python@3.13 when unconstrained", async () => {
+  it("defaults to python@3.12 when unconstrained", async () => {
     const { selectHomebrewPythonFormula } = await import(
       "../../../lib/generators/source-build.ts"
     );
-    expect(selectHomebrewPythonFormula(null)).toBe("python@3.13");
-    expect(selectHomebrewPythonFormula("")).toBe("python@3.13");
+    expect(selectHomebrewPythonFormula(null)).toBe("python@3.12");
+    expect(selectHomebrewPythonFormula("")).toBe("python@3.12");
   });
 });
 
@@ -245,7 +245,7 @@ describe("collectSourceBuildPayload — open-notebook (Python web app, no PyPI, 
       { requiresPython: ">=3.11,<3.13" },
     );
     expect(payload.dependenciesLines).toContain('depends_on "python@3.12"');
-    expect(payload.installBody).toContain('virtualenv_create(libexec, "python3.12")');
+    expect(payload.installBody).toContain('system "python3.12", "-m", "venv", libexec');
     expect(payload.installBody).not.toContain("python3.13");
   });
 
@@ -554,5 +554,40 @@ describe("collectSourceBuildPayload — trae-agent (Python CLI, no PyPI, no rele
     );
     expect(payload.fullName).toBe("bytedance/trae-agent");
     expect(payload.defaultBranch).toBe("main");
+  });
+
+  it("uses synthetic branch archive when release provides tag+tarball (pip404 fallback)", async () => {
+    const synthetic = {
+      tagName: "0.1.0",
+      tarballUrl:
+        "https://github.com/bytedance/trae-agent/archive/refs/heads/main.tar.gz",
+    };
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      synthetic,
+      { system: "python" },
+      { binName: "trae-cli" },
+    );
+    expect(payload.urlLines).toContain(
+      "https://github.com/bytedance/trae-agent/archive/refs/heads/main.tar.gz",
+    );
+    expect(payload.urlLines).toContain('version "0.1.0"');
+    expect(payload.urlLines).toContain("sha256");
+    expect(payload.testBinName).toBe("trae-cli");
+    expect(payload.isPython).toBe(true);
+  });
+
+  it("installs with pip deps (not --no-deps) so console_scripts import", async () => {
+    const payload = await collectSourceBuildPayload(
+      traeAgentRepoInfo,
+      null,
+      { system: "python" },
+      { binName: "trae-cli" },
+    );
+    expect(payload.installBody).toContain('system "python3.12", "-m", "venv", libexec');
+    expect(payload.installBody).toContain('system libexec/"bin/pip", "install", "-v", buildpath');
+    expect(payload.installBody).toContain('bin.install_symlink libexec/"bin/trae-cli"');
+    expect(payload.installBody).not.toContain('Dir["#{libexec}/bin/*"]');
+    expect(payload.testBinName).toBe("trae-cli");
   });
 });
