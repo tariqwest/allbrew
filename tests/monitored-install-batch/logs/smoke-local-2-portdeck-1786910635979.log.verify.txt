@@ -1,0 +1,16 @@
+VERIFY name=portdeck
+VERIFY_BEGIN 20:04:21
+FORMULA_LISTED=1
+CASK_LISTED=1
+MANIFEST_OK
+BREW_TEST_FAIL
+/opt/homebrew/Library/Homebrew/vendor/portable-ruby/4.0.6/bin/bundle 
+Error: No available formula with the name "portdeck".
+BIN_MISSING
+==> portdeck: 0.1.0-beta.17
+Installed (on request)
+/opt/homebrew/Caskroom/portdeck/0.1.0-beta.17 (101.9MB)
+  Installed on 2026-08-16 at 13:04:19
+==> Artifacts
+PortDeck.app (App)
+SERVICE_STANZA=0

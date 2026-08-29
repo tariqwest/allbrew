@@ -1,0 +1,12 @@
+{
+  "url": "https://github.com/qarmin/czkawka",
+  "name": "krokiet",
+  "pkg": "krokiet",
+  "exitCode": 1,
+  "verifyOk": false,
+  "endpointId": "local-2",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-krokiet-1786910682813.log",
+  "formulaLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-krokiet-1786910682813.log.formula.rb",
+  "verifyLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-krokiet-1786910682813.log.verify.txt",
+  "finishedAt": "2026-08-16T20:05:40.829Z"
+}

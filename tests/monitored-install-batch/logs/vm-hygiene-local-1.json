@@ -1,0 +1,75 @@
+{
+  "checkedAt": "2026-08-16T19:56:27.189Z",
+  "poolPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/vm-pool.json",
+  "summary": {
+    "checkedAt": "2026-08-16T19:56:27.189Z",
+    "total": 1,
+    "healthy": 1,
+    "usable": 1,
+    "busy": 0,
+    "sshUnavailable": 0,
+    "vmStopped": 0,
+    "otherUnhealthy": 0
+  },
+  "endpoints": [
+    {
+      "id": "local-1",
+      "label": "local twin Lume 1 (tariqmac)",
+      "enabled": true,
+      "checkedAt": "2026-08-16T19:56:23.462Z",
+      "remote": false,
+      "vmName": "vm-local-macos-testing-1",
+      "usable": true,
+      "guestOk": true,
+      "free": true,
+      "status": "healthy",
+      "issues": [],
+      "mutex": {
+        "locked": false,
+        "path": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/vm-mutex-local-1.lockdir",
+        "holder": null,
+        "pidAlive": false,
+        "cleared": false
+      },
+      "remoteHost": null,
+      "lume": {
+        "ok": true,
+        "exitCode": 0,
+        "detail": "/opt/homebrew/bin/lume\nLUME_OK=0"
+      },
+      "vm": {
+        "name": "vm-local-macos-testing-1",
+        "state": "running",
+        "ip": "192.168.64.20",
+        "sshAvailable": true,
+        "exitCode": 0,
+        "raw": "[\n  {\n    \"provisioningOperation\" : null,\n    \"networkMode\" : \"nat\",\n    \"downloadProgress\" : null,\n    \"diskSize\" : {\n      \"total\" : 85899345920,\n      \"allocated\" : 37554864128\n    },\n    \"ipAddress\" : \"192.168.64.20\",\n    \"cpuCount\" : 2,\n    \"status\" : \"running\",\n    \"memorySize\" : 4294967296,\n    \"name\" : \"vm-local-macos-testing-1\",\n    \"locationName\" : \"home\",\n    \"os\" : \"macOS\",\n    \"display\" : \"1024x768\",\n    \"sharedDirectories\" : null,\n    \"vncUrl\" : \"vnc:\\/\\/:lemon-rose-peach-nine@127."
+      },
+      "ssh": {
+        "ok": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "error": null,
+        "stdout": "SSH_OK\nApple-Virtual-Machine-1.local\nlume\n2026-08-16T19:56:25Z"
+      },
+      "guest": {
+        "ok": true,
+        "exitCode": 0,
+        "projectUserExpected": "th-allbrew",
+        "projectUserPresent": true,
+        "diskLine": "/dev/disk4s5    75Gi    12Gi    40Gi    23%    316k  421M    0%   /System/Volumes/Data",
+        "homebrewMount": "absent",
+        "homebrewLock": "absent",
+        "homebrewLockPid": null,
+        "stdout": "GUEST_PROBE_BEGIN\nlume\nth-allbrew\n/dev/disk4s5    75Gi    12Gi    40Gi    23%    316k  421M    0%   /System/Volumes/Data\nHB_MOUNT=absent\nHB_LOCK=absent\nGUEST_PROBE_END",
+        "deep": {
+          "ok": true,
+          "brewVersion": "Homebrew >=4.3.0 (shallow or no git repository)",
+          "allbrewVersion": "missing",
+          "rootAvailKb": "42054780",
+          "stdout": "BREW_VER=Homebrew >=4.3.0 (shallow or no git repository)\nALLBREW_VER=missing\nROOT_AVAIL_KB=42054780"
+        }
+      }
+    }
+  ]
+}

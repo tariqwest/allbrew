@@ -756,15 +756,52 @@ export function archPatterns() {
   };
 }
 
-export function matchAssetToArch(assetName) {
-  const patterns = archPatterns();
-  for (const [arch, regexes] of Object.entries(patterns)) {
-    if (regexes.some((r) => r.test(assetName))) return arch;
+export function matchAssetToArch(assetName: string): string | null {
+  const lower = assetName.toLowerCase();
+
+  const hasArm =
+    /(?:^|[^a-z0-9])(?:arm64|aarch64)(?:[^a-z0-9]|$)/i.test(lower);
+  const hasIntel =
+    /(?:^|[^a-z0-9])(?:x86_64|x64|amd64|i386)(?:[^a-z0-9]|$)/i.test(lower);
+  const hasAll =
+    /(?:^|[^a-z0-9])(?:all|universal|fat)(?:[^a-z0-9]|$)/i.test(lower);
+
+  const hasMac =
+    /(?:^|[^a-z0-9])mac(?:os)?(?:[^a-z0-9]|$)/i.test(lower) ||
+    /(?:^|[^a-z0-9])darwin(?:[^a-z0-9]|$)/i.test(lower) ||
+    /(?:^|[^a-z0-9])osx(?:[^a-z0-9]|$)/i.test(lower) ||
+    /(?:^|[^a-z0-9])apple(?:[^a-z0-9]|$)/i.test(lower);
+  const hasLinux =
+    /(?:^|[^a-z0-9])linux(?:[^a-z0-9]|$)/i.test(lower);
+
+  if (hasMac) {
+    if (hasArm) return "macosArm";
+    if (hasIntel) return "macosIntel";
+    if (hasAll) return "macosUniversal";
+    // Platform-only macOS assets (e.g. swift-outdated-0.15.3-macos.zip) are
+    // treated as universal macOS binaries so multi-platform CLI releases work.
+    return "macosUniversal";
   }
+
+  if (hasLinux) {
+    if (hasArm) return "linuxArm";
+    if (hasIntel) return "linuxIntel";
+    // Linux "all" / universal / fat binaries are not architecture-specific.
+    // Historically they do not map to a linux arch at all.
+    if (hasAll) return null;
+    return "linuxIntel";
+  }
+
   return null;
 }
 
-export function isAppAsset(assetName) {
+/** Distro / package source names that must never become macOS app assets. */
+const APP_ZIP_DISTRO_RE =
+  /(?:^|[^a-z0-9])(?:debian|ubuntu|fedora|rhel|centos|opensuse|archlinux|linuxmint|appimage|snap|flatpak)(?:[^a-z0-9]|$)/i;
+const APP_ZIP_SOURCE_RE =
+  /(?:^|[^a-z0-9])(?:src|source|sources|checksums?)(?:[^a-z0-9]|$)/i;
+
+export function isAppAsset(assetName: string, siblingNames?: string[]): boolean {
   const lower = assetName.toLowerCase();
   if (lower.endsWith(".dmg")) return true;
   if (!lower.endsWith(".zip")) return false;
@@ -773,33 +810,37 @@ export function isAppAsset(assetName) {
 
   // Non-mac desktop/OS tags never count as macOS app assets
   if (
-    /(?:^|[^a-z])(?:linux|windows|win32|android|freebsd|openbsd)(?:[^a-z]|$)/i.test(
+    /(?:^|[^a-z0-9])(?:linux|windows|win32|android|freebsd|openbsd)(?:[^a-z0-9]|$)/i.test(
       lower,
     )
   ) {
     return false;
   }
 
-  const hasMacToken = /(?:^|[^a-z])(?:mac|macos|osx|darwin)(?:[^a-z]|$)/i.test(
-    lower,
-  );
-  // Arch-tagged darwin/macos/osx zips are almost always CLI binaries
-  // (e.g. gogs_*_darwin_amd64.zip, television-macos-aarch64.zip).
-  // Desktop app zips usually omit cpu arch or use "universal" with .app,
-  // or use short "mac"+arch (Electron).
+  // Distro / source / checksum packages are not macOS app assets.
+  if (APP_ZIP_DISTRO_RE.test(lower) || APP_ZIP_SOURCE_RE.test(lower)) {
+    return false;
+  }
+
+  // Sibling-aware multi-platform CLI release: macOS zip + Linux archive with
+  // no DMG/.app assets. Callers (cli.ts, binary-release) should treat every
+  // asset as a binary archive and peek for a real .app only when needed.
+  if (siblingNames && siblingNames.length > 0) {
+    const all = [assetName, ...siblingNames.filter((n) => n !== assetName)];
+    if (isCliPlatformZipRelease(all)) return false;
+  }
+
+  const hasMacToken =
+    /(?:^|[^a-z0-9])(?:mac|macos|osx|darwin)(?:[^a-z0-9]|$)/i.test(lower);
+  // Arch-tagged mac zips (macOS_arm64, mac_krokiet_arm64, etc.) are CLI
+  // binaries, not desktop app bundles, until content-peek proves otherwise.
   const hasCpuArch =
-    /(?:^|[^a-z])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z]|$)/i.test(
+    /(?:^|[^a-z0-9])(?:arm64|aarch64|amd64|x86_64|x64|i386)(?:[^a-z0-9]|$)/i.test(
       lower,
     );
 
   if (hasMacToken) {
-    if (hasCpuArch) {
-      const usesDarwinMacosOsx =
-        /(?:^|[^a-z])(?:darwin|macos|osx)(?:[^a-z]|$)/i.test(lower);
-      if (usesDarwinMacosOsx) return false;
-      // short platform token "mac" + cpu arch → desktop app zip
-      return /(?:^|[^a-z])mac(?:[^a-z]|$)/i.test(lower);
-    }
+    if (hasCpuArch) return false;
     return true;
   }
 
@@ -810,10 +851,10 @@ export function isAppAsset(assetName) {
   // No mac token: versioned product zips without cpu arch (e.g. NetBar-1.2.1.zip)
   // are commonly single-platform macOS .app distributions. cask-app-release still
   // peeks inside for a real .app before emitting a cask.
-  if (!hasCpuArch && isVersionedProductZipName(lower)) return true;
+  if (isVersionedProductZipName(lower)) return true;
   // Bare product name zips without version/arch (e.g. Clipped.zip) are also
   // common for single-platform macOS .app releases where version is in tag not filename.
-  if (!hasCpuArch && isBareAppZipName(lower)) return true;
+  if (isBareAppZipName(lower)) return true;
   return false;
 }
 
@@ -923,21 +964,27 @@ const BARE_BINARY_SKIP_NAMES = new Set([
   "checksums.txt.asc",
 ]);
 
-export function isArchiveBinaryAsset(assetName) {
+export function isArchiveBinaryAsset(
+  assetName: string,
+  siblingNames?: string[],
+) {
   const lower = assetName.toLowerCase();
   return (
     ARCHIVE_BINARY_EXTS.some((ext) => lower.endsWith(ext)) &&
-    !isAppAsset(assetName)
+    !isAppAsset(assetName, siblingNames)
   );
 }
 
 /** Extensionless (or .exe) platform-tagged release binaries, e.g. csctf-macos-arm64.
  * Also accepts versioned bare names like afm_0.1.0_macOS_universal (dots only in versions).
  */
-export function isBareBinaryAsset(assetName) {
+export function isBareBinaryAsset(
+  assetName: string,
+  siblingNames?: string[],
+) {
   const lower = assetName.toLowerCase();
   if (!assetName || BARE_BINARY_SKIP_NAMES.has(lower)) return false;
-  if (isAppAsset(assetName) || isArchiveBinaryAsset(assetName)) return false;
+  if (isAppAsset(assetName, siblingNames) || isArchiveBinaryAsset(assetName, siblingNames)) return false;
   if (BARE_BINARY_SKIP_SUFFIXES.some((s) => lower.endsWith(s))) return false;
   if (matchAssetToArch(assetName) == null) return false;
   if (lower.endsWith(".exe")) return true;
@@ -964,8 +1011,8 @@ export function isBareBinaryAsset(assetName) {
   return true;
 }
 
-export function isBinaryAsset(assetName) {
-  return isArchiveBinaryAsset(assetName) || isBareBinaryAsset(assetName);
+export function isBinaryAsset(assetName: string, siblingNames?: string[]) {
+  return isArchiveBinaryAsset(assetName, siblingNames) || isBareBinaryAsset(assetName, siblingNames);
 }
 
 /**
@@ -977,9 +1024,10 @@ export function releaseHasMacosArmBinaryAssets(release: {
   assets?: Array<{ name?: string }>;
 } | null | undefined): boolean {
   if (!release?.assets?.length) return false;
+  const allNames = release.assets.map((a) => a?.name || "").filter(Boolean);
   return release.assets.some((a) => {
     const name = a?.name;
-    if (!name || !isBinaryAsset(name)) return false;
+    if (!name || !isBinaryAsset(name, allNames)) return false;
     const arch = matchAssetToArch(name);
     return arch === "macosArm" || arch === "macosUniversal";
   });

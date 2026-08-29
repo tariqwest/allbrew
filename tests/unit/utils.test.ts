@@ -611,3 +611,59 @@ describe("isCliPlatformZipRelease", () => {
     ).toBe(true);
   });
 });
+
+describe("github-release-parsing arch / classification updates", () => {
+  it("matchAssetToArch recognizes short mac_ product binaries", () => {
+    expect(matchAssetToArch("mac_krokiet_all_backends_arm64.zip")).toBe(
+      "macosArm",
+    );
+    expect(matchAssetToArch("mac_krokiet_all_backends_x86_64.zip")).toBe(
+      "macosIntel",
+    );
+    expect(matchAssetToArch("mac_czkawka_cli_arm64")).toBe("macosArm");
+  });
+
+  it("matchAssetToArch treats platform-only macos zips as universal", () => {
+    expect(matchAssetToArch("swift-outdated-0.15.3-macos.zip")).toBe(
+      "macosUniversal",
+    );
+    expect(matchAssetToArch("foo-1.0.0-darwin.zip")).toBe("macosUniversal");
+  });
+
+  it("matchAssetToArch treats bare linux zips as intel", () => {
+    expect(matchAssetToArch("foo-1.0.0-linux.zip")).toBe("linuxIntel");
+  });
+
+  it("isAppAsset rejects distro and generic package zips", () => {
+    expect(isAppAsset("debian-package.zip")).toBe(false);
+    expect(isAppAsset("foo-ubuntu-1.0.0.zip")).toBe(false);
+  });
+
+  it("isAppAsset rejects short mac_ arch-tagged zips", () => {
+    expect(isAppAsset("mac_krokiet_all_backends_arm64.zip")).toBe(false);
+    expect(isAppAsset("mac_krokiet_all_backends_x86_64.zip")).toBe(false);
+  });
+
+  it("isAppAsset sibling context treats multi-platform CLI zips as binary", () => {
+    const siblings = [
+      "swift-outdated-0.15.3-macos.zip",
+      "swift-outdated-0.15.3-linux.zip",
+    ];
+    expect(isAppAsset("swift-outdated-0.15.3-macos.zip", siblings)).toBe(false);
+    expect(isBinaryAsset("swift-outdated-0.15.3-macos.zip", siblings)).toBe(
+      true,
+    );
+  });
+
+  it("releaseHasMacosArmBinaryAssets finds mac_ arm64 binaries", () => {
+    expect(
+      releaseHasMacosArmBinaryAssets({
+        assets: [
+          { name: "mac_krokiet_all_backends_arm64.zip" },
+          { name: "mac_krokiet_all_backends_x86_64.zip" },
+          { name: "linux_krokiet_all_backends_x86_64.zip" },
+        ],
+      }),
+    ).toBe(true);
+  });
+});

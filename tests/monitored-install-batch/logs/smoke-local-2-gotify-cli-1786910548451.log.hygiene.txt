@@ -1,0 +1,37 @@
+Warning: Skipping tariqwest/tap/allbrew: most recent version 0.0.36 not installed
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/descriptions.json... (503.4KB)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/cask_descriptions.json... (475.6KB)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/external_commands_list.txt... (1B)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/linkage.json... (2B)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/gotify-cli--2.4.0... (16.4MB)
+Removing: /Users/th-allbrew/Library/Caches/Homebrew/all_commands_list.txt... (1KB)
+Removing: /Users/th-allbrew/Library/Logs/Homebrew/gotify-cli... (106B)
+==> This operation has freed approximately 17.4MB of disk space.
+CLEANUP_OK
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk4s1s1    75Gi    12Gi    39Gi    24%    459k  411M    0%   /
+DF_OK
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk8s1    16Gi   345Mi    15Gi     3%     10k  162M    0%   /opt/homebrew
+DF_HB_OK
+==> Downloading Homebrew API data
+✔︎ JSON API packages.arm64_tahoe.jws.json
+All official taps and commands are trusted.
+Trusted taps:
+  /users/th-allbrew/homebrew-allbrew
+  tariqwest/allbrew
+  tariqwest/tap
+  th-allbrew/allbrew
+Trusted formulae:
+  /users/th-allbrew/homebrew-allbrew/agent-deck
+  /users/th-allbrew/homebrew-allbrew/ante-homepage
+  /users/th-allbrew/homebrew-allbrew/ante-install-sh
+  /users/th-allbrew/homebrew-allbrew/apiark
+  /users/th-allbrew/homebrew-allbrew/balenaetcher
+  /users/th-allbrew/homebrew-allbrew/bun
+  /users/th-allbrew/homebrew-allbrew/csvlens
+  /users/th-allbrew/homebrew-allbrew/cua-driver-prewarm
+  /users/th-allbrew/homebrew-allbrew/devbox
+  /users/th-allbrew/homebrew-allbrew/echo
+  /users/th-allbrew/homebrew-allbrew/filenq
+TRUST_OK

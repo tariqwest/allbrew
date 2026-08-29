@@ -1,0 +1,15 @@
+[vm-pool] acquired endpoint=local-2 owner=television pid=71908 attempt=1
+[vm-pool] using endpoint=local-2 remote=false vm=vm-local-macos-testing-2
+[th-homebrew] Acquiring exclusive Homebrew prefix for th-allbrew
+[th-homebrew] Attaching /Users/th-allbrew/Library/LumeHomebrew/homebrew.sparsebundle at /opt/homebrew
+[vm-install-one] syncing allbrew src /Users/tariqwest/Developer/allbrew-wt-github-release-parsing to VM...
+[vm-install-one] src ready on branch fix/github-release-parsing at /Users/th-allbrew/Developer/allbrew-src/fix-github-release-parsing
+[th-homebrew] Releasing Homebrew prefix for th-allbrew
+[th-homebrew] Detaching volume at /opt/homebrew
+[vm-pool] released endpoint=local-2 pid=71908
+EXIT_CODE=0
+PACKAGE=alexpasmantier-television
+VERIFY_OK=false
+ENDPOINT=local-2
+LOG=/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-television-1786910460740.log
+FORMULA_LOG=/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-television-1786910460740.log.formula.rb

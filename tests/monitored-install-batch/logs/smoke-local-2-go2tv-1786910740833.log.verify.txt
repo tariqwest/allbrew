@@ -1,0 +1,16 @@
+VERIFY name=alexballas-go2tv
+VERIFY_BEGIN 20:08:15
+FORMULA_LISTED=1
+CASK_LISTED=1
+MANIFEST_OK
+BREW_TEST_FAIL
+/opt/homebrew/Library/Homebrew/vendor/portable-ruby/4.0.6/bin/bundle 
+Error: No available formula with the name "alexballas-go2tv".
+BIN_MISSING
+==> alexballas-go2tv: 2.5.0
+Installed (on request)
+/opt/homebrew/Caskroom/alexballas-go2tv/2.5.0 (31.6MB)
+  Installed on 2026-08-16 at 13:08:13
+==> Artifacts
+go2tv.app (App)
+SERVICE_STANZA=0

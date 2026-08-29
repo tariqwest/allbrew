@@ -1,0 +1,12 @@
+{
+  "url": "https://github.com/nicotine-plus/nicotine-plus",
+  "name": "nicotine-plus",
+  "pkg": "nicotine-plus",
+  "exitCode": 138,
+  "verifyOk": false,
+  "endpointId": "local-2",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-nicotine-plus-1786910981576.log",
+  "formulaLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-nicotine-plus-1786910981576.log.formula.rb",
+  "verifyLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-local-2-nicotine-plus-1786910981576.log.verify.txt",
+  "finishedAt": "2026-08-16T20:10:46.011Z"
+}

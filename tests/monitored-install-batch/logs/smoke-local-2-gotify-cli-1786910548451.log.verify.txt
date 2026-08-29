@@ -1,0 +1,21 @@
+VERIFY name=gotify-cli
+VERIFY_BEGIN 20:02:58
+FORMULA_LISTED=1
+CASK_LISTED=0
+MANIFEST_OK
+BIN_CANDIDATE=/opt/homebrew/opt/gotify-cli/bin/cli
+BIN_OK
+BIN_PATH=/opt/homebrew/opt/gotify-cli/bin/cli
+Version:   2.4.0
+Commit:    1a3712544653db1ca4d12bb52779be80ea152c79
+BuildDate: 2026-07-21-17:04:09
+==> th-allbrew/allbrew/gotify-cli: stable 2.4.0
+A command line interface for pushing messages to gotify/server.
+https://github.com/gotify/cli
+Installed (on request)
+From: /Users/th-allbrew/homebrew-allbrew/Formula/gotify-cli.rb
+Tap: th-allbrew/allbrew
+License: MIT
+==> Installed Versions
+th-allbrew/allbrew/gotify-cli 2.4.0 (4 files, 16.4MB) [Linked]
+SERVICE_STANZA=0

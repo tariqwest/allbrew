@@ -1,0 +1,22 @@
+VERIFY name=gokapi
+VERIFY_BEGIN 20:03:43
+FORMULA_LISTED=1
+CASK_LISTED=0
+MANIFEST_OK
+BIN_CANDIDATE=/opt/homebrew/bin/gokapi
+BIN_OK
+Gokapi v2.2.4
+
+Builder: Github Release Builder
+Build Date: Sun Mar 15 08:27:39 UTC 2026
+Is Docker Version: false
+==> th-allbrew/allbrew/gokapi: stable 2.2.4
+Lightweight selfhosted Firefox Send alternative without public upload. AWS S3 supported.
+https://github.com/Forceu/Gokapi
+Installed (on request)
+From: /Users/th-allbrew/homebrew-allbrew/Formula/gokapi.rb
+Tap: th-allbrew/allbrew
+License: AGPL-3.0
+==> Installed Versions
+th-allbrew/allbrew/gokapi 2.2.4 (5 files, 52.3MB) [Linked]
+SERVICE_STANZA=0

@@ -1,0 +1,6 @@
+[vm-pool] acquired endpoint=local-1 owner=go2tv pid=80393 attempt=1
+[vm-pool] using endpoint=local-1 remote=false vm=vm-local-macos-testing-1
+[th-homebrew] Acquiring exclusive Homebrew prefix for th-allbrew
+[th-homebrew] Attaching /Users/th-allbrew/Library/LumeHomebrew/homebrew.sparsebundle at /opt/homebrew
+[vm-install-one] syncing allbrew src /Users/tariqwest/Developer/allbrew-wt-github-release-parsing to VM...
+[vm-install-one] src ready on branch fix/github-release-parsing at /Users/th-allbrew/Developer/allbrew-src/fix-github-release-parsing

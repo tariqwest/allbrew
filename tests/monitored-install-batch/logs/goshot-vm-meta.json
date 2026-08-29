@@ -1,0 +1,17 @@
+{
+  "endpointId": "homeserver",
+  "runName": "goshot",
+  "hostLog": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/smoke-homeserver-goshot-1786914086426.log",
+  "metaPath": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing/tests/monitored-install-batch/logs/goshot-vm-meta.json",
+  "poolAcquiredAt": 1786914086497,
+  "lockAcquiredAt": 1786914092580,
+  "lastLogAt": 1786914130701,
+  "hostClean": true,
+  "vmSrc": "/Users/tariqwest/Developer/allbrew-wt-github-release-parsing",
+  "phase": "uninstalled",
+  "pkg": "goshot",
+  "verifyOk": false,
+  "exitCode": 138,
+  "hygiene": "bash: line 1: brew: command not found\nbash: line 2: brew: command not found\nCLEANUP_OK\nbash: line 3: brew: command not found\nFilesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s1s1    45Gi    12Gi    18Gi    41%    459k  184M    0%   /\nDF_OK\nFilesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk4s5    45Gi   7.2Gi    18Gi    30%    168k  184M    0%   /System/Volumes/Data\nDF_HB_OK\nbash: line 9: brew: command not found\nTRUST_OK\ncompact start /Users/th-allbrew/Library/LumeHomebrew/homebrew.sparsebundle\nhdiutil: compact failed - Resource temporarily unavailable\nCOMPACT_OK",
+  "diskAvail": "18Gi"
+}

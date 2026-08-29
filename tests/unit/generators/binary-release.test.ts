@@ -555,4 +555,48 @@ describe("pickArchiveEntrypoint / nested package archives", () => {
     expect(payload.platformBlocks).not.toContain("gokapi-cli");
     expect(payload.platformBlocks).not.toContain("1.1.3");
   });
+
+  it("templateEntrypointPath templates version followed by platform/arch tokens", () => {
+    expect(
+      templateEntrypointPath("tv-0.15.9-aarch64-apple-darwin/tv"),
+    ).toBe('"tv-#{version}-aarch64-apple-darwin/tv"');
+    expect(
+      templateEntrypointPath("tv-0.15.9-aarch64-apple-darwin"),
+    ).toBe('"tv-#{version}-aarch64-apple-darwin"');
+  });
+
+  it("resolveBinaryReleaseBinName strips leading mac_ and finds product token", () => {
+    expect(
+      resolveBinaryReleaseBinName("krokiet", [
+        "mac_krokiet_all_backends_arm64",
+        "mac_krokiet_all_backends_x86_64",
+      ]),
+    ).toBe("krokiet");
+    expect(resolveBinaryReleaseBinName("krokiet", ["mac_krokiet_arm64"])).toBe(
+      "krokiet",
+    );
+  });
+
+  it("collectBinaryReleasePayload prefers primary asset over versioned companion", async () => {
+    const release = {
+      tagName: "v1.0.0",
+      assets: [
+        { name: "acme-1.0.0_darwin-arm64.tar.gz", url: "https://example.com/acme-1.0.0_darwin-arm64.tar.gz" },
+        { name: "acme-1.0.0_darwin-x86_64.tar.gz", url: "https://example.com/acme-1.0.0_darwin-x86_64.tar.gz" },
+        { name: "acme-server-0.9.0_darwin-arm64.tar.gz", url: "https://example.com/acme-server-0.9.0_darwin-arm64.tar.gz" },
+      ],
+    };
+    const repo = {
+      name: "acme",
+      fullName: "org/acme",
+      description: "",
+      homepage: null,
+      htmlUrl: "https://github.com/org/acme",
+      license: "MIT",
+      defaultBranch: "main",
+    };
+    const payload = await collectBinaryReleasePayload(repo, release, {});
+    expect(payload.platformBlocks).toContain("acme-#{version}_darwin-arm64.tar.gz");
+    expect(payload.platformBlocks).not.toContain("acme-server");
+  });
 });

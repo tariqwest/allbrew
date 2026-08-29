@@ -1,0 +1,37 @@
+VERIFY name=alexpasmantier-television
+VERIFY_BEGIN 20:01:32
+FORMULA_LISTED=1
+CASK_LISTED=0
+MANIFEST_OK
+BREW_TEST_FAIL
+/opt/homebrew/Library/Homebrew/formula.rb:3320:in 'block in Formula#run_test'
+/opt/homebrew/Library/Homebrew/mktemp.rb:97:in 'block in Mktemp#run'
+/opt/homebrew/Library/Homebrew/mktemp.rb:97:in 'Dir.chdir'
+/opt/homebrew/Library/Homebrew/mktemp.rb:97:in 'Mktemp#run'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'UnboundMethod#bind_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'T::Private::Methods::CallValidation.validate_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/_methods.rb:390:in 'block in Mktemp#_on_method_added'
+/opt/homebrew/Library/Homebrew/formula.rb:3686:in 'Formula#mktemp'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'UnboundMethod#bind_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'T::Private::Methods::CallValidation.validate_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/_methods.rb:390:in 'block in Formula#_on_method_added'
+/opt/homebrew/Library/Homebrew/formula.rb:3309:in 'Formula#run_test'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'UnboundMethod#bind_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/call_validation.rb:331:in 'T::Private::Methods::CallValidation.validate_call'
+/opt/homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0/gems/sorbet-runtime-0.6.13412/lib/types/private/methods/_methods.rb:390:in 'block in Formula#_on_method_added'
+/opt/homebrew/Library/Homebrew/test.rb:52:in 'block in <main>'
+/opt/homebrew/Library/Homebrew/vendor/portable-ruby/4.0.6/lib/ruby/4.0.0/timeout.rb:296:in 'block in Timeout.timeout'
+/opt/homebrew/Library/Homebrew/vendor/portable-ruby/4.0.6/lib/ruby/4.0.0/timeout.rb:38:in 'Timeout::Error.handle_timeout'
+/opt/homebrew/Library/Homebrew/vendor/portable-ruby/4.0.6/lib/ruby/4.0.0/timeout.rb:306:in 'Timeout.timeout'
+/opt/homebrew/Library/Homebrew/test.rb:63:in '<main>'
+BIN_MISSING
+==> th-allbrew/allbrew/alexpasmantier-television: stable 0.15.9
+A very fast, portable and hackable fuzzy finder.
+https://alexpasmantier.github.io/television/
+Installed (on request)
+From: /Users/th-allbrew/homebrew-allbrew/Formula/alexpasmantier-television.rb
+Tap: th-allbrew/allbrew
+License: MIT
+==> Installed Versions
+th-allbrew/allbrew/alexpasmantier-television 0.15.9 (41 files, 7.8MB) [Linked]
+SERVICE_STANZA=0
