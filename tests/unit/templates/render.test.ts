@@ -29,6 +29,9 @@ describe("renderFormula", () => {
       allbrewDependency: "",
       testBinName: "foo",
       serviceBlock: "",
+      nodeVersion: "node",
+      stdNpmArgs: "*std_npm_args",
+      testDoBody: `    assert_match version.to_s, shell_output("#{bin}/foo --version")`,
     };
     const expected =
       `class Foo < Formula\n` +
@@ -43,7 +46,7 @@ describe("renderFormula", () => {
       `\n` +
       `  def install\n` +
       `    system "npm", "install", *std_npm_args, "--min-release-age=0"\n` +
-      `    bin.install_symlink libexec.glob("bin/*")` + CS_LIBEXEC + `\n` +
+      `    bin.install_symlink libexec.glob("bin/*").select { |f| f.file? || f.symlink? }` + CS_LIBEXEC + `\n` +
       `  end\n\n` +
       `  test do\n` +
       `    assert_match version.to_s, shell_output("#{bin}/foo --version")\n` +
@@ -146,6 +149,9 @@ describe("renderFormula", () => {
       allbrewDependency: "",
       testBinName: "foo",
       serviceBlock: "",
+      nodeVersion: "node",
+      stdNpmArgs: "*std_npm_args",
+      testDoBody: `    assert_match version.to_s, shell_output("#{bin}/foo --version")`,
     };
     const expected =
       `class Foo < Formula\n` +
