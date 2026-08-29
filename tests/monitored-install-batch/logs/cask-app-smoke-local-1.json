@@ -1,0 +1,42 @@
+[
+  {
+    "name": "yaak",
+    "url": "https://yaak.app/download"
+  },
+  {
+    "name": "balenaetcher",
+    "url": "https://github.com/balena-io/etcher/releases/download/v2.1.6/balenaEtcher-2.1.6-arm64.dmg"
+  },
+  {
+    "name": "chronoid",
+    "url": "https://chronoid.com"
+  },
+  {
+    "name": "devdash",
+    "url": "https://devdash.dev"
+  },
+  {
+    "name": "ego-lite",
+    "url": "https://lite.ego.app/download"
+  },
+  {
+    "name": "itsypin",
+    "url": "https://itsypin.app"
+  },
+  {
+    "name": "superwhisper",
+    "url": "https://superwhisper.com"
+  },
+  {
+    "name": "popclip",
+    "url": "https://pilotmoon.com/downloads/PopClip-2025.9.2.zip"
+  },
+  {
+    "name": "snippetbar",
+    "url": "https://snippetbar.app"
+  },
+  {
+    "name": "halo",
+    "url": "https://heyhalo.app"
+  }
+]

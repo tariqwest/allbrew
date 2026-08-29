@@ -27,6 +27,33 @@ export function toCaskToken(name) {
     .toLowerCase();
 }
 
+/**
+ * Strip distribution-only suffixes from macOS installer filenames so the
+ * inferred cask token, display name, and .app name come from the product name
+ * rather than version / architecture / platform tags (e.g. MyApp-1.2.3-arm64
+ * or Xirp-0.14.0-arm64-external.dmg → MyApp / Xirp).
+ */
+const CASK_ARCH_TAG_RE = /[-_.\s](?:aarch64|arm64|x64|x86_64|amd64|intel?|universal|apple[-\s]?silicon|apple|silicon)[-_.\s]?$/i;
+const CASK_PLATFORM_TAG_RE = /[-_.\s](?:macos|osx|darwin|mac)[-_.\s]?$/i;
+const CASK_DIST_TAG_RE = /[-_.\s](?:external|internal|release|setup|installer|latest|direct|signed|unsigned)[-_.\s]?$/i;
+const CASK_VERSION_TAIL_RE = /[-_.\s]v?\d+(?:\.\d+)*(?:[-+][\w.]+)?$/i;
+
+export function stripCaskArtifactSuffixes(name: string): string {
+  if (!name) return "";
+  let previous: string;
+  let cleaned = name.replace(/\.(dmg|zip|pkg)$/i, "");
+  do {
+    previous = cleaned;
+    cleaned = cleaned
+      .replace(CASK_ARCH_TAG_RE, "")
+      .replace(CASK_PLATFORM_TAG_RE, "")
+      .replace(CASK_DIST_TAG_RE, "")
+      .replace(CASK_VERSION_TAIL_RE, "")
+      .replace(/[-_.\s]+$/g, "");
+  } while (cleaned !== previous);
+  return cleaned;
+}
+
 let cachedHomebrewCorePrefix: string | null | undefined;
 let cachedHomebrewCaskPrefix: string | null | undefined;
 let cachedHomebrewCachePrefix: string | null | undefined;
