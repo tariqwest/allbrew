@@ -165,6 +165,22 @@ describe("scoreCandidateUrl / pickAutoCandidate", () => {
     expect(kept.some((c) => c.url.includes("build-0.9.0.dmg"))).toBe(false);
     expect(kept.some((c) => c.kind === "store-download-gate")).toBe(true);
   });
+
+  it("filterUnreachableScriptArtifacts drops same-site high-score cask-dmg HTML soft-404s", async () => {
+    const page = "https://kosmik.app";
+    const dmg = scoreCandidateUrl(
+      "https://kosmik.app/downloads/Kosmik-Apple-Silicon.dmg",
+      page,
+      ["html-attr", "same-site"],
+    );
+    dmg.score = 145;
+    const kept = await filterUnreachableScriptArtifacts(
+      [dmg],
+      page,
+      { headOk: async () => false },
+    );
+    expect(kept.some((c) => c.url.includes("Kosmik-Apple-Silicon.dmg"))).toBe(false);
+  });
 });
 
 describe("discoverPageDownloads with fixtures", () => {

@@ -73,9 +73,7 @@ for (const entry of list) {
           ? "success"
           : "failed";
       try {
-        // vm-install-one already wrote the full guest transcript to this path;
-        // append the orchestrator's captured child output instead of overwriting.
-        appendFileSync(log, chunks.join(""));
+        writeFileSync(log, chunks.join(""));
       } catch (e) {
         console.error(`[smoke ${endpoint}] ${name} failed to write log: ${e.message}`);
       }
