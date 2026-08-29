@@ -123,6 +123,13 @@ export async function collectGemPackagePayload(
     gemName ||
     name;
 
+  // When formula token differs from gem executable (e.g. license-finder vs license_finder),
+  // symlink the formula name to the gem bin so `brew install license-finder` is invocable.
+  const binAliasBlock =
+    testBin && name && testBin !== name
+      ? `    bin.install_symlink ${rubyString(testBin)} => ${rubyString(name)} if (bin/${rubyString(testBin)}).exist?\n`
+      : "";
+
   const requireName =
     options.requireName || gemName.replace(/-/g, "_").replace(/^$/, gemName);
   // Library gems ship no executables: verify via gem list + require rather than bin --version.
@@ -138,7 +145,7 @@ export async function collectGemPackagePayload(
     template: "gem_package",
     name,
     className,
-    desc: rubyEscape(desc),
+    desc: rubyEscape(collapseDescWhitespace(desc)),
     homepage: rubyEscape(homepage),
     gemName: rubyString(gemName),
     version: rubyEscape(version),
@@ -147,10 +154,18 @@ export async function collectGemPackagePayload(
     livecheckBlock: rubyGemsLivecheckBlock(gemName),
     allbrewDependency: rubyEscape(getAllbrewFormulaDependency()),
     testBinName: rubyEscape(testBin),
+    binAliasBlock,
     serviceBlock: buildServiceBlock(serviceFromOptions(options, name), name),
     dependsOnLines,
     testDoBody,
   };
+}
+
+/** Collapse RubyGems multi-line indented `info` into a single-line formula desc. */
+function collapseDescWhitespace(text: string): string {
+  return String(text || "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function resolveGemNativeDepends(
@@ -227,6 +242,56 @@ async function fetchRubyGemsData(gemName: string) {
     licenses: data.licenses,
     executables,
   };
+}
+
+async function fetchGemExecutables(gemUrl: string): Promise<string[]> {
+  try {
+    const res = await fetch(gemUrl, { headers: { "User-Agent": "allbrew/1.0" }, signal: AbortSignal.timeout(30000) });
+    if (!res.ok) return [];
+    const buf = await res.arrayBuffer();
+    const tmp = await import("node:fs/promises");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const dir = await tmp.mkdtemp(path.join(os.tmpdir(), "allbrew-gem-"));
+    const gemPath = path.join(dir, "pkg.gem");
+    await tmp.writeFile(gemPath, Buffer.from(buf));
+    try {
+      const zlib = await import("node:zlib");
+      const fs = await import("node:fs");
+      const gzPath = path.join(dir, "metadata.gz");
+      const { execSync } = await import("node:child_process");
+      execSync(`tar -xzf ${JSON.stringify(gemPath)} -C ${JSON.stringify(dir)} 2>/dev/null`, { timeout: 10000 });
+      if (!fs.existsSync(gzPath)) {
+        await tmp.rm(dir, { recursive: true, force: true });
+        return [];
+      }
+      const gz = fs.readFileSync(gzPath);
+      const yaml = zlib.gunzipSync(gz).toString("utf8");
+      const exes: string[] = [];
+      const m = yaml.match(/executables:\s*\n((?:- \s*\S+\s*\n?)+)/);
+      if (m) {
+        for (const line of m[1].split("\n")) {
+          const mm = line.match(/-\s*(\S+)/);
+          if (mm) exes.push(mm[1]);
+        }
+      } else {
+        const inline = yaml.match(/executables:\s*\[([^\]]*)\]/);
+        if (inline) {
+          for (const tok of inline[1].split(",")) {
+            const t = tok.trim().replace(/^["']|["']$/g, "");
+            if (t) exes.push(t);
+          }
+        }
+      }
+      await tmp.rm(dir, { recursive: true, force: true });
+      return exes;
+    } catch {
+      try { await tmp.rm(dir, { recursive: true, force: true }); } catch {}
+      return [];
+    }
+  } catch {
+    return [];
+  }
 }
 
 function rubyGemsLivecheckBlock(gemName: string) {

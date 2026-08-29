@@ -88,6 +88,12 @@ describe("collectGemPackagePayload", () => {
     expect(payload.serviceBlock).toBe("");
   });
 
+  it("omits bin alias when formula name matches gem executable", async () => {
+    const payload = await collectGemPackagePayload("pry");
+    expect(payload.binAliasBlock).toBe("");
+    expect(payload.testBinName).toBe("pry");
+  });
+
   it("includes service block when configured", async () => {
     const payload = await collectGemPackagePayload("pry", null, {
       service: true,
@@ -159,6 +165,25 @@ describe("collectGemPackagePayload — license_finder", () => {
     const payload = await collectGemPackagePayload("license_finder");
     expect(payload.livecheckBlock).toContain("rubygems.org");
     expect(payload.livecheckBlock).toContain("license_finder");
+  });
+
+  it("uses gem name (underscores) as testBinName, not formula token", async () => {
+    const payload = await collectGemPackagePayload("license_finder");
+    expect(payload.testBinName).toBe("license_finder");
+  });
+
+  it("adds bin.install_symlink formula token when gem bin uses underscores", async () => {
+    const payload = await collectGemPackagePayload("license_finder");
+    expect(payload.binAliasBlock).toContain("bin.install_symlink");
+    expect(payload.binAliasBlock).toContain('"license_finder"');
+    expect(payload.binAliasBlock).toContain('"license-finder"');
+  });
+
+  it("collapses multi-line RubyGems info into a single-line desc", async () => {
+    const payload = await collectGemPackagePayload("license_finder");
+    expect(payload.desc).not.toMatch(/\n/);
+    expect(payload.desc).toContain("LicenseFinder");
+    expect(payload.desc.startsWith(" ")).toBe(false);
   });
 });
 
