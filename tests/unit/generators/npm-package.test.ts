@@ -1,5 +1,10 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { collectNpmPackagePayload } from "../../../lib/generators/npm-package.ts";
+import {
+  collectNpmPackagePayload,
+  inferNodeVersion,
+  isNpmTuiNoVersion,
+  npmNeedsInstallScripts,
+} from "../../../lib/generators/npm-package.ts";
 import maildevFixture from "../../fixtures/npm/maildev.json";
 import diracCliFixture from "../../fixtures/npm/dirac-cli.json";
 import clineFixture from "../../fixtures/npm/cline.json";
@@ -10,6 +15,8 @@ import samanhappyMcphubFixture from "../../fixtures/npm/samanhappy-mcphub.json";
 import augmentcodeAuggieFixture from "../../fixtures/npm/augmentcode-auggie.json";
 import smitheryCliFixture from "../../fixtures/npm/smithery-cli.json";
 import officecliFixture from "../../fixtures/npm/officecli.json";
+import railwayCliFixture from "../../fixtures/npm/railway-cli.json";
+import gtopFixture from "../../fixtures/npm/gtop.json";
 
 mock.module("../../../lib/sha256.ts", () => ({
   hashUrl: mock().mockResolvedValue("mocked_sha256_hash_64chars_padding_abcdef0123456789abcdef012345"),
@@ -722,5 +729,131 @@ describe("collectNpmPackagePayload — @officecli/officecli", () => {
       name: "officecli",
     });
     expect(payload.serviceBlock).toBe("");
+  });
+});
+
+describe("collectNpmPackagePayload — @railway/cli (install scripts)", () => {
+  beforeEach(() => {
+    mock.restore();
+
+    global.fetch = mock((url: string) => {
+      if (url.includes("registry.npmjs.org/%40railway%2Fcli") || url.includes("registry.npmjs.org/@railway/cli")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(railwayCliFixture),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    }) as any;
+  });
+
+  it("detects postinstall and uses std_npm_args(ignore_scripts: false)", async () => {
+    const payload = await collectNpmPackagePayload("@railway/cli");
+    expect(payload.stdNpmArgs).toBe("*std_npm_args(ignore_scripts: false)");
+  });
+
+  it("extracts bin name from package last segment fallback", async () => {
+    const payload = await collectNpmPackagePayload("@railway/cli");
+    expect(payload.testBinName).toBe("railway");
+  });
+
+  it("uses unbounded node engine as latest node", async () => {
+    const payload = await collectNpmPackagePayload("@railway/cli");
+    expect(payload.nodeVersion).toBe("node");
+  });
+});
+
+describe("collectNpmPackagePayload — gtop (TUI / node pinning)", () => {
+  beforeEach(() => {
+    mock.restore();
+
+    global.fetch = mock((url: string) => {
+      if (url.includes("registry.npmjs.org/gtop")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(gtopFixture),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    }) as any;
+  });
+
+  it("detects TUI with blessed deps and falls back to assert_path_exists", async () => {
+    const payload = await collectNpmPackagePayload("gtop");
+    expect(payload.testDoBody).toContain("assert_path_exists");
+    expect(payload.testDoBody).toContain('bin/"gtop"');
+  });
+
+  it("pins bounded engines.node to node@18", async () => {
+    const payload = await collectNpmPackagePayload("gtop");
+    expect(payload.nodeVersion).toBe("node@18");
+  });
+});
+
+describe("inferNodeVersion", () => {
+  it("defaults to node when engines is missing", () => {
+    expect(inferNodeVersion(null)).toBe("node");
+    expect(inferNodeVersion("")).toBe("node");
+  });
+
+  it("uses latest node for unbounded >= ranges", () => {
+    expect(inferNodeVersion(">=18")).toBe("node");
+    expect(inferNodeVersion(">=18.0.0")).toBe("node");
+  });
+
+  it("pins major for ^ and ~ constraints", () => {
+    expect(inferNodeVersion("^18.0.0")).toBe("node@18");
+    expect(inferNodeVersion("~20.0.0")).toBe("node@20");
+  });
+
+  it("pins major for upper-bounded ranges", () => {
+    expect(inferNodeVersion(">=18 <22")).toBe("node@18");
+    expect(inferNodeVersion(">=18 <19")).toBe("node@18");
+    expect(inferNodeVersion("18.x")).toBe("node@18");
+  });
+
+  it("treats a loose major version as node", () => {
+    expect(inferNodeVersion(">= 16")).toBe("node");
+  });
+});
+
+describe("isNpmTuiNoVersion", () => {
+  it("returns true for known TUI packages by name", () => {
+    expect(isNpmTuiNoVersion("gtop")).toBe(true);
+    expect(isNpmTuiNoVersion("vtop")).toBe(true);
+    expect(isNpmTuiNoVersion("mapscii")).toBe(true);
+  });
+
+  it("returns true when blessed is a dependency", () => {
+    const versionData = {
+      dependencies: { blessed: "^0.1.0" },
+    };
+    expect(isNpmTuiNoVersion("unknown-dashboard", versionData)).toBe(true);
+  });
+
+  it("returns false for normal CLI packages", () => {
+    expect(isNpmTuiNoVersion("npkill")).toBe(false);
+    expect(isNpmTuiNoVersion("maildev")).toBe(false);
+  });
+
+  it("returns true when keywords and description imply TUI dashboard", () => {
+    const pkgData = {
+      keywords: ["terminal", "tui", "dashboard"],
+      description: "A terminal dashboard for monitoring",
+    };
+    expect(isNpmTuiNoVersion("my-dashboard", null, pkgData)).toBe(true);
+  });
+});
+
+describe("npmNeedsInstallScripts", () => {
+  it("returns false when no scripts are present", () => {
+    expect(npmNeedsInstallScripts({})).toBe(false);
+    expect(npmNeedsInstallScripts({ scripts: {} })).toBe(false);
+  });
+
+  it("returns true for preinstall, install, or postinstall", () => {
+    expect(npmNeedsInstallScripts({ scripts: { postinstall: "node install.js" } })).toBe(true);
+    expect(npmNeedsInstallScripts({ scripts: { install: "npm run build" } })).toBe(true);
+    expect(npmNeedsInstallScripts({ scripts: { preinstall: "node preinstall.js" } })).toBe(true);
   });
 });
