@@ -1163,10 +1163,21 @@ async function handleGithubRepo(classification, opts) {
           throw err;
         }
       } else {
+        const binaryServiceConfig = detectServiceConfig(
+          await getReadme(owner, repo),
+          opts.name || repoInfo.name,
+        );
         return await generateWithConfirmation(
           "binary-release",
-          { repoInfo, release },
-          opts,
+          { repoInfo, release, serviceConfig: binaryServiceConfig },
+          {
+            ...opts,
+            ...(await collectServiceOptions(
+              { serviceConfig: binaryServiceConfig },
+              opts,
+              opts.name || repoInfo.name,
+            )),
+          },
         );
       }
     }
@@ -1263,10 +1274,21 @@ async function handleGithubRepo(classification, opts) {
       console.log(
         `  Detected ${chalk.cyan("binary")} assets: ${binAssets.map((a) => a.name).join(", ")}`,
       );
+      const binaryServiceConfig = detectServiceConfig(
+        await getReadme(owner, repo),
+        opts.name || repoInfo.name,
+      );
       return await generateWithConfirmation(
         "binary-release",
-        { repoInfo, release },
-        opts,
+        { repoInfo, release, serviceConfig: binaryServiceConfig },
+        {
+          ...opts,
+          ...(await collectServiceOptions(
+            { serviceConfig: binaryServiceConfig },
+            opts,
+            opts.name || repoInfo.name,
+          )),
+        },
       );
     }
 

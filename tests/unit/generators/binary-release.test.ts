@@ -52,6 +52,14 @@ describe("collectBinaryReleasePayload", () => {
     expect(payload.template).toBe("binary_release");
   });
 
+  it("includes a service block from detected service configuration", async () => {
+    const payload = await collectBinaryReleasePayload(repoInfo, release, {
+      serviceConfig: { command: "wakapi listen", keepAlive: true },
+    });
+    expect(payload.serviceBlock).toContain("service do");
+    expect(payload.serviceBlock).toContain('run [opt_bin/"wakapi", "listen"]');
+  });
+
   it("derives name from repo name", async () => {
     const payload = await collectBinaryReleasePayload(repoInfo, release);
     expect(payload.name).toBe("wakapi");
