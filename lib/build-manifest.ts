@@ -1,4 +1,8 @@
-import type { GeneratorName, PackageKind, PackageManifest } from "./manifest.ts";
+import type {
+  GeneratorName,
+  PackageKind,
+  PackageManifest,
+} from "./manifest.ts";
 import { extractVersionFromTag } from "./utils.ts";
 
 type BuildManifestInput = {
@@ -15,7 +19,7 @@ export function buildManifest(input: BuildManifestInput): PackageManifest {
   const recordedVersion =
     result.recordedVersion || inferRecordedVersion(generatorName, params);
 
-  return {
+  const manifest = {
     name: result.name,
     kind: result.type,
     generator: generatorName,
@@ -24,7 +28,8 @@ export function buildManifest(input: BuildManifestInput): PackageManifest {
     options,
     recordedVersion,
     recordedAt: new Date().toISOString(),
-  };
+  } as PackageManifest;
+  return manifest;
 }
 
 function buildOptions(opts: Record<string, unknown>) {
@@ -41,15 +46,15 @@ function buildOptions(opts: Record<string, unknown>) {
   return rest;
 }
 
-function withDiscoveryFields(
-  source: Record<string, unknown>,
+function withDiscoveryFields<T extends object>(
+  source: T,
   opts: Record<string, unknown>,
-) {
-  const out: Record<string, unknown> = { ...source };
+): T & Record<string, unknown> {
+  const out: Record<string, unknown> = { ...(source as Record<string, unknown>) };
   if (opts.sourceUrl) out.sourceUrl = opts.sourceUrl;
   if (opts.resolvedUrl) out.resolvedUrl = opts.resolvedUrl;
   if (opts.discoverMethod) out.discoverMethod = opts.discoverMethod;
-  return out;
+  return out as T & Record<string, unknown>;
 }
 
 function buildSource(

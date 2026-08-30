@@ -17,7 +17,7 @@ function parseFullName(fullName: string) {
   return { owner, repo };
 }
 
-async function githubContext(source: Record<string, unknown>) {
+async function githubContext(source: { fullName?: string | null }) {
   const fullName = String(source.fullName || "");
   const { owner, repo } = parseFullName(fullName);
   const repoInfo = await getRepoInfo(owner, repo);
@@ -28,7 +28,7 @@ async function githubContext(source: Record<string, unknown>) {
   return { repoInfo, release };
 }
 
-async function optionalRepoInfo(source: Record<string, unknown>) {
+async function optionalRepoInfo(source: { fullName?: string | null }) {
   const fullName = String(source.fullName || "");
   if (!fullName) return null;
   const { owner, repo } = parseFullName(fullName);
@@ -352,8 +352,10 @@ export async function updateManagedPackage(
       };
     }
 
-    default:
-      throw new Error(`Unknown generator: ${manifest.generator}`);
+    default: {
+      const unknown: never = manifest;
+      throw new Error(`Unknown generator: ${(unknown as PackageManifest).generator}`);
+    }
   }
 }
 
