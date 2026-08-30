@@ -107,4 +107,14 @@ describe("list-packages: listPackages", () => {
     const packages = await listPackages();
     expect(packages).toEqual([]);
   });
+
+  it("moves a corrupted manifest aside instead of dropping it silently", async () => {
+    const { writeFile, stat } = await import("node:fs/promises");
+    await writeFile(join(testPackagesDir, "broken.json"), "{ nope", "utf-8");
+    const packages = await listPackages();
+    expect(packages).toEqual([]);
+    await expect(
+      stat(join(testPackagesDir, "broken.json.corrupted")),
+    ).resolves.toBeTruthy();
+  });
 });

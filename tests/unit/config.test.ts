@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm, readFile, stat } from "node:fs/promises";
+import { mkdtemp, rm, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -46,6 +46,15 @@ describe("loadConfig", () => {
     const loaded = await loadConfig();
     expect(loaded.tapPath).toBe("/tmp/tap");
     expect(loaded.tapName).toBe("user/repo");
+  });
+
+  it("moves a corrupted config file aside and returns empty", async () => {
+    await writeFile(join(testDir, "config.json"), "{ not valid json", "utf-8");
+    const config = await loadConfig();
+    expect(config).toEqual({});
+    await expect(
+      stat(join(testDir, "config.json.corrupted")),
+    ).resolves.toBeTruthy();
   });
 });
 

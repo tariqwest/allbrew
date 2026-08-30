@@ -8,7 +8,22 @@ import { assertSafeFetchUrl } from "./utils.ts";
 
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 600_000;
 const MAX_DOWNLOAD_BYTES = 2_000_000_000;
+const SOFT_DOWNLOAD_WARN_BYTES = 500_000_000;
 const MAX_REDIRECTS = 20;
+
+function warnInsecureHttp(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === "http:") {
+      console.warn(
+        `[allbrew] Warning: downloading over insecure HTTP (${url}). ` +
+          `Prefer an HTTPS URL when available.`,
+      );
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 /**
  * Some CDNs (e.g. qoder.com) return Location headers with an uppercase scheme
@@ -67,6 +82,7 @@ export async function downloadAndHash(
   destPath: string | null = null,
   timeoutMs: number = DEFAULT_DOWNLOAD_TIMEOUT_MS,
 ) {
+  warnInsecureHttp(url);
   const response = await fetchFollowingRedirects(url, {
     headers: { "User-Agent": "allbrew/1.0" },
     signal: AbortSignal.timeout(timeoutMs),
@@ -131,6 +147,19 @@ export async function downloadAndHash(
     typeof response.headers?.get === "function"
       ? response.headers.get(name) || ""
       : "";
+  const contentLength = Number(getHeader("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > 0) {
+    if (totalBytes !== contentLength) {
+      throw new Error(
+        `Download for ${url} is truncated: expected ${contentLength} bytes but received ${totalBytes}`,
+      );
+    }
+    if (contentLength > SOFT_DOWNLOAD_WARN_BYTES) {
+      console.warn(
+        `[allbrew] Warning: downloading a large artifact (${Math.round(contentLength / 1_000_000)} MB) from ${url}`,
+      );
+    }
+  }
   const contentType = getHeader("content-type").toLowerCase();
   const contentDisposition = getHeader("content-disposition");
   // Vendor version headers (e.g. Halo `x-halo-version: 0.6.0`)
@@ -179,7 +208,7 @@ export async function downloadToTemp(
   const tempDir = await mkdtemp(join(tmpdir(), "allbrew-"));
   // Prefer caller filename; otherwise use a neutral name so extensionless APIs
   // are not written as bare "latest" without a type suffix.
-  const fname = filename || url.split("/").pop().split("?")[0] || "download";
+  const fname = filename || url.split("/").pop()?.split("?")[0] || "download";
   const destPath = join(tempDir, fname);
   const result = await downloadAndHash(url, destPath, timeoutMs);
 

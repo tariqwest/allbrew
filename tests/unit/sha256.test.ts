@@ -104,6 +104,22 @@ describe("downloadAndHash", () => {
     );
   });
 
+  it("rejects a truncated body when Content-Length is present", async () => {
+    const data = "short";
+    const truncated = {
+      ...mockResponse(data),
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === "content-length" ? "1000" : "",
+      },
+    };
+    global.fetch = mock(() => Promise.resolve(truncated)) as any;
+
+    await expect(downloadAndHash("http://example.com/truncated")).rejects.toThrow(
+      /truncated/,
+    );
+  });
+
 it("handles multi-chunk streams correctly", async () => {
     const chunk1 = Buffer.from("hello ");
     const chunk2 = Buffer.from("world");

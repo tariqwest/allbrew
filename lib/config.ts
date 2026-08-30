@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { readFile, writeFile, mkdir, chmod, stat } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, chmod, stat, rename } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const DEFAULT_CONFIG_DIR = join(homedir(), '.config', 'allbrew');
@@ -39,7 +39,15 @@ export async function loadConfig(): Promise<AllbrewConfig> {
   try {
     const data = await readFile(_configFile, 'utf-8');
     return JSON.parse(data);
-  } catch {
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      const backupPath = `${_configFile}.corrupted`;
+      await rename(_configFile, backupPath).catch(() => {});
+      console.warn(
+        `[allbrew] Warning: config.json is corrupted and has been moved to ${backupPath}. ` +
+          `A fresh default config will be created. Error: ${err.message}`,
+      );
+    }
     return {};
   }
 }

@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { mkdir, readFile, readdir, writeFile, unlink } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile, unlink, rename } from "node:fs/promises";
 
 export type PackageKind = "formula" | "cask";
 
@@ -25,16 +25,64 @@ export type GeneratorName =
   | "gem-package"
   | "mint-package";
 
+/** Extra provenance captured when page discovery resolved an artifact URL. */
+export type DiscoveryFields = {
+  sourceUrl?: string;
+  resolvedUrl?: string;
+  discoverMethod?: string;
+};
+
+type GithubRepoSource = {
+  fullName?: string | null;
+  defaultBranch?: string | null;
+  releaseTag?: string | null;
+};
+
+/** Per-generator re-generation inputs persisted with each manifest. */
+export type ManifestSourceMap = {
+  "npm-package": { packageName?: string | null };
+  "pip-package": { packageName?: string | null };
+  "cargo-package": GithubRepoSource & { crateName?: string | null };
+  "go-package": GithubRepoSource & { goModule?: string | null };
+  "binary-release": { fullName?: string | null; releaseTag?: string | null };
+  "source-build": GithubRepoSource & { buildSystem?: string | null };
+  "cask-app-release": {
+    fullName?: string | null;
+    releaseTag?: string | null;
+    appName?: string | null;
+  };
+  "install-script": { url?: string | null } & DiscoveryFields;
+  "archive-build": {
+    downloadUrl?: string | null;
+    forcedBuildSystem?: string | null;
+  } & DiscoveryFields;
+  "binary-direct": {
+    downloadUrl?: string | null;
+    selectedBinaries?: string[] | null;
+  } & DiscoveryFields;
+  "cask-app": { url?: string | null; appName?: string | null } & DiscoveryFields;
+  "cask-app-mas": { appStoreUrl?: string | null };
+  "cask-app-setapp": { setappUrl?: string | null; appName?: string | null };
+  "homebrew-formula": { name?: string | null; source?: string | null } & DiscoveryFields;
+  "homebrew-cask": { name?: string | null; source?: string | null } & DiscoveryFields;
+  "spm-package": GithubRepoSource;
+  "dotnet-package": { packageName?: string | null; fullName?: string | null };
+  "gem-package": { gemName?: string | null; fullName?: string | null };
+  "mint-package": GithubRepoSource;
+};
+
+export type ManifestSource = ManifestSourceMap[GeneratorName];
+
 export type PackageManifest = {
   name: string;
   kind: PackageKind;
-  generator: GeneratorName;
   tapPath: string;
-  source: Record<string, unknown>;
   options: Record<string, unknown>;
   recordedVersion: string;
   recordedAt: string;
-};
+} & {
+  [G in GeneratorName]: { generator: G; source: ManifestSourceMap[G] };
+}[GeneratorName];
 
 const DEFAULT_PACKAGES_DIR = join(homedir(), ".config", "allbrew", "packages");
 
@@ -58,7 +106,15 @@ export async function loadManifest(
   try {
     const data = await readFile(manifestPath(name), "utf-8");
     return JSON.parse(data) as PackageManifest;
-  } catch {
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      const backupPath = `${manifestPath(name)}.corrupted`;
+      await rename(manifestPath(name), backupPath).catch(() => {});
+      console.warn(
+        `[allbrew] Warning: manifest for "${name}" is corrupted and has been moved to ${backupPath}. ` +
+          `It will no longer be managed. Error: ${err.message}`,
+      );
+    }
     return null;
   }
 }
