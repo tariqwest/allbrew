@@ -1,4 +1,4 @@
-# Allbrew (alpha)
+# Allbrew
 
 Make Homebrew the source of truth for all your macOS installs — even when the app isn't on Homebrew yet. Point `allbrew` at a GitHub repo, a bash install script, a binary archive, a macOS app DMG, a Mac App Store link, or a Setapp link and it generates the right Homebrew formula or cask into your personal tap.
 
@@ -12,7 +12,7 @@ Make Homebrew the source of truth for all your macOS installs — even when the 
 
 ## Current state
 
-This is an **alpha** (v0.0.2). Core generation works for 17 generator paths and is backed by 868 unit tests, template-parity checks, and a synthetic E2E-tap harness. It is ready for adventurous daily use, but expect rough edges and incomplete management commands.
+This is a **beta** (v0.0.37). Core generation works across 17 generator paths and is backed by ~1,355 unit tests, template-parity checks, integration suites (PyPI, npm, crates.io, GitHub, DMG), a synthetic E2E-tap harness, and a Lume VM E2E harness. It is ready for daily use, but a few management commands are still planned.
 
 ### What's working
 
@@ -24,9 +24,11 @@ This is an **alpha** (v0.0.2). Core generation works for 17 generator paths and 
 | `allbrew update-formulas` with livecheck JSON | ✅ |
 | `allbrew hooks install` for brew-update integration | ✅ |
 | `allbrew service install` for periodic updates | ✅ |
-| Unit tests (`bun run test`) — 868 tests | ✅ |
+| Unit tests (`bun run test`) — ~1,355 tests | ✅ |
 | Template parity (`bun run test:templates`) | ✅ |
-| E2E tap cycle (45/47 passing; dotnet quarantined) | ⚠️ |
+| Integration tests (`bun run test:int`) — PyPI, npm, crates.io, GitHub, DMG | ✅ |
+| E2E tap + update cycle (`bun run test:e2e-tap`; dotnet quarantined) | ⚠️ |
+| CI (type-check, unit tests, template parity) | ✅ |
 
 ### Distribution status
 
@@ -230,16 +232,15 @@ Now `brew update` runs `allbrew update-formulas` afterwards.
 - **DMG-only desktop apps** (Electron / Avalonia) still need generator improvements.
 - **README examples** are not yet validated for every generator path.
 - **TypeScript strict mode** is off and there are still `any` types to remove. See `.agents/plans/fable-app-review-2026-07-11.md`.
-- **No npm / Bun / Deno package yet.** Source or Homebrew install only for alpha.
 
 ## Next todos (rough priority)
 
-1. **Verify cold install:** run `brew tap tariqwest/tap && brew trust tariqwest/tap && brew install allbrew` in a clean environment (Lume VM or fresh macOS install) and fix any formula issues.
-2. **Fix the dotnet harness:** raise the fixture-server idle timeout or pre-build the fake nupkg, then un-quarantine the suite.
-3. **Add `allbrew info` / `allbrew remove` / `allbrew doctor`:** small management commands that reuse existing manifest infrastructure.
+1. **Type safety & manifest typing:** replace `Record<string, unknown>` manifest sources with per-generator discriminated unions, then migrate toward `strict: true` incrementally.
+2. **`allbrew info` / `allbrew remove` / `allbrew doctor`:** small management commands that reuse existing manifest infrastructure.
+3. **Fix the dotnet harness:** raise the fixture-server idle timeout or pre-build the fake nupkg, then un-quarantine the suite.
 4. **Uninstall residual verification:** run the residual helper across every generator path.
 5. **MAS URL lookup:** accept app names/IDs in addition to full Store URLs.
-6. **Strict mode & type cleanup:** enable `strict: true` in `tsconfig.json` and remove `any` types.
+6. **`allbrew scan` / `allbrew switch` / uninstall detection:** adopt already-installed apps into the tap and detect out-of-band uninstalls.
 
 ## Batch artifacts (archived, repo stays lean)
 
