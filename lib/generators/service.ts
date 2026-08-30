@@ -128,9 +128,9 @@ function isFormulaExecutable(executable: string, fallbackName: string) {
 }
 
 function splitCommand(command: string) {
-  const parts = [];
+  const parts: string[] = [];
   let current = "";
-  let quote = null;
+  let quote: '"' | "'" | null = null;
   let escaping = false;
 
   for (const char of command.trim()) {

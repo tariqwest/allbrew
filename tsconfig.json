@@ -10,7 +10,8 @@
     "skipLibCheck": true,
     "types": [
       "bun-types"
-    ]
+    ],
+    "strictNullChecks": true
   },
   "include": [
     "bin/**/*.ts",

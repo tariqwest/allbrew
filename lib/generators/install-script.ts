@@ -501,7 +501,7 @@ export async function collectInstallScriptPayload(
 ): Promise<InstallScriptPayload> {
   const { sha256, buffer } = await downloadAndHash(url);
 
-  const filename = url.split("/").pop().split("?")[0] || "install.sh";
+  const filename = url.split("/").pop()?.split("?")[0] || "install.sh";
   const baseName = filename.replace(/\.(sh|bash)$/i, "");
   const name = options.name || toFormulaName(baseName);
   const className = toClassName(name);

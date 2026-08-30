@@ -598,8 +598,8 @@ async function handleGithubRepoManual(url, opts) {
     ?.replace(/\.git$/, "")
     .replace(/\/(tree|blob)\/.*$/, "");
 
-  let repoInfo = null;
-  let release = null;
+  let repoInfo: Awaited<ReturnType<typeof getRepoInfo>> | null = null;
+  let release: Awaited<ReturnType<typeof getLatestRelease>> | null = null;
 
   if (owner && repo) {
     const spinner = ora("Fetching repository info...").start();
@@ -617,13 +617,13 @@ async function handleGithubRepoManual(url, opts) {
       release = await getLatestRelease(owner, repo);
       if (release) {
         const preNote =
-          release.usedPrereleaseFallback || release.prerelease
+          "usedPrereleaseFallback" in release || release.prerelease
             ? chalk.yellow(" [prerelease]")
             : "";
         releaseSpinner.succeed(
           `Latest release: ${chalk.bold(release.tagName)} (${release.assets.length} assets)${preNote}`,
         );
-        if (release.usedPrereleaseFallback) {
+        if ("usedPrereleaseFallback" in release) {
           console.log(
             chalk.yellow(
               `  Note: no stable GitHub /releases/latest — using prerelease ${release.tagName}`,
@@ -1341,7 +1341,7 @@ async function handleGithubRepo(classification, opts) {
   // Step 2: Fetch and analyze README
   const readmeSpinner = ora("Fetching README...").start();
   const readme = await getReadme(owner, repo);
-  let serviceConfigFromReadme = null;
+  let serviceConfigFromReadme: ReturnType<typeof detectServiceConfig> = null;
 
   if (!readme) {
     readmeSpinner.warn("No README found");
@@ -1605,7 +1605,10 @@ async function handleGithubRepo(classification, opts) {
             const spmBins = parseSpmExecutableProducts(packageSwiftForBuild);
             if (spmBins.length > 0) {
               const rootFilesForBuild = await getRepoContents(owner, repo);
-              const rootNamesForBuild = rootFilesForBuild.map((f) => f.name);
+              const rootNamesForBuild = (Array.isArray(rootFilesForBuild)
+                ? rootFilesForBuild
+                : []
+              ).map((f) => f.name);
               await assertSpmPackageInstallable(
                 packageSwiftForBuild,
                 rootNamesForBuild,
@@ -1681,7 +1684,10 @@ async function handleGithubRepo(classification, opts) {
             "Package.swift",
           );
           const rootFilesForSwift = await getRepoContents(owner, repo);
-          const rootNamesForSwift = rootFilesForSwift.map((f) => f.name);
+          const rootNamesForSwift = (Array.isArray(rootFilesForSwift)
+            ? rootFilesForSwift
+            : []
+          ).map((f) => f.name);
           await assertSpmPackageInstallable(
             packageSwiftText,
             rootNamesForSwift,
@@ -1711,8 +1717,9 @@ async function handleGithubRepo(classification, opts) {
   // Step 3: Detect from repo files
   const filesSpinner = ora("Inspecting repository files...").start();
   const files = await getRepoContents(owner, repo);
-  const fileNames = files.map((f) => f.name);
-  filesSpinner.succeed(`Found ${files.length} root files`);
+  const rootFiles = Array.isArray(files) ? files : [];
+  const fileNames = rootFiles.map((f) => f.name);
+  filesSpinner.succeed(`Found ${rootFiles.length} root files`);
 
   const serviceConfigFromFiles = detectServiceConfigFromFiles(
     fileNames,

@@ -80,7 +80,7 @@ export async function collectCaskAppReleasePayload(
   let appName = options.appName;
   let nestedContainer: string | null = null;
 
-  const { sha256, cleanup, path } = await downloadToTemp(bestAsset.url, bestAsset.name);
+  const { sha256, cleanup, path } = await downloadToTemp(bestAsset.url ?? "", bestAsset.name);
   try {
     const detected = await detectAppAndNestedFromAsset(bestAsset, path);
     if (!appName) appName = detected.appName;
@@ -110,7 +110,7 @@ export async function collectCaskAppReleasePayload(
   // Use shared templateReleaseUrl so bare tags (tag == version) replace ALL
   // occurrences without inventing a spurious "v" prefix in the asset basename
   // (e.g. ComicTagger-1.5.5-osx-….app.zip must not become ComicTagger-v#{version}-…).
-  const urlTemplate = templateReleaseUrl(bestAsset.url, version, release.tagName);
+  const urlTemplate = templateReleaseUrl(bestAsset.url ?? "", version, release.tagName);
 
   // Nested DMG basenames often embed the version (nicotine+-3.3.10.dmg).
   let containerBlock = "";

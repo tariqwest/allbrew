@@ -45,8 +45,8 @@ export async function collectCaskAppPayload(
   }
 
   const effectiveUrl = finalUrl || url;
-  const pathFilename = url.split("/").pop().split("?")[0];
-  const finalFilename = effectiveUrl.split("/").pop().split("?")[0];
+  const pathFilename = url.split("/").pop()?.split("?")[0] || "";
+  const finalFilename = effectiveUrl.split("/").pop()?.split("?")[0] || "";
   const filename =
     (serverFilename && String(serverFilename)) ||
     (/\.(dmg|zip|pkg)$/i.test(pathFilename) ? pathFilename : null) ||
@@ -233,7 +233,7 @@ async function detectAppName(
   const candidate = /\.(dmg|zip|pkg)$/i.test(effectiveUrl)
     ? effectiveUrl
     : url;
-  const filename = candidate.split("/").pop().split("?")[0];
+  const filename = candidate.split("/").pop()?.split("?")[0] || "";
   const stem = stripCaskArtifactSuffixes(
     filename.replace(/\.(dmg|zip|pkg)$/i, ""),
   );

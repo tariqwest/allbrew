@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 const DEFAULT_EMPTY_TOKEN = "untitled";
 
 function sanitizeToken(
-  name: string,
+  name: string | null | undefined,
   opts: { allowLeadingDigit?: boolean } = {},
 ): string {
   let s = String(name ?? "")

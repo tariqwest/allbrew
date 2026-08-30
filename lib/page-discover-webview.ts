@@ -155,8 +155,8 @@ export async function discoverWithWebView(
       }
 
       try {
-        const networkUrls = [];
-        const navigated = [];
+        const networkUrls: Array<{ url: string; why: string }> = [];
+        const navigated: string[] = [];
 
         const pushNet = (url, why) => {
           if (!url || url.startsWith("blob:") || url.startsWith("data:")) return;
@@ -213,8 +213,8 @@ export async function discoverWithWebView(
 
         await Bun.sleep(1500);
 
-        let links = [];
-        let ctas = [];
+        let links: Array<{ url?: string; why?: string }> = [];
+        let ctas: Array<{ text: string; sel: string | null; index: number }> = [];
         try {
           const evaluated = await view.evaluate(EXTRACTOR_JS);
           const payload =
@@ -255,9 +255,9 @@ export async function discoverWithWebView(
           renderedCodeTextForScript = s;
         } catch {}
 
-        const candidates = [];
-        const seen = new Set();
-        const add = (url, evidence) => {
+        const candidates: DiscoverCandidate[] = [];
+        const seen = new Set<string>();
+        const add = (url: string, evidence: string) => {
           if (!url) return;
           try {
             assertSafePublicFetchUrl(url);
@@ -302,7 +302,7 @@ export async function discoverWithWebView(
           candidates.push(scored);
         };
 
-        for (const item of links) add(item?.url, item?.why || "dom");
+        for (const item of links) add(item?.url || "", item?.why || "dom");
         for (const u of navigated) add(u, "navigated");
         for (const n of networkUrls) add(n.url, n.why);
 

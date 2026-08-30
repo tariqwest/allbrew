@@ -97,7 +97,7 @@ const STATUS_LINE_RE =
 export function detectBrewInstall(readmeText, preferredPackageName = "") {
   if (!readmeText) return null;
 
-  const commands = [];
+  const commands: Array<{ command: string; package: string; isCask: boolean }> = [];
   let match;
 
   const brewInstallRe = /brew\s+install\s+(?:--cask\s+)?([^\s;|&\n`]+)/gi;
@@ -118,7 +118,7 @@ export function detectBrewInstall(readmeText, preferredPackageName = "") {
     });
   }
 
-  const taps = [];
+  const taps: string[] = [];
   const brewTapRe = /brew\s+tap\s+([^\s;|&\n`]+)/gi;
   while ((match = brewTapRe.exec(readmeText)) !== null) {
     taps.push(match[1]);
@@ -341,7 +341,7 @@ export function detectServiceConfig(readmeText, packageName = "") {
     );
   }
 
-  const commands = [];
+  const commands: string[] = [];
   let match;
   SERVICE_COMMAND_RE.lastIndex = 0;
   while ((match = SERVICE_COMMAND_RE.exec(readmeText)) !== null) {
@@ -688,7 +688,7 @@ function findRunnableCommandInText(text, packageName) {
 
   // Also accept package subcommands that are service-like even when the generic
   // SERVICE_COMMAND_RE verbs are absent (e.g. `nanobot gateway`, `foo webui`).
-  const packageSubcommands = [];
+  const packageSubcommands: string[] = [];
   if (packageName) {
     const pkg = String(packageName);
     for (const rawLine of String(text || "").split(/\r?\n/)) {
@@ -707,8 +707,8 @@ function findRunnableCommandInText(text, packageName) {
   }
 
   const merged = [...commands, ...packageSubcommands];
-  const unique = [];
-  const seen = new Set();
+  const unique: string[] = [];
+  const seen = new Set<string>();
   for (const command of merged) {
     if (seen.has(command)) continue;
     seen.add(command);
@@ -845,8 +845,8 @@ function isOneShotCliManagement(command, packageName = "") {
 /** Collect cleaned package-binary invocations from README lines. */
 function collectPackageInvocations(readmeText, packageName) {
   if (!packageName || !readmeText) return [];
-  const out = [];
-  const seen = new Set();
+  const out: string[] = [];
+  const seen = new Set<string>();
   for (const rawLine of String(readmeText).split(/\r?\n/)) {
     const line = cleanCommand(rawLine);
     if (!line || !isRunnableCommand(line)) continue;
@@ -868,7 +868,12 @@ function pickPreferredNpmPackage(readmeText, preferredPackageName = "") {
     BUN_INSTALL_RE,
     NPX_RE,
   ];
-  const candidates = [];
+  const candidates: Array<{
+    package: string;
+    raw: string;
+    index: number;
+    globalInstall: boolean;
+  }> = [];
   for (const pattern of patterns) {
     const globalRe = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
     let match;
@@ -921,7 +926,7 @@ function pickPreferredNpmPackage(readmeText, preferredPackageName = "") {
 function pickPreferredGemPackage(readmeText, preferredPackageName = "") {
   if (!readmeText) return null;
 
-  const candidates = [];
+  const candidates: Array<{ package: string; raw: string; index: number }> = [];
   const globalRe = new RegExp(
     GEM_INSTALL_RE.source,
     GEM_INSTALL_RE.flags.includes("g")
@@ -1009,7 +1014,12 @@ function pickPreferredPipPackage(readmeText, preferredPackageName = "") {
     UV_TOOL_INSTALL_RE,
     UVX_RE,
   ];
-  const candidates = [];
+  const candidates: Array<{
+    package: string | null;
+    localBuild: boolean;
+    raw: string;
+    index: number;
+  }> = [];
   for (const pattern of patterns) {
     const globalRe = new RegExp(
       pattern.source,

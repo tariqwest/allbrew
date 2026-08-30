@@ -99,7 +99,7 @@ function isDangerousArchiveEntry(entry) {
 }
 
 async function listFilesRecursive(dir) {
-  const results = [];
+  const results: string[] = [];
   const entries = await readdir(dir, { withFileTypes: true });
 
   for (const entry of entries) {
@@ -179,7 +179,7 @@ async function classifyContents(extractDir, relativePaths) {
     return { type: 'app', appName: primaryApp };
   }
 
-  const binaries = [];
+  const binaries: string[] = [];
   for (const relPath of relativePaths) {
     const fullPath = join(extractDir, relPath);
     if (await isBinaryExecutable(fullPath)) {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { Octokit } from 'octokit';
 import { getConfigPath } from './config.ts';
 
-let octokit = null;
+let octokit: Octokit | null = null;
 
 function getConfigTokenSync(): string | null {
   try {
@@ -25,9 +25,9 @@ export function initOctokit(token?: string | null) {
   octokit = new Octokit(opts);
 }
 
-function getOctokit() {
+function getOctokit(): Octokit {
   if (!octokit) initOctokit(process.env.GITHUB_TOKEN || getConfigTokenSync());
-  return octokit;
+  return octokit as Octokit;
 }
 
 export async function getAuthenticatedUser(): Promise<{ login: string; name: string | null } | null> {
@@ -49,8 +49,6 @@ export async function createTapRepo(
     description,
     private: false,
     auto_init: true,
-    gitignore_template: null,
-    license_template: null,
   });
   return {
     htmlUrl: data.html_url,
@@ -218,9 +216,9 @@ export function pickReleaseWithAppAssets(
 export async function getReadme(owner, repo) {
   try {
     const { data } = await getOctokit().rest.repos.getReadme({ owner, repo });
-    return Buffer.from(data.content, data.encoding || 'base64').toString('utf-8');
-  } catch (err) {
-    if (err.status === 404) return null;
+    return Buffer.from(data.content, String(data.encoding || "base64") as BufferEncoding).toString("utf-8");
+  } catch (err: any) {
+    if (err?.status === 404) return null;
     throw err;
   }
 }
@@ -237,8 +235,8 @@ export async function getRepoContents(owner, repo, path = '') {
       }));
     }
     return data;
-  } catch (err) {
-    if (err.status === 404) return [];
+  } catch (err: any) {
+    if (err?.status === 404) return [];
     throw err;
   }
 }
@@ -246,8 +244,9 @@ export async function getRepoContents(owner, repo, path = '') {
 export async function getFileContent(owner, repo, path) {
   try {
     const { data } = await getOctokit().rest.repos.getContent({ owner, repo, path });
+    if (Array.isArray(data)) return null;
     if (data.type !== 'file') return null;
-    return Buffer.from(data.content, data.encoding || 'base64').toString('utf-8');
+    return Buffer.from(data.content, String(data.encoding || "base64") as BufferEncoding).toString("utf-8");
   } catch {
     return null;
   }
