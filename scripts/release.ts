@@ -7,6 +7,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -19,6 +20,8 @@ const PACKAGE_JSON_PATH = join(ROOT_DIR, "package.json");
 
 const SOURCE_REPO = process.env.GITHUB_REPOSITORY || "tariqwest/allbrew";
 const TAP_REPO = process.env.HOMEBREW_TAP_REPO || "tariqwest/homebrew-tap";
+const DOGFOOD_BRANCH =
+  process.env.ALLBREW_DOGFOOD_BRANCH || "allbrew-dogfood";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
 const DRY_RUN = process.env.DRY_RUN === "1" || process.env.DRY_RUN === "true";
 
@@ -430,6 +433,259 @@ function publishFormulaToTap(version: string, sha256: string) {
   }
 }
 
+function generateDogfoodFormula(version: string, sha256: string) {
+  return `class AllbrewDogfood < Formula
+  desc "Dogfood build of allbrew (drop-in allbrew command)"
+  homepage "https://github.com/${SOURCE_REPO}"
+  url "https://github.com/${SOURCE_REPO}/archive/refs/tags/v${version}.tar.gz"
+  sha256 "${sha256}"
+  version "${version}"
+  license "MIT"
+
+  livecheck do
+    url :stable
+    regex(/^v?(\\d+(?:\\.\\d+)+-dogfood(?:\\.\\d+)?)$/i)
+  end
+
+  depends_on "bun"
+
+  conflicts_with "allbrew", because: "allbrew-dogfood is a drop-in replacement for allbrew; both install the same /opt/homebrew/bin/allbrew command"
+
+  def install
+    libexec.install Dir["*"]
+    system "bun", "install", "--cwd", libexec
+
+    (libexec/"allbrew").install libexec/"scripts"/"update-managed.sh"
+    chmod 0755, libexec/"allbrew"/"update-managed.sh"
+
+    (buildpath/"allbrew-brew-wrap").write <<~EOS
+      # allbrew-dogfood brew update hook
+      # Source from your shell profile:
+      #   source "$(brew --prefix)/etc/allbrew-brew-wrap"
+
+      allbrew_brew() {
+        command brew "$@"
+        local ret=$?
+        if [ $ret -eq 0 ] && [ "$1" = "update" ]; then
+          brew livecheck --installed --newer-only --json --quiet 2>/dev/null | #{bin}/allbrew update-formulas
+          command brew update
+        fi
+        return $ret
+      }
+
+      # Opt in by aliasing brew:
+      # alias brew=allbrew_brew
+    EOS
+    # etc.install refuses to overwrite existing conf files on upgrade.
+    rm_f etc/"allbrew-brew-wrap"
+    etc.install "allbrew-brew-wrap"
+
+    (bin/"allbrew").write <<~EOS
+      #!/bin/bash
+      exec "#{Formula["bun"].opt_bin}/bun" "#{libexec}/bin/allbrew.ts" "$@"
+    EOS
+    chmod 0755, bin/"allbrew"
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/allbrew --version")
+  end
+end
+`;
+}
+
+function dogfoodVersion(baseVersion: string, count: number) {
+  return `${baseVersion}-dogfood.${count}`;
+}
+
+function sha256Url(url: string) {
+  const body = execFileSync("curl", ["-sL", url], {
+    cwd: ROOT_DIR,
+    maxBuffer: 256 * 1024 * 1024,
+  });
+  return createHash("sha256").update(body).digest("hex");
+}
+
+function sequenceEditorDropBumps() {
+  const editorPath = join(
+    tmpdir(),
+    `allbrew-dogfood-seq-editor-${process.pid}.sh`,
+  );
+  writeFileSync(
+    editorPath,
+    [
+      "#!/bin/bash",
+      'perl -ni -e \'print unless /dogfood: bump|bump package\\.json version/\' "$1"',
+      "",
+    ].join("\n"),
+    { mode: 0o755 },
+  );
+  return editorPath;
+}
+
+function dogfoodVersionBumpCommitMessage() {
+  return "chore(dogfood): bump package.json version";
+}
+
+function dogfoodHasPatches() {
+  return (
+    existsSync(join(ROOT_DIR, "patches", "dogfood")) &&
+    readdirSync(join(ROOT_DIR, "patches", "dogfood")).length > 0
+  );
+}
+
+function updateDogfoodPackageVersion(dogfoodVersion: string) {
+  const pkgPath = join(ROOT_DIR, "package.json");
+  const pkg = readJson(pkgPath);
+  pkg.version = dogfoodVersion;
+  writeJson(pkgPath, pkg);
+}
+
+function rebaseAndReleaseDogfood(baseVersion: string) {
+  logStep(
+    `Rebasing ${DOGFOOD_BRANCH} onto main and releasing a dogfood build`,
+  );
+
+  const patchCount = output("git", [
+    "rev-list",
+    "--count",
+    `main..${DOGFOOD_BRANCH}`,
+  ]);
+  logInfo(`main base: v${baseVersion}`);
+  logInfo(`dogfood patch count (main..${DOGFOOD_BRANCH}): ${patchCount}`);
+
+  if (!dogfoodHasPatches() && patchCount === "0") {
+    logWarn(
+      "No dogfood-only commits or patch artifacts found; skipping dogfood rebase and release.",
+    );
+    return;
+  }
+
+  if (DRY_RUN) {
+    logWarn(
+      `Dry run: would rebase ${DOGFOOD_BRANCH} onto main, drop stale dogfood version-bump commits, bump package.json to ${baseVersion}-dogfood.N, tag, update ${tapName(TAP_REPO)}/Formula/allbrew-dogfood.rb, and push.`,
+    );
+    return;
+  }
+
+  const branch = output("git", ["rev-parse", "--abbrev-ref", "HEAD"]);
+  if (branch !== "main") {
+    throw new Error(
+      `Dogfood rebase must run from main; currently on ${branch}.`,
+    );
+  }
+  ensureCleanWorkingTree();
+
+  try {
+    run("git", ["fetch", "origin", "--quiet"]);
+    run("git", ["checkout", "-B", DOGFOOD_BRANCH, `origin/${DOGFOOD_BRANCH}`]);
+    run(
+      "git",
+      [
+        "-c",
+        "sequence.editor=" + sequenceEditorDropBumps(),
+        "rebase",
+        "-i",
+        "main",
+      ],
+    );
+
+    const actualCount = output("git", [
+      "rev-list",
+      "--count",
+      `main..${DOGFOOD_BRANCH}`,
+    ]);
+
+    if (actualCount === "0") {
+      logWarn(
+        "No dogfood commits remain after rebase onto main; skipping dogfood release.",
+      );
+      run("git", ["checkout", branch]);
+      return;
+    }
+
+    const nextDogfoodVersion = dogfoodVersion(baseVersion, Number(actualCount));
+    updateDogfoodPackageVersion(nextDogfoodVersion);
+    run("git", ["add", "package.json"]);
+    run("git", [
+      "commit",
+      "-m",
+      dogfoodVersionBumpCommitMessage(),
+      "-m",
+      `Dogfood patch counter ${actualCount} (main v${baseVersion}).`,
+    ]);
+    run("git", [
+      "tag",
+      "-a",
+      `v${nextDogfoodVersion}`,
+      "-m",
+      `dogfood v${nextDogfoodVersion}`,
+    ]);
+
+    run("git", ["push", "origin", DOGFOOD_BRANCH]);
+    run("git", ["push", "origin", `v${nextDogfoodVersion}`]);
+
+    const dogfoodSha = sha256Url(
+      `https://github.com/${SOURCE_REPO}/archive/refs/tags/v${nextDogfoodVersion}.tar.gz`,
+    );
+    publishDogfoodFormulaToTap(nextDogfoodVersion, dogfoodSha);
+
+    run("git", ["checkout", branch]);
+
+    logSuccess(`Released dogfood build ${nextDogfoodVersion}`);
+  } catch (err) {
+    try {
+      run("git", ["checkout", branch]);
+    } catch {
+      /* leave the repo on the dogfood branch if checkout fails */
+    }
+    throw err;
+  }
+}
+
+function publishDogfoodFormulaToTap(version: string, sha256: string) {
+  const tempDir = mkdtempSync(join(tmpdir(), "allbrew-tap-dogfood-"));
+  const tapDir = join(tempDir, "tap");
+
+  try {
+    logStep(
+      `Publishing dogfood formula to ${tapName(TAP_REPO)}/Formula/allbrew-dogfood.rb`,
+    );
+    run("git", ["clone", repoCloneUrl(TAP_REPO), tapDir], { cwd: tempDir });
+
+    const formulaDir = join(tapDir, "Formula");
+    const formulaPath = join(formulaDir, "allbrew-dogfood.rb");
+    mkdirSync(formulaDir, { recursive: true });
+    writeFileSync(formulaPath, generateDogfoodFormula(version, sha256));
+
+    run("ruby", ["-c", formulaPath], { cwd: tapDir });
+
+    const status = output("git", ["status", "--porcelain"], { cwd: tapDir });
+    if (!status) {
+      logWarn("Dogfood tap formula is already up to date.");
+      return;
+    }
+
+    run("git", ["add", "Formula/allbrew-dogfood.rb"], { cwd: tapDir });
+    run(
+      "git",
+      [
+        "commit",
+        "-m",
+        `chore: update allbrew-dogfood formula for v${version}`,
+      ],
+      { cwd: tapDir },
+    );
+
+    const branch = output("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+      cwd: tapDir,
+    });
+    run("git", ["push", "origin", branch], { cwd: tapDir });
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
 function printUsage() {
   console.log(`Usage: bun run release <patch|minor|major|version>
 
@@ -548,6 +804,8 @@ async function main() {
     console.log(
       `\nInstall with:\n  brew tap ${tapName(TAP_REPO)}\n  brew install allbrew`,
     );
+
+    rebaseAndReleaseDogfood(nextVersion);
   } finally {
     if (artifact) {
       rmSync(artifact.tempDir, { recursive: true, force: true });
