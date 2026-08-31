@@ -635,6 +635,22 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
     expect(result!.confidence).toBe("low");
   });
 
+  it("detects a package listen subcommand as a service", () => {
+    const readme = [
+      "# Hister",
+      "",
+      "```bash",
+      "./hister listen",
+      "```",
+      "",
+      "Open http://127.0.0.1:4433",
+    ].join("\n");
+    const result = detectServiceConfig(readme, "hister");
+    expect(result).not.toBeNull();
+    expect(result!.command).toBe("hister listen");
+    expect(result!.keepAlive).toBe(true);
+  });
+
   it("treats pkg server (+ optional --background) as medium confidence for brew services (omnigent)", () => {
     const readme = [
       "## Start",
