@@ -1,6 +1,6 @@
 {
   "name": "allbrew",
-  "version": "0.0.37",
+  "version": "0.0.38",
   "description": "Generate Homebrew formulas and casks from arbitrary URLs",
   "type": "module",
   "bin": {
