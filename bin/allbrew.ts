@@ -6,6 +6,8 @@ import { resolve, join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { run } from "../lib/cli.ts";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import {
   getTapPath,
   setTapPath,
@@ -15,6 +17,9 @@ import {
   setUpdateScheduleHours,
   setGithubToken,
 } from "../lib/config.ts";
+import { loadManifest, deleteManifest } from "../lib/manifest.ts";
+
+const execFileAsync = promisify(execFile);
 import { ensureSetup, runSetup, runConfigSetRemote } from "../lib/setup.ts";
 import { updateFormulas } from "../lib/update-formulas.ts";
 import {
@@ -39,6 +44,46 @@ const DEFAULT_TAP_PATH = join(homedir(), "homebrew-mytapp");
 async function resolveTapPath(cliTapOpt) {
   if (cliTapOpt) return resolve(cliTapOpt);
   return await ensureSetup();
+}
+
+function validateUrl(url) {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function promptForUrl() {
+  const { input } = await import("@inquirer/prompts");
+  return input({
+    message:
+      "Enter a URL (GitHub repo, script, binary, archive, or App Store link):",
+    validate: (v) => (validateUrl(v) ? true : "Please enter a valid URL"),
+  });
+}
+
+async function installAction(url, opts) {
+  if (!url) {
+    url = await promptForUrl();
+  }
+  if (!validateUrl(url)) {
+    console.error(`Error: "${url}" is not a valid URL`);
+    process.exit(1);
+  }
+  const tapPath = await resolveTapPath(opts.tap);
+  await run(url, {
+    ...opts,
+    tapPath,
+  });
+}
+
+function runBrew(command, args, opts = {}) {
+  return execFileAsync("brew", [command, ...args], {
+    stdio: "inherit",
+    ...opts,
+  } as any);
 }
 
 program
@@ -399,6 +444,86 @@ program
       ...opts,
       tapPath,
     });
+  });
+
+program
+  .command("install")
+  .description(
+    "Generate and install a formula/cask from a URL (same as `allbrew <url>`; accepts the same options)",
+  )
+  .argument("[url]", "URL to a GitHub repo, script, binary, archive, or app link")
+  .action(async (url, opts) => {
+    await installAction(url, { ...program.opts(), ...opts });
+  });
+
+program
+  .command("uninstall")
+  .description("Uninstall a managed formula/cask via brew (keeps the manifest)")
+  .argument("<name>", "Formula/cask name (or allbrew-managed package name)")
+  .action(async (name) => {
+    const chalk = (await import("chalk")).default;
+    const manifest = await loadManifest(name);
+    const kind = manifest?.kind === "cask" ? "cask" : "formula";
+    try {
+      await runBrew("uninstall", [
+        ...(kind === "cask" ? ["--cask"] : ["--formula"]),
+        name,
+      ]);
+      console.log(chalk.green(`Uninstalled ${name}`));
+      console.log(
+        chalk.dim("Manifest preserved; run `allbrew remove <name>` to drop it."),
+      );
+    } catch (err) {
+      console.error(chalk.red(`Uninstall failed: ${err.message}`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command("remove")
+  .description("Delete the allbrew manifest for a managed package (no brew change)")
+  .argument("<name>", "Managed package name")
+  .action(async (name) => {
+    const chalk = (await import("chalk")).default;
+    await deleteManifest(name);
+    console.log(chalk.green(`Removed manifest for ${name}`));
+  });
+
+program
+  .command("info")
+  .description("Show info for a managed formula/cask (brew info)")
+  .argument("<name>", "Formula/cask name")
+  .action(async (name) => {
+    const chalk = (await import("chalk")).default;
+    const manifest = await loadManifest(name);
+    if (manifest) {
+      console.log(
+        chalk.dim(
+          `allbrew manifest: ${manifest.name} (${manifest.generator}, ${manifest.kind}) v${manifest.recordedVersion}`,
+        ),
+      );
+    }
+    try {
+      await runBrew("info", [name]);
+    } catch (err) {
+      console.error(chalk.red(`brew info failed: ${err.message}`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command("upgrade")
+  .description("Upgrade a managed formula/cask via brew")
+  .argument("[names...]", "Formula/cask names (defaults to all)")
+  .action(async (names) => {
+    const args = names.length > 0 ? names : [];
+    try {
+      await runBrew("upgrade", args);
+    } catch (err) {
+      const chalk = (await import("chalk")).default;
+      console.error(chalk.red(`brew upgrade failed: ${err.message}`));
+      process.exit(1);
+    }
   });
 
 program.parse();

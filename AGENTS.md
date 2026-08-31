@@ -392,20 +392,28 @@ allbrew/
 ## CLI surface
 
 ```bash
-allbrew [url]                    # generate formula/cask and auto-install
-allbrew init                     # first-run setup (tap + optional GitHub remote)
+allbrew [url]                     # generate formula/cask and auto-install
+allbrew install <url>             # same as `allbrew <url>` (brew-style alias)
+allbrew uninstall <name>          # brew uninstall a managed package (manifest kept)
+allbrew remove <name>             # delete the allbrew manifest (no brew change)
+allbrew info <name>               # manifest summary + brew info
+allbrew upgrade [names...]        # brew upgrade managed packages
+allbrew init                      # first-run setup (tap + optional GitHub remote)
 allbrew config set-tap <path>
 allbrew config set-token <token>
 allbrew config set-remote
 allbrew config set-update-auto-push <true|false>
 allbrew config set-update-schedule <hours>
 allbrew config show
+allbrew list [--json]
 allbrew update-formulas [--dry-run] [names...]
+allbrew doctor [--json] [--report <path>]
+allbrew dogfood <url> [--backend fm|pcc] [--no-install]
 allbrew hooks install|uninstall
 allbrew service install|uninstall
 ```
 
-Key flags: `--manual`, `--name`, `--desc`, `--tap`, `--service`, `--service-command`, `--token`, `--verbose`.
+Key flags: `--manual`, `--name`, `--desc`, `--tap`, `--service`, `--service-command`, `--token`, `--verbose`, `--no-install`.
 
 ## Environment variables
 

@@ -212,15 +212,20 @@ Now `brew update` runs `allbrew update-formulas` afterwards.
 
 | Command | Status | Description |
 | ------- | ------ | ----------- |
+| `allbrew [url]` / `allbrew install <url>` | ✅ | Generate + install a formula/cask from a URL (aliases) |
+| `allbrew install <url> --no-install` | ✅ | Generate only, skip `brew install` |
+| `allbrew uninstall <name>` | ✅ | `brew uninstall` a managed package (manifest kept) |
+| `allbrew remove <name>` | ✅ | Delete the allbrew manifest (no brew change) |
+| `allbrew info <name>` | ✅ | Show manifest summary + `brew info` |
+| `allbrew upgrade [names...]` | ✅ | `brew upgrade` managed packages |
 | `allbrew list` | ✅ | Show tracked packages |
 | `allbrew list --json` | ✅ | Machine-readable output |
 | `allbrew update-formulas` | ✅ | Regenerate outdated packages |
 | `allbrew hooks install/uninstall` | ✅ | Brew-update integration |
 | `allbrew service install/uninstall` | ✅ | Periodic LaunchAgent |
 | `allbrew config ...` | ✅ | Configuration management |
-| `allbrew info <name>` | 🛠️ planned | Show manifest + generated Ruby |
-| `allbrew remove <name>` | 🛠️ planned | Remove a tracked package |
-| `allbrew doctor` | 🛠️ planned | Detect stale/out-of-sync state |
+| `allbrew doctor` | ✅ | Capture + print a diagnostic report |
+| `allbrew dogfood <url>` | ✅ | AI-driven dogfood install (fm/PCC) |
 | `allbrew scan` | 🛠️ planned | Adopt already-installed apps |
 | `allbrew switch` | 🛠️ planned | Move a manual install to official Homebrew |
 
@@ -236,11 +241,10 @@ Now `brew update` runs `allbrew update-formulas` afterwards.
 ## Next todos (rough priority)
 
 1. **Type safety & manifest typing:** replace `Record<string, unknown>` manifest sources with per-generator discriminated unions, then migrate toward `strict: true` incrementally.
-2. **`allbrew info` / `allbrew remove` / `allbrew doctor`:** small management commands that reuse existing manifest infrastructure.
-3. **Fix the dotnet harness:** raise the fixture-server idle timeout or pre-build the fake nupkg, then un-quarantine the suite.
-4. **Uninstall residual verification:** run the residual helper across every generator path.
-5. **MAS URL lookup:** accept app names/IDs in addition to full Store URLs.
-6. **`allbrew scan` / `allbrew switch` / uninstall detection:** adopt already-installed apps into the tap and detect out-of-band uninstalls.
+2. **Fix the dotnet harness:** raise the fixture-server idle timeout or pre-build the fake nupkg, then un-quarantine the suite.
+3. **Uninstall residual verification:** run the residual helper across every generator path.
+4. **MAS URL lookup:** accept app names/IDs in addition to full Store URLs.
+5. **`allbrew scan` / `allbrew switch` / uninstall detection:** adopt already-installed apps into the tap and detect out-of-band uninstalls.
 
 ## Batch artifacts (archived, repo stays lean)
 

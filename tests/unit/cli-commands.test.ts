@@ -349,4 +349,30 @@ describe("Tier C: CLI subprocess (config commands)", () => {
     expect(result.status).toBe(0);
     expect(result.stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
   });
+
+  it("allbrew --help lists brew-mirroring commands", () => {
+    const result = spawnSync("bun", ["run", "bin/allbrew.ts", "--help"], {
+      encoding: "utf-8",
+      timeout: 15_000,
+    });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("install");
+    expect(result.stdout).toContain("uninstall");
+    expect(result.stdout).toContain("remove");
+    expect(result.stdout).toContain("info");
+    expect(result.stdout).toContain("upgrade");
+  });
+
+  it("allbrew install --help shows usage", () => {
+    const result = spawnSync(
+      "bun",
+      ["run", "bin/allbrew.ts", "install", "--help"],
+      {
+        encoding: "utf-8",
+        timeout: 15_000,
+      },
+    );
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Usage: allbrew install");
+  });
 });
