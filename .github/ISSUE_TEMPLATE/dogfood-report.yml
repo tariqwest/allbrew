@@ -1,0 +1,101 @@
+name: Dogfood bug report (allbrew-dogfood)
+description: Report a failed or unexpected allbrew-dogfood install, including your environment info and any patch artifacts.
+title: "dogfood: <app/package name> — <one-line symptom>"
+labels: ["dogfood", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing your monitored install experience! This template captures the info a maintainer needs to turn your report into a fix that flows from the `allbrew-dogfood` branch back into `main`.
+
+        **Privacy:** run `allbrew doctor --report report.md` and paste its contents below. Tokens/secrets are redacted automatically. Never paste a `GITHUB_TOKEN` or `.env` contents.
+
+  - type: input
+    id: url
+    attributes:
+      label: URL
+      description: The URL you ran through allbrew (GitHub repo, script, archive, DMG, MAS/Setapp link).
+      placeholder: https://github.com/owner/repo
+    validations:
+      required: true
+
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Outcome
+      description: How did the install behave?
+      options:
+        - Failed to generate a formula/cask
+        - Generated but brew install failed
+        - Installed but the binary/app is wrong or missing
+        - Installed but service detection was wrong
+        - Installed but a different issue
+        - Other / not as expected
+    validations:
+      required: true
+
+  - type: input
+    id: allbrew-version
+    attributes:
+      label: allbrew version
+      description: Output of `allbrew --version` (this should be a `-dogfood.N` build).
+      placeholder: 0.0.38-dogfood.1
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: macOS version / build
+      description: From `sw_vers` (or `allbrew doctor`).
+      placeholder: macOS 27.0 (26A5421a)
+
+  - type: textarea
+    id: diagnostic
+    attributes:
+      label: Diagnostic report
+      description: Paste the output of `allbrew doctor` (run `allbrew doctor --report report.md` and paste its contents). This carries OS, Homebrew version/state, and managed-package info.
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Steps to reproduce and the exact error/output. Include the verbose log tail (`allbrew <url> --verbose`).
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: The generator you expected, the formula/cask name, the binary name, and whether you expected a `service do` block (and the command, e.g. `hister listen`).
+    validations:
+      required: false
+
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Attached artifacts (optional)
+      description: |
+        If you have them, attach or paste:
+        - a `patches/dogfood/<run-id>.patch` file
+        - the generated formula/cask (`.rb`)
+        - a run record summary (`summary.md`)
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contributor
+    attributes:
+      label: Submission
+      description: Confirm you are a community contributor (no write access) submitting for review.
+      options:
+        - label: I used the `allbrew-dogfood` build (or `allbrew dogfood <url>`)
+          required: true
+        - label: I understand this will be reviewed and integrated by a maintainer
+          required: true

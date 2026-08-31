@@ -2634,7 +2634,15 @@ async function generateWithConfirmation(generatorName, params: any, opts: any) {
     );
   }
 
-  await brewAutoInstall(result, mergedOpts);
+  if (mergedOpts.noInstall || mergedOpts.install === false) {
+    console.log(
+      chalk.dim(
+        `Skipping brew install (--no-install). Formula written to: ${result.filePath}`,
+      ),
+    );
+  } else {
+    await brewAutoInstall(result, mergedOpts);
+  }
 
   return result;
 }

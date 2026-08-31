@@ -285,7 +285,51 @@ export GITHUB_TOKEN=ghp_...
 bun run release patch
 ```
 
-See `scripts/release.ts` for the full release flow.
+After the `allbrew` release completes, the script automatically rebases the `allbrew-dogfood` branch on top of the new `main` tag (dropping stale dogfood version-bump commits), bumps `package.json` to `X.Y.Z-dogfood.N`, tags it, and publishes the `allbrew-dogfood` formula to the tap. Set `ALLBREW_DOGFOOD_BRANCH` to override the branch name. See `scripts/release.ts` for the full release flow.
+
+## Contributing
+
+You do not need to be a developer to contribute. The most valuable contribution is your **monitored install experience**: running allbrew against a real URL, reporting what worked and what did not, and — when something breaks — sharing a patch + system info so a maintainer can fix it. See `.agents/skills/monitored-install-dogfood/SKILL.md` for the full workflow.
+
+### Dogfood testing
+
+`allbrew-dogfood` is a long-lived sandbox branch (and a sibling Homebrew formula) where candidate fixes are staged before being promoted to `main`. It installs the same `allbrew` command as the canonical build, but with unreleased patches applied.
+
+Two ways to opt in:
+
+1. **Built-in AI harness (macOS 27+)** — uses the on-device Apple Foundation Models `fm` CLI to classify the URL and drive the run, no external agent needed:
+   ```bash
+   brew install tariqwest/tap/allbrew-dogfood
+   allbrew dogfood <app-url>            # on-device fm model
+   allbrew dogfood <app-url> --backend pcc   # Private Cloud Compute (aspirational)
+   ```
+   This writes a run record (agent judgment, verbose log, and an `allbrew doctor` diagnostic report) and tells you where it is.
+
+2. **Agent harness** — run the `/monitored-install-dogfood` skill in whichever agent harness and model you already use (OpenCode, Claude, etc.).
+
+Then submit your findings for review:
+
+- **Fork + PR** (if you have `gh`/GitHub auth): the skill forks the repo, commits the patch + run record, and opens a PR against `main` (or `allbrew-dogfood`).
+- **Issue fallback** (no auth required): the skill emits a pre-filled issue — choose the "Dogfood bug report" template — with your patch, log, and diagnostic report attached.
+
+### What to include
+
+Every submission should carry enough context for a maintainer to reproduce and assess your fix. `allbrew doctor` captures it automatically (with tokens redacted):
+
+```bash
+allbrew doctor --report report.md   # OS/build, Homebrew version+state, allbrew version, manifests
+```
+
+A contributed patch flows through this lifecycle: **contributor's environment → `patches/dogfood/<run-id>.patch` + run record → `allbrew-dogfood` branch (via maintainer review) → `main` as a fix artifact → reconciled into executed code in `main`.**
+
+### Lifecycle reference
+
+| Stage | Where it lives | Who |
+|-------|----------------|-----|
+| Dogfood install + judgment | `allbrew dogfood <url>` run record | contributor |
+| Patch artifact + run record | `patches/dogfood/*.patch`, `tests/monitored-install-runs/` | contributor (via PR/issue) |
+| Applied fix | `allbrew-dogfood` branch | maintainer |
+| Promoted fix | `main` (cherry-picked / PR'd) | maintainer |
 
 ## Security & trust
 

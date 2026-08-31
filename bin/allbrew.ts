@@ -207,10 +207,72 @@ const updateFormulasCmd = program
     }
   });
 
+program
+  .command("doctor")
+  .description("Capture and print a diagnostic report of the allbrew + Homebrew environment")
+  .option("--json", "Output machine-readable JSON")
+  .option("--report <path>", "Write a shareable markdown report to <path>")
+  .action(async (opts) => {
+    const chalk = (await import("chalk")).default;
+    const { captureSystemInfo, formatDiagnosticReport } =
+      await import("../lib/diagnose.ts");
+    const info = await captureSystemInfo();
+    if (opts.json) {
+      console.log(JSON.stringify(info, null, 2));
+      return;
+    }
+    const report = formatDiagnosticReport(info);
+    if (opts.report) {
+      const { writeFileSync } = await import("node:fs");
+      const { resolve } = await import("node:path");
+      const path = resolve(opts.report);
+      writeFileSync(path, report + "\n", "utf-8");
+      console.log(chalk.green(`Diagnostic report written to ${path}`));
+    } else {
+      console.log(report);
+    }
+  });
+
+program
+  .command("dogfood")
+  .description("Dogfood-install a URL with an AI classifier (fm/PCC) and capture a run record")
+  .argument("<url>", "URL to a GitHub repo, script, binary, archive, or app link")
+  .option("-n, --name <name>", "Formula/cask name override")
+  .option("--backend <backend>", "Model backend: fm (on-device) or pcc (aspirational)", "fm")
+  .option("--report-dir <path>", "Directory to write the run record into")
+  .option("--no-install", "Generate only; do not run brew install")
+  .action(async (url, opts) => {
+    const chalk = (await import("chalk")).default;
+    try {
+      new URL(url);
+    } catch {
+      console.error(`Error: "${url}" is not a valid URL`);
+      process.exit(1);
+    }
+    const { runDogfood } = await import("../lib/dogfood.ts");
+    const outcome = await runDogfood(url, {
+      name: opts.name,
+      backend: opts.backend === "pcc" ? "pcc" : "fm",
+      reportDir: opts.reportDir,
+      noInstall: opts.noInstall,
+    });
+    console.log(chalk.bold(`Dogfood run: ${outcome.runId}`));
+    console.log(`Exit code: ${outcome.exitCode ?? "unknown"}`);
+    console.log(`Log: ${outcome.logPath}`);
+    console.log(`Report: ${outcome.reportPath}`);
+    if (outcome.judgment) {
+      console.log(
+        chalk.dim(
+          `Judgment: generator=${outcome.judgment.generator ?? "?"} ` +
+            `service=${outcome.judgment.isService ?? "?"}`,
+        ),
+      );
+    }
+  });
+
 const hooksCmd = program
   .command("hooks")
   .description("Install brew wrapper hooks for automatic formula updates");
-
 hooksCmd
   .command("install")
   .description("Write brew update hook script to $(brew --prefix)/etc/")
@@ -307,6 +369,7 @@ program
   .option("--homepage <url>", "Homepage for generated formula/cask")
   .option("--build-system <system>", "Build system for source builds (cmake, autotools, meson, make)")
   .option("--type <type>", "Override the generator to use (e.g. npm-package, cask-app)")
+  .option("--no-install", "Generate only; do not run brew install")
   .action(async (url, opts) => {
     if (!url) {
       const { input } = await import("@inquirer/prompts");

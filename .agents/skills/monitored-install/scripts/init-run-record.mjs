@@ -79,9 +79,47 @@ const allbrewVersion = existsSync(allbrewBin)
   : cmdOut("allbrew", ["--version"]);
 const sourceGitSha = cmdOut("git", ["-C", repoRoot, "rev-parse", "HEAD"]);
 const brewPrefix = cmdOut("brew", ["--prefix"]);
+const brewVersion = cmdOut("brew", ["--version"]);
 const nodeVersion = cmdOut("node", ["-v"]);
+const bunVersion = cmdOut("bun", ["-v"]);
 const arch = cmdOut("uname", ["-m"]);
 const os = `${cmdOut("uname", ["-s"])} ${cmdOut("uname", ["-r"])}`.trim();
+const swVers = cmdOut("sw_vers", []);
+const productName = (swVers.match(/ProductName:\s*(.+)/) || [])[1] || "";
+const productVersion = (swVers.match(/ProductVersion:\s*(.+)/) || [])[1] || "";
+const buildVersion = (swVers.match(/BuildVersion:\s*(.+)/) || [])[1] || "";
+
+let brewConfigJson = null;
+try {
+  const raw = cmdOut("brew", ["config", "--json"]);
+  if (raw) {
+    const parsed = JSON.parse(raw);
+    const conf = Array.isArray(parsed) ? parsed[0] : parsed;
+    if (conf && typeof conf === "object") {
+      brewConfigJson = {};
+      for (const [k, v] of Object.entries(conf)) {
+        if (/token|secret|password|key|auth/i.test(k)) {
+          brewConfigJson[k] = "[REDACTED]";
+        } else {
+          brewConfigJson[k] = v;
+        }
+      }
+    }
+  }
+} catch {
+  /* ignore malformed brew config */
+}
+
+const brewFormulae = cmdOut("brew", ["list", "--formula"])
+  .split(/\r?\n/)
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .slice(0, 100);
+const brewCasks = cmdOut("brew", ["list", "--cask"])
+  .split(/\r?\n/)
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .slice(0, 100);
 
 let tapPath = "";
 try {
@@ -101,7 +139,23 @@ const metadata = {
   finishedAt: null,
   url,
   slug,
-  host: { os, arch, node: nodeVersion, brewPrefix },
+  host: {
+    os,
+    arch,
+    node: nodeVersion,
+    bun: bunVersion,
+    brewPrefix,
+    productName,
+    productVersion,
+    buildVersion,
+  },
+  homebrew: {
+    version: brewVersion ? brewVersion.split(/\r?\n/)[0] : null,
+    prefix: brewPrefix,
+    config: brewConfigJson,
+    formulae: brewFormulae,
+    casks: brewCasks,
+  },
   allbrew: {
     binary: allbrewBin,
     versionInitial: allbrewVersion,
