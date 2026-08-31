@@ -346,6 +346,27 @@ When a formula/cask is generated, allbrew saves a **PackageManifest** JSON to `~
 
 When `ALLBREW_FORMULA_DEPENDENCY` is set (or defaults are enabled), generated formulae get `depends_on "tariqwest/tap/allbrew"` so the tap stays linked to allbrew. Casks are not injected.
 
+### Dogfood branch (`allbrew-dogfood`)
+
+`allbrew-dogfood` is a long-lived sandbox branch that runs the same `allbrew` command against real-world URLs before a fix is promoted to `main`. The workflow is captured in [`.agents/skills/monitored-install-dogfood/SKILL.md`](./.agents/skills/monitored-install-dogfood/SKILL.md).
+
+**Relationship to `main`:**
+
+- `allbrew-dogfood` = `main` + a small set of dogfood-only patches, each persisted under `patches/dogfood/*.patch` and in `tests/monitored-install-runs/<run-id>/fix-package/`.
+- It is **not** a fork. Code fixes are committed to `allbrew-dogfood` first, then cherry-picked / PR'd back to `main` when proven stable. Never commit a code fix directly to `main` from dogfood (only patch artifacts + run records go to `main`).
+- After each `main` release, `allbrew-dogfood` is rebased onto the new `main` tag, stale `X.Y.Z-dogfood.*` version-bump commits are dropped, and the remaining dogfood patches are replayed. The `listen` service-detection fix is the current example.
+
+**Installation:**
+
+- `allbrew-dogfood` is a sibling Homebrew formula (`brew install tariqwest/tap/allbrew-dogfood`) that installs the same `/opt/homebrew/bin/allbrew` binary.
+- It `conflicts_with` the canonical `allbrew` formula — never install both at once. Use `allbrew --version` to confirm which build is active.
+
+**Release naming & versioning:**
+
+- Versions are `X.Y.Z-dogfood.N`, where `X.Y.Z` is the last `main` tag and `N` is the dogfood patch counter (resets when the branch is rebased onto a new `main` tag).
+- Tags are annotated `vX.Y.Z-dogfood.N`; the tap formula `tarball` URL is `https://github.com/tariqwest/allbrew/archive/refs/tags/vX.Y.Z-dogfood.N.tar.gz`.
+- Release flow: tag the dogfood tip, compute the tarball SHA-256, update `tariqwest/homebrew-tap/Formula/allbrew-dogfood.rb` (url + sha256 + version), commit/push the tap, then `brew update && brew upgrade allbrew-dogfood`.
+
 ## Project structure
 
 ```

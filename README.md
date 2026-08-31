@@ -287,6 +287,16 @@ bun run release patch
 
 See `scripts/release.ts` for the full release flow.
 
+## Dogfood branch
+
+`allbrew-dogfood` is a long-lived sandbox branch that runs the same `allbrew` command against real-world URLs before fixes are promoted to `main`. It exists so a candidate code fix can be built, installed via Homebrew, and exercised end-to-end without touching the canonical `allbrew` release.
+
+- **Relationship to `main`:** `allbrew-dogfood` is `main` plus a small set of dogfood-only patches (each persisted as `patches/dogfood/*.patch`). It is **not** a fork — every dogfood fix is staged to be cherry-picked / PR'd back to `main` once proven stable. Code is never committed directly to `main` from dogfood.
+- **Installation:** `allbrew-dogfood` is a sibling Homebrew formula (`brew install tariqwest/tap/allbrew-dogfood`) that installs the same `/opt/homebrew/bin/allbrew` command. It `conflicts_with` the canonical `allbrew` formula — never install both at once.
+- **Versioning:** `X.Y.Z-dogfood.N` where `X.Y.Z` is the last `main` tag and `N` is the dogfood patch counter. On each `main` release, `allbrew-dogfood` is rebased onto the new tag, the stale version-bump commits are dropped, and the counter resets.
+- **Tags:** annotated tags `vX.Y.Z-dogfood.N`, tarball URL `https://github.com/tariqwest/allbrew/archive/refs/tags/vX.Y.Z-dogfood.N.tar.gz`.
+- **Release flow:** see `.agents/skills/monitored-install-dogfood/SKILL.md` (Phase 6). Tag the dogfood tip, compute the tarball SHA-256, update `tariqwest/homebrew-tap/Formula/allbrew-dogfood.rb`, then `brew upgrade allbrew-dogfood`.
+
 ## Security & trust
 
 - allbrew **generates** Ruby formula/cask files; it does **not** evaluate them. Homebrew evaluates the generated `.rb` files during `brew install`.
