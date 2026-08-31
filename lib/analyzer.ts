@@ -79,7 +79,7 @@ const BUILD_PATTERNS = [
 const SERVICE_HINT_RE =
   /\b(?:brew\s+services|launchctl|launchd|launch\s*agent|launch\s*daemon|systemd|(?:as\s+a\s+)?daemon|background\s+process|run\s+in\s+the\s+background|start\s+on\s+login|supervised\s+service)\b/i;
 const SERVICE_COMMAND_RE =
-  /(?:^|[\n`])\s*(?:\$\s*)?([a-zA-Z0-9._/-]+(?:\s+(?:serve|server|start|daemon|agent|run|--daemon|--service)\b[^\n`]*)?)/gm;
+  /(?:^|[\n`])\s*(?:\$\s*)?([a-zA-Z0-9._/-]+(?:\s+(?:serve|server|start|daemon|agent|run|listen|--daemon|--service)\b[^\n`]*)?)/gm;
 const LOCAL_ENDPOINT_RE =
   /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)?(?:\/[\w./~:%?#[\]@!$&'()*+,;=-]*)?/gi;
 const WEB_SERVICE_CONTEXT_RE =
@@ -684,6 +684,12 @@ function findRunnableCommandInText(text, packageName) {
   const commands = text
     .split(/\r?\n/)
     .map(cleanCommand)
+    .map((command) => {
+      if (packageName && command.startsWith(`./${packageName} `)) {
+        return command.slice(2);
+      }
+      return command;
+    })
     .filter(isRunnableCommand);
 
   // Also accept package subcommands that are service-like even when the generic
@@ -726,7 +732,7 @@ function findRunnableCommandInText(text, packageName) {
 function isPackageServiceSubcommand(command, packageName) {
   if (!command || !packageName) return false;
   const re = new RegExp(
-    `^${escapeRegExp(packageName)}\\s+(gateway|webui|serve|server|start|daemon|agent)(?:\\s|$)`,
+    `^${escapeRegExp(packageName)}\\s+(gateway|webui|serve|server|start|daemon|agent|listen)(?:\\s|$)`,
     "i",
   );
   return re.test(String(command).trim());
@@ -788,12 +794,13 @@ function scoreServiceCommand(command) {
   const sub = tokens[1] || "";
   let score = 0;
   if (/^gateway$/.test(sub)) score += 50;
-  if (/^(?:serve|server|daemon|agent)$/.test(sub)) score += 30;
+  if (/^(?:serve|server|daemon|agent|listen)$/.test(sub)) score += 30;
   if (/^start$/.test(sub)) score += 20;
   if (tokens.some((t) => /^(?:--daemon|--service|--background)$/.test(t))) {
     score += 25;
   }
   if (/^webui$/.test(sub) || /\bweb\s*ui\b/.test(c)) score -= 40;
+
   if (/\bopen\b/.test(c) && /\bbrowser\b/.test(c)) score -= 30;
   if (isOneShotCliManagement(c)) score -= 100;
   // Bare binary is a strong long-running candidate (maildev, mcphub).
@@ -1094,7 +1101,7 @@ function isServiceLikeCommand(command, packageName = "") {
   // Matching them here over-fires when README only says "service" in prose and lists the CLI.
   if (parts.length === 1) return false;
 
-  return /\b(?:serve|server|start|daemon|agent|run|gateway|webui|--daemon|--service|--background)\b/i.test(
+  return /\b(?:serve|server|start|daemon|agent|run|listen|gateway|webui|--daemon|--service|--background)\b/i.test(
     command,
   );
 }

@@ -1,0 +1,151 @@
+diff --git a/lib/analyzer.ts b/lib/analyzer.ts
+index 9e4e44e..e18f2d1 100644
+--- a/lib/analyzer.ts
++++ b/lib/analyzer.ts
+@@ -79,7 +79,7 @@ const BUILD_PATTERNS = [
+ const SERVICE_HINT_RE =
+   /\b(?:brew\s+services|launchctl|launchd|launch\s*agent|launch\s*daemon|systemd|(?:as\s+a\s+)?daemon|background\s+process|run\s+in\s+the\s+background|start\s+on\s+login|supervised\s+service)\b/i;
+ const SERVICE_COMMAND_RE =
+-  /(?:^|[\n`])\s*(?:\$\s*)?([a-zA-Z0-9._/-]+(?:\s+(?:serve|server|start|daemon|agent|run|--daemon|--service)\b[^\n`]*)?)/gm;
++  /(?:^|[\n`])\s*(?:\$\s*)?([a-zA-Z0-9._/-]+(?:\s+(?:serve|server|start|daemon|agent|run|listen|--daemon|--service)\b[^\n`]*)?)/gm;
+ const LOCAL_ENDPOINT_RE =
+   /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)?(?:\/[\w./~:%?#[\]@!$&'()*+,;=-]*)?/gi;
+ const WEB_SERVICE_CONTEXT_RE =
+@@ -596,6 +596,12 @@ function findRunnableCommandInText(text, packageName) {
+   const commands = text
+     .split(/\r?\n/)
+     .map(cleanCommand)
++    .map((command) => {
++      if (packageName && command.startsWith(`./${packageName} `)) {
++        return command.slice(2);
++      }
++      return command;
++    })
+     .filter(isRunnableCommand);
+ 
+   // Also accept package subcommands that are service-like even when the generic
+@@ -638,7 +644,7 @@ function findRunnableCommandInText(text, packageName) {
+ function isPackageServiceSubcommand(command, packageName) {
+   if (!command || !packageName) return false;
+   const re = new RegExp(
+-    `^${escapeRegExp(packageName)}\\s+(gateway|webui|serve|server|start|daemon|agent)(?:\\s|$)`,
++    `^${escapeRegExp(packageName)}\\s+(gateway|webui|serve|server|start|daemon|agent|listen)(?:\\s|$)`,
+     "i",
+   );
+   return re.test(String(command).trim());
+@@ -683,7 +689,7 @@ function scoreServiceCommand(command) {
+   if (!c) return -100;
+   let score = 0;
+   if (/\bgateway\b/.test(c)) score += 50;
+-  if (/\b(?:serve|server|daemon|agent)\b/.test(c)) score += 30;
++  if (/\b(?:serve|server|daemon|agent|listen)\b/.test(c)) score += 30;
+   if (/\bstart\b/.test(c)) score += 20;
+   if (/\b(?:--daemon|--service|--background)\b/.test(c)) score += 25;
+   if (/\bwebui\b/.test(c) || /\bweb\s*ui\b/.test(c)) score -= 40;
+@@ -832,7 +838,7 @@ function isServiceLikeCommand(command, packageName = "") {
+   // Matching them here over-fires when README only says "service" in prose and lists the CLI.
+   if (parts.length === 1) return false;
+ 
+-  return /\b(?:serve|server|start|daemon|agent|run|gateway|webui|--daemon|--service|--background)\b/i.test(
++  return /\b(?:serve|server|start|daemon|agent|run|listen|gateway|webui|--daemon|--service|--background)\b/i.test(
+     command,
+   );
+ }
+diff --git a/lib/cli.ts b/lib/cli.ts
+index f39051e..0f7b507 100644
+--- a/lib/cli.ts
++++ b/lib/cli.ts
+@@ -996,10 +996,21 @@ async function handleGithubRepo(classification, opts) {
+           opts,
+         );
+       } else {
++        const binaryServiceConfig = detectServiceConfig(
++          await getReadme(owner, repo),
++          opts.name || repoInfo.name,
++        );
+         return await generateWithConfirmation(
+           "binary-release",
+-          { repoInfo, release },
+-          opts,
++          { repoInfo, release, serviceConfig: binaryServiceConfig },
++          {
++            ...opts,
++            ...(await collectServiceOptions(
++              { serviceConfig: binaryServiceConfig },
++              opts,
++              opts.name || repoInfo.name,
++            )),
++          },
+         );
+       }
+     }
+@@ -1081,10 +1092,21 @@ async function handleGithubRepo(classification, opts) {
+       console.log(
+         `  Detected ${chalk.cyan("binary")} assets: ${binAssets.map((a) => a.name).join(", ")}`,
+       );
++      const binaryServiceConfig = detectServiceConfig(
++        await getReadme(owner, repo),
++        opts.name || repoInfo.name,
++      );
+       return await generateWithConfirmation(
+         "binary-release",
+-        { repoInfo, release },
+-        opts,
++        { repoInfo, release, serviceConfig: binaryServiceConfig },
++        {
++          ...opts,
++          ...(await collectServiceOptions(
++            { serviceConfig: binaryServiceConfig },
++            opts,
++            opts.name || repoInfo.name,
++          )),
++        },
+       );
+     }
+ 
+diff --git a/tests/unit/analyzer.test.ts b/tests/unit/analyzer.test.ts
+index 355c0dc..f2272e9 100644
+--- a/tests/unit/analyzer.test.ts
++++ b/tests/unit/analyzer.test.ts
+@@ -601,6 +601,22 @@ it("detects port-bound package binary without localhost URL (acp-router)", () =>
+     expect(result!.confidence).toBe("low");
+   });
+ 
++  it("detects a package listen subcommand as a service", () => {
++    const readme = [
++      "# Hister",
++      "",
++      "```bash",
++      "./hister listen",
++      "```",
++      "",
++      "Open http://127.0.0.1:4433",
++    ].join("\n");
++    const result = detectServiceConfig(readme, "hister");
++    expect(result).not.toBeNull();
++    expect(result!.command).toBe("hister listen");
++    expect(result!.keepAlive).toBe(true);
++  });
++
+   it("treats pkg server (+ optional --background) as medium confidence for brew services (omnigent)", () => {
+     const readme = [
+       "## Start",
+diff --git a/tests/unit/generators/binary-release.test.ts b/tests/unit/generators/binary-release.test.ts
+index b30d011..9034021 100644
+--- a/tests/unit/generators/binary-release.test.ts
++++ b/tests/unit/generators/binary-release.test.ts
+@@ -52,6 +52,14 @@ describe("collectBinaryReleasePayload", () => {
+     expect(payload.template).toBe("binary_release");
+   });
+ 
++  it("includes a service block from detected service configuration", async () => {
++    const payload = await collectBinaryReleasePayload(repoInfo, release, {
++      serviceConfig: { command: "wakapi listen", keepAlive: true },
++    });
++    expect(payload.serviceBlock).toContain("service do");
++    expect(payload.serviceBlock).toContain('run [opt_bin/"wakapi", "listen"]');
++  });
++
+   it("derives name from repo name", async () => {
+     const payload = await collectBinaryReleasePayload(repoInfo, release);
+     expect(payload.name).toBe("wakapi");
